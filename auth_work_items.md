@@ -36,21 +36,30 @@ has started yet. Confirm before starting each item; some are blocked on open que
    confirmed response shape and a human gives explicit go-ahead.
 3. **Login page UX**: build a small custom `src/pages/auth/login.astro` with a "Sign
    in" button rather than linking bare UI at the default `/api/auth/signin/bloc` route.
+4. **Session-value carrying**: bloc profile fields needed later for order-form
+   autofill (`session_variables.json`) are carried via the same Auth.js JWT that already
+   holds `accessToken` (extending the existing `jwt`/`session` callback pattern, not a
+   new cookie/mechanism), nested under `session.bloc` — see item 2's implementation.
+   Persisting any of this onto the `orders` table is explicitly out of scope here (a
+   separate work item owns that). Lifetime matches the auth session itself, no special
+   expiry.
 
 ## Open questions (blocking the items marked ⚠️ below)
 
-- **bloc userinfo shape details**: we now know the calls to chain for the OAuth2
-  `userinfo` step — `GET api/account/listmypersonprofiles` (profiles owned by the
-  token's account) then `GET api/profile/getpage` by `userId` (profile detail;
-  `ProfileTypeId` `0` = person, `2` = company — filter to person profiles for user
-  sign-in). Still unconfirmed: exact response field names/shapes for both calls
-  (particularly whether `getpage` returns something usable as `email`, since
-  `rental_shop.md` §6's upsert requires `user.email` to be non-null), and how to pick
-  the right profile when `listmypersonprofiles` returns more than one. This should get
-  nailed down by exploring these two methods against the real API — that exploration
-  belongs in the sibling `feature/bloc-role-api` worktree (`bloc_api_handoff.md`), which
-  already has the bloc MCP server wired up read-only; this session has no bloc MCP
-  access. **Once confirmed, unblocks item 2 and item 4 below.**
+- **bloc userinfo shape, still not fully confirmed**: exploration via the bloc MCP
+  server (in the sibling `feature/bloc-role-api` worktree) confirmed the real chain is a
+  single call — `GET api/account/listmypages` (wrapped by MCP tool `bloc_list_my_profiles`),
+  returning `{ ListOfMyProfiles: [...], success, code, message }`, not the two-step
+  `listmypersonprofiles` → `getpage` originally guessed. Full field list captured in
+  `bloc_field_keys.json` / `session_variables.json`. Item 2 is now implemented in
+  `src/auth.ts` against this shape (`profileTypeId === 0` filter, falling back to the
+  first entry), but **the profile-selection heuristic is unconfirmed against a real
+  end-user login** — the only live data seen so far (`listmypages.json`) came from an
+  admin/webmaster test account with zero `profileTypeId === 0` entries, so the fallback
+  path is what actually ran, untested against a real person profile. Also unconfirmed:
+  the exact base path for `api/account/listmypages` beyond the method name (no query
+  params tried yet). **Still blocks item 4** (the upsert needs a real, verified
+  `user.email`).
 
 ## Work items, in order
 
@@ -59,13 +68,15 @@ has started yet. Confirm before starting each item; some are blocked on open que
    `OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET` for the bloc app registration (never commit,
    never paste real values into chat — same rule as `bloc_api_handoff.md`). Not blocked.
 
-2. **`src/auth.ts`: swap GitHub for a custom bloc `OAuthConfig`** ⚠️ blocked on
-   confirming the userinfo response shapes above. Replace the `GitHub(...)` provider
-   with a custom OAuth2 provider pointing at bloc's authorize/token endpoints; its
-   `userinfo` function chains `listmypersonprofiles` → `getpage` (filtering
-   `ProfileTypeId === 0`) to build `{ id, email, name }`. Keep the existing `jwt` and
-   `session` callbacks (they already persist `account.access_token` correctly and don't
-   need to change).
+2. **`src/auth.ts`: swap GitHub for a custom bloc `OAuthConfig`** ✅ implemented,
+   ⚠️ profile-selection heuristic unconfirmed (see open question above). Replaces the
+   `GitHub(...)` provider with a hand-rolled `OAuthConfig<BlocProfile>` pointing at
+   bloc's authorize/token endpoints (`checks: ['state']` only — PKCE support unconfirmed);
+   its `userinfo.request` calls `api/account/listmypages` and picks the `profileTypeId
+   === 0` entry (falls back to the first profile). `jwt`/`session` callbacks extended
+   (not replaced) to also carry the bloc profile fields under `session.bloc` — see item
+   4 below for why that's nested rather than flattened (naming collision with Auth.js's
+   built-in `AdapterSession.userId`). Passes `astro check` with 0 errors.
 
 3. **`src/db/client.ts`** — create the Drizzle client singleton assumed by
    `rental_shop.md` §4 but not yet present. Small, self-contained, unblocks item 4.

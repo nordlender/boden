@@ -1,0 +1,33 @@
+---
+import Logo from './nav/Logo.astro';
+import NavLinks from './nav/NavLinks.astro';
+import UserMenu from './nav/UserMenu.astro';
+---
+
+<header class="border-b border-gray-200 bg-white">
+	<nav class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+		<Logo />
+
+		<div class="hidden md:block">
+			<NavLinks />
+		</div>
+
+		<div class="flex items-center gap-2">
+			<UserMenu />
+
+			<details class="group relative md:hidden">
+				<summary
+					class="flex cursor-pointer list-none items-center justify-center rounded-md border border-gray-300 p-2 text-gray-700 hover:bg-gray-50 [&::-webkit-details-marker]:hidden"
+					aria-label="Open menu"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+					</svg>
+				</summary>
+				<div class="absolute right-0 z-10 mt-2 w-48 rounded-md border border-gray-200 bg-white p-4 shadow-lg">
+					<NavLinks />
+				</div>
+			</details>
+		</div>
+	</nav>
+</header>

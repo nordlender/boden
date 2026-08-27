@@ -1,0 +1,33 @@
+---
+export const prerender = false;
+import '../../styles/global.css';
+
+// Preserves the redirect target the auth+role gate middleware set when it
+// bounced an unauthenticated request here (src/middleware/index.ts).
+const next = Astro.url.searchParams.get('next') ?? '/';
+---
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Sign in</title>
+	</head>
+	<body>
+		<main>
+			<h1>Sign in</h1>
+			<button id="signin" data-next={next} type="button">Sign in with bloc</button>
+		</main>
+		<script>
+			import { signIn } from 'auth-astro/client';
+
+			const button = document.getElementById('signin') as HTMLButtonElement;
+			button.addEventListener('click', () => {
+				// auth-astro's SignInOptions type pulls in `next-auth/react`, which
+				// isn't installed as a dependency here — cast to bypass the resulting
+				// type gap rather than pull in the whole next-auth package for types.
+				signIn('bloc', { callbackUrl: button.dataset.next || '/' } as Parameters<typeof signIn>[1]);
+			});
+		</script>
+	</body>
+</html>

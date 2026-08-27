@@ -1,0 +1,107 @@
+# Project tasks
+
+Consolidated from `rental_shop.md`, `auth_work_items.md`, `auth_session_handoff.md`,
+`auth_testing_guide.md`, `bloc_api_handoff.md`, `moderator_order_review.md`, and
+`schema_fixes.md`, cross-checked against the actual code on `feature/auth` as of
+2026-08-27. Update this file as items move between sections — don't let it drift
+from the individual handoff docs, which still hold the detailed narrative/rationale.
+
+## To do
+
+### Blocked on explicit human sign-off (do not start without being asked)
+- Add the `signIn` upsert callback in `src/auth.ts` (`auth_work_items.md` item 4).
+- Wire the real `ROLE_API_URL` to bloc's actual role endpoint.
+
+### Order persistence
+- Build `/api/orders/create.ts` + `order_items` inserts; wire up the (currently
+  disabled) submit button in `CheckoutForm.astro`.
+- Add `hasUnpaidFees`/`userIsMember` columns to `orders` and read them from the
+  submitted checkout form (snapshot at submit time, not re-fetched later) —
+  decision recorded in `moderator_order_review.md`.
+
+### Moderator pages (none exist yet)
+- `/moderator/retrieve`, `/moderator/orders/[id]`, `/moderator/confirm/[id]`
+  + `src/api/orders/confirm.ts` / `return.ts`, per `rental_shop.md` §9.
+- New moderator order-review page (accept/deny *before* retrieval) per
+  `moderator_order_review.md` — route not named yet (`/moderator/review/[id]`
+  proposed), needs the rest of its fields listed out, and needs
+  `rental_shop.md`'s lifecycle diagram reconciled first (see WIP below) plus a
+  §2 page-structure entry once that's settled.
+
+### Admin pages (none exist yet)
+- `items.astro`, `orders.astro`, `orders/[id].astro`, `archive.astro` +
+  `src/api/items/{create,delete,count}.ts`, per `rental_shop.md` §2.
+
+### Catalogue / cart / nav (barely started)
+- `index.astro` is still the unmodified Astro starter template — no catalogue,
+  item grid, or item detail page (`items/[slug].astro`) built yet.
+- Cart components beyond `CheckoutForm.astro` (`CartDrawer`, `CartItem`) not built.
+- No Nav/layout component reflecting login state anywhere.
+- No logout page — `signOut()` from `auth-astro/client` isn't wired to anything.
+
+### Housekeeping
+- Delete `listmypages.json` from the main working tree (real PII, gitignored
+  but present on disk) once no longer needed for reference.
+- Remove the temporary `[bloc debug]` `console.log` calls in `src/auth.ts`'s
+  `userinfo.request` — blocked on the null-fields question below.
+
+### `bloc_api_handoff.md` exploration — not finished
+- Step 4 of that doc's Phase 1 (propose one safe read-only bloc call beyond
+  `whoami`/`list_api_capabilities`) hasn't been done yet.
+
+### Deployment (not started — no rush pre-build)
+- nginx config, Certbot, daily SQLite backup cron, go-live checklist in
+  `rental_shop.md` §13/§15.
+
+## WIP
+
+- **`hasUnpaidFees`/`userIsMember` came back `null`** from bloc for the one
+  real account tested — assumed stale on bloc's end, unresolved. Next step if
+  it persists: try `api/account/listmypersonprofiles` instead of
+  `listmypages`. Blocks real data on the future moderator-review page and is
+  the reason the debug log above is still in place.
+- **`rental_shop.md`'s order-lifecycle diagram is inconsistent** (Confirm step
+  says "Accept or Reject" but the status line under it still only covers
+  `active`, and it places accept/reject at the same step as retrieval rather
+  than the earlier review step `moderator_order_review.md` describes).
+  **User has explicitly deferred this fix — do not edit `rental_shop.md`
+  without being asked.**
+- Profile-selection fallback (`profileTypeId === 0 ?? profiles[0]`) still
+  unconfirmed against a real multi-profile bloc account — only a single-profile
+  account has been tested.
+- bloc token-endpoint client-auth method and the auto-added
+  `scope=openid profile email` are unconfirmed against bloc's actual docs —
+  working so far, but nobody's verified they're correct rather than lucky.
+- First live-login test hit one unexplained `403` on `account/listmypages`
+  (every attempt since succeeded, no code change in between) — cause not
+  diagnosed, just watch for recurrence.
+
+## Completed
+
+- Astro + Tailwind + Drizzle/better-sqlite3 scaffold, `output: 'hybrid'` config.
+- Full `src/db/schema.ts` per `schema_fixes.md` items 1–8: relations, order-item
+  validation constraints + unique `(orderId, itemId)`, moderator accountability
+  fields (`confirmedByUserId`/`returnedByUserId`), soft-delete `archived` on
+  `items`, random `orderCode`, dropped redundant `available` boolean, FK
+  indexes, DB-level timestamp defaults. Item 9's `rejectedAt`/`rejectedReason`
+  were also implemented (ahead of that item's original TODO-only instruction —
+  deliberately left as-is); `dueAt` remains a TODO comment only, as instructed.
+- `src/db/client.ts` — Drizzle singleton.
+- bloc OAuth: custom `OAuthConfig` in `src/auth.ts` replacing the placeholder
+  GitHub provider, `jwt`/`session` callbacks carrying profile fields under
+  `session.bloc`, several real bugs fixed along the way (missing `userinfo.url`,
+  fail-closed on empty profiles, access-token leak to the client removed,
+  `res.ok` check, route-gating switched from raw pathname to `ctx.routePattern`,
+  prerendered-page early return, `session.user.id`).
+- `src/lib/auth.ts` (`Role` type, `getRoleFromExternalApi` with 30s cache and
+  safe-downgrade, `validateSession`) and `src/middleware/index.ts` (auth + role
+  gate) — both against the placeholder `ROLE_API_URL` per the hard rule above.
+- `src/pages/auth/login.astro` + `App.Locals.user` typing in `src/env.d.ts`.
+- Checkout autofill: `src/lib/cart.ts`, `CheckoutForm.astro`, `cart.astro` —
+  `name`/`email`/`mobile` autofilled session-only (never persisted, explicit
+  decision), `hasUnpaidFees`/`userIsMember` shown readonly with a warning box;
+  submit button intentionally disabled pending order persistence.
+- First successful live end-to-end bloc OAuth login against the real API.
+- `bloc_api_handoff.md` Phase 1 steps 1–3 (isolated worktree, `.env` token,
+  `whoami`/`list_api_capabilities` exploration, findings folded into
+  `auth_work_items.md`'s open-questions section) — step 4 still open, see To do.

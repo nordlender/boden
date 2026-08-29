@@ -1,5 +1,15 @@
 # Starting the dev server
 
+## Which worktree/branch?
+
+Before starting the server, an agent should ask the user which
+worktree/branch to serve — different worktrees can have very different
+content (e.g. one branched from `main` with just the starter template vs.
+`feature/auth` with the actual site), and serving the wrong one looks like
+a broken site rather than a wrong-branch problem. Present the agent's
+current worktree as option 1 (the likely default), but confirm rather than
+assuming it's the one the user wants to see.
+
 This project uses Astro. To make the dev server reachable from outside the
 container (not just `localhost` inside it), bind it to `0.0.0.0` on port
 `4321` explicitly:

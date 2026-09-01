@@ -1,6 +1,13 @@
 ---
+interface Props {
+	src?: string;
+	alt?: string;
+}
+
+const { src = '/favicon.svg', alt = 'Boden' } = Astro.props;
 ---
 
-<a href="/" class="text-lg font-semibold tracking-tight text-gray-900">
-	Boden
+<a href="/" class="flex items-center gap-2">
+	<img src={src} alt={alt} class="h-8 w-8" />
+	<span class="text-lg font-semibold tracking-tight text-gray-900">Boden</span>
 </a>

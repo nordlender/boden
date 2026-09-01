@@ -1,0 +1,26 @@
+---
+interface Props {
+	slug: string;
+	name: string;
+	imageUrl: string;
+	stockCount: number;
+}
+
+const { slug, name, imageUrl, stockCount } = Astro.props;
+const inStock = stockCount > 0;
+---
+
+<a
+	href={`/items/${slug}`}
+	class="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition hover:border-gray-300 hover:shadow-sm"
+>
+	<div class="aspect-square overflow-hidden bg-gray-100">
+		<img src={imageUrl} alt={name} class="h-full w-full object-cover transition group-hover:scale-105" />
+	</div>
+	<div class="flex flex-1 flex-col gap-1 p-3">
+		<h3 class="text-sm font-medium text-gray-900">{name}</h3>
+		<span class={`text-xs ${inStock ? 'text-emerald-700' : 'text-red-700'}`}>
+			{inStock ? `${stockCount} in stock` : 'Out of stock'}
+		</span>
+	</div>
+</a>

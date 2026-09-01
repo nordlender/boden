@@ -1,0 +1,63 @@
+---
+interface Props {
+	name?: string;
+	min?: number;
+	max?: number;
+	value?: number;
+}
+
+const { name = 'quantity', min = 1, max = 99, value = 1 } = Astro.props;
+---
+
+<div class="inline-flex items-center gap-3" data-quantity-selector data-min={min} data-max={max}>
+	<button
+		type="button"
+		data-decrement
+		aria-label="Decrease quantity"
+		class="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+	>
+		&minus;
+	</button>
+	<input
+		type="number"
+		name={name}
+		data-quantity-input
+		value={value}
+		min={min}
+		max={max}
+		inputmode="numeric"
+		class="w-12 border-0 text-center text-sm font-medium text-gray-900 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+	/>
+	<button
+		type="button"
+		data-increment
+		aria-label="Increase quantity"
+		class="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+	>
+		&plus;
+	</button>
+</div>
+
+<script>
+	function clamp(value: number, min: number, max: number) {
+		return Math.min(max, Math.max(min, value));
+	}
+
+	document.querySelectorAll<HTMLElement>('[data-quantity-selector]').forEach((selector) => {
+		const input = selector.querySelector<HTMLInputElement>('[data-quantity-input]');
+		const decrement = selector.querySelector<HTMLButtonElement>('[data-decrement]');
+		const increment = selector.querySelector<HTMLButtonElement>('[data-increment]');
+		if (!input || !decrement || !increment) return;
+
+		const min = Number(selector.dataset.min ?? 1);
+		const max = Number(selector.dataset.max ?? 99);
+
+		const setValue = (next: number) => {
+			input.value = String(clamp(next, min, max));
+		};
+
+		decrement.addEventListener('click', () => setValue(Number(input.value) - 1));
+		increment.addEventListener('click', () => setValue(Number(input.value) + 1));
+		input.addEventListener('change', () => setValue(Number(input.value) || min));
+	});
+</script>

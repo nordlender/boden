@@ -1,11 +1,16 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ItemGrid from '../components/shop/ItemGrid.astro';
+import { db } from '../db/client';
+
+const items = await db.query.items.findMany({
+	where: (items, { eq }) => eq(items.archived, false),
+	orderBy: (items, { asc }) => asc(items.name),
+});
 ---
 
 <BaseLayout title="Boden">
-	<div class="mx-auto max-w-6xl px-4 py-16">
-		<h1 class="text-3xl font-semibold tracking-tight text-gray-900">Boden</h1>
-		<p class="mt-2 text-gray-600">Homepage content coming soon.</p>
+	<div class="mx-auto max-w-6xl px-4 py-8">
+		<ItemGrid items={items} />
 	</div>
 </BaseLayout>
-

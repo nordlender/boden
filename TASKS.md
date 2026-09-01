@@ -32,12 +32,12 @@ from the individual handoff docs, which still hold the detailed narrative/ration
 - `items.astro`, `orders.astro`, `orders/[id].astro`, `archive.astro` +
   `src/api/items/{create,delete,count}.ts`, per `rental_shop.md` §2.
 
-### Catalogue / cart / nav (barely started)
-- `index.astro` is still the unmodified Astro starter template — no catalogue,
-  item grid, or item detail page (`items/[slug].astro`) built yet.
-- Cart components beyond `CheckoutForm.astro` (`CartDrawer`, `CartItem`) not built.
-- No Nav/layout component reflecting login state anywhere.
+### Catalogue / cart / nav
+- `UserMenu.astro` is still static (Sign in / Profile / Sign out placeholders) —
+  doesn't reflect real session state yet.
 - No logout page — `signOut()` from `auth-astro/client` isn't wired to anything.
+- Cart components beyond `CheckoutForm.astro` (`CartDrawer`, `CartItem`) not built —
+  `/cart` still has nothing showing the items just added via `/api/cart/add`.
 
 ### Housekeeping
 - Delete `listmypages.json` from the main working tree (real PII, gitignored
@@ -105,3 +105,11 @@ from the individual handoff docs, which still hold the detailed narrative/ration
 - `bloc_api_handoff.md` Phase 1 steps 1–3 (isolated worktree, `.env` token,
   `whoami`/`list_api_capabilities` exploration, findings folded into
   `auth_work_items.md`'s open-questions section) — step 4 still open, see To do.
+- Responsive `Navbar.astro` (`Logo`/`NavLinks`/`UserMenu` components, image logo
+  support, links right-aligned next to the account button, hamburger on mobile)
+  wired into a new `BaseLayout.astro` shared page shell.
+- Catalogue: `ItemCard`/`ItemGrid` on `index.astro`, static `items/[slug].astro`
+  detail pages, `QuantitySelector.astro` (vanilla-JS +/-, clamped to stock),
+  `/api/cart/add.ts` posting into the existing `lib/cart.ts` cookie cart. Seeded
+  via `src/db/seed.mjs` with placeholder climbing-gear items (no real inventory
+  data yet — `admin/items.astro` from the To-do above is what would replace this).

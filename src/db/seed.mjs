@@ -63,6 +63,22 @@ const items = [
     ],
   },
   {
+    slug: 'dmm-dragon-cam-1',
+    name: 'DMM Dragon Cam #1',
+    description:
+      'Dual-axle cam with TripleGrip lobes for grip across rock types, plus an integrated extendable sling to cut down on quickdraws.',
+    imageUrl: '/uploads/dragon1.jpg',
+    category: 'harnesses-protection',
+    stockCount: 3,
+    attributes: [
+      ['Colour', 'Purple'],
+      ['Range', '20-33 mm'],
+      ['Strength', '14 kN'],
+      ['Weight', '103 g'],
+      ['Product code', 'A7351A'],
+    ],
+  },
+  {
     slug: 'ice-axe',
     name: 'Ice Axe',
     description: 'General mountaineering ice axe.',

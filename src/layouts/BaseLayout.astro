@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import Navbar from '../components/Navbar.astro';
+import CartSidebar from '../components/cart/CartSidebar.astro';
 
 interface Props {
 	title?: string;
@@ -23,5 +24,6 @@ const { title = 'Boden' } = Astro.props;
 		<main>
 			<slot />
 		</main>
+		<CartSidebar />
 	</body>
 </html>

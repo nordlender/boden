@@ -2,6 +2,7 @@
 import Logo from './nav/Logo.astro';
 import NavLinks from './nav/NavLinks.astro';
 import UserMenu from './nav/UserMenu.astro';
+import CartButton from './nav/CartButton.astro';
 ---
 
 <header class="border-b border-gray-200 bg-white">
@@ -14,6 +15,7 @@ import UserMenu from './nav/UserMenu.astro';
 			</div>
 
 			<div class="flex items-center gap-2">
+				<CartButton />
 				<UserMenu />
 
 				<details class="group relative md:hidden">

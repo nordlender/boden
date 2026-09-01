@@ -1,6 +1,10 @@
 import type { AstroCookies } from 'astro';
+import { inArray } from 'drizzle-orm';
+import { db } from '../db/client';
+import { items } from '../db/schema';
 
 export type CartEntry = { itemId: number; quantity: number };
+export type CartItem = { itemId: number; name: string; imageUrl: string; quantity: number };
 
 export function getCart(cookies: AstroCookies): CartEntry[] {
   try {
@@ -28,4 +32,26 @@ export function addToCart(cookies: AstroCookies, itemId: number, quantity = 1) {
     cart.push({ itemId, quantity });
   }
   setCart(cookies, cart);
+}
+
+// Joins the cookie cart against the items table for display (name/image) —
+// used by the cart sidebar and the /api/cart endpoint it fetches from.
+export async function getCartItems(cookies: AstroCookies): Promise<CartItem[]> {
+  const cart = getCart(cookies);
+  if (cart.length === 0) return [];
+
+  const rows = await db.query.items.findMany({
+    where: inArray(
+      items.id,
+      cart.map((e) => e.itemId)
+    ),
+  });
+
+  return cart
+    .map((entry) => {
+      const item = rows.find((row) => row.id === entry.itemId);
+      if (!item) return null;
+      return { itemId: item.id, name: item.name, imageUrl: item.imageUrl, quantity: entry.quantity };
+    })
+    .filter((item): item is CartItem => item !== null);
 }

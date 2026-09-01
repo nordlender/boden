@@ -15,5 +15,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
 	addToCart(cookies, itemId, quantity);
 
-	return redirect(typeof redirectTo === 'string' && redirectTo.startsWith('/') ? redirectTo : '/');
+	const target = typeof redirectTo === 'string' && redirectTo.startsWith('/') ? redirectTo : '/';
+	// Read by CartSidebar.astro's script to auto-open the sidebar after the
+	// redirect lands, then stripped from the URL — see that component.
+	const separator = target.includes('?') ? '&' : '?';
+	return redirect(`${target}${separator}cartOpen=1`);
 };

@@ -44,6 +44,29 @@ export const itemLinks = sqliteTable('item_links', {
   index('item_links_item_id_idx').on(table.itemId),
 ]);
 
+// A mutually-exclusive choice on an item, e.g. "Color". Not every item has
+// option groups; those that don't are sold as-is with just their main image.
+export const itemOptionGroups = sqliteTable('item_option_groups', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  itemId: integer('item_id').notNull().references(() => items.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+}, (table) => [
+  index('item_option_groups_item_id_idx').on(table.itemId),
+]);
+
+// One selectable value within a group, e.g. "Red". imageUrl overrides the
+// item's main image when this value is selected; null falls back to it.
+export const itemOptionValues = sqliteTable('item_option_values', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  groupId: integer('group_id').notNull().references(() => itemOptionGroups.id, { onDelete: 'cascade' }),
+  label: text('label').notNull(),
+  imageUrl: text('image_url'),
+  sortOrder: integer('sort_order').notNull().default(0),
+}, (table) => [
+  index('item_option_values_group_id_idx').on(table.groupId),
+]);
+
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(), // ID from external OAuth provider
   email: text('email').notNull().unique(),
@@ -102,6 +125,7 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   }),
   attributes: many(itemAttributes),
   links: many(itemLinks),
+  optionGroups: many(itemOptionGroups),
   orderItems: many(orderItems),
 }));
 
@@ -116,6 +140,21 @@ export const itemLinksRelations = relations(itemLinks, ({ one }) => ({
   item: one(items, {
     fields: [itemLinks.itemId],
     references: [items.id],
+  }),
+}));
+
+export const itemOptionGroupsRelations = relations(itemOptionGroups, ({ one, many }) => ({
+  item: one(items, {
+    fields: [itemOptionGroups.itemId],
+    references: [items.id],
+  }),
+  values: many(itemOptionValues),
+}));
+
+export const itemOptionValuesRelations = relations(itemOptionValues, ({ one }) => ({
+  group: one(itemOptionGroups, {
+    fields: [itemOptionValues.groupId],
+    references: [itemOptionGroups.id],
   }),
 }));
 

@@ -1,0 +1,61 @@
+---
+interface OptionValue {
+	id: number;
+	label: string;
+	imageUrl: string | null;
+}
+
+interface OptionGroup {
+	id: number;
+	name: string;
+	values: OptionValue[];
+}
+
+interface Props {
+	groups: OptionGroup[];
+}
+
+const { groups } = Astro.props;
+---
+
+{
+	groups.length > 0 && (
+		<div data-product-options class="flex flex-col gap-4">
+			{groups.map((group) => (
+				<fieldset>
+					<legend class="mb-2 text-sm font-medium text-gray-900">{group.name}</legend>
+					<div class="flex flex-wrap gap-2">
+						{group.values.map((value, index) => (
+							<label class="cursor-pointer">
+								<input
+									type="radio"
+									name={`option-${group.id}`}
+									value={value.id}
+									checked={index === 0}
+									{...(value.imageUrl ? { 'data-option-image': value.imageUrl } : {})}
+									class="peer sr-only"
+								/>
+								<span class="block rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 peer-checked:border-gray-900 peer-checked:ring-1 peer-checked:ring-gray-900 hover:border-gray-400">
+									{value.label}
+								</span>
+							</label>
+						))}
+					</div>
+				</fieldset>
+			))}
+		</div>
+	)
+}
+
+<script>
+	document.querySelectorAll<HTMLElement>('[data-product-options]').forEach((container) => {
+		const image = document.querySelector<HTMLImageElement>('[data-product-image]');
+		if (!image) return;
+
+		container.querySelectorAll<HTMLInputElement>('input[data-option-image]').forEach((input) => {
+			input.addEventListener('change', () => {
+				if (input.checked) image.src = input.dataset.optionImage!;
+			});
+		});
+	});
+</script>

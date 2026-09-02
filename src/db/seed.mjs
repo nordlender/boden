@@ -37,6 +37,16 @@ const items = [
       ['Size', 'M (adjustable)'],
       ['Type', 'Sit harness'],
     ],
+    optionGroups: [
+      {
+        name: 'Color',
+        values: [
+          { label: 'Red', imageUrl: '/uploads/harness-red.svg' },
+          { label: 'Blue', imageUrl: '/uploads/harness-blue.svg' },
+          { label: 'Green', imageUrl: '/uploads/harness-green.svg' },
+        ],
+      },
+    ],
   },
   {
     slug: 'climbing-helmet',
@@ -129,6 +139,17 @@ const insertAttribute = db.prepare(`
   INSERT INTO item_attributes (item_id, key, value, sort_order)
   VALUES (@itemId, @key, @value, @sortOrder)
 `);
+const getOptionGroup = db.prepare(
+  'SELECT id FROM item_option_groups WHERE item_id = ? AND name = ?'
+);
+const insertOptionGroup = db.prepare(`
+  INSERT INTO item_option_groups (item_id, name, sort_order)
+  VALUES (@itemId, @name, @sortOrder)
+`);
+const insertOptionValue = db.prepare(`
+  INSERT INTO item_option_values (group_id, label, image_url, sort_order)
+  VALUES (@groupId, @label, @imageUrl, @sortOrder)
+`);
 
 const seed = db.transaction(() => {
   for (const category of categories) {
@@ -136,21 +157,43 @@ const seed = db.transaction(() => {
   }
 
   for (const item of items) {
-    if (getItemBySlug.get(item.slug)) continue;
+    let itemRow = getItemBySlug.get(item.slug);
 
-    const category = getCategoryId.get(item.category);
-    const result = insertItem.run({
-      slug: item.slug,
-      name: item.name,
-      description: item.description,
-      imageUrl: item.imageUrl,
-      categoryId: category.id,
-      stockCount: item.stockCount,
-    });
+    if (!itemRow) {
+      const category = getCategoryId.get(item.category);
+      const result = insertItem.run({
+        slug: item.slug,
+        name: item.name,
+        description: item.description,
+        imageUrl: item.imageUrl,
+        categoryId: category.id,
+        stockCount: item.stockCount,
+      });
+      itemRow = { id: result.lastInsertRowid };
 
-    item.attributes.forEach(([key, value], index) => {
-      insertAttribute.run({ itemId: result.lastInsertRowid, key, value, sortOrder: index });
-    });
+      item.attributes.forEach(([key, value], index) => {
+        insertAttribute.run({ itemId: itemRow.id, key, value, sortOrder: index });
+      });
+    }
+
+    for (const group of item.optionGroups ?? []) {
+      if (getOptionGroup.get(itemRow.id, group.name)) continue;
+
+      const groupResult = insertOptionGroup.run({
+        itemId: itemRow.id,
+        name: group.name,
+        sortOrder: 0,
+      });
+
+      group.values.forEach((value, index) => {
+        insertOptionValue.run({
+          groupId: groupResult.lastInsertRowid,
+          label: value.label,
+          imageUrl: value.imageUrl ?? null,
+          sortOrder: index,
+        });
+      });
+    }
   }
 });
 

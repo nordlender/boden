@@ -1,0 +1,45 @@
+---
+export const prerender = false;
+
+import '../../styles/global.css';
+import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
+import { db } from '../../db/client';
+import { orders } from '../../db/schema';
+import { eq } from 'drizzle-orm';
+
+// Gated by src/middleware/index.ts (MEMBER_ROUTE_PREFIXES via /checkout) —
+// reached only when logged in, so Astro.locals.user is non-null here.
+const orderCode = Astro.url.searchParams.get('order');
+const order = orderCode
+  ? await db.query.orders.findFirst({
+      where: eq(orders.orderCode, orderCode),
+      with: { orderItems: { with: { item: true } } },
+    })
+  : null;
+
+// Don't leak another member's order by guessing/enumerating codes.
+if (!order || order.userId !== Astro.locals.user?.id) {
+  return Astro.redirect('/cart');
+}
+---
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Order placed</title>
+	</head>
+	<body>
+		<main>
+			<UserOrderSummary
+				orderCode={order.orderCode}
+				status={order.status}
+				note={order.note}
+				items={order.orderItems.map((oi) => ({
+					itemName: oi.item.name,
+					requestedQuantity: oi.requestedQuantity,
+				}))}
+			/>
+		</main>
+	</body>
+</html>

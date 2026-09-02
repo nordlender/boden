@@ -1,0 +1,25 @@
+---
+interface OrderItemView {
+  itemName: string;
+  requestedQuantity: number;
+}
+
+interface Props {
+  orderCode: string;
+  status: string;
+  note: string | null;
+  items: OrderItemView[];
+}
+
+const { orderCode, status, note, items } = Astro.props;
+---
+<section class="order-summary">
+	<h1>Order #{orderCode}</h1>
+	<p>Status: {status}</p>
+	{note && <p>Note: {note}</p>}
+	<ul>
+		{items.map((item) => (
+			<li>{item.itemName} &times; {item.requestedQuantity}</li>
+		))}
+	</ul>
+</section>

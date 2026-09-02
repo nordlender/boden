@@ -1,6 +1,9 @@
 # build output
 dist/
 
+# development files
+dev/
+
 # sqlite database (drizzle.config.ts)
 data/
 # generated types
@@ -25,3 +28,5 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+CLAUDE.md

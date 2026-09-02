@@ -62,6 +62,11 @@ export const itemOptionValues = sqliteTable('item_option_values', {
   groupId: integer('group_id').notNull().references(() => itemOptionGroups.id, { onDelete: 'cascade' }),
   label: text('label').notNull(),
   imageUrl: text('image_url'),
+  // JSON object of spec key/value pairs that apply only when this value is
+  // selected (e.g. weight/range for one cam size) — chosen over a fixed set
+  // of columns, or item_attributes rows, because which specs even exist
+  // varies per item and no cross-item querying by spec key is needed here.
+  attributes: text('attributes'),
   sortOrder: integer('sort_order').notNull().default(0),
 }, (table) => [
   index('item_option_values_group_id_idx').on(table.groupId),

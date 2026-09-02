@@ -1,0 +1,1 @@
+ALTER TABLE `item_option_values` ADD `attributes` text;

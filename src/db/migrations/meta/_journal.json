@@ -15,6 +15,13 @@
       "when": 1788315203162,
       "tag": "0001_dapper_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788317946087,
+      "tag": "0002_wonderful_marten_broadcloak",
+      "breakpoints": true
     }
   ]
 }

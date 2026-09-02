@@ -44,6 +44,10 @@ from the individual handoff docs, which still hold the detailed narrative/ration
   but present on disk) once no longer needed for reference.
 - Remove the temporary `[bloc debug]` `console.log` calls in `src/auth.ts`'s
   `userinfo.request` — blocked on the null-fields question below.
+- **Once the schema/catalogue work settles**, squash `src/db/migrations/*` back
+  down to one clean initial migration (currently 0000–0002) and regenerate
+  `data/rental.db` from that single file — explicit user request, not urgent,
+  do only when asked to do the actual cleanup pass.
 
 ### `bloc_api_handoff.md` exploration — not finished
 - Step 4 of that doc's Phase 1 (propose one safe read-only bloc call beyond
@@ -113,3 +117,14 @@ from the individual handoff docs, which still hold the detailed narrative/ration
   `/api/cart/add.ts` posting into the existing `lib/cart.ts` cookie cart. Seeded
   via `src/db/seed.mjs` with placeholder climbing-gear items (no real inventory
   data yet — `admin/items.astro` from the To-do above is what would replace this).
+- Slide-in `CartSidebar.astro`/`CartButton.astro` (toggle from the navbar,
+  auto-opens after add-to-cart via a `?cartOpen=1` redirect flag), backed by
+  a new `GET /api/cart` + `lib/cart.ts`'s `getCartItems`.
+- Mutually-exclusive product options (`item_option_groups`/`item_option_values`,
+  distinct from the flat `item_attributes`): `ProductOptions.astro` renders one
+  native radio group per option, swaps the main photo on change, and — since
+  which specs even exist can vary per item (e.g. cam size changes weight/range/
+  strength/colour) — each option value can carry its own attributes as a JSON
+  blob (`item_option_values.attributes`) rendered as a swapping spec table.
+  Categories split into `Harness`/`Protection` (was one combined category);
+  `Camping` category and its one item removed (out of scope for this shop).

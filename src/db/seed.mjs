@@ -8,9 +8,9 @@ db.pragma('foreign_keys = ON');
 
 const categories = [
   { name: 'Ropes', slug: 'ropes' },
-  { name: 'Harnesses & Protection', slug: 'harnesses-protection' },
+  { name: 'Harness', slug: 'harness' },
+  { name: 'Protection', slug: 'protection' },
   { name: 'Ice & Alpine', slug: 'ice-alpine' },
-  { name: 'Camping', slug: 'camping' },
 ];
 
 const items = [
@@ -31,7 +31,7 @@ const items = [
     name: 'Climbing Harness',
     description: 'Adjustable sit harness, fits most body types.',
     imageUrl: '/uploads/harness.svg',
-    category: 'harnesses-protection',
+    category: 'harness',
     stockCount: 10,
     attributes: [
       ['Size', 'M (adjustable)'],
@@ -53,7 +53,7 @@ const items = [
     name: 'Climbing Helmet',
     description: 'Adjustable helmet for rock and ice.',
     imageUrl: '/uploads/helmet.svg',
-    category: 'harnesses-protection',
+    category: 'protection',
     stockCount: 8,
     attributes: [
       ['Size', 'Adjustable'],
@@ -65,7 +65,7 @@ const items = [
     name: 'Quickdraw Set (6-pack)',
     description: 'Six quickdraws with wire gates, ready to rack.',
     imageUrl: '/uploads/quickdraws.svg',
-    category: 'harnesses-protection',
+    category: 'protection',
     stockCount: 6,
     attributes: [
       ['Count', '6'],
@@ -73,19 +73,53 @@ const items = [
     ],
   },
   {
-    slug: 'dmm-dragon-cam-1',
-    name: 'DMM Dragon Cam #1',
+    // DMM Dragon Cam — specs (colour, strength, weight, range, product code)
+    // vary by size, so none of them are item-level attributes; each is
+    // carried on its own option value instead (see item_option_values.attributes).
+    slug: 'dmm-dragon-cam',
+    name: 'Dragon Cam',
     description:
-      'Dual-axle cam with TripleGrip lobes for grip across rock types, plus an integrated extendable sling to cut down on quickdraws.',
-    imageUrl: '/uploads/dragon1.jpg',
-    category: 'harnesses-protection',
+      'Dual-axle cam with TripleGrip lobes for grip across rock types, plus an integrated extendable sling to cut down on quickdraws. Pick a size below.',
+    imageUrl: '/product/dragon1.webp',
+    category: 'protection',
     stockCount: 3,
-    attributes: [
-      ['Colour', 'Purple'],
-      ['Range', '20-33 mm'],
-      ['Strength', '14 kN'],
-      ['Weight', '103 g'],
-      ['Product code', 'A7351A'],
+    attributes: [],
+    optionGroups: [
+      {
+        name: 'Size',
+        values: [
+          {
+            label: '#00',
+            imageUrl: '/product/dragon00.webp',
+            attributes: { Colour: 'Blue', 'Active strength': '10 kN', 'Passive strength': '9 kN', Weight: '75 g', Range: '14-21 mm', 'Product code': 'A73500A' },
+          },
+          {
+            label: '#0',
+            imageUrl: '/product/dragon0.webp',
+            attributes: { Colour: 'Silver', 'Active strength': '14 kN', 'Passive strength': '12 kN', Weight: '85 g', Range: '16-25 mm', 'Product code': 'A7350A' },
+          },
+          {
+            label: '#1',
+            imageUrl: '/product/dragon1.webp',
+            attributes: { Colour: 'Purple', 'Active strength': '14 kN', 'Passive strength': '14 kN', Weight: '103 g', Range: '20-33 mm', 'Product code': 'A7351A' },
+          },
+          {
+            label: '#2',
+            imageUrl: '/product/dragon2.webp',
+            attributes: { Colour: 'Green', 'Active strength': '14 kN', 'Passive strength': '14 kN', Weight: '117 g', Range: '24-41 mm', 'Product code': 'A7352A' },
+          },
+          {
+            label: '#3',
+            imageUrl: '/product/dragon3.webp',
+            attributes: { Colour: 'Red', 'Active strength': '14 kN', 'Passive strength': '14 kN', Weight: '128 g', Range: '29-50 mm', 'Product code': 'A7353A' },
+          },
+          {
+            label: '#4',
+            imageUrl: '/product/dragon4.webp',
+            attributes: { Colour: 'Gold', 'Active strength': '14 kN', 'Passive strength': '14 kN', Weight: '154 g', Range: '38-64 mm', 'Product code': 'A7354A' },
+          },
+        ],
+      },
     ],
   },
   {
@@ -112,18 +146,6 @@ const items = [
       ['Type', 'Step-in'],
     ],
   },
-  {
-    slug: 'tent-4-person',
-    name: '4-Person Tent',
-    description: 'Freestanding 3-season tent for approach camps.',
-    imageUrl: '/uploads/tent-4p.svg',
-    category: 'camping',
-    stockCount: 2,
-    attributes: [
-      ['Capacity', '4 person'],
-      ['Weight', '3.2 kg'],
-    ],
-  },
 ];
 
 const insertCategory = db.prepare(
@@ -147,8 +169,8 @@ const insertOptionGroup = db.prepare(`
   VALUES (@itemId, @name, @sortOrder)
 `);
 const insertOptionValue = db.prepare(`
-  INSERT INTO item_option_values (group_id, label, image_url, sort_order)
-  VALUES (@groupId, @label, @imageUrl, @sortOrder)
+  INSERT INTO item_option_values (group_id, label, image_url, attributes, sort_order)
+  VALUES (@groupId, @label, @imageUrl, @attributes, @sortOrder)
 `);
 
 const seed = db.transaction(() => {
@@ -190,6 +212,7 @@ const seed = db.transaction(() => {
           groupId: groupResult.lastInsertRowid,
           label: value.label,
           imageUrl: value.imageUrl ?? null,
+          attributes: value.attributes ? JSON.stringify(value.attributes) : null,
           sortOrder: index,
         });
       });

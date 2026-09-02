@@ -47,7 +47,7 @@ from the individual handoff docs, which still hold the detailed narrative/ration
 - **Once the schema/catalogue work settles**, squash `src/db/migrations/*` back
   down to one clean initial migration (currently 0000–0002) and regenerate
   `data/rental.db` from that single file — explicit user request, not urgent,
-  do only when asked to do the actual cleanup pass.
+  do only when asked, and when deploying.
 
 ### `bloc_api_handoff.md` exploration — not finished
 - Step 4 of that doc's Phase 1 (propose one safe read-only bloc call beyond

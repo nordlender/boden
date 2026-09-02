@@ -45,9 +45,25 @@ from the individual handoff docs, which still hold the detailed narrative/ration
 - Remove the temporary `[bloc debug]` `console.log` calls in `src/auth.ts`'s
   `userinfo.request` — blocked on the null-fields question below.
 - **Once the schema/catalogue work settles**, squash `src/db/migrations/*` back
-  down to one clean initial migration (currently 0000–0002) and regenerate
+  down to one clean initial migration (currently 0000–0003) and regenerate
   `data/rental.db` from that single file — explicit user request, not urgent,
   do only when asked to do a cleanup of the database, and when deploying.
+- **`drizzle-kit generate` produced a broken migration once already**
+  (`0003_skinny_alice.sql`, adding `order_items.reservedFrom`/`reservedTo`):
+  when a new column needs a `CHECK` constraint, SQLite requires a table
+  rebuild (`CREATE __new_x` → copy → drop → rename), and the generated
+  `INSERT ... SELECT` copy step selected the *new* columns from the *old*
+  table — before they existed there — erroring `no such column`. Had to
+  hand-fix the migration file (copy step should only select the old table's
+  existing columns; new columns default to NULL). Also, `drizzle-kit migrate`
+  the CLI hung indefinitely against the running dev server's open SQLite
+  connection — stop `astro dev` before migrating, and if `migrate` still
+  hangs/fails silently, apply the `.sql` file directly (`better-sqlite3`,
+  split on `--> statement-breakpoint`) and manually insert the row into
+  `__drizzle_migrations` (`sha256` hex of the raw file bytes, per
+  `node_modules/drizzle-orm/migrator.js`) so future `migrate` runs don't
+  retry it. **Always read a generated migration before applying it**,
+  especially ones involving a new `CHECK` constraint on an existing table.
 
 ### `bloc_api_handoff.md` exploration — not finished
 - Step 4 of that doc's Phase 1 (propose one safe read-only bloc call beyond
@@ -128,3 +144,11 @@ from the individual handoff docs, which still hold the detailed narrative/ration
   blob (`item_option_values.attributes`) rendered as a swapping spec table.
   Categories split into `Harness`/`Protection` (was one combined category);
   `Camping` category and its one item removed (out of scope for this shop).
+- `ReservationSchedule.astro` on the item page: lists each upcoming
+  reservation ("N reserved · dd.mm.yy–dd.mm.yy") from new nullable
+  `order_items.reservedFrom`/`reservedTo` (date-only text, filtered to
+  `requested`/`active` orders). Item-wide, not per-option-value — stock
+  isn't tracked per option value at all. Seeded 3 demo reservations against
+  a synthetic user since real order creation still isn't built (see Order
+  persistence above) — nothing lets a member actually pick a future window
+  anywhere in cart/checkout yet; this is a read-only display only.

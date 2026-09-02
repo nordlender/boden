@@ -2,9 +2,16 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import QuantitySelector from '../../components/shop/QuantitySelector.astro';
 import ProductOptions from '../../components/shop/ProductOptions.astro';
+import ReservationSchedule from '../../components/shop/ReservationSchedule.astro';
 import { db } from '../../db/client';
 import { items } from '../../db/schema';
 import { eq } from 'drizzle-orm';
+
+// Orders that still hold a claim on the item's stock for a given window.
+// requested = pending moderator confirmation but already spoken for from a
+// browsing user's perspective; active = confirmed. rejected/returned don't
+// occupy anything any more.
+const RESERVING_STATUSES = new Set(['requested', 'active']);
 
 export async function getStaticPaths() {
 	const allItems = await db.query.items.findMany({
@@ -27,6 +34,9 @@ const item = await db.query.items.findFirst({
 				values: { orderBy: (values, { asc }) => asc(values.sortOrder) },
 			},
 		},
+		orderItems: {
+			with: { order: true },
+		},
 	},
 });
 
@@ -35,6 +45,22 @@ if (!item) {
 }
 
 const inStock = item.stockCount > 0;
+
+const today = new Date().toISOString().slice(0, 10);
+const reservations = item.orderItems
+	.filter(
+		(orderItem) =>
+			orderItem.reservedFrom &&
+			orderItem.reservedTo &&
+			orderItem.reservedTo >= today &&
+			RESERVING_STATUSES.has(orderItem.order.status)
+	)
+	.map((orderItem) => ({
+		count: orderItem.requestedQuantity,
+		from: new Date(orderItem.reservedFrom!),
+		to: new Date(orderItem.reservedTo!),
+	}))
+	.sort((a, b) => a.from.getTime() - b.from.getTime());
 // The first value of each option group is pre-selected (ProductOptions.astro),
 // so the image shown on load has to match that, not the item's own default.
 const initialImageUrl =
@@ -58,6 +84,8 @@ const initialImageUrl =
 			<span class={`text-sm font-medium ${inStock ? 'text-emerald-700' : 'text-red-700'}`}>
 				{inStock ? `${item.stockCount} in stock` : 'Out of stock'}
 			</span>
+
+			<ReservationSchedule reservations={reservations} />
 
 			{
 				item.attributes.length > 0 && (

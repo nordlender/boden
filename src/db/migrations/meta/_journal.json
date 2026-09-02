@@ -22,6 +22,13 @@
       "when": 1788317946087,
       "tag": "0002_wonderful_marten_broadcloak",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788364666163,
+      "tag": "0003_skinny_alice",
+      "breakpoints": true
     }
   ]
 }

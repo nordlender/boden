@@ -173,6 +173,60 @@ const insertOptionValue = db.prepare(`
   VALUES (@groupId, @label, @imageUrl, @attributes, @sortOrder)
 `);
 
+// Demo reservations, so the item page's ReservationSchedule has something to
+// show. Real order creation isn't built yet (TASKS.md), so these are the only
+// order_items rows anywhere. Dates are relative to "today" (not fixed
+// calendar dates) so they stay in the future — and therefore visible, since
+// the item page only shows reservations where reserved_to >= today —
+// however many days pass between seeding and viewing.
+function daysFromNow(days) {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+const demoUser = { id: 'seed-demo-user', email: 'demo@example.com', name: 'Demo Member' };
+
+const reservations = [
+  {
+    orderCode: 'DEMO01',
+    status: 'requested',
+    itemSlug: 'dmm-dragon-cam',
+    quantity: 3,
+    from: daysFromNow(5),
+    to: daysFromNow(10),
+  },
+  {
+    orderCode: 'DEMO02',
+    status: 'active',
+    itemSlug: 'dmm-dragon-cam',
+    quantity: 1,
+    from: daysFromNow(20),
+    to: daysFromNow(25),
+  },
+  {
+    orderCode: 'DEMO03',
+    status: 'active',
+    itemSlug: 'dynamic-rope-60m',
+    quantity: 2,
+    from: daysFromNow(2),
+    to: daysFromNow(6),
+  },
+];
+
+const insertUser = db.prepare(
+  'INSERT OR IGNORE INTO users (id, email, name) VALUES (@id, @email, @name)'
+);
+const getOrderByCode = db.prepare('SELECT id FROM orders WHERE order_code = ?');
+const insertOrder = db.prepare(`
+  INSERT INTO orders (order_code, user_id, status)
+  VALUES (@orderCode, @userId, @status)
+`);
+const insertOrderItem = db.prepare(`
+  INSERT INTO order_items (order_id, item_id, requested_quantity, reserved_from, reserved_to)
+  VALUES (@orderId, @itemId, @quantity, @from, @to)
+`);
+
 const seed = db.transaction(() => {
   for (const category of categories) {
     insertCategory.run(category);
@@ -217,6 +271,27 @@ const seed = db.transaction(() => {
         });
       });
     }
+  }
+
+  insertUser.run(demoUser);
+
+  for (const reservation of reservations) {
+    if (getOrderByCode.get(reservation.orderCode)) continue;
+
+    const item = getItemBySlug.get(reservation.itemSlug);
+    const orderResult = insertOrder.run({
+      orderCode: reservation.orderCode,
+      userId: demoUser.id,
+      status: reservation.status,
+    });
+
+    insertOrderItem.run({
+      orderId: orderResult.lastInsertRowid,
+      itemId: item.id,
+      quantity: reservation.quantity,
+      from: reservation.from,
+      to: reservation.to,
+    });
   }
 });
 

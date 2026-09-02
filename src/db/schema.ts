@@ -116,11 +116,25 @@ export const orderItems = sqliteTable('order_items', {
   requestedQuantity: integer('requested_quantity').notNull().default(1),
   // Set by moderator at confirm step — may differ from requested if stock was short
   retrievedQuantity: integer('retrieved_quantity'),
+  // Future reservation window for this line item, date-only ('YYYY-MM-DD' text,
+  // not a unixepoch timestamp like the rest of this table's columns — there's
+  // no time-of-day to represent and storing one invites timezone bugs when
+  // comparing ranges). Nullable: no booking-flow UI writes these yet, so
+  // existing/near-term rows won't have them. Displayed on the item page so
+  // browsers can see what's already booked; NOT used yet to compute per-window
+  // availability (stockCount minus overlapping reservations) — that's a
+  // separate, not-yet-built check, though these columns are what it would query.
+  reservedFrom: text('reserved_from'),
+  reservedTo: text('reserved_to'),
 }, (table) => [
   uniqueIndex('order_items_order_item_unique').on(table.orderId, table.itemId),
   index('order_items_order_id_idx').on(table.orderId),
   check('requested_quantity_positive', sql`${table.requestedQuantity} > 0`),
   check('retrieved_quantity_non_negative', sql`${table.retrievedQuantity} IS NULL OR ${table.retrievedQuantity} >= 0`),
+  check(
+    'reserved_range_valid',
+    sql`${table.reservedFrom} IS NULL OR ${table.reservedTo} IS NULL OR ${table.reservedTo} >= ${table.reservedFrom}`
+  ),
 ]);
 
 export const itemsRelations = relations(items, ({ one, many }) => ({

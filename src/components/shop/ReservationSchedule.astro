@@ -1,0 +1,60 @@
+---
+interface Reservation {
+	count: number;
+	from: Date;
+	to: Date;
+}
+
+interface Props {
+	reservations: Reservation[];
+}
+
+const { reservations } = Astro.props;
+
+function formatDate(date: Date): string {
+	const day = String(date.getUTCDate()).padStart(2, '0');
+	const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+	const year = String(date.getUTCFullYear()).slice(-2);
+	return `${day}.${month}.${year}`;
+}
+
+const VISIBLE_ROWS = 4;
+const visible = reservations.slice(0, VISIBLE_ROWS);
+const rest = reservations.slice(VISIBLE_ROWS);
+---
+
+{
+	reservations.length > 0 && (
+		<div class="flex flex-col gap-2">
+			<p class="text-sm font-medium text-gray-900">Upcoming reservations</p>
+			<ul class="divide-y divide-gray-100 rounded-md border border-gray-200 text-sm">
+				{visible.map((reservation) => (
+					<li class="px-3 py-2">
+						<span class="font-medium text-gray-900">{reservation.count} reserved</span>
+						<span class="text-gray-500">
+							{' '}
+							· {formatDate(reservation.from)} – {formatDate(reservation.to)}
+						</span>
+					</li>
+				))}
+			</ul>
+
+			{rest.length > 0 && (
+				<details class="text-sm">
+					<summary class="cursor-pointer text-gray-500 hover:text-gray-700">Show {rest.length} more reservations</summary>
+					<ul class="mt-2 divide-y divide-gray-100 rounded-md border border-gray-200">
+						{rest.map((reservation) => (
+							<li class="px-3 py-2">
+								<span class="font-medium text-gray-900">{reservation.count} reserved</span>
+								<span class="text-gray-500">
+									{' '}
+									· {formatDate(reservation.from)} – {formatDate(reservation.to)}
+								</span>
+							</li>
+						))}
+					</ul>
+				</details>
+			)}
+		</div>
+	)
+}

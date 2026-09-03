@@ -128,6 +128,16 @@ export const productOptionValues = sqliteTable('product_option_values', {
   groupId: integer('group_id').notNull().references(() => productOptionGroups.id, { onDelete: 'cascade' }),
   label: text('label').notNull(), // e.g. "M", "Red"
   sortOrder: integer('sort_order').notNull().default(0),
+  // Assigned once at creation, sequentially across the WHOLE product (not
+  // reset per group, not tied to sortOrder — must stay stable even if the
+  // admin drag-reorders rows/values later). Used only to compute
+  // items.permutationKey below: an item's key is the bitwise OR of the
+  // bitPosition of each of its selected values, giving a single-column
+  // uniqueness check for "this exact combination already exists" without
+  // joining through itemOptionSelections. Caps a product at 64 total
+  // option values across all its groups (SQLite integers are 64-bit) —
+  // fine for realistic product option counts, but worth a comment here.
+  bitPosition: integer('bit_position').notNull(),
   // Display options step: only meaningful for the group chosen as the
   // display axis. Only one value per product may have isDefault = true —
   // enforced at the application layer (no cheap partial-unique way to
@@ -186,25 +196,41 @@ export const items = sqliteTable('items', {
   // below (SQLite has no cheap partial-unique way to scope this per product
   // across a whole items table).
   isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+  // Bitwise OR of productOptionValues.bitPosition for every value selected
+  // on this item (see itemOptionSelections below) — a denormalized cache
+  // of the combination, computed by the app when the item is created, that
+  // exists solely so the unique index below can catch a duplicate
+  // permutation atomically. Not a source of truth: itemOptionSelections is.
+  permutationKey: integer('permutation_key').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 }, (table) => [
   index('items_product_id_idx').on(table.productId),
   index('items_status_idx').on(table.status),
+  // The actual fix for "two items with the same combination of option
+  // values": insert attempts a row with this pair, and SQLite atomically
+  // rejects a duplicate — no existence-check-then-insert race window, and
+  // no delay needed (SQLite is a local ACID file: a commit is visible to
+  // the very next read, with no propagation lag to wait out). The
+  // generation code should attempt the insert and treat a constraint
+  // violation as "this combination already exists, skip it" — which also
+  // makes retried/double-submitted generation requests safe by construction.
+  uniqueIndex('items_product_permutation_unique').on(table.productId, table.permutationKey),
 ]);
 
 // One row per option group for each item — the specific value chosen along
 // that axis (e.g. item #7 -> Size group -> "M" value, Color group -> "Red"
 // value). A resolved item's specs are derived by joining each selected
-// value to productOptionValueSpecs, not duplicated onto the item.
+// value to productOptionValueSpecs, not duplicated onto the item. This is
+// still the source of truth for "what values does this item have" — the
+// items.permutationKey above is a derived cache, only for the uniqueness
+// check, and must be kept in sync with these rows.
 export const itemOptionSelections = sqliteTable('item_option_selections', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   itemId: integer('item_id').notNull().references(() => items.id, { onDelete: 'cascade' }),
   groupId: integer('group_id').notNull().references(() => productOptionGroups.id, { onDelete: 'cascade' }),
   valueId: integer('value_id').notNull().references(() => productOptionValues.id, { onDelete: 'cascade' }),
 }, (table) => [
-  // One selected value per group per item. (Uniqueness of the whole
-  // permutation across an item's sibling items is an application-layer
-  // check, not expressible as a single SQLite constraint here.)
+  // One selected value per group per item.
   uniqueIndex('item_option_selections_item_group_unique').on(table.itemId, table.groupId),
   index('item_option_selections_value_id_idx').on(table.valueId),
 ]);
@@ -267,9 +293,13 @@ export const orderItems = sqliteTable('order_items', {
 // #1 for the one/many pattern to follow per FK above once this is built.
 ```
 
-This is a draft for discussion, not final — open questions worth resolving before implementation: whether item-permutation uniqueness needs a DB-level check beyond the application layer, and whether `productOptionValueSpecs.value` should stay a plain string or become typed/JSON per attribute.
+This is a draft for discussion, not final — one open question remains before implementation: whether `productOptionValueSpecs.value` should stay a plain string or become typed/JSON per attribute.
+
+We're also deliberately assuming no concurrent edits to the same draft product (e.g. two admins, or two tabs, editing the same draft at once) — not handled, not planned for. This is an accepted simplification for a small internal admin tool, not an oversight; worth revisiting if the assumption stops holding.
 
 **Resolved:** `products.defaultItemId` is gone. Its circular FK was checked end-to-end first (TypeScript compile under this repo's strict tsconfig, `drizzle-kit generate`, and applying the generated migration against a real SQLite db with `foreign_keys = ON`) and confirmed fixable with an `AnySQLiteColumn` return-type annotation — but rather than keep that fix, `products` was changed to never reference `items` at all, since the only items->product lookups in this app are admin/moderator-side (rendering an order line's product title, see the order-review discussion) and the customer-facing catalog/product-page direction only ever needs product->items. The default item is now found via `items.isDefault` (indexed by the existing `items.productId`), and `products.thumbnailImageUrl` is a plain (non-FK) copy of the default item's image, refreshed whenever the admin (re)sets the default, purely so the catalog listing page can render without joining out to items at all.
+
+**Resolved:** Item-permutation uniqueness now has a real DB-level check: `productOptionValues.bitPosition` + `items.permutationKey` + a `UNIQUE(productId, permutationKey)` index (verified end-to-end — generated migration applied to a real SQLite db, confirmed it rejects a duplicate permutation on the same product and correctly allows the same key on a different product). The generation code should attempt the insert and treat a unique-constraint violation as "already exists, skip" rather than checking-then-inserting — this also makes retried/double-submitted requests safe without needing any artificial delay (SQLite has no propagation lag to wait out; a commit is visible to the very next read).
 
 # Work notes
 Agents: only append new entries below this line. Do not edit or remove anything above it.
@@ -283,3 +313,18 @@ Add a `generate_orderCode()` function, called when a new order is submitted, tha
 - If a match exists, generates a new candidate and checks again (retry loop) until a unique code is produced, then returns it.
 
 Open question carried over from the original orderCode design rationale: should the letter portion exclude visually-ambiguous characters (e.g. `I`/`O`) since the code is read aloud to moderators at pickup? Not decided yet — flag for follow-up before implementing.
+
+## Work item: "Add to existing product" workflow
+The add-product wizard needs a way to add new option values (e.g. a new size or color) to a product that already exists, not just create brand-new products — e.g. adding yellow boxes to an existing "Boxes" product.
+
+- The first screen of the add-product flow shows a list of existing products alongside an "Add new product ->" button.
+- Selecting an existing product jumps into the same wizard (Options / Attributes / Specifications / Display options), pre-populated with that product's current option groups/values/attributes, scoped to adding new value(s) rather than starting from scratch.
+- On submit, only the new permutations introduced by the added value(s) are generated (existing items are untouched) — generation uses the attempt-insert-and-catch pattern described above (`items_product_permutation_unique`), so this is safe even if the request is retried.
+
+## Work item: Draft expiry sweep
+Abandoned drafts (a product an admin started but never finished/published) shouldn't accumulate forever.
+
+- When an admin opens the add-product screen, check for `products` rows where `status = 'draft' AND updatedAt < (now - 7 days)` and delete them.
+- Use `updatedAt`, not `createdAt` — an admin slowly working an old-but-still-active draft shouldn't have it wiped out from under them; only genuinely stale (untouched) drafts should go.
+- No cascade logic needed beyond what's already in the schema: deleting a draft `products` row cascades through `productOptionGroups` -> `productOptionValues`/`productAttributes` -> `productOptionValueSpecs`, and through `items` -> `itemOptionSelections`, via the existing `onDelete: 'cascade'` FKs.
+- This is a lazy, on-access sweep (checked when the page loads), not a background job — acceptable given this assumes no concurrent admins (see the concurrency assumption noted above) and the low stakes of a draft sitting a bit past 7 days if nobody opens that page.

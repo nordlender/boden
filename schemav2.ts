@@ -73,6 +73,16 @@ export const productOptionValues = sqliteTable('product_option_values', {
   groupId: integer('group_id').notNull().references(() => productOptionGroups.id, { onDelete: 'cascade' }),
   label: text('label').notNull(), // e.g. "M", "Red"
   sortOrder: integer('sort_order').notNull().default(0),
+  // Assigned once at creation, sequentially across the WHOLE product (not
+  // reset per group, not tied to sortOrder — must stay stable even if the
+  // admin drag-reorders rows/values later). Used only to compute
+  // items.permutationKey below: an item's key is the bitwise OR of the
+  // bitPosition of each of its selected values, giving a single-column
+  // uniqueness check for "this exact combination already exists" without
+  // joining through itemOptionSelections. Caps a product at 64 total
+  // option values across all its groups (SQLite integers are 64-bit) —
+  // fine for realistic product option counts, but worth a comment here.
+  bitPosition: integer('bit_position').notNull(),
   // Display options step: only meaningful for the group chosen as the
   // display axis. Only one value per product may have isDefault = true —
   // enforced at the application layer (no cheap partial-unique way to
@@ -131,25 +141,41 @@ export const items = sqliteTable('items', {
   // below (SQLite has no cheap partial-unique way to scope this per product
   // across a whole items table).
   isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+  // Bitwise OR of productOptionValues.bitPosition for every value selected
+  // on this item (see itemOptionSelections below) — a denormalized cache
+  // of the combination, computed by the app when the item is created, that
+  // exists solely so the unique index below can catch a duplicate
+  // permutation atomically. Not a source of truth: itemOptionSelections is.
+  permutationKey: integer('permutation_key').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 }, (table) => [
   index('items_product_id_idx').on(table.productId),
   index('items_status_idx').on(table.status),
+  // The actual fix for "two items with the same combination of option
+  // values": insert attempts a row with this pair, and SQLite atomically
+  // rejects a duplicate — no existence-check-then-insert race window, and
+  // no delay needed (SQLite is a local ACID file: a commit is visible to
+  // the very next read, with no propagation lag to wait out). The
+  // generation code should attempt the insert and treat a constraint
+  // violation as "this combination already exists, skip it" — which also
+  // makes retried/double-submitted generation requests safe by construction.
+  uniqueIndex('items_product_permutation_unique').on(table.productId, table.permutationKey),
 ]);
 
 // One row per option group for each item — the specific value chosen along
 // that axis (e.g. item #7 -> Size group -> "M" value, Color group -> "Red"
 // value). A resolved item's specs are derived by joining each selected
-// value to productOptionValueSpecs, not duplicated onto the item.
+// value to productOptionValueSpecs, not duplicated onto the item. This is
+// still the source of truth for "what values does this item have" — the
+// items.permutationKey above is a derived cache, only for the uniqueness
+// check, and must be kept in sync with these rows.
 export const itemOptionSelections = sqliteTable('item_option_selections', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   itemId: integer('item_id').notNull().references(() => items.id, { onDelete: 'cascade' }),
   groupId: integer('group_id').notNull().references(() => productOptionGroups.id, { onDelete: 'cascade' }),
   valueId: integer('value_id').notNull().references(() => productOptionValues.id, { onDelete: 'cascade' }),
 }, (table) => [
-  // One selected value per group per item. (Uniqueness of the whole
-  // permutation across an item's sibling items is an application-layer
-  // check, not expressible as a single SQLite constraint here.)
+  // One selected value per group per item.
   uniqueIndex('item_option_selections_item_group_unique').on(table.itemId, table.groupId),
   index('item_option_selections_value_id_idx').on(table.valueId),
 ]);

@@ -339,5 +339,5 @@ Abandoned drafts (a product an admin started but never finished/published) shoul
 
 - When an admin opens the add-product screen, check for `products` rows where `status = 'draft' AND updatedAt < (now - 7 days)` and delete them.
 - Use `updatedAt`, not `createdAt` — an admin slowly working an old-but-still-active draft shouldn't have it wiped out from under them; only genuinely stale (untouched) drafts should go.
-- No cascade logic needed beyond what's already in the schema: deleting a draft `products` row cascades through `productOptionGroups` -> `productOptionValues`/`productAttributes` -> `productOptionValueSpecs`, and through `items` -> `itemOptionSelections`, via the existing `onDelete: 'cascade'` FKs.
+- No cascade logic needed beyond what's already in the schema: deleting a draft `products` row cascades through `productOptionGroups` -> `productOptionValues`/`productAttributes`, and through `items` -> `itemOptionSelections`/`itemAttributes`, via the existing `onDelete: 'cascade'` FKs.
 - This is a lazy, on-access sweep (checked when the page loads), not a background job — acceptable given this assumes no concurrent admins (see the concurrency assumption noted above) and the low stakes of a draft sitting a bit past 7 days if nobody opens that page.

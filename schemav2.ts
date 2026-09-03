@@ -99,6 +99,11 @@ export const productOptionValues = sqliteTable('product_option_values', {
 // to "Size"; a group with no attributes doesn't affect specs at all).
 // ---------------------------------------------------------------------------
 
+// Wizard metadata only — NOT where spec values live (see items.itemAttributes
+// below for that). This just remembers "Size affects Dimensions and Weight"
+// so a resumed draft can re-render the Specifications step correctly, and
+// so the "add to existing product" flow (see Work notes) knows what fields
+// to prompt for when a new value is added to an existing group later.
 export const productAttributes = sqliteTable('product_attributes', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   groupId: integer('group_id').notNull().references(() => productOptionGroups.id, { onDelete: 'cascade' }),
@@ -106,18 +111,6 @@ export const productAttributes = sqliteTable('product_attributes', {
   sortOrder: integer('sort_order').notNull().default(0),
 }, (table) => [
   index('product_attributes_group_id_idx').on(table.groupId),
-]);
-
-// "Specifications" page, step 3: one value per (option value, attribute)
-// pair — the cell where the row is an option value (e.g. "M") and the
-// column is an attribute (e.g. "Weight").
-export const productOptionValueSpecs = sqliteTable('product_option_value_specs', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  optionValueId: integer('option_value_id').notNull().references(() => productOptionValues.id, { onDelete: 'cascade' }),
-  attributeId: integer('attribute_id').notNull().references(() => productAttributes.id, { onDelete: 'cascade' }),
-  value: text('value').notNull(),
-}, (table) => [
-  uniqueIndex('product_option_value_specs_unique').on(table.optionValueId, table.attributeId),
 ]);
 
 // ---------------------------------------------------------------------------
@@ -162,13 +155,31 @@ export const items = sqliteTable('items', {
   uniqueIndex('items_product_permutation_unique').on(table.productId, table.permutationKey),
 ]);
 
+// Flexible key/value specs, stored directly on the item (e.g. "Weight" ->
+// "2.4 kg") — revives the same flat pattern v1 used, just scoped under the
+// new items table. Deliberately flat rather than normalized through
+// productAttributes/option values: reading a fully-resolved item is one
+// lookup instead of two joins, and specs rarely need cross-item filtering
+// (nothing here queries "all items with weight > X"). The tradeoff is
+// duplication — e.g. Red-M and Blue-M each carry their own "Weight: 2.4kg"
+// row — but keeping every colored M in sync is a rare, admin-driven,
+// low-volume write (fan out to items sharing that option value when the
+// Specifications step is edited), not a hot path.
+export const itemAttributes = sqliteTable('item_attributes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  itemId: integer('item_id').notNull().references(() => items.id, { onDelete: 'cascade' }),
+  key: text('key').notNull(),
+  value: text('value').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+}, (table) => [
+  index('item_attributes_item_id_idx').on(table.itemId),
+]);
+
 // One row per option group for each item — the specific value chosen along
 // that axis (e.g. item #7 -> Size group -> "M" value, Color group -> "Red"
-// value). A resolved item's specs are derived by joining each selected
-// value to productOptionValueSpecs, not duplicated onto the item. This is
-// still the source of truth for "what values does this item have" — the
-// items.permutationKey above is a derived cache, only for the uniqueness
-// check, and must be kept in sync with these rows.
+// value). This is the source of truth for "what values does this item
+// have" — items.permutationKey above is a derived cache, only for the
+// uniqueness check, and must be kept in sync with these rows.
 export const itemOptionSelections = sqliteTable('item_option_selections', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   itemId: integer('item_id').notNull().references(() => items.id, { onDelete: 'cascade' }),

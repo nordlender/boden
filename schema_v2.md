@@ -48,7 +48,7 @@ For the logic, we want the products table to simply be copies of the default ite
 ## Schema
 Thus we want the schema to include two tables: products, and items. When a user submits a rental, they are always renting items, and not products. Products are simply there to categorize items, and to make the web shop more intuitive and viewable.
 
-Everything the wizard collects — option rows/values, which options modify which attributes, per-value specifications, and per-value display images — is normalized into its own table rather than folded into one wide row, so each wizard step maps directly onto a table. `products` and `items` sit at the center of that as described above.
+Most of what the wizard collects — option rows/values, which options modify which attributes, per-value display images — gets its own table, so each wizard step maps directly onto a table. `products` and `items` sit at the center of that as described above. The one deliberate exception is spec *values* (the Specifications step's actual "Weight: 2.4kg" data): those are stored flat, directly on each generated item, rather than normalized against option values — see `items.itemAttributes` below for why.
 
 This also carries forward the parts of the existing (v1) schema (`src/db/schema.ts` on `main`) that aren't being reworked: `categories`, `users`, and `orders`/`orderItems` (rentals), including the moderator-accountability fields, random `orderCode`, check constraints, FK indexes, and soft-delete-via-`archived` pattern already established there — see `schema_fixes.md` for the reasoning behind those. It also folds in the `reservedFrom`/`reservedTo` booking-window columns prototyped on the (unmerged) `navbar-homepage` worktree, since date-range availability is a natural next step once items exist. That same worktree prototyped `itemOptionGroups`/`itemOptionValues` to model variants directly on a single item — this rework supersedes that approach with the products/items split described above, so those two tables are dropped rather than carried forward.
 
@@ -154,6 +154,11 @@ export const productOptionValues = sqliteTable('product_option_values', {
 // to "Size"; a group with no attributes doesn't affect specs at all).
 // ---------------------------------------------------------------------------
 
+// Wizard metadata only — NOT where spec values live (see items.itemAttributes
+// below for that). This just remembers "Size affects Dimensions and Weight"
+// so a resumed draft can re-render the Specifications step correctly, and
+// so the "add to existing product" flow (see Work notes) knows what fields
+// to prompt for when a new value is added to an existing group later.
 export const productAttributes = sqliteTable('product_attributes', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   groupId: integer('group_id').notNull().references(() => productOptionGroups.id, { onDelete: 'cascade' }),
@@ -161,18 +166,6 @@ export const productAttributes = sqliteTable('product_attributes', {
   sortOrder: integer('sort_order').notNull().default(0),
 }, (table) => [
   index('product_attributes_group_id_idx').on(table.groupId),
-]);
-
-// "Specifications" page, step 3: one value per (option value, attribute)
-// pair — the cell where the row is an option value (e.g. "M") and the
-// column is an attribute (e.g. "Weight").
-export const productOptionValueSpecs = sqliteTable('product_option_value_specs', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  optionValueId: integer('option_value_id').notNull().references(() => productOptionValues.id, { onDelete: 'cascade' }),
-  attributeId: integer('attribute_id').notNull().references(() => productAttributes.id, { onDelete: 'cascade' }),
-  value: text('value').notNull(),
-}, (table) => [
-  uniqueIndex('product_option_value_specs_unique').on(table.optionValueId, table.attributeId),
 ]);
 
 // ---------------------------------------------------------------------------
@@ -217,13 +210,31 @@ export const items = sqliteTable('items', {
   uniqueIndex('items_product_permutation_unique').on(table.productId, table.permutationKey),
 ]);
 
+// Flexible key/value specs, stored directly on the item (e.g. "Weight" ->
+// "2.4 kg") — revives the same flat pattern v1 used, just scoped under the
+// new items table. Deliberately flat rather than normalized through
+// productAttributes/option values: reading a fully-resolved item is one
+// lookup instead of two joins, and specs rarely need cross-item filtering
+// (nothing here queries "all items with weight > X"). The tradeoff is
+// duplication — e.g. Red-M and Blue-M each carry their own "Weight: 2.4kg"
+// row — but keeping every colored M in sync is a rare, admin-driven,
+// low-volume write (fan out to items sharing that option value when the
+// Specifications step is edited), not a hot path.
+export const itemAttributes = sqliteTable('item_attributes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  itemId: integer('item_id').notNull().references(() => items.id, { onDelete: 'cascade' }),
+  key: text('key').notNull(),
+  value: text('value').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+}, (table) => [
+  index('item_attributes_item_id_idx').on(table.itemId),
+]);
+
 // One row per option group for each item — the specific value chosen along
 // that axis (e.g. item #7 -> Size group -> "M" value, Color group -> "Red"
-// value). A resolved item's specs are derived by joining each selected
-// value to productOptionValueSpecs, not duplicated onto the item. This is
-// still the source of truth for "what values does this item have" — the
-// items.permutationKey above is a derived cache, only for the uniqueness
-// check, and must be kept in sync with these rows.
+// value). This is the source of truth for "what values does this item
+// have" — items.permutationKey above is a derived cache, only for the
+// uniqueness check, and must be kept in sync with these rows.
 export const itemOptionSelections = sqliteTable('item_option_selections', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   itemId: integer('item_id').notNull().references(() => items.id, { onDelete: 'cascade' }),
@@ -293,13 +304,15 @@ export const orderItems = sqliteTable('order_items', {
 // #1 for the one/many pattern to follow per FK above once this is built.
 ```
 
-This is a draft for discussion, not final — one open question remains before implementation: whether `productOptionValueSpecs.value` should stay a plain string or become typed/JSON per attribute.
+This is a draft for discussion, not final — no open schema questions remain at the moment (the spec-value-typing question below was resolved by removing the table it was about).
 
 We're also deliberately assuming no concurrent edits to the same draft product (e.g. two admins, or two tabs, editing the same draft at once) — not handled, not planned for. This is an accepted simplification for a small internal admin tool, not an oversight; worth revisiting if the assumption stops holding.
 
 **Resolved:** `products.defaultItemId` is gone. Its circular FK was checked end-to-end first (TypeScript compile under this repo's strict tsconfig, `drizzle-kit generate`, and applying the generated migration against a real SQLite db with `foreign_keys = ON`) and confirmed fixable with an `AnySQLiteColumn` return-type annotation — but rather than keep that fix, `products` was changed to never reference `items` at all, since the only items->product lookups in this app are admin/moderator-side (rendering an order line's product title, see the order-review discussion) and the customer-facing catalog/product-page direction only ever needs product->items. The default item is now found via `items.isDefault` (indexed by the existing `items.productId`), and `products.thumbnailImageUrl` is a plain (non-FK) copy of the default item's image, refreshed whenever the admin (re)sets the default, purely so the catalog listing page can render without joining out to items at all.
 
 **Resolved:** Item-permutation uniqueness now has a real DB-level check: `productOptionValues.bitPosition` + `items.permutationKey` + a `UNIQUE(productId, permutationKey)` index (verified end-to-end — generated migration applied to a real SQLite db, confirmed it rejects a duplicate permutation on the same product and correctly allows the same key on a different product). The generation code should attempt the insert and treat a unique-constraint violation as "already exists, skip" rather than checking-then-inserting — this also makes retried/double-submitted requests safe without needing any artificial delay (SQLite has no propagation lag to wait out; a commit is visible to the very next read).
+
+**Resolved:** `productOptionValueSpecs` is gone — no filtering/sorting by spec value is needed, so the normalized (option value × attribute) table was replaced with `items.itemAttributes`, a flat key/value table per item (reviving the same pattern v1 used for `itemAttributes`, just under the new items). Specs now live directly on each item rather than being derived through `itemOptionSelections` + a shared value table: fully resolving an item is one lookup instead of two joins, which is both simpler for future developers and faster for the doc's "prefetch all items, snappy" requirement. `productAttributes` (which attributes a group affects) still persists, but purely as wizard metadata — for resuming a draft at the Specifications step and for the "add to existing product" flow to know what fields to prompt for — not as a place values are stored. The tradeoff is that editing a shared spec (e.g. correcting M's weight) means fanning the write out to every item that has Size=M, rather than editing one row; accepted as a rare, low-volume, admin-driven write, not a hot path.
 
 # Work notes
 Agents: only append new entries below this line. Do not edit or remove anything above it.

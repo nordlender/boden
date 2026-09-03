@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
-import { sqliteTable, text, integer, index, uniqueIndex, check, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
 
 // ---------------------------------------------------------------------------
 // Categories (unchanged from v1)
@@ -15,8 +15,10 @@ export const categories = sqliteTable('categories', {
 // ---------------------------------------------------------------------------
 // Products — the category-level listing, built by the add product wizard.
 // A product is a draft until published; draft products/items are hidden
-// from the web shop. `defaultItemId` is set once the Display options step
-// marks a default value, and is what the web shop links to/prefetches from.
+// from the web shop. Deliberately never references `items` — the only
+// items->product lookups in this app are admin/moderator-side (see
+// schema_v2.md work notes), so the relationship stays one-way, and the
+// exact default item is found via `items.isDefault` below, not from here.
 // ---------------------------------------------------------------------------
 
 export const products = sqliteTable('products', {
@@ -26,17 +28,11 @@ export const products = sqliteTable('products', {
   description: text('description'),
   categoryId: integer('category_id').references(() => categories.id),
   status: text('status', { enum: ['draft', 'published'] }).notNull().default('draft'),
-  // Set once an item exists to point to (Display options step). Nullable
-  // because it can't be populated until at least one item has been
-  // generated. products <-> items is a circular FK: without the explicit
-  // AnySQLiteColumn return type below, `products` and `items` both come
-  // out as implicit `any` under strict TS (verified against this repo's
-  // tsconfig) — the annotation fixes it, and drizzle-kit generates and
-  // applies the resulting migration correctly (verified end-to-end
-  // against a real SQLite db; SQLite doesn't require a referenced table
-  // to exist yet at CREATE TABLE time, so table order in the migration
-  // doesn't matter here).
-  defaultItemId: integer('default_item_id').references((): AnySQLiteColumn => items.id),
+  // Copied from the default item's option value (see productOptionValues
+  // below) whenever the admin (re)sets the default, purely so the catalog
+  // listing page can render a thumbnail without joining out to items. Not
+  // a source of truth — items.isDefault is — just a cache for display.
+  thumbnailImageUrl: text('thumbnail_image_url'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 }, (table) => [
@@ -129,6 +125,12 @@ export const items = sqliteTable('items', {
   stockCount: integer('stock_count').notNull().default(1),
   // Soft delete, as in v1: items referenced by orderItems can't be hard-deleted.
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  // The item shown/prefetched-into when a user opens the product page, and
+  // pre-selected in the option pickers. Exactly one true per product —
+  // enforced at the application layer, same as productOptionValues.isDefault
+  // below (SQLite has no cheap partial-unique way to scope this per product
+  // across a whole items table).
+  isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 }, (table) => [
   index('items_product_id_idx').on(table.productId),

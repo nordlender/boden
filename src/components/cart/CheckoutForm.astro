@@ -16,38 +16,90 @@ const { name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
 const yesNo = (value: boolean | null) => (value === null ? 'Unknown' : value ? 'Yes' : 'No');
 ---
 
-<form class="checkout-form">
+<form class="flex flex-col gap-4">
+	<h2 class="text-lg font-semibold tracking-tight text-gray-900">Contact info</h2>
+
 	{hasUnpaidFees && (
 		<p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
 			Note: you have an unpaid fee. You can still submit the form. Please check your payments on osiklatring.no. If you have paid the current semester fee, this could be an error.
 		</p>
 	)}
-	<label>
+
+	<label class="flex flex-col gap-1 text-sm font-medium text-gray-900">
 		Name
-		<input type="text" name="name" value={name ?? ''} required />
+		<input
+			type="text"
+			name="name"
+			value={name ?? ''}
+			required
+			class="rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+		/>
 	</label>
-	<label>
+
+	<label class="flex flex-col gap-1 text-sm font-medium text-gray-900">
 		Email
-		<input type="email" name="email" value={email ?? ''} required />
+		<input
+			type="email"
+			name="email"
+			value={email ?? ''}
+			required
+			class="rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+		/>
 	</label>
-	<label>
+
+	<label class="flex flex-col gap-1 text-sm font-medium text-gray-900">
 		Mobile
-		<input type="tel" name="mobile" value={mobile ?? ''} />
+		<input
+			type="tel"
+			name="mobile"
+			value={mobile ?? ''}
+			class="rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+		/>
 	</label>
-	<label>
-		Unpaid fee?
-		<input type="text" name="hasUnpaidFees" value={yesNo(hasUnpaidFees)} readonly />
-	</label>
-	<label>
-		Member?
-		<input type="text" name="userIsMember" value={yesNo(userIsMember)} readonly />
-	</label>
-	<label>
+
+	<div class="grid grid-cols-2 gap-4">
+		<label class="flex flex-col gap-1 text-sm font-medium text-gray-900">
+			Unpaid fee?
+			<input
+				type="text"
+				name="hasUnpaidFees"
+				value={yesNo(hasUnpaidFees)}
+				readonly
+				class="cursor-not-allowed rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-normal text-gray-500"
+			/>
+		</label>
+
+		<label class="flex flex-col gap-1 text-sm font-medium text-gray-900">
+			Member?
+			<input
+				type="text"
+				name="userIsMember"
+				value={yesNo(userIsMember)}
+				readonly
+				class="cursor-not-allowed rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-normal text-gray-500"
+			/>
+		</label>
+	</div>
+
+	<label class="flex flex-col gap-1 text-sm font-medium text-gray-900">
 		Note
-		<textarea name="note" placeholder="Optional note for the moderator"></textarea>
+		<textarea
+			name="note"
+			placeholder="Optional note for the moderator"
+			rows="3"
+			class="resize-none rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+		></textarea>
 	</label>
+
 	<!-- Submission target intentionally not wired yet: cart -> order persistence
 	     (POST /api/orders/create.ts, order_items rows) is a separate, larger
 	     checkout-flow work item. This form only demonstrates autofill. -->
-	<button type="submit" disabled title="Order placement not implemented yet">Place order</button>
+	<button
+		type="submit"
+		disabled
+		title="Order placement not implemented yet"
+		class="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+	>
+		Place order
+	</button>
 </form>

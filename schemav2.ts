@@ -160,6 +160,8 @@ export const users = sqliteTable('users', {
 
 export const orders = sqliteTable('orders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  // NNNAAA format (3 digits + 3 letters, e.g. "482KXQ") — generated and
+  // uniqueness-checked by generate_orderCode() (see schema_v2.md work item).
   orderCode: text('order_code').notNull().unique(),
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', {

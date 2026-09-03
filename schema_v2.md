@@ -261,3 +261,13 @@ This is a draft for discussion, not final — open questions worth resolving bef
 
 # Work notes
 Agents: only append new entries below this line. Do not edit or remove anything above it.
+
+## Work item: `generate_orderCode()`
+`orders.orderCode` format is changing from 6 random alphanumeric characters to a fixed `NNNAAA` pattern — 3 digits (`N`) followed by 3 letters (`A`), e.g. `482KXQ`.
+
+Add a `generate_orderCode()` function, called when a new order is submitted, that:
+- Generates a candidate code in `NNNAAA` format.
+- Queries `orders` for an existing row with that `orderCode`.
+- If a match exists, generates a new candidate and checks again (retry loop) until a unique code is produced, then returns it.
+
+Open question carried over from the original orderCode design rationale: should the letter portion exclude visually-ambiguous characters (e.g. `I`/`O`) since the code is read aloud to moderators at pickup? Not decided yet — flag for follow-up before implementing.

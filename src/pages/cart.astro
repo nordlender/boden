@@ -1,26 +1,47 @@
 ---
 export const prerender = false;
 
-import '../styles/global.css';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CartLineItem from '../components/cart/CartLineItem.astro';
 import CheckoutForm from '../components/cart/CheckoutForm.astro';
-import { getCart } from '../lib/cart';
+import { getCartItems } from '../lib/cart';
+import { getUpcomingReservations } from '../lib/reservations';
 import { getSession } from 'auth-astro/server';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
-const cart = getCart(Astro.cookies);
+const cartItems = await getCartItems(Astro.cookies);
+const reservationsByItemId = await getUpcomingReservations(cartItems.map((item) => item.itemId));
 const session = await getSession(Astro.request);
 ---
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Cart</title>
-	</head>
-	<body>
-		<main>
-			<h1>Cart</h1>
-			<p>{cart.length} item{cart.length === 1 ? '' : 's'} in cart.</p>
+
+<BaseLayout title="Cart">
+	<div class="mx-auto max-w-2xl px-4 py-12">
+		<h1 class="text-2xl font-semibold tracking-tight text-gray-900">Cart</h1>
+		<p class="mt-1 text-sm text-gray-500">
+			{cartItems.length} item{cartItems.length === 1 ? '' : 's'} in cart.
+		</p>
+
+		{
+			cartItems.length === 0 ? (
+				<p class="mt-8 text-sm text-gray-500">Your cart is empty.</p>
+			) : (
+				<ul class="mt-6 divide-y divide-gray-100 border-t border-gray-200">
+					{cartItems.map((item) => (
+						<CartLineItem
+							itemId={item.itemId}
+							slug={item.slug}
+							name={item.name}
+							imageUrl={item.imageUrl}
+							quantity={item.quantity}
+							stockCount={item.stockCount}
+							reservations={reservationsByItemId.get(item.itemId) ?? []}
+						/>
+					))}
+				</ul>
+			)
+		}
+
+		<div class="mt-8 border-t border-gray-200 pt-8">
 			<CheckoutForm
 				name={session?.user?.name ?? null}
 				email={session?.user?.email ?? null}
@@ -28,6 +49,6 @@ const session = await getSession(Astro.request);
 				hasUnpaidFees={session?.bloc?.hasUnpaidFees ?? null}
 				userIsMember={session?.bloc?.userIsMember ?? null}
 			/>
-		</main>
-	</body>
-</html>
+		</div>
+	</div>
+</BaseLayout>

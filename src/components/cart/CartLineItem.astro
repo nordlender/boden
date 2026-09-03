@@ -1,0 +1,70 @@
+---
+import QuantitySelector from '../shop/QuantitySelector.astro';
+import ReservationSchedule from '../shop/ReservationSchedule.astro';
+
+interface Reservation {
+	count: number;
+	from: Date;
+	to: Date;
+}
+
+interface Props {
+	itemId: number;
+	slug: string;
+	name: string;
+	imageUrl: string;
+	quantity: number;
+	stockCount: number;
+	reservations: Reservation[];
+}
+
+const { itemId, slug, name, imageUrl, quantity, stockCount, reservations } = Astro.props;
+---
+
+<li class="flex flex-col gap-3 py-4">
+	<div class="flex items-center gap-4">
+		<a href={`/items/${slug}`} class="shrink-0">
+			<img src={imageUrl} alt={name} class="h-20 w-20 rounded-md object-cover" />
+		</a>
+
+		<div class="flex flex-1 flex-col gap-2">
+			<a href={`/items/${slug}`} class="text-sm font-medium text-gray-900 hover:underline">{name}</a>
+
+			<div class="flex items-center gap-3">
+				<form data-cart-line-form action="/api/cart/update" method="post" class="flex items-center gap-3">
+					<input type="hidden" name="itemId" value={itemId} />
+					<QuantitySelector max={stockCount || 1} value={quantity} />
+				</form>
+
+				<form action="/api/cart/remove" method="post">
+					<input type="hidden" name="itemId" value={itemId} />
+					<button type="submit" class="text-sm text-gray-500 underline hover:text-gray-900">Remove</button>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<div class="pl-24">
+		<ReservationSchedule reservations={reservations} />
+	</div>
+</li>
+
+<script>
+	// Quantity changes on a cart line submit immediately — there's no separate
+	// "update cart" step, unlike the product page's add-to-cart form.
+	//
+	// QuantitySelector's +/- buttons set input.value directly, which doesn't
+	// fire a native "change" event, so a plain change listener only catches
+	// manual typing. The setTimeout lets QuantitySelector's own click handler
+	// (which sets the clamped value) run first, regardless of listener order.
+	document.querySelectorAll<HTMLFormElement>('[data-cart-line-form]').forEach((form) => {
+		const input = form.querySelector<HTMLInputElement>('[data-quantity-input]');
+		if (!input) return;
+
+		const submit = () => form.requestSubmit();
+		input.addEventListener('change', submit);
+		form.querySelectorAll<HTMLButtonElement>('[data-increment], [data-decrement]').forEach((button) => {
+			button.addEventListener('click', () => setTimeout(submit, 0));
+		});
+	});
+</script>

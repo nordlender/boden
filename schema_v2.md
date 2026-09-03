@@ -55,7 +55,7 @@ This also carries forward the parts of the existing (v1) schema (`src/db/schema.
 ```typescript
 import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
-import { sqliteTable, text, integer, index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, uniqueIndex, check, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
 
 // ---------------------------------------------------------------------------
 // Categories (unchanged from v1)
@@ -83,9 +83,15 @@ export const products = sqliteTable('products', {
   status: text('status', { enum: ['draft', 'published'] }).notNull().default('draft'),
   // Set once an item exists to point to (Display options step). Nullable
   // because it can't be populated until at least one item has been
-  // generated — products <-> items is a circular FK, which drizzle-kit
-  // may need an explicit AnySQLiteColumn return type on to satisfy TS.
-  defaultItemId: integer('default_item_id').references(() => items.id),
+  // generated. products <-> items is a circular FK: without the explicit
+  // AnySQLiteColumn return type below, `products` and `items` both come
+  // out as implicit `any` under strict TS (verified against this repo's
+  // tsconfig) — the annotation fixes it, and drizzle-kit generates and
+  // applies the resulting migration correctly (verified end-to-end
+  // against a real SQLite db; SQLite doesn't require a referenced table
+  // to exist yet at CREATE TABLE time, so table order in the migration
+  // doesn't matter here).
+  defaultItemId: integer('default_item_id').references((): AnySQLiteColumn => items.id),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 }, (table) => [
@@ -257,7 +263,9 @@ export const orderItems = sqliteTable('order_items', {
 // #1 for the one/many pattern to follow per FK above once this is built.
 ```
 
-This is a draft for discussion, not final — open questions worth resolving before implementation: how `defaultItemId`'s circular FK is best expressed in drizzle-kit, whether item-permutation uniqueness needs a DB-level check beyond the application layer, and whether `productOptionValueSpecs.value` should stay a plain string or become typed/JSON per attribute.
+This is a draft for discussion, not final — open questions worth resolving before implementation: whether item-permutation uniqueness needs a DB-level check beyond the application layer, and whether `productOptionValueSpecs.value` should stay a plain string or become typed/JSON per attribute.
+
+**Resolved:** `defaultItemId`'s circular FK was checked end-to-end (TypeScript compile under this repo's strict tsconfig, `drizzle-kit generate`, and applying the generated migration against a real SQLite db with `foreign_keys = ON`). It's a real TS-level problem without an annotation (`products`/`items` both degrade to implicit `any`), fixed by giving the `.references()` callback an explicit `AnySQLiteColumn` return type. Once annotated, everything compiles and the migration applies correctly — SQLite doesn't require a referenced table to already exist at `CREATE TABLE` time, so it doesn't matter that the generated migration creates `items` before `products`.
 
 # Work notes
 Agents: only append new entries below this line. Do not edit or remove anything above it.

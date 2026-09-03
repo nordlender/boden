@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
-import { sqliteTable, text, integer, index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, uniqueIndex, check, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
 
 // ---------------------------------------------------------------------------
 // Categories (unchanged from v1)
@@ -28,9 +28,15 @@ export const products = sqliteTable('products', {
   status: text('status', { enum: ['draft', 'published'] }).notNull().default('draft'),
   // Set once an item exists to point to (Display options step). Nullable
   // because it can't be populated until at least one item has been
-  // generated — products <-> items is a circular FK, which drizzle-kit
-  // may need an explicit AnySQLiteColumn return type on to satisfy TS.
-  defaultItemId: integer('default_item_id').references(() => items.id),
+  // generated. products <-> items is a circular FK: without the explicit
+  // AnySQLiteColumn return type below, `products` and `items` both come
+  // out as implicit `any` under strict TS (verified against this repo's
+  // tsconfig) — the annotation fixes it, and drizzle-kit generates and
+  // applies the resulting migration correctly (verified end-to-end
+  // against a real SQLite db; SQLite doesn't require a referenced table
+  // to exist yet at CREATE TABLE time, so table order in the migration
+  // doesn't matter here).
+  defaultItemId: integer('default_item_id').references((): AnySQLiteColumn => items.id),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 }, (table) => [

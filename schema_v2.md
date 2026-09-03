@@ -1,0 +1,263 @@
+# Schema v2
+This is a user written document that explains how the new db schema should function.
+
+First, we need to make some terminology that we will use from now on. Please make sure that CLAUDE.md and other files are edited to reflect this, such that all agents use this terminology from now on.
+
+## Products and items
+A *product* is a sort of like a category of *items*. For example, a dragon cam is a product, and the dragon cam #1 is an item.
+
+If the Edelrid Harness comes in red, blue and green, as well as sizes S, M and L, then a green Edelrid Harness in M is one item, such that the list of all Edelrid Harnesses looks as such:
+- Red S
+- Red M
+- Red L
+- Blue S
+- Blue M
+- Blue L
+- Green S
+- Green M
+- Green L
+
+In other words, items are each individual permuatation of the different options we can choose from within one product. The logic of how all this works will come soon.
+
+But why?
+
+## The add product page
+In the future we want to hand this platform off to less tech savvy people, so we are going to make an "add product" page. On the add product page, an admin will first be presented with a page where they add the overarching product. They can add a title, a description, a category, and finally, options. The options menu should have a + sign to add rows, where each row is numbered AND named. 
+For example each row could be size, color, and so on, where the different possible values can be added to each row, such that the final user can combine sizes and colors. The top row is row 1, and the user can drag and drop the rows to reorder.
+
+The minimum amount of options on each row is 1, and the default row will be labeled "None" in a greyed out box, to invite the admin to enter their own value.
+
+When this is done, the admin hits a button "Attributes ->", and is taken to the next page, an "Assign attributes" page which is generated from the input of the last page. Suppose the user made a product "cardboard box" with two option rows on the last page, one for color, and one for size. It is logical that the color does not modify the weight of the box. The interface will look like this. The admin fills out a list of attributes that color modifies. In this case the only logical attribute is color, so then the admin adds "color" as an attribute.
+So logically after this, the admin wants to make attributes that size modifies. Since the size of a cardboard box would change it's dimensions and it's weight, we add them as attributes.
+
+When this is done, the admin hits a button "Specifications ->" where for each attribute the respective values are set. For example, for the attribute size, the admin will set dimensions and weight for each size. This shall be formatted as two tables where for example the header would be the attributes, "dimensions" and "weight", and the rows would be the sizes.
+
+When this is done, the admin hits a button "Display options ->" where they can set images along the axis of one attribute, and set the default to be displayed in the web shop. For example, if a t-shirt comes in red, green, and blue, then the admin can add one image for each color. There is also a "Default" checkbox where only one of the options red, green, or blue can be checked, such that this is the default displayed for this product on the web shop, and the default option chosen on the product page.
+
+### Draft and publish
+A product is created as a draft the moment the admin starts the wizard, and is written to the database incrementally as each step (Options, Attributes, Specifications, Display options) is completed — not only once the whole wizard is finished. Concretely:
+
+- A "Save draft" button is always visible on every step of the wizard, letting the admin stop and resume later without losing progress.
+- A product, and the items generated for it, stay in `draft` status until the admin explicitly publishes from the final step. Draft products and items are never shown in the web shop.
+- If one or more draft (incomplete) products exist when an admin opens the add product screen, a notice/dialog is shown at the top: "There are incomplete products, do you want to continue adding them?", letting the admin resume any of them from wherever they left off.
+
+### Logic
+For the logic, we want the products table to simply be copies of the default items set for each product. So, if the default for t-shirt is the red t-shirt, then the product "t-shirt" is simply some link to the red t-shirt, where the options to choose other colors and sizes are displayed. Note that if the user clicks the t-shirt product we want to prefetch all the items under that product such that it is snappy when the user chooses the other options on the product page.
+
+
+## Schema
+Thus we want the schema to include two tables: products, and items. When a user submits a rental, they are always renting items, and not products. Products are simply there to categorize items, and to make the web shop more intuitive and viewable.
+
+Everything the wizard collects — option rows/values, which options modify which attributes, per-value specifications, and per-value display images — is normalized into its own table rather than folded into one wide row, so each wizard step maps directly onto a table. `products` and `items` sit at the center of that as described above.
+
+This also carries forward the parts of the existing (v1) schema (`src/db/schema.ts` on `main`) that aren't being reworked: `categories`, `users`, and `orders`/`orderItems` (rentals), including the moderator-accountability fields, random `orderCode`, check constraints, FK indexes, and soft-delete-via-`archived` pattern already established there — see `schema_fixes.md` for the reasoning behind those. It also folds in the `reservedFrom`/`reservedTo` booking-window columns prototyped on the (unmerged) `navbar-homepage` worktree, since date-range availability is a natural next step once items exist. That same worktree prototyped `itemOptionGroups`/`itemOptionValues` to model variants directly on a single item — this rework supersedes that approach with the products/items split described above, so those two tables are dropped rather than carried forward.
+
+```typescript
+import { sql } from 'drizzle-orm';
+import { relations } from 'drizzle-orm';
+import { sqliteTable, text, integer, index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
+
+// ---------------------------------------------------------------------------
+// Categories (unchanged from v1)
+// ---------------------------------------------------------------------------
+
+export const categories = sqliteTable('categories', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  slug: text('slug').notNull().unique(),
+});
+
+// ---------------------------------------------------------------------------
+// Products — the category-level listing, built by the add product wizard.
+// A product is a draft until published; draft products/items are hidden
+// from the web shop. `defaultItemId` is set once the Display options step
+// marks a default value, and is what the web shop links to/prefetches from.
+// ---------------------------------------------------------------------------
+
+export const products = sqliteTable('products', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  slug: text('slug').notNull().unique(),
+  title: text('title').notNull(),
+  description: text('description'),
+  categoryId: integer('category_id').references(() => categories.id),
+  status: text('status', { enum: ['draft', 'published'] }).notNull().default('draft'),
+  // Set once an item exists to point to (Display options step). Nullable
+  // because it can't be populated until at least one item has been
+  // generated — products <-> items is a circular FK, which drizzle-kit
+  // may need an explicit AnySQLiteColumn return type on to satisfy TS.
+  defaultItemId: integer('default_item_id').references(() => items.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index('products_category_id_idx').on(table.categoryId),
+  index('products_status_idx').on(table.status),
+]);
+
+// External links per product (e.g. manufacturer page, manual PDF) — moved
+// up from item to product level, since these describe the product as a
+// whole rather than one specific color/size permutation.
+export const productLinks = sqliteTable('product_links', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  label: text('label').notNull(),
+  url: text('url').notNull(),
+}, (table) => [
+  index('product_links_product_id_idx').on(table.productId),
+]);
+
+// ---------------------------------------------------------------------------
+// Option rows/values — "Add product" page, step 1. A row ("group") is e.g.
+// Size or Color; its values are e.g. S/M/L or Red/Blue/Green. Draggable
+// reordering is `sortOrder`. Minimum one group with one value ("None") per
+// product, enforced at the application layer.
+// ---------------------------------------------------------------------------
+
+export const productOptionGroups = sqliteTable('product_option_groups', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(), // e.g. "Size", "Color"
+  sortOrder: integer('sort_order').notNull().default(0),
+}, (table) => [
+  index('product_option_groups_product_id_idx').on(table.productId),
+]);
+
+export const productOptionValues = sqliteTable('product_option_values', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  groupId: integer('group_id').notNull().references(() => productOptionGroups.id, { onDelete: 'cascade' }),
+  label: text('label').notNull(), // e.g. "M", "Red"
+  sortOrder: integer('sort_order').notNull().default(0),
+  // Display options step: only meaningful for the group chosen as the
+  // display axis. Only one value per product may have isDefault = true —
+  // enforced at the application layer (no cheap partial-unique way to
+  // scope this to "one per product" in SQLite across a whole group tree).
+  imageUrl: text('image_url'),
+  isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+}, (table) => [
+  index('product_option_values_group_id_idx').on(table.groupId),
+]);
+
+// ---------------------------------------------------------------------------
+// Attributes — "Assign attributes" page, step 2. Each attribute belongs to
+// the option group that modifies it (e.g. "Dimensions" and "Weight" belong
+// to "Size"; a group with no attributes doesn't affect specs at all).
+// ---------------------------------------------------------------------------
+
+export const productAttributes = sqliteTable('product_attributes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  groupId: integer('group_id').notNull().references(() => productOptionGroups.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(), // e.g. "Dimensions", "Weight"
+  sortOrder: integer('sort_order').notNull().default(0),
+}, (table) => [
+  index('product_attributes_group_id_idx').on(table.groupId),
+]);
+
+// "Specifications" page, step 3: one value per (option value, attribute)
+// pair — the cell where the row is an option value (e.g. "M") and the
+// column is an attribute (e.g. "Weight").
+export const productOptionValueSpecs = sqliteTable('product_option_value_specs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  optionValueId: integer('option_value_id').notNull().references(() => productOptionValues.id, { onDelete: 'cascade' }),
+  attributeId: integer('attribute_id').notNull().references(() => productAttributes.id, { onDelete: 'cascade' }),
+  value: text('value').notNull(),
+}, (table) => [
+  uniqueIndex('product_option_value_specs_unique').on(table.optionValueId, table.attributeId),
+]);
+
+// ---------------------------------------------------------------------------
+// Items — one row per permutation of option values (what rentals actually
+// reference). Generated from a product's option groups; draft while the
+// owning product is a draft (or individually, if a new item is added to an
+// already-published product).
+// ---------------------------------------------------------------------------
+
+export const items = sqliteTable('items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  slug: text('slug').notNull().unique(),
+  status: text('status', { enum: ['draft', 'published'] }).notNull().default('draft'),
+  stockCount: integer('stock_count').notNull().default(1),
+  // Soft delete, as in v1: items referenced by orderItems can't be hard-deleted.
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index('items_product_id_idx').on(table.productId),
+  index('items_status_idx').on(table.status),
+]);
+
+// One row per option group for each item — the specific value chosen along
+// that axis (e.g. item #7 -> Size group -> "M" value, Color group -> "Red"
+// value). A resolved item's specs are derived by joining each selected
+// value to productOptionValueSpecs, not duplicated onto the item.
+export const itemOptionSelections = sqliteTable('item_option_selections', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  itemId: integer('item_id').notNull().references(() => items.id, { onDelete: 'cascade' }),
+  groupId: integer('group_id').notNull().references(() => productOptionGroups.id, { onDelete: 'cascade' }),
+  valueId: integer('value_id').notNull().references(() => productOptionValues.id, { onDelete: 'cascade' }),
+}, (table) => [
+  // One selected value per group per item. (Uniqueness of the whole
+  // permutation across an item's sibling items is an application-layer
+  // check, not expressible as a single SQLite constraint here.)
+  uniqueIndex('item_option_selections_item_group_unique').on(table.itemId, table.groupId),
+  index('item_option_selections_value_id_idx').on(table.valueId),
+]);
+
+// ---------------------------------------------------------------------------
+// Users, orders, order items — unchanged from v1, carried forward as-is.
+// Rentals always reference items, never products (see top of this doc).
+// ---------------------------------------------------------------------------
+
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey(), // ID from external OAuth provider
+  email: text('email').notNull().unique(),
+  name: text('name'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+});
+
+export const orders = sqliteTable('orders', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  orderCode: text('order_code').notNull().unique(),
+  userId: text('user_id').notNull().references(() => users.id),
+  status: text('status', {
+    enum: ['requested', 'active', 'returned', 'rejected'],
+  }).notNull().default('requested'),
+  note: text('note'),
+  confirmedByUserId: text('confirmed_by_user_id').references(() => users.id),
+  returnedByUserId: text('returned_by_user_id').references(() => users.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  activatedAt: integer('activated_at', { mode: 'timestamp' }),
+  returnedAt: integer('returned_at', { mode: 'timestamp' }),
+  rejectedAt: integer('rejected_at', { mode: 'timestamp' }),
+  rejectedReason: text('rejected_reason'),
+}, (table) => [
+  index('orders_user_id_idx').on(table.userId),
+  index('orders_status_idx').on(table.status),
+]);
+
+export const orderItems = sqliteTable('order_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  itemId: integer('item_id').notNull().references(() => items.id),
+  requestedQuantity: integer('requested_quantity').notNull().default(1),
+  retrievedQuantity: integer('retrieved_quantity'),
+  // Booking-window prototype carried over from the navbar-homepage worktree.
+  reservedFrom: text('reserved_from'),
+  reservedTo: text('reserved_to'),
+}, (table) => [
+  uniqueIndex('order_items_order_item_unique').on(table.orderId, table.itemId),
+  index('order_items_order_id_idx').on(table.orderId),
+  check('requested_quantity_positive', sql`${table.requestedQuantity} > 0`),
+  check('retrieved_quantity_non_negative', sql`${table.retrievedQuantity} IS NULL OR ${table.retrievedQuantity} >= 0`),
+  check(
+    'reserved_range_valid',
+    sql`${table.reservedFrom} IS NULL OR ${table.reservedTo} IS NULL OR ${table.reservedTo} >= ${table.reservedFrom}`
+  ),
+]);
+
+// relations() intentionally omitted here for brevity — see schema_fixes.md
+// #1 for the one/many pattern to follow per FK above once this is built.
+```
+
+This is a draft for discussion, not final — open questions worth resolving before implementation: how `defaultItemId`'s circular FK is best expressed in drizzle-kit, whether item-permutation uniqueness needs a DB-level check beyond the application layer, and whether `productOptionValueSpecs.value` should stay a plain string or become typed/JSON per attribute.
+
+# Work notes
+Agents: only append new entries below this line. Do not edit or remove anything above it.

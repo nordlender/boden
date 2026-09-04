@@ -14,8 +14,10 @@
   "dependencies": {
     "@astrojs/node": "^11.1.4",
     "@auth/core": "^0.37.4",
+    "@iconify-json/tabler": "^1.2.38",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.2.4",
+    "astro-icon": "^1.2.0",
     "auth-astro": "^4.2.0",
     "better-sqlite3": "^13.0.3",
     "drizzle-kit": "^0.31.10",

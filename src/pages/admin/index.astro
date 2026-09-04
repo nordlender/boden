@@ -1,0 +1,31 @@
+---
+import '../../styles/global.css';
+import HelpButton from '../../components/shared/HelpButton.astro';
+import HelpDialog from '../../components/shared/HelpDialog.astro';
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Admin</title>
+	</head>
+	<body>
+		<header class="border-b border-gray-200 bg-white">
+			<div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+				<h1 class="text-lg font-semibold text-gray-900">Admin dashboard</h1>
+				<HelpButton dialogId="admin-help" label="Help" />
+			</div>
+		</header>
+
+		<HelpDialog id="admin-help" title="Admin dashboard help">
+			<p>
+				This is where you manage products, stock, categories, and users. Use the nav to jump
+				between sections, or reach out to an engineer if something looks wrong.
+			</p>
+		</HelpDialog>
+	</body>
+</html>

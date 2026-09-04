@@ -1,0 +1,28 @@
+---
+interface Props {
+	/** id of the HelpDialog this button opens */
+	dialogId?: string;
+	label?: string;
+	class?: string;
+}
+
+const { dialogId = 'help-dialog', label = 'Help', class: className = '' } = Astro.props;
+---
+
+<button
+	type="button"
+	data-help-toggle={dialogId}
+	aria-haspopup="dialog"
+	aria-controls={dialogId}
+	aria-label={label}
+	title={label}
+	class={`flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 ${className}`}
+>
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
+		<path
+			stroke-linecap="round"
+			stroke-linejoin="round"
+			d="M9.879 9.879a3 3 0 1 1 4.243 4.243c-.412.412-.879.727-1.365.925a1.5 1.5 0 0 0-.882 1.365V17.5m0 3.75h.008v.008h-.008v-.008ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+		/>
+	</svg>
+</button>

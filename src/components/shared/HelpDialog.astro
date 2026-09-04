@@ -1,0 +1,43 @@
+---
+interface Props {
+	/** must match the dialogId passed to a HelpButton */
+	id?: string;
+	title: string;
+}
+
+const { id = 'help-dialog', title } = Astro.props;
+---
+
+<dialog
+	id={id}
+	class="w-full max-w-md rounded-lg border border-gray-200 bg-white p-0 shadow-xl backdrop:bg-black/30"
+>
+	<div class="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+		<h2 class="text-sm font-semibold text-gray-900">{title}</h2>
+		<button type="button" data-help-close aria-label="Close help" class="text-lg leading-none text-gray-500 hover:text-gray-900">
+			&times;
+		</button>
+	</div>
+	<div class="px-4 py-4 text-sm text-gray-600">
+		<slot />
+	</div>
+</dialog>
+
+<script define:vars={{ id }}>
+	const dialog = document.getElementById(id);
+	if (dialog instanceof HTMLDialogElement) {
+		dialog.querySelectorAll('[data-help-close]').forEach((button) => {
+			button.addEventListener('click', () => dialog.close());
+		});
+
+		// A click that lands on the dialog element itself (not a child) is a
+		// click on the ::backdrop, since the dialog's box is sized to its content.
+		dialog.addEventListener('click', (event) => {
+			if (event.target === dialog) dialog.close();
+		});
+
+		document.querySelectorAll(`[data-help-toggle="${id}"]`).forEach((button) => {
+			button.addEventListener('click', () => dialog.showModal());
+		});
+	}
+</script>

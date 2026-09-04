@@ -1,0 +1,20 @@
+---
+// Attributes column is just this button (no inline attribute pills) —
+// opens a menu/popover to view or edit the item's attributes. A small
+// count badge lets an admin tell at a glance whether any are set.
+import AppIcon from '../icons/AppIcon.astro';
+
+interface Props {
+	count?: number;
+}
+
+const { count = 0 } = Astro.props;
+---
+<button type="button" class="relative grid h-8 w-8 place-items-center justify-self-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label={`Attributes${count ? ` (${count})` : ''}`}>
+	<AppIcon name="attribute" size={17} />
+	{count > 0 && (
+		<span class="absolute -right-1 -top-1 grid h-4 min-w-[1rem] place-items-center rounded-full bg-blue-600 px-0.5 text-[10px] font-medium leading-none text-white">
+			{count}
+		</span>
+	)}
+</button>

@@ -1,0 +1,37 @@
+---
+// Generic dropdown/menu primitive, built on <details>/<summary> so it needs
+// no client-side JS. Backs the Select (None/All/Invert) and Set (Set image
+// / Set product) buttons in the doc — same interaction pattern, one
+// component instead of two bespoke ones.
+import AppIcon from '../icons/AppIcon.astro';
+import type { IconName } from '../../lib/icons';
+
+interface MenuItem {
+	label: string;
+	icon?: IconName;
+}
+
+interface Props {
+	triggerLabel?: string;
+	triggerIcon?: IconName;
+	items: MenuItem[];
+	align?: 'left' | 'right';
+}
+
+const { triggerLabel, triggerIcon, items, align = 'left' } = Astro.props;
+---
+<details class="relative inline-block">
+	<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-slate-300 px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+		{triggerIcon && <AppIcon name={triggerIcon} size={16} />}
+		{triggerLabel && <span>{triggerLabel}</span>}
+		<AppIcon name="dropdown" variant="closed" size={14} class="text-slate-400" />
+	</summary>
+	<div class:list={["absolute z-10 mt-1 min-w-[10rem] rounded-md border border-slate-200 bg-white py-1 shadow-lg", align === 'right' ? 'right-0' : 'left-0']}>
+		{items.map((item) => (
+			<button type="button" class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+				{item.icon && <AppIcon name={item.icon} size={16} class="text-slate-400" />}
+				<span>{item.label}</span>
+			</button>
+		))}
+	</div>
+</details>

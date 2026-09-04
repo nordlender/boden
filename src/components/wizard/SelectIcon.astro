@@ -1,0 +1,16 @@
+---
+// The tri-state select control. Used both as the header select-all anchor
+// and as every row's checkbox — same component, so the two are guaranteed
+// to look identical, not just coincidentally aligned.
+import AppIcon from '../icons/AppIcon.astro';
+
+interface Props {
+	state?: 'unchecked' | 'checked' | 'indeterminate';
+	label: string;
+}
+
+const { state = 'unchecked', label } = Astro.props;
+---
+<button type="button" class="grid h-6 w-6 place-items-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-pressed={state === 'checked'} aria-label={label}>
+	<AppIcon name="select" variant={state} size={18} class={state === 'unchecked' ? '' : 'text-blue-600'} />
+</button>

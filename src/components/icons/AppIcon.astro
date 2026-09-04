@@ -1,0 +1,18 @@
+---
+import { Icon } from 'astro-icon/components';
+import { icons } from '../../lib/icons';
+
+type IconEntry = (typeof icons)[keyof typeof icons];
+
+interface Props {
+	name: keyof typeof icons;
+	variant?: string;
+	size?: number;
+	class?: string;
+}
+
+const { name, variant, size = 20, class: className } = Astro.props;
+const entry: IconEntry = icons[name];
+const iconName = typeof entry === 'string' ? entry : entry[variant as keyof typeof entry];
+---
+<Icon name={iconName} width={size} height={size} stroke-width="1.75" class={className} />

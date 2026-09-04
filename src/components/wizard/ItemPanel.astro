@@ -1,0 +1,40 @@
+---
+import ButtonStrip from './ButtonStrip.astro';
+import TableHeader from './TableHeader.astro';
+import ItemRow from './ItemRow.astro';
+import type { PanelVariant } from './grid';
+
+export interface ItemView {
+	itemId: string | number;
+	name: string;
+	image?: string | null;
+	product?: string;
+	inStock: number;
+	totalStock: number;
+	attributeCount?: number;
+	selected?: boolean;
+}
+
+interface Props {
+	variant: PanelVariant;
+	title: string;
+	items: ItemView[];
+}
+
+const { variant, title, items } = Astro.props;
+const selectedCount = items.filter((item) => item.selected).length;
+const selectState: 'unchecked' | 'checked' | 'indeterminate' =
+	selectedCount === 0 ? 'unchecked' : selectedCount === items.length ? 'checked' : 'indeterminate';
+---
+<section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+	<h2 class="border-b border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">{title}</h2>
+	<ButtonStrip variant={variant} selectedCount={selectedCount} />
+	<TableHeader variant={variant} selectState={selectState} />
+	{items.length === 0 ? (
+		<p class="px-3 py-8 text-center text-sm text-slate-400">No items yet.</p>
+	) : (
+		<div>
+			{items.map((item) => <ItemRow variant={variant} {...item} />)}
+		</div>
+	)}
+</section>

@@ -1,0 +1,20 @@
+---
+import AppIcon from '../icons/AppIcon.astro';
+
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+---
+<div class="flex items-center justify-between gap-4">
+	<h1 class="text-xl font-semibold text-slate-800">{title}</h1>
+	<div class="relative w-72">
+		<AppIcon name="search" size={16} class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+		<input
+			type="search"
+			placeholder="Search items..."
+			class="w-full rounded-md border border-slate-300 py-1.5 pl-8 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+		/>
+	</div>
+</div>

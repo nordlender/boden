@@ -1,0 +1,19 @@
+---
+// Fixed-size image cell with a placeholder icon when unset, so the column
+// never shifts width whether or not an item has an image yet.
+import AppIcon from '../icons/AppIcon.astro';
+
+interface Props {
+	src?: string | null;
+	alt: string;
+}
+
+const { src, alt } = Astro.props;
+---
+{src ? (
+	<img src={src} alt={alt} class="h-10 w-10 rounded object-cover" />
+) : (
+	<div class="grid h-10 w-10 place-items-center rounded bg-slate-100 text-slate-400">
+		<AppIcon name="image" size={18} />
+	</div>
+)}

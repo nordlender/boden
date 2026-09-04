@@ -1,0 +1,45 @@
+---
+// Scratch page for visually reviewing the dynamic wizard's item-table
+// components against mock data. Not part of the real admin app yet — no
+// wiring, no client-side state (checkbox/selected state is baked into the
+// mock data below to demonstrate each visual state).
+import '../styles/global.css';
+import WizardHeader from '../components/wizard/WizardHeader.astro';
+import ItemPanel from '../components/wizard/ItemPanel.astro';
+import AddItemPanel from '../components/wizard/AddItemPanel.astro';
+import type { ItemView } from '../components/wizard/ItemPanel.astro';
+
+const unassignedItems: ItemView[] = [
+	{ itemId: 1041, name: 'Blue Rain Jacket, size M', image: null, inStock: 6, totalStock: 6, attributeCount: 3 },
+	{ itemId: 1042, name: 'Blue Rain Jacket, size L', image: null, inStock: 0, totalStock: 4, attributeCount: 3, selected: true },
+	{ itemId: 1058, name: 'Camping Stove — Duo', image: null, inStock: 2, totalStock: 2, attributeCount: 0 },
+];
+
+const assignedItems: ItemView[] = [
+	{ itemId: 992, name: 'Red Rain Jacket, size S', image: null, product: 'Rain Jacket', inStock: 18, totalStock: 24, attributeCount: 3, selected: true },
+	{ itemId: 993, name: 'Red Rain Jacket, size M', image: null, product: 'Rain Jacket', inStock: 9, totalStock: 24, attributeCount: 3, selected: true },
+	{ itemId: 1001, name: '4-Person Tent', image: null, product: 'Family Tent', inStock: 1, totalStock: 5, attributeCount: 5 },
+];
+---
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Wizard component test</title>
+	</head>
+	<body class="min-h-screen bg-slate-100 p-8">
+		<div class="mx-auto flex max-w-4xl flex-col gap-6">
+			<WizardHeader title="Items" />
+
+			<div>
+				<p class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Add item panel (demo — always open here)</p>
+				<div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+					<AddItemPanel nextItemId={1059} />
+				</div>
+			</div>
+
+			<ItemPanel variant="unassigned" title="Unassigned items" items={unassignedItems} />
+			<ItemPanel variant="assigned" title="Assigned items" items={assignedItems} />
+		</div>
+	</body>
+</html>

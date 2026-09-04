@@ -1,0 +1,13 @@
+---
+import AppIcon from '../icons/AppIcon.astro';
+
+interface Props {
+	name: string;
+}
+
+const { name } = Astro.props;
+---
+<span class="inline-flex max-w-full items-center gap-1 truncate rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600" title={name}>
+	<AppIcon name="product" size={14} class="shrink-0 text-slate-400" />
+	<span class="truncate">{name}</span>
+</span>

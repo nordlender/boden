@@ -1,0 +1,46 @@
+---
+import SelectIcon from './SelectIcon.astro';
+import Thumbnail from './Thumbnail.astro';
+import ProductTag from './ProductTag.astro';
+import StockIndicator from './StockIndicator.astro';
+import AttributesButton from './AttributesButton.astro';
+import { GRID_TEMPLATE, type PanelVariant } from './grid';
+
+interface Props {
+	variant: PanelVariant;
+	selected?: boolean;
+	image?: string | null;
+	itemId: string | number;
+	name: string;
+	product?: string;
+	inStock: number;
+	totalStock: number;
+	attributeCount?: number;
+}
+
+const {
+	variant,
+	selected = false,
+	image,
+	itemId,
+	name,
+	product,
+	inStock,
+	totalStock,
+	attributeCount = 0,
+} = Astro.props;
+---
+<div
+	class:list={["grid items-center gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0 hover:bg-slate-50", selected && 'bg-blue-50/60 hover:bg-blue-50']}
+	style={`grid-template-columns: ${GRID_TEMPLATE[variant]}`}
+>
+	<SelectIcon state={selected ? 'checked' : 'unchecked'} label={`Select ${name}`} />
+	<Thumbnail src={image} alt={name} />
+	<div class="min-w-0">
+		<p class="truncate text-sm font-medium text-slate-800">{name}</p>
+		<p class="font-mono text-xs text-slate-400">#{itemId}</p>
+	</div>
+	{variant === 'assigned' && product && <ProductTag name={product} />}
+	<StockIndicator inStock={inStock} total={totalStock} />
+	<AttributesButton count={attributeCount} />
+</div>

@@ -1,0 +1,46 @@
+---
+// Doc spec:
+// Unassigned: | n | Select | Set | ---- | Add item | Delete n item(s) |
+// Assigned:   | n | Select | Unassign | Set | ---- | Delete n item(s)
+import Dropdown from './Dropdown.astro';
+import AppIcon from '../icons/AppIcon.astro';
+import type { PanelVariant } from './grid';
+
+interface Props {
+	variant: PanelVariant;
+	selectedCount?: number;
+}
+
+const { variant, selectedCount = 0 } = Astro.props;
+---
+<div class="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
+	<span class="min-w-[1ch] text-sm font-medium text-slate-600">{selectedCount}</span>
+	<Dropdown triggerLabel="Select" items={[{ label: 'None' }, { label: 'All' }, { label: 'Invert' }]} />
+
+	{variant === 'assigned' && (
+		<button type="button" class="flex items-center gap-1 rounded border border-slate-300 px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-100">
+			<AppIcon name="product" size={16} class="text-slate-400" />
+			Unassign
+		</button>
+	)}
+	{variant === 'unassigned' && (
+		<button type="button" class="flex items-center gap-1 rounded border border-slate-300 px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-100">
+			<AppIcon name="product" size={16} class="text-slate-400" />
+			Assign
+		</button>
+	)}
+
+	<Dropdown triggerLabel="Set" items={[{ label: 'Set image', icon: 'image' }, { label: 'Set product', icon: 'product' }]} />
+
+	<div class="flex-1"></div>
+
+	{variant === 'unassigned' && (
+		<button type="button" class="rounded bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
+			Add item
+		</button>
+	)}
+	<button type="button" class="flex items-center gap-1 rounded border border-red-200 px-2.5 py-1.5 text-sm text-red-600 hover:bg-red-50">
+		<AppIcon name="trash" size={16} />
+		Delete {selectedCount} item{selectedCount === 1 ? '' : 's'}
+	</button>
+</div>

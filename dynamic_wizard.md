@@ -105,7 +105,20 @@ The last, untitled column's button ({details_icon}) expands a box directly benea
 This replaces the original plan's Attributes button, which just opened a small menu.
 
 ## Handoff: DB / schema work
-Not implemented yet — for a different agent to pick up:
-- A real `attributes` table, scoped to **products**, not items. The current schema's `itemAttributes` table (flat key/value rows hung off `items`, see `schemav2.ts`) is the wrong shape now that attributes are inherited from the product rather than stored per item — it needs to move to (or be replaced by) a product-scoped table.
-- Category and sub-category fields/tables on the product, plus a real `description` field on the product (currently only mocked at the item level in the test-page data, standing in for what would actually be looked up from the product).
-- This is on top of the still-unresolved conflict where `items.productId` is `NOT NULL` in the schema — items are meant to exist unassigned, but the schema as written doesn't allow that today.
+Resolved — see `schema_v3.md` (and its matching `schemav3.ts`), which
+replaces `schema_v2.md`/`schemav2.ts` entirely:
+- Attributes are now a template/value split: `productAttributeKeys` (the
+  field names, scoped to the product) and `itemAttributeValues` (each
+  item's own value per field). The old item-scoped `itemAttributes` table
+  is gone.
+- `products` now carries `categoryId`, `subcategoryId` (new `subcategories`
+  table, one level deep, e.g. Protection -> Cams), and `description`.
+- `items.productId` is nullable — an item can exist unassigned, matching
+  this doc's premise.
+
+Still open, for whoever wires the wizard UI to real data (not schema work):
+`schema_v3.md`'s "Work notes" section lists the application-layer pieces
+this implies — the "Set product" reassignment transaction, fanning out new
+template fields to existing items, the red hint next to the Details button
+when a product has no attribute template yet, and the bulk "Set attributes"
+pop-up (with its same-template guard) reachable from the Set dropdown.

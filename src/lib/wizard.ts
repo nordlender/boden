@@ -127,11 +127,28 @@ export async function archiveItems(itemIds: number[]): Promise<void> {
 // values consistent" — one transaction: drop the old product's values,
 // point the items at the new product, then stub in a blank value for every
 // field the new product's template defines.
+//
+// Only items whose productId is actually *changing* get their attribute
+// values wiped and re-blanked. An item already on `productId` (e.g. a
+// misclick, or an explicit re-assign to the same product) is left alone —
+// its existing values are already correct for that product's template, and
+// wiping them would be silent, uninvited data loss.
 export async function setItemsProduct(itemIds: number[], productId: number): Promise<void> {
 	if (itemIds.length === 0) return;
 	db.transaction((tx) => {
-		tx.delete(itemAttributeValues).where(inArray(itemAttributeValues.itemId, itemIds)).run();
+		const current = tx
+			.select({ id: items.id, productId: items.productId })
+			.from(items)
+			.where(inArray(items.id, itemIds))
+			.all();
+
+		const changingIds = current.filter((item) => item.productId !== productId).map((item) => item.id);
+
 		tx.update(items).set({ productId }).where(inArray(items.id, itemIds)).run();
+
+		if (changingIds.length === 0) return;
+
+		tx.delete(itemAttributeValues).where(inArray(itemAttributeValues.itemId, changingIds)).run();
 
 		const keys = tx
 			.select({ id: productAttributeKeys.id })
@@ -141,7 +158,7 @@ export async function setItemsProduct(itemIds: number[], productId: number): Pro
 
 		if (keys.length > 0) {
 			tx.insert(itemAttributeValues)
-				.values(itemIds.flatMap((itemId) => keys.map((key) => ({ itemId, attributeId: key.id, value: '' }))))
+				.values(changingIds.flatMap((itemId) => keys.map((key) => ({ itemId, attributeId: key.id, value: '' }))))
 				.run();
 		}
 	});
@@ -218,7 +235,7 @@ export type BulkAttributeResult = { ok: true } | { ok: false; error: 'no_shared_
 // disable every control except Cancel/Close".
 export async function setBulkAttributeValues(itemIds: number[], values: WizardAttribute[]): Promise<BulkAttributeResult> {
 	const productId = await sharedProductId(itemIds);
-	if (!productId) return { ok: false, error: 'no_shared_product' };
+	if (productId === null) return { ok: false, error: 'no_shared_product' };
 
 	db.transaction((tx) => {
 		for (const { key, value } of values) {
@@ -244,15 +261,13 @@ export async function setBulkAttributeValues(itemIds: number[], values: WizardAt
 					.run();
 			}
 
-			for (const itemId of itemIds) {
-				tx.insert(itemAttributeValues)
-					.values({ itemId, attributeId: attributeKey.id, value })
-					.onConflictDoUpdate({
-						target: [itemAttributeValues.itemId, itemAttributeValues.attributeId],
-						set: { value },
-					})
-					.run();
-			}
+			tx.insert(itemAttributeValues)
+				.values(itemIds.map((itemId) => ({ itemId, attributeId: attributeKey!.id, value })))
+				.onConflictDoUpdate({
+					target: [itemAttributeValues.itemId, itemAttributeValues.attributeId],
+					set: { value },
+				})
+				.run();
 		}
 	});
 

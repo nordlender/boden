@@ -1,19 +1,22 @@
 ---
 // Fixed-size image cell with a placeholder icon when unset, so the column
-// never shifts width whether or not an item has an image yet.
+// never shifts width whether or not an item has an image yet. `size` lets
+// the expanded details box reuse this at a larger size than the row cell.
 import AppIcon from '../icons/AppIcon.astro';
 
 interface Props {
 	src?: string | null;
 	alt: string;
+	size?: number;
 }
 
-const { src, alt } = Astro.props;
+const { src, alt, size = 40 } = Astro.props;
+const style = `width: ${size}px; height: ${size}px;`;
 ---
 {src ? (
-	<img src={src} alt={alt} class="h-10 w-10 rounded object-cover" />
+	<img src={src} alt={alt} class="rounded object-cover" style={style} />
 ) : (
-	<div class="grid h-10 w-10 place-items-center rounded bg-slate-100 text-slate-400">
-		<AppIcon name="image" size={18} />
+	<div class="grid place-items-center rounded bg-slate-100 text-slate-400" style={style}>
+		<AppIcon name="image" size={Math.round(size * 0.45)} />
 	</div>
 )}

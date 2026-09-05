@@ -10,15 +10,61 @@ import AddItemPanel from '../components/wizard/AddItemPanel.astro';
 import type { ItemView } from '../components/wizard/ItemPanel.astro';
 
 const unassignedItems: ItemView[] = [
-	{ itemId: 1041, name: 'Blue Rain Jacket, size M', type: 'Jacket', image: null, inStock: 6, totalStock: 6, attributeCount: 3 },
-	{ itemId: 1042, name: 'Blue Rain Jacket, size L', type: 'Jacket', image: null, inStock: 0, totalStock: 4, attributeCount: 3, selected: true },
-	{ itemId: 1058, name: 'Camping Stove — Duo', type: 'Stove', image: null, inStock: 2, totalStock: 2, attributeCount: 0 },
+	{ itemId: 1041, name: 'Blue Rain Jacket, size M', image: null, inStock: 6, totalStock: 6 },
+	{ itemId: 1042, name: 'Blue Rain Jacket, size L', image: null, inStock: 0, totalStock: 4, selected: true },
+	{ itemId: 1058, name: 'Camping Stove — Duo', image: null, inStock: 2, totalStock: 2 },
 ];
 
 const assignedItems: ItemView[] = [
-	{ itemId: 992, name: 'Red Rain Jacket, size S', type: 'Jacket', image: null, product: 'Rain Jacket', inStock: 18, totalStock: 24, attributeCount: 3, selected: true },
-	{ itemId: 993, name: 'Red Rain Jacket, size M', type: 'Jacket', image: null, product: 'Rain Jacket', inStock: 9, totalStock: 24, attributeCount: 3, selected: true },
-	{ itemId: 1001, name: '4-Person Tent', type: 'Tent', image: null, product: 'Family Tent', inStock: 1, totalStock: 5, attributeCount: 5 },
+	{
+		itemId: 992,
+		name: 'Red Rain Jacket, size S',
+		image: null,
+		subCategory: 'Jackets',
+		product: 'Rain Jacket',
+		inStock: 18,
+		totalStock: 24,
+		selected: true,
+		description: 'A fully waterproof shell jacket built for sustained rain, not just showers.',
+		attributes: [
+			{ key: 'Material', value: 'Ripstop nylon' },
+			{ key: 'Waterproof rating', value: '10,000mm' },
+			{ key: 'Weight', value: '420g' },
+		],
+	},
+	{
+		itemId: 993,
+		name: 'Red Rain Jacket, size M',
+		image: null,
+		subCategory: 'Jackets',
+		product: 'Rain Jacket',
+		inStock: 9,
+		totalStock: 24,
+		selected: true,
+		description: 'A fully waterproof shell jacket built for sustained rain, not just showers.',
+		attributes: [
+			{ key: 'Material', value: 'Ripstop nylon' },
+			{ key: 'Waterproof rating', value: '10,000mm' },
+			{ key: 'Weight', value: '450g' },
+		],
+	},
+	{
+		itemId: 1001,
+		name: '4-Person Tent',
+		image: null,
+		subCategory: 'Tents',
+		product: 'Family Tent',
+		inStock: 1,
+		totalStock: 5,
+		description: 'Freestanding dome tent with a full-coverage rainfly, sleeps four.',
+		attributes: [
+			{ key: 'Capacity', value: '4 people' },
+			{ key: 'Packed weight', value: '3.8kg' },
+			{ key: 'Season rating', value: '3-season' },
+			{ key: 'Poles', value: 'Aluminium' },
+			{ key: 'Doors', value: '2' },
+		],
+	},
 ];
 ---
 <html lang="en">

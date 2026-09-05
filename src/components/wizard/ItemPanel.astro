@@ -7,12 +7,15 @@ import type { PanelVariant } from './grid';
 export interface ItemView {
 	itemId: string | number;
 	name: string;
-	type: string;
 	image?: string | null;
+	// Sub-category, product, description, and attributes are all inherited
+	// from the item's product — absent until the item is assigned.
+	subCategory?: string;
 	product?: string;
 	inStock: number;
 	totalStock: number;
-	attributeCount?: number;
+	description?: string;
+	attributes?: { key: string; value: string }[];
 	selected?: boolean;
 }
 

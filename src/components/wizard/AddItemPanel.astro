@@ -3,12 +3,11 @@
 // The id shown here is a preview only — per the doc, the incremental
 // counter in the DB must not advance until the item is actually saved.
 //
-// Type replaces the original Attributes field. "Add type" (pinned at the
-// top of its menu) lets an admin create a new type inline — mock options
-// only for now; a real types table/schema is a follow-up.
+// Description and Type/Category both used to be fields here. Both are now
+// inherited from whichever product the item ends up assigned to, so there's
+// nothing product-dependent left to set at creation — just image, id, name.
 import AppIcon from '../icons/AppIcon.astro';
 import Thumbnail from './Thumbnail.astro';
-import Dropdown from './Dropdown.astro';
 
 interface Props {
 	nextItemId: string | number;
@@ -21,7 +20,7 @@ const { nextItemId } = Astro.props;
 		<AppIcon name="product" size={16} class="text-slate-400" />
 		Add item
 	</div>
-	<div class="grid grid-cols-[2.75rem_5rem_1fr_1fr_10rem] items-end gap-3">
+	<div class="grid grid-cols-[2.75rem_5rem_1fr] items-end gap-3">
 		<div>
 			<span class="mb-1 block text-xs text-slate-500">Image</span>
 			<Thumbnail alt="New item" />
@@ -33,23 +32,6 @@ const { nextItemId } = Astro.props;
 		<div>
 			<label class="mb-1 block text-xs text-slate-500" for="add-item-name">Item name</label>
 			<input id="add-item-name" type="text" required class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
-		</div>
-		<div>
-			<label class="mb-1 block text-xs text-slate-500" for="add-item-description">Description</label>
-			<input id="add-item-description" type="text" class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
-		</div>
-		<div>
-			<span class="mb-1 block text-xs text-slate-500">Type</span>
-			<Dropdown
-				triggerIcon="type"
-				triggerLabel="Type"
-				items={[
-					{ label: 'Add type', icon: 'plus', dividerAfter: true },
-					{ label: 'Jacket', icon: 'type' },
-					{ label: 'Tent', icon: 'type' },
-					{ label: 'Stove', icon: 'type' },
-				]}
-			/>
 		</div>
 	</div>
 	<div class="mt-3 flex justify-end gap-2">

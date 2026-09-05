@@ -17,8 +17,8 @@ const { variant } = Astro.props;
 	<SelectMenu />
 	<span></span>
 	<span>Item</span>
-	<span>Type</span>
+	{variant === 'assigned' && <span>Sub-category</span>}
 	{variant === 'assigned' && <span>Product</span>}
 	<span class="text-right">Stock</span>
-	<span class="justify-self-center">Attrs</span>
+	<span></span>
 </div>

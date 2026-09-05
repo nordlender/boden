@@ -31,7 +31,10 @@ First, the admins adds as many items as they want. They later create a product, 
 When adding items, the admin will have two sections with several panels. The central main section and a sidebar on the right.
 
 ### Main section
-In the main section is where the header/title, a search bar, and all the items will be. Items will be divided into two panels. The top panel is unassigned items. These items do not belong to a product yet. The bottom panel is assigned panels. Whether an item is assigned or not is loaded on page load by iterating over all products, and then listing items. We load some of this info into the sidebar, which we will describe further later. We also want to group all items that are 
+In the main section is where the header/title, a search bar, and all the items will be.
+The search bar must be able to match on both products and items — e.g. searching
+"Rain Jacket" should surface every item belonging to a Rain Jacket product, not just
+items whose own name contains the text. (Not implemented yet — noted for later.) Items will be divided into two panels. The top panel is unassigned items. These items do not belong to a product yet. The bottom panel is assigned panels. Whether an item is assigned or not is loaded on page load by iterating over all products, and then listing items. We load some of this info into the sidebar, which we will describe further later. We also want to group all items that are 
 
 Both of the panels will be very similar. The items will be displayed in a table format, with small images. We will make a table component, a header component, and then two components for each panel that each have this list component. We will also make a component for each item in the list.
 

@@ -1,23 +1,23 @@
 ---
-// Column labels, sharing ItemRow's exact grid so the select-all icon lands
-// directly above every row's select icon.
-import SelectIcon from './SelectIcon.astro';
+// Column labels, sharing ItemRow's exact grid so SelectMenu lands directly
+// above every row's select icon.
+import SelectMenu from './SelectMenu.astro';
 import { GRID_TEMPLATE, type PanelVariant } from './grid';
 
 interface Props {
 	variant: PanelVariant;
-	selectState?: 'unchecked' | 'checked' | 'indeterminate';
 }
 
-const { variant, selectState = 'unchecked' } = Astro.props;
+const { variant } = Astro.props;
 ---
 <div
 	class="grid items-center gap-3 border-b border-slate-200 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-slate-400"
 	style={`grid-template-columns: ${GRID_TEMPLATE[variant]}`}
 >
-	<SelectIcon state={selectState} label="Select all" />
+	<SelectMenu />
 	<span></span>
 	<span>Item</span>
+	<span>Type</span>
 	{variant === 'assigned' && <span>Product</span>}
 	<span class="text-right">Stock</span>
 	<span class="justify-self-center">Attrs</span>

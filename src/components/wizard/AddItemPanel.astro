@@ -2,8 +2,13 @@
 // Spawns beneath the Unassigned button strip when "Add item" is clicked.
 // The id shown here is a preview only — per the doc, the incremental
 // counter in the DB must not advance until the item is actually saved.
+//
+// Type replaces the original Attributes field. "Add type" (pinned at the
+// top of its menu) lets an admin create a new type inline — mock options
+// only for now; a real types table/schema is a follow-up.
 import AppIcon from '../icons/AppIcon.astro';
 import Thumbnail from './Thumbnail.astro';
+import Dropdown from './Dropdown.astro';
 
 interface Props {
 	nextItemId: string | number;
@@ -34,10 +39,17 @@ const { nextItemId } = Astro.props;
 			<input id="add-item-description" type="text" class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
 		</div>
 		<div>
-			<label class="mb-1 block text-xs text-slate-500" for="add-item-attributes">Attributes</label>
-			<select id="add-item-attributes" class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm text-slate-500">
-				<option>None selected</option>
-			</select>
+			<span class="mb-1 block text-xs text-slate-500">Type</span>
+			<Dropdown
+				triggerIcon="type"
+				triggerLabel="Type"
+				items={[
+					{ label: 'Add type', icon: 'plus', dividerAfter: true },
+					{ label: 'Jacket', icon: 'type' },
+					{ label: 'Tent', icon: 'type' },
+					{ label: 'Stove', icon: 'type' },
+				]}
+			/>
 		</div>
 	</div>
 	<div class="mt-3 flex justify-end gap-2">

@@ -1,14 +1,17 @@
 ---
 // Generic dropdown/menu primitive, built on <details>/<summary> so it needs
-// no client-side JS. Backs the Select (None/All/Invert) and Set (Set image
-// / Set product) buttons in the doc — same interaction pattern, one
-// component instead of two bespoke ones.
+// no client-side JS. Backs the Set (Set image / Set product) button and the
+// Add Item panel's Type field — same interaction pattern, one component
+// instead of a bespoke one per use.
 import AppIcon from '../icons/AppIcon.astro';
 import type { IconName } from '../../lib/icons';
 
 interface MenuItem {
 	label: string;
 	icon?: IconName;
+	// Renders a divider below this item — e.g. separating a pinned "Add
+	// type" action from the real options underneath it.
+	dividerAfter?: boolean;
 }
 
 interface Props {
@@ -28,10 +31,13 @@ const { triggerLabel, triggerIcon, items, align = 'left' } = Astro.props;
 	</summary>
 	<div class:list={["absolute z-10 mt-1 min-w-[10rem] rounded-md border border-slate-200 bg-white py-1 shadow-lg", align === 'right' ? 'right-0' : 'left-0']}>
 		{items.map((item) => (
-			<button type="button" class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">
-				{item.icon && <AppIcon name={item.icon} size={16} class="text-slate-400" />}
-				<span>{item.label}</span>
-			</button>
+			<>
+				<button type="button" class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+					{item.icon && <AppIcon name={item.icon} size={16} class="text-slate-400" />}
+					<span>{item.label}</span>
+				</button>
+				{item.dividerAfter && <hr class="my-1 border-slate-100" />}
+			</>
 		))}
 	</div>
 </details>

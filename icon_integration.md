@@ -72,26 +72,36 @@ const iconName = typeof entry === 'string' ? entry : entry[variant as keyof type
 <Icon name={iconName} width={size} height={size} class={className} />
 ```
 
-## Proposed mapping for the wizard's placeholders
+## Mapping for the wizard's placeholders (as implemented)
 
 | Placeholder | Meaning | Tabler icon(s) | Notes |
 |---|---|---|---|
 | `{product_icon}` | marks a product reference on an item row | `tabler:package` | reads clearly as "this is the product" next to the product name |
-| `{attribute_icon}` | marks the attributes cell/dropdown | `tabler:tag` | `tabler:list-details` was the alternative if we want it to read less like a price tag |
+| `{type_icon}` | an item's type (e.g. "Jacket", "Tent") | `tabler:tag` | new column + field, replacing the original Attributes dropdown in Add Item |
+| `{attribute_icon}` | marks the attributes button/menu | `tabler:list-details` | was `tabler:tag`, freed up for `{type_icon}` above. `tabler:clipboard-list` and `tabler:chart-bar` noted as candidates if this needs to change again |
 | `{img_icon}` | image cell / "set image" action | `tabler:photo` | |
-| `{select_icon}` | per-row checkbox | `tabler:square` (unchecked) / `tabler:square-check` (checked) | swap based on row selection state |
-| `{select_header_icon}` | header checkbox, must align with row checkboxes | same as above, plus `tabler:square-minus` for indeterminate (some but not all rows selected) | three states, not two — the doc's "Select: None/All/Invert" dropdown drives this |
-| `{dropdown_icon}` | the "Set" dropdown button | `tabler:chevron-down` (closed) / `tabler:chevron-up` (open) | generic dropdown affordance, reused wherever a dropdown button appears |
+| `{select_icon}` | per-row checkbox | `tabler:square` (unchecked) / `tabler:square-check` (checked) | two states only — the header no longer mirrors row selection state, see below |
+| `{select_menu_icon}` | table header's select-all control | `tabler:square-chevron-down` | fixed dropdown trigger, not a tri-state indicator — supersedes the old `{select_header_icon}` idea. Opens None/All/Invert, which moved here from the button strip |
+| `{select_none_icon}` | "None" option in the select menu | `tabler:circle-dashed` | |
+| `{select_all_icon}` | "All" option in the select menu | `tabler:circle-asterisk` | |
+| `{select_invert_icon}` | "Invert" option in the select menu | `tabler:circle-half-2` | |
+| `{dropdown_icon}` | generic dropdown trigger chevron | `tabler:chevron-down` (closed) / `tabler:chevron-up` (open) | reused by the Set dropdown and the Add Item panel's Type dropdown |
 
-All six names exist in the installed Tabler set — checked against
+All of the above exist in the installed Tabler set — checked against
 `@iconify-json/tabler`'s `icons.json` directly, not just assumed from the
-icon browser.
+icon browser. `tabler:cart-bar` does not exist (likely meant `chart-bar`,
+noted above as a candidate instead).
 
-## Open questions before implementing
+## Resolved
 
-- `{attribute_icon}`: tag vs. list-details — tag is more literal ("this is
-  a labeled attribute"), list-details reads more like "see details." Leaning
-  tag unless you'd rather it not resemble a price tag.
+- `{attribute_icon}`: went with `list-details`, since `tag` was reassigned
+  to the new `{type_icon}`.
+- The header select control does not mirror row selection state anymore
+  (no indeterminate icon) — it's a fixed dropdown trigger, so
+  `select.indeterminate` was dropped from `icons.ts` as dead code.
+
+## Open questions
+
 - Do we want a filled variant (`tabler:square-check-filled` etc.) for
   selected state instead of the outline style, for more visual contrast in
   the table? Tabler ships both outline and filled sets.
@@ -99,6 +109,6 @@ icon browser.
   is 2 at 24×24; the item table is dense, so we may want a slightly thinner
   stroke at smaller sizes (e.g. 18–20px) to avoid the icons looking heavy.
 
-Once these are confirmed, next step is building `AppIcon.astro` +
-`src/lib/icons.ts` for real and starting the item-list table components
-described in `dynamic_wizard.md`.
+`AppIcon.astro`, `src/lib/icons.ts`, and the item-table/wizard components
+described in `dynamic_wizard.md` are built — see `src/components/wizard/`
+and `src/pages/wizard-test.astro`.

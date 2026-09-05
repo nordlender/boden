@@ -1,6 +1,7 @@
 ---
 import SelectIcon from './SelectIcon.astro';
 import Thumbnail from './Thumbnail.astro';
+import TypeTag from './TypeTag.astro';
 import ProductTag from './ProductTag.astro';
 import StockIndicator from './StockIndicator.astro';
 import AttributesButton from './AttributesButton.astro';
@@ -12,6 +13,7 @@ interface Props {
 	image?: string | null;
 	itemId: string | number;
 	name: string;
+	type: string;
 	product?: string;
 	inStock: number;
 	totalStock: number;
@@ -24,6 +26,7 @@ const {
 	image,
 	itemId,
 	name,
+	type,
 	product,
 	inStock,
 	totalStock,
@@ -40,6 +43,7 @@ const {
 		<p class="truncate text-sm font-medium text-slate-800">{name}</p>
 		<p class="font-mono text-xs text-slate-400">#{itemId}</p>
 	</div>
+	<TypeTag name={type} />
 	{variant === 'assigned' && product && <ProductTag name={product} />}
 	<StockIndicator inStock={inStock} total={totalStock} />
 	<AttributesButton count={attributeCount} />

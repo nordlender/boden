@@ -1,0 +1,26 @@
+---
+// The table header's select-all control: a fixed dropdown trigger (not a
+// tri-state indicator) opening None/All/Invert. Lives in the same grid
+// column as every row's SelectIcon checkbox, so the two align without
+// needing to share a component.
+import AppIcon from '../icons/AppIcon.astro';
+
+const options = [
+	{ label: 'None', icon: 'selectNone' as const },
+	{ label: 'All', icon: 'selectAll' as const },
+	{ label: 'Invert', icon: 'selectInvert' as const },
+];
+---
+<details class="relative">
+	<summary class="grid h-6 w-6 cursor-pointer list-none place-items-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 [&::-webkit-details-marker]:hidden" aria-label="Select items">
+		<AppIcon name="selectMenu" size={18} />
+	</summary>
+	<div class="absolute left-0 z-10 mt-1 min-w-[8rem] rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+		{options.map((option) => (
+			<button type="button" class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+				<AppIcon name={option.icon} size={16} class="text-slate-400" />
+				<span>{option.label}</span>
+			</button>
+		))}
+	</div>
+</details>

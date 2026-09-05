@@ -1,11 +1,10 @@
 ---
-// The tri-state select control. Used both as the header select-all anchor
-// and as every row's checkbox — same component, so the two are guaranteed
-// to look identical, not just coincidentally aligned.
+// Per-row checkbox. The header's select-all control is SelectMenu, not this
+// component — the two only share a grid column, not an icon set.
 import AppIcon from '../icons/AppIcon.astro';
 
 interface Props {
-	state?: 'unchecked' | 'checked' | 'indeterminate';
+	state?: 'unchecked' | 'checked';
 	label: string;
 }
 

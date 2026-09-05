@@ -24,6 +24,9 @@ export const icons = {
 	selectAll: 'tabler:circle-asterisk',
 	selectInvert: 'tabler:circle-half-2',
 	trash: 'tabler:trash',
+	// {edit_icon} — sits next to an attribute's value in the details box;
+	// clicking it reveals the inline edit form for that field.
+	edit: 'tabler:pencil',
 	// Not one of the doc's named placeholders — added for the main-section
 	// search bar, which the doc calls for but doesn't assign an icon to.
 	search: 'tabler:search',

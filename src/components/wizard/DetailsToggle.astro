@@ -10,12 +10,19 @@ import { detailsToggle } from '../../lib/icon-nodes';
 
 interface Props {
 	label: string;
+	// schema_v3.md Work item: "UI cue for a product with no attribute
+	// template yet" — a small red hint on this button when the item's
+	// product currently defines zero productAttributeKeys.
+	warning?: boolean;
 }
 
-const { label } = Astro.props;
+const { label, warning = false } = Astro.props;
 ---
 <button type="button" class="details-toggle-button relative grid h-8 w-8 place-items-center justify-self-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-expanded="false" aria-label={label}>
 	<MorphIcon icon={detailsToggle.closed} size={17} class="details-toggle-icon" />
+	{warning && (
+		<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" title="This product has no attribute template yet"></span>
+	)}
 </button>
 
 <script>

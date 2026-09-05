@@ -1,41 +1,43 @@
 ---
-// Spawns beneath the Unassigned button strip when "Add item" is clicked.
-// The id shown here is a preview only — per the doc, the incremental
-// counter in the DB must not advance until the item is actually saved.
+// The doc calls for showing the auto-generated id here without advancing
+// the DB's counter until save — satisfied for free by the schema's
+// autoincrement PK (nothing increments until an INSERT actually commits),
+// but that also means there's no safe way to preview the exact number in
+// advance, so this just says "auto-generated" rather than guessing one.
 //
 // Description and Type/Category both used to be fields here. Both are now
 // inherited from whichever product the item ends up assigned to, so there's
 // nothing product-dependent left to set at creation — just image, id, name.
 import AppIcon from '../icons/AppIcon.astro';
-import Thumbnail from './Thumbnail.astro';
 
 interface Props {
-	nextItemId: string | number;
+	redirectTo: string;
 }
 
-const { nextItemId } = Astro.props;
+const { redirectTo } = Astro.props;
 ---
-<div class="border-b border-slate-200 bg-amber-50/60 px-3 py-3">
+<form method="post" action="/api/wizard/items" class="rounded-lg border border-slate-200 bg-amber-50/60 px-3 py-3">
+	<input type="hidden" name="redirectTo" value={redirectTo} />
 	<div class="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700">
 		<AppIcon name="product" size={16} class="text-slate-400" />
 		Add item
 	</div>
-	<div class="grid grid-cols-[2.75rem_5rem_1fr] items-end gap-3">
+	<div class="grid grid-cols-[10rem_5rem_1fr] items-end gap-3">
 		<div>
-			<span class="mb-1 block text-xs text-slate-500">Image</span>
-			<Thumbnail alt="New item" />
+			<label class="mb-1 block text-xs text-slate-500" for="add-item-image">Image (optional)</label>
+			<input id="add-item-image" name="imageUrl" type="text" placeholder="https://…" class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
 		</div>
 		<div>
 			<span class="mb-1 block text-xs text-slate-500">Item ID</span>
-			<p class="rounded border border-dashed border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-400">#{nextItemId}</p>
+			<p class="rounded border border-dashed border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-400">auto</p>
 		</div>
 		<div>
 			<label class="mb-1 block text-xs text-slate-500" for="add-item-name">Item name</label>
-			<input id="add-item-name" type="text" required class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
+			<input id="add-item-name" name="name" type="text" required class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
 		</div>
 	</div>
 	<div class="mt-3 flex justify-end gap-2">
-		<button type="button" class="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-white">Cancel</button>
-		<button type="button" class="rounded bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">Save item</button>
+		<button type="reset" class="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-white">Cancel</button>
+		<button type="submit" class="rounded bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">Save item</button>
 	</div>
-</div>
+</form>

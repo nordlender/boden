@@ -116,9 +116,29 @@ replaces `schema_v2.md`/`schemav2.ts` entirely:
 - `items.productId` is nullable — an item can exist unassigned, matching
   this doc's premise.
 
-Still open, for whoever wires the wizard UI to real data (not schema work):
-`schema_v3.md`'s "Work notes" section lists the application-layer pieces
-this implies — the "Set product" reassignment transaction, fanning out new
-template fields to existing items, the red hint next to the Details button
-when a product has no attribute template yet, and the bulk "Set attributes"
-pop-up (with its same-template guard) reachable from the Set dropdown.
+Wired up to real data. `schema_v3.md`'s "Work notes" section's
+application-layer pieces are all implemented in `src/lib/wizard.ts` and
+`src/pages/api/wizard/*.ts`, and the wizard now lives at `/admin/items`
+(`src/pages/admin/items.astro`), reading and writing the real database
+instead of mock data — the "Set product" reassignment transaction, fanning
+out new template fields to existing items, the red hint next to the
+Details button when a product has no attribute template yet, and the bulk
+"Set attributes" pop-up (with its same-template guard) reachable from the
+Set dropdown.
+
+Every write action (Add item, Set product, Delete, single/bulk attribute
+edits) is a plain HTML form POSTing to an `/api/wizard/*` route that
+redirects back — matching the form-post convention already established in
+the cart-page/api-test worktrees, not a client-side JSON API. Row
+selection is real `<input type="checkbox">` elements (no selection-
+tracking JS) associated with their panel's form via the `form=` attribute
+rather than DOM nesting, since ItemRow's own per-attribute edit forms
+already live inside the row list and HTML forms can't nest.
+
+Not done: no auth check on any of this yet (see the TODO comments in
+`src/pages/api/wizard/*.ts` and `src/pages/admin/items.astro` — the
+api-test worktree's `src/middleware/index.ts` already gates `/admin`
+routes by role, just not merged into this branch), "Set image" is still a
+visual-only stub, and the Add Item panel's "Add item" button links to the
+form instead of toggling it open/closed as the original spec describes
+(no framework state for that without more JS than seemed worth it here).

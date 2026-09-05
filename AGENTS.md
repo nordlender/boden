@@ -5,7 +5,7 @@ This project is being reworked around two distinct concepts — use these terms 
 - **Product**: a category-level listing an admin creates (e.g. "Edelrid Harness"). Holds shared info (title, description, category) and the option rows (e.g. Size, Color) that define its variants.
 - **Item**: one specific permutation of a product's options (e.g. "Edelrid Harness, Green, M"). Items are what actually get rented — orders/rentals always reference items, never products. Products exist only to categorize and display items in the web shop.
 
-See `schema_v2.md` for the full schema and design rationale.
+See `schema_v3.md` for the full schema and design rationale.
 
 ## Development
 

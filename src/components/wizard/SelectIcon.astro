@@ -1,7 +1,8 @@
 ---
 // Per-row checkbox. The header's select-all control is SelectMenu, not this
 // component — the two only share a grid column, not an icon set.
-import AppIcon from '../icons/AppIcon.astro';
+import MorphIcon from 'morphicons/astro';
+import { selectCheckbox } from '../../lib/icon-nodes';
 
 interface Props {
 	state?: 'unchecked' | 'checked';
@@ -10,6 +11,30 @@ interface Props {
 
 const { state = 'unchecked', label } = Astro.props;
 ---
-<button type="button" class="grid h-6 w-6 place-items-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-pressed={state === 'checked'} aria-label={label}>
-	<AppIcon name="select" variant={state} size={18} class={state === 'unchecked' ? '' : 'text-blue-600'} />
+<button type="button" class="select-icon-button grid h-6 w-6 place-items-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-pressed={state === 'checked'} aria-label={label}>
+	<MorphIcon
+		icon={state === 'unchecked' ? selectCheckbox.unchecked : selectCheckbox.checked}
+		size={18}
+		class:list={['select-icon', state === 'checked' && 'text-blue-600']}
+	/>
 </button>
+
+<script>
+	// Delegated for the same reason as Dropdown's script: one <script> runs
+	// once per page no matter how many rows render this component, so a
+	// single click listener has to cover all of them by inspecting the
+	// clicked element instead of binding per-instance.
+	import type { MorphIconElement } from 'morphicons/element';
+	import { selectCheckbox } from '../../lib/icon-nodes';
+
+	document.addEventListener('click', (event) => {
+		const button = (event.target as Element).closest<HTMLButtonElement>('.select-icon-button');
+		if (!button) return;
+		const checked = button.getAttribute('aria-pressed') !== 'true';
+		button.setAttribute('aria-pressed', String(checked));
+		const icon = button.querySelector<MorphIconElement>('.select-icon');
+		if (!icon) return;
+		icon.icon = checked ? selectCheckbox.checked : selectCheckbox.unchecked;
+		icon.classList.toggle('text-blue-600', checked);
+	});
+</script>

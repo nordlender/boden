@@ -10,16 +10,10 @@ export const icons = {
 	// Candidates noted for later: tabler:clipboard-list, tabler:chart-bar.
 	attribute: 'tabler:list-details',
 	image: 'tabler:photo',
-	dropdown: {
-		closed: 'tabler:chevron-down',
-		open: 'tabler:chevron-up',
-	},
-	// Row-level checkbox only now — the header's select control is a fixed
-	// dropdown trigger (see selectMenu below), not a tri-state indicator.
-	select: {
-		unchecked: 'tabler:square',
-		checked: 'tabler:square-check',
-	},
+	// `{dropdown_icon}` and `{select_icon}` are gone from here — both are
+	// animated with morphicons now (see src/lib/icon-nodes.ts), which needs
+	// IconNode data, not an iconify name. Dropdown.astro and SelectIcon.astro
+	// render <MorphIcon> directly instead of going through <AppIcon>.
 	// The table header's select-all control: opens the None/All/Invert menu.
 	selectMenu: 'tabler:square-chevron-down',
 	selectNone: 'tabler:circle-dashed',

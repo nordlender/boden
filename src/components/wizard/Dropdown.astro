@@ -4,7 +4,9 @@
 // Add Item panel's Type field — same interaction pattern, one component
 // instead of a bespoke one per use.
 import AppIcon from '../icons/AppIcon.astro';
+import MorphIcon from 'morphicons/astro';
 import type { IconName } from '../../lib/icons';
+import { dropdownChevron } from '../../lib/icon-nodes';
 
 interface MenuItem {
 	label: string;
@@ -27,7 +29,7 @@ const { triggerLabel, triggerIcon, items, align = 'left' } = Astro.props;
 	<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-slate-300 px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
 		{triggerIcon && <AppIcon name={triggerIcon} size={16} />}
 		{triggerLabel && <span>{triggerLabel}</span>}
-		<AppIcon name="dropdown" variant="closed" size={14} class="text-slate-400" />
+		<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-slate-400" />
 	</summary>
 	<div class:list={["absolute z-10 mt-1 min-w-[10rem] rounded-md border border-slate-200 bg-white py-1 shadow-lg", align === 'right' ? 'right-0' : 'left-0']}>
 		{items.map((item) => (
@@ -41,3 +43,24 @@ const { triggerLabel, triggerIcon, items, align = 'left' } = Astro.props;
 		))}
 	</div>
 </details>
+
+<script>
+	// Delegated (this script runs once per page, not once per Dropdown
+	// instance) so it covers every <details> this component renders,
+	// including the Add Item panel's Type field. `toggle` doesn't bubble, so
+	// the listener has to sit on the capture phase to see it at all.
+	import type { MorphIconElement } from 'morphicons/element';
+	import { dropdownChevron } from '../../lib/icon-nodes';
+
+	document.addEventListener(
+		'toggle',
+		(event) => {
+			const details = event.target;
+			if (!(details instanceof HTMLDetailsElement)) return;
+			const chevron = details.querySelector<MorphIconElement>('.dropdown-chevron');
+			if (!chevron) return;
+			chevron.icon = details.open ? dropdownChevron.open : dropdownChevron.closed;
+		},
+		true,
+	);
+</script>

@@ -14,5 +14,9 @@ export default defineConfig({
   integrations: [auth({ configFile: './src/auth.ts' }), icon()],
   vite: {
     plugins: [tailwindcss()],
+    // Dev server is tunneled (see scripts/dev-tunnel.sh) through a random
+    // *.loca.lt hostname each run, which Vite's Host-header check would
+    // otherwise reject.
+    server: { allowedHosts: true },
   },
 });

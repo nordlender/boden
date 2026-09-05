@@ -36,38 +36,57 @@ export interface SignInUser {
 // already guaranteed unique) and keeps that row's id — and thus its order
 // history — completely intact; it just stops being reachable by email,
 // which is fine since bloc no longer reports that email for it anyway.
+//
+// Known, deliberate tradeoffs (rare-edge-case territory, not worth more
+// machinery for): (1) `users.email`'s UNIQUE index is case-sensitive (no
+// COLLATE NOCASE), so this only reconciles byte-identical email strings —
+// bloc returning the same address with different casing across sign-ins
+// isn't handled, matching how the column is already declared; changing
+// that is a schema/migration change, not a signIn-callback fix. (2) a
+// vacated row is left behind permanently rather than cleaned up — the
+// alternative (an ON UPDATE CASCADE on the FKs into users.id) is a schema
+// change too, and this path is expected to be hit rarely enough that a
+// stray placeholder row isn't a real cost.
 export async function upsertSignedInUser(db: UsersDb, user: SignInUser): Promise<void> {
   const name = user.name ?? null;
 
-  async function upsertById() {
-    await db
-      .insert(users)
-      .values({ id: user.id, email: user.email, name })
-      .onConflictDoUpdate({
-        target: users.id,
-        set: { email: user.email, name },
-      })
-      .run();
-  }
-
   try {
-    await upsertById();
+    await db.transaction((tx) => {
+      tx.insert(users)
+        .values({ id: user.id, email: user.email, name })
+        .onConflictDoUpdate({
+          target: users.id,
+          set: { email: user.email, name },
+        })
+        .run();
+    });
     return;
   } catch (err) {
     if (!isUniqueEmailConflict(err)) throw err;
   }
 
   // Some other row (a different id) currently owns this email — vacate it
-  // by renaming that row's email to a value derived from its own id, which
-  // can't collide with anything (ids are unique), then retry the id-based
-  // upsert above, which will now succeed since the email is free.
-  await db
-    .update(users)
-    .set({ email: sql`'vacated+' || ${users.id} || '@invalid.local'` })
-    .where(and(eq(users.email, user.email), ne(users.id, user.id)))
-    .run();
+  // and retry the id-based upsert in one transaction. Both statements run
+  // as a single atomic unit (a full rollback on any failure, nothing ever
+  // left half-done by a mid-way crash) and — since better-sqlite3 runs the
+  // transaction callback synchronously to completion — no other sign-in
+  // can interleave between the vacate and the retry, so a concurrent
+  // collision on the same email always resolves against whoever currently
+  // holds it rather than racing against stale state and throwing.
+  await db.transaction((tx) => {
+    tx.update(users)
+      .set({ email: sql`'vacated+' || ${users.id} || '@invalid.local'` })
+      .where(and(eq(users.email, user.email), ne(users.id, user.id)))
+      .run();
 
-  await upsertById();
+    tx.insert(users)
+      .values({ id: user.id, email: user.email, name })
+      .onConflictDoUpdate({
+        target: users.id,
+        set: { email: user.email, name },
+      })
+      .run();
+  });
 }
 
 function isUniqueEmailConflict(err: unknown): boolean {

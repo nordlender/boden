@@ -59,7 +59,7 @@ const {
 			<p class="truncate text-sm font-medium text-slate-800">{name}</p>
 			<p class="font-mono text-xs text-slate-400">#{itemId}</p>
 		</div>
-		{variant === 'assigned' && subCategory && <SubCategoryTag name={subCategory} />}
+		{variant === 'assigned' && (subCategory ? <SubCategoryTag name={subCategory} /> : <span></span>)}
 		{variant === 'assigned' && product && <ProductTag name={product} />}
 		<StockIndicator inStock={inStock} total={totalStock} />
 		<DetailsToggle label={`Show details for ${name}`} warning={missingAttributeTemplate} />

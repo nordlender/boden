@@ -1,0 +1,50 @@
+---
+interface Props {
+  name: string | null;
+  email: string | null;
+  mobile: string | null;
+  hasUnpaidFees: boolean | null;
+  userIsMember: boolean | null;
+}
+
+const { name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
+
+// Yes/No display per the moderator-review-page spec (moderator_order_review.md)
+// — hasUnpaidFees/userIsMember are semester-membership-fee flags from bloc,
+// not something a member can self-report, hence readonly (not disabled: a
+// disabled field wouldn't submit with the form once order persistence exists).
+const yesNo = (value: boolean | null) => (value === null ? 'Unknown' : value ? 'Yes' : 'No');
+---
+
+<form class="checkout-form" method="POST" action="/api/orders/create">
+	{hasUnpaidFees && (
+		<p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+			Note: you have an unpaid fee. You can still submit the form. Please check your payments on osiklatring.no. If you have paid the current semester fee, this could be an error.
+		</p>
+	)}
+	<label>
+		Name
+		<input type="text" name="name" value={name ?? ''} required />
+	</label>
+	<label>
+		Email
+		<input type="email" name="email" value={email ?? ''} required />
+	</label>
+	<label>
+		Mobile
+		<input type="tel" name="mobile" value={mobile ?? ''} />
+	</label>
+	<label>
+		Unpaid fee?
+		<input type="text" name="hasUnpaidFees" value={yesNo(hasUnpaidFees)} readonly />
+	</label>
+	<label>
+		Member?
+		<input type="text" name="userIsMember" value={yesNo(userIsMember)} readonly />
+	</label>
+	<label>
+		Note
+		<textarea name="note" placeholder="Optional note for the moderator"></textarea>
+	</label>
+	<button type="submit">Place order</button>
+</form>

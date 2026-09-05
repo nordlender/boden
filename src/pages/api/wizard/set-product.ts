@@ -1,6 +1,6 @@
 export const prerender = false;
 
-// TODO: no auth check yet — see items.ts.
+// Not covered by src/middleware/index.ts's route-prefix gate — see items.ts.
 
 import type { APIRoute } from 'astro';
 import { setItemsProduct } from '../../../lib/wizard';
@@ -10,7 +10,11 @@ function redirectTarget(form: FormData): string {
 	return typeof redirectTo === 'string' && redirectTo.startsWith('/') ? redirectTo : '/admin/items';
 }
 
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect, locals }) => {
+	if (locals.user?.role !== 'admin') {
+		return new Response('Forbidden', { status: 403 });
+	}
+
 	const form = await request.formData();
 	const itemIds = form
 		.getAll('itemIds')

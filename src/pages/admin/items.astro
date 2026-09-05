@@ -1,11 +1,8 @@
 ---
 export const prerender = false;
 
-// TODO: no auth check yet — this should end up gated the same way the
-// api-test worktree's src/middleware/index.ts gates /admin (require
-// user?.role === 'admin') once that auth work lands in this branch. See the
-// TODO comments in src/pages/api/wizard/*.ts for the same gap on the write
-// side.
+// Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
+// reached only when logged in with role === 'admin'.
 import '../../styles/global.css';
 import WizardHeader from '../../components/wizard/WizardHeader.astro';
 import ItemPanel from '../../components/wizard/ItemPanel.astro';

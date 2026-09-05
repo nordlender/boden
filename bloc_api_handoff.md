@@ -92,9 +92,26 @@ means the literal token never appears in shell history or in this instructions f
 - Merging the branch back into `main` — only after Phase 2 is implemented and
   reviewed, handled like a PR even though this repo has no remote configured yet.
 
+## Addendum (2026-09-02) — confirmed API defect: `hasUnpaidFees`/`userIsMember`
+
+A later session tested four bloc methods against a real logged-in account,
+using the real OAuth access token from a live login (not the MCP server's
+webmaster-scoped key): `account/listmypages`, `Account/MyAccount`,
+`Profile/GetPage`, and `account/listmypersonprofiles`. Every one of them
+returned `hasUnpaidFees` and `userIsMember` as `null`/empty, for an account
+the member confirmed had real fee/membership data on bloc's own site. Ruled
+out: client-side caching (fresh call every time), stale data (persisted
+across a real wait + incognito retest), and a wrong endpoint (all four
+reachable methods were tried). This is being treated as a defect in bloc's
+API, reported to the provider by the user — see `auth_session_handoff.md` §7
+and `TASKS.md` for the full history.
+
 ## Reference
 
 - `rental_shop.md` §6 "Upsert user on sign-in", §7 "Role API integration",
   §8 "Middleware (auth + role gate)" — the contract this API is expected to satisfy.
 - `src/auth.ts` — where the OAuth access token is captured into the session JWT.
 - `src/db/schema.ts` — `users` table comment: role is fetched live, never stored.
+- `auth_testing_guide.md`'s "Live-testing bloc REST endpoints directly"
+  section — how to use the permanent `/api/debug/*` toolkit for live bloc
+  calls (`src/lib/blocDebug.ts`).

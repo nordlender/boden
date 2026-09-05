@@ -1,6 +1,6 @@
 export const prerender = false;
 
-// TODO: no auth check yet — see items.ts.
+// Not covered by src/middleware/index.ts's route-prefix gate — see items.ts.
 // Single-item attribute edit — schema_v3.md's "attribute editing entry
 // points" (single-item half), submitted from the small per-attribute form
 // revealed by the {edit_icon} in the details box. Bulk editing is
@@ -14,7 +14,11 @@ function redirectTarget(form: FormData): string {
 	return typeof redirectTo === 'string' && redirectTo.startsWith('/') ? redirectTo : '/admin/items';
 }
 
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect, locals }) => {
+	if (locals.user?.role !== 'admin') {
+		return new Response('Forbidden', { status: 403 });
+	}
+
 	const form = await request.formData();
 	const itemId = Number(form.get('itemId'));
 	const key = form.get('key')?.toString().trim();

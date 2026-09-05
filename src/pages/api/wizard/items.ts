@@ -1,9 +1,8 @@
 export const prerender = false;
 
-// TODO: no auth check yet — src/middleware doesn't exist in this branch and
-// locals.user is never populated. See the api-test worktree's src/middleware
-// /index.ts + src/lib/auth.ts for the intended admin-role gate once that
-// lands; these wizard routes are unprotected until then.
+// Not covered by src/middleware/index.ts's route-prefix gate (that only
+// matches /admin, /cart, /checkout, /orders — not /api/...), same as
+// src/pages/api/orders/create.ts — so the admin check happens here instead.
 
 import type { APIRoute } from 'astro';
 import { createItem } from '../../../lib/wizard';
@@ -13,7 +12,11 @@ function redirectTarget(form: FormData): string {
 	return typeof redirectTo === 'string' && redirectTo.startsWith('/') ? redirectTo : '/admin/items';
 }
 
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect, locals }) => {
+	if (locals.user?.role !== 'admin') {
+		return new Response('Forbidden', { status: 403 });
+	}
+
 	const form = await request.formData();
 	const name = form.get('name')?.toString().trim();
 	const imageUrl = form.get('imageUrl')?.toString().trim() || null;

@@ -4,16 +4,11 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { archiveItems } from '../../../lib/wizard';
+import { requireAdmin, safeRedirectTarget } from '../../../lib/wizard-http';
 
-function redirectTarget(form: FormData): string {
-	const redirectTo = form.get('redirectTo');
-	return typeof redirectTo === 'string' && redirectTo.startsWith('/') ? redirectTo : '/admin/items';
-}
-
-export const POST: APIRoute = async ({ request, redirect, locals }) => {
-	if (locals.user?.role !== 'admin') {
-		return new Response('Forbidden', { status: 403 });
-	}
+export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
+	const forbidden = requireAdmin(locals);
+	if (forbidden) return forbidden;
 
 	const form = await request.formData();
 	const itemIds = form
@@ -26,5 +21,5 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
 	}
 
 	await archiveItems(itemIds);
-	return redirect(redirectTarget(form));
+	return redirect(safeRedirectTarget(form, url.origin));
 };

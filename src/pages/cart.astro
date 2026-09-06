@@ -1,33 +1,82 @@
 ---
 export const prerender = false;
 
-import '../styles/global.css';
+import BaseLayout from '../layouts/BaseLayout.astro';
 import CheckoutForm from '../components/cart/CheckoutForm.astro';
-import { getCart } from '../lib/cart';
+import { getCartItems } from '../lib/cart';
 import { getSession } from 'auth-astro/server';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
-const cart = getCart(Astro.cookies);
+const cartItems = await getCartItems(Astro.cookies);
 const session = await getSession(Astro.request);
 ---
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Cart</title>
-	</head>
-	<body>
-		<main>
-			<h1>Cart</h1>
-			<p>{cart.length} item{cart.length === 1 ? '' : 's'} in cart.</p>
-			<CheckoutForm
-				name={session?.user?.name ?? null}
-				email={session?.user?.email ?? null}
-				mobile={session?.bloc?.mobile ?? null}
-				hasUnpaidFees={session?.bloc?.hasUnpaidFees ?? null}
-				userIsMember={session?.bloc?.userIsMember ?? null}
-			/>
-		</main>
-	</body>
-</html>
+
+<BaseLayout title="Cart">
+	<div class="mx-auto max-w-3xl px-4 py-8">
+		<h1 class="mb-6 text-2xl font-semibold tracking-tight text-gray-900">Cart</h1>
+
+		{
+			cartItems.length === 0 ? (
+				<p class="mb-8 text-sm text-gray-600">Your cart is empty.</p>
+			) : (
+				<div class="mb-8 divide-y divide-gray-200 border-y border-gray-200">
+					{cartItems.map((item) => (
+						<div class="flex flex-wrap items-center gap-4 py-4">
+							<div class="h-16 w-16 shrink-0 overflow-hidden rounded bg-gray-100">
+								{item.imageUrl && <img src={item.imageUrl} alt={item.productTitle} class="h-full w-full object-cover" />}
+							</div>
+
+							<div class="min-w-0 flex-1">
+								<a
+									href={item.productSlug ? `/products/${item.productSlug}` : '#'}
+									class="font-medium text-gray-900 hover:underline"
+								>
+									{item.productTitle}
+								</a>
+								{item.attributes.length > 0 && (
+									<p class="text-sm text-gray-500">{item.attributes.map((a) => a.value).join(' / ')}</p>
+								)}
+								{item.quantity > item.inStock && (
+									<p class="text-sm text-red-600">Only {Math.max(item.inStock, 0)} left in stock</p>
+								)}
+							</div>
+
+							<form method="post" action="/api/cart/update" class="flex items-center gap-2">
+								<input type="hidden" name="itemId" value={item.itemId} />
+								<label class="sr-only" for={`quantity-${item.itemId}`}>
+									Quantity for {item.productTitle}
+								</label>
+								<input
+									id={`quantity-${item.itemId}`}
+									type="number"
+									name="quantity"
+									value={item.quantity}
+									min="0"
+									class="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm"
+								/>
+								<button type="submit" class="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50">
+									Update
+								</button>
+							</form>
+
+							<form method="post" action="/api/cart/remove">
+								<input type="hidden" name="itemId" value={item.itemId} />
+								<button type="submit" class="text-sm text-red-600 hover:underline">
+									Remove
+								</button>
+							</form>
+						</div>
+					))}
+				</div>
+			)
+		}
+
+		<CheckoutForm
+			name={session?.user?.name ?? null}
+			email={session?.user?.email ?? null}
+			mobile={session?.bloc?.mobile ?? null}
+			hasUnpaidFees={session?.bloc?.hasUnpaidFees ?? null}
+			userIsMember={session?.bloc?.userIsMember ?? null}
+		/>
+	</div>
+</BaseLayout>

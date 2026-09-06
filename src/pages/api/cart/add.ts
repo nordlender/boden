@@ -11,19 +11,13 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { db } from '../../../db/client';
 import { addToCart } from '../../../lib/cart';
-
-// A leading "//" (or "/\") is still relative enough to pass a bare
-// startsWith('/') check, but browsers resolve it as protocol-relative —
-// `//evil.com` becomes `https://evil.com`. Reject those too so this can't be
-// used as an open redirect from this deliberately unauthenticated endpoint.
-function isSafeRedirectTarget(value: FormDataEntryValue | null): value is string {
-	return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\');
-}
+import { isSafeRedirectTarget } from '../../../lib/redirect';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	const form = await request.formData();
 	const itemId = Number(form.get('itemId'));
-	const quantity = Number(form.get('quantity')) || 1;
+	const rawQuantity = form.get('quantity');
+	const quantity = rawQuantity === null ? 1 : Number(rawQuantity);
 	const redirectTo = form.get('redirect');
 
 	if (!Number.isInteger(itemId) || itemId <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
@@ -45,7 +39,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
 	const target = isSafeRedirectTarget(redirectTo) ? redirectTo : '/';
 	// Read by CartSidebar.astro's script to auto-open the sidebar after the
-	// redirect lands, then stripped from the URL — see that component.
-	const separator = target.includes('?') ? '&' : '?';
-	return redirect(`${target}${separator}cartOpen=1`);
+	// redirect lands, then stripped from the URL — see that component. Parsed
+	// as a URL (against a dummy base, since target is always relative) so the
+	// marker lands in the query string even when target has a #fragment.
+	const url = new URL(target, 'http://internal');
+	url.searchParams.set('cartOpen', '1');
+	return redirect(`${url.pathname}${url.search}${url.hash}`);
 };

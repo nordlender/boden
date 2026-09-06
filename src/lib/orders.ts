@@ -1,6 +1,6 @@
 import { db } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
-import { inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
 
 // Excludes ambiguous characters (0/O, 1/I) — this code is read aloud by
@@ -30,7 +30,10 @@ export type CreateOrderResult =
 export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
   const itemIds = input.cartEntries.map((e) => e.itemId);
   const validItems = itemIds.length
-    ? await db.select({ id: items.id }).from(items).where(inArray(items.id, itemIds))
+    ? await db
+        .select({ id: items.id })
+        .from(items)
+        .where(and(inArray(items.id, itemIds), eq(items.archived, false)))
     : [];
   const validItemIds = new Set(validItems.map((i) => i.id));
 

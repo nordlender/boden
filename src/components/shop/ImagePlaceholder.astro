@@ -1,0 +1,34 @@
+---
+// A tiny self-contained inline SVG rather than reaching for
+// src/components/icons/AppIcon.astro (astro-icon + @iconify-json/tabler) —
+// deliberately: that dependency chain is pre-existing and already load-bearing
+// for the (already-merged, out-of-scope) wizard components' many static
+// icons, but nothing in this PR's own files needs it for a single "no photo
+// yet" placeholder, and morphicons — this repo's other icon system — is
+// wired for animated icon transitions, not a drop-in replacement for it
+// either. See this PR's description for the full astro-icon/morphicons note.
+interface Props {
+	size?: number;
+	class?: string;
+}
+
+const { size = 32, class: className } = Astro.props;
+---
+
+<svg
+	xmlns="http://www.w3.org/2000/svg"
+	viewBox="0 0 24 24"
+	fill="none"
+	stroke="currentColor"
+	stroke-width="1.75"
+	stroke-linecap="round"
+	stroke-linejoin="round"
+	width={size}
+	height={size}
+	class={className}
+	aria-hidden="true"
+>
+	<rect x="3" y="3" width="18" height="18" rx="2" />
+	<circle cx="8.5" cy="8.5" r="1.5" />
+	<path d="M21 15l-5-5L5 21" />
+</svg>

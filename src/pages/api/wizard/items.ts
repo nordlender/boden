@@ -1,8 +1,7 @@
 export const prerender = false;
 
-// Not covered by src/middleware/index.ts's route-prefix gate (that only
-// matches /admin, /cart, /checkout, /orders — not /api/...), same as
-// src/pages/api/orders/create.ts — so the admin check happens here instead.
+// Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES ('/api/wizard'),
+// but that's defense-in-depth — keep this inline check too (see prefixes.ts).
 
 import type { APIRoute } from 'astro';
 import { createItem } from '../../../lib/wizard';

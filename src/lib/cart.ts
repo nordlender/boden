@@ -87,9 +87,10 @@ export function removeFromCart(cookies: AstroCookies, itemId: number) {
 
 // Joins the cookie cart against items/products for display (name, image,
 // current stock) — used by the cart sidebar's GET /api/cart endpoint and the
-// /cart review page. Entries pointing at an item that no longer exists or
-// has since been archived are silently dropped, mirroring src/lib/orders.ts's
-// createOrder, which drops the same kind of stale entry at checkout time.
+// /cart review page. Entries pointing at an item that no longer exists, has
+// since been archived, or whose product is no longer published are silently
+// dropped, mirroring src/lib/orders.ts's createOrder, which drops the same
+// kind of stale entry at checkout time.
 export async function getCartItems(cookies: AstroCookies): Promise<CartItem[]> {
 	const cart = getCart(cookies);
 	if (cart.length === 0) return [];
@@ -103,7 +104,7 @@ export async function getCartItems(cookies: AstroCookies): Promise<CartItem[]> {
 		},
 	});
 
-	const visibleRows = rows.filter((row) => !row.archived);
+	const visibleRows = rows.filter((row) => !row.archived && row.product?.status === 'published');
 	const reserved = await reservedQuantitiesByItem(visibleRows.map((row) => row.id));
 
 	return cart

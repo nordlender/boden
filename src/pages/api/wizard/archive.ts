@@ -1,6 +1,6 @@
 export const prerender = false;
 
-// Not covered by src/middleware/index.ts's route-prefix gate — see items.ts.
+// Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES — see items.ts.
 
 import type { APIRoute } from 'astro';
 import { archiveItems } from '../../../lib/wizard';

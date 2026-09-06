@@ -89,8 +89,9 @@ export function removeFromCart(cookies: AstroCookies, itemId: number) {
 // current stock) — used by the cart sidebar's GET /api/cart endpoint and the
 // /cart review page. Entries pointing at an item that no longer exists, has
 // since been archived, or whose product is no longer published are silently
-// dropped, mirroring src/lib/orders.ts's createOrder, which drops the same
-// kind of stale entry at checkout time.
+// dropped. src/lib/orders.ts's createOrder does the same for nonexistent and
+// archived entries, but — unlike here — deliberately does NOT re-check
+// product status at checkout time; see the note on createOrder for why.
 export async function getCartItems(cookies: AstroCookies): Promise<CartItem[]> {
 	const cart = getCart(cookies);
 	if (cart.length === 0) return [];

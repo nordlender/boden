@@ -6,17 +6,11 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { createItem } from '../../../lib/wizard';
-import { isSafeRedirectTarget } from '../../../lib/redirect';
+import { requireAdmin, safeRedirectTarget } from '../../../lib/wizard-http';
 
-function redirectTarget(form: FormData): string {
-	const redirectTo = form.get('redirectTo');
-	return isSafeRedirectTarget(redirectTo) ? redirectTo : '/admin/items';
-}
-
-export const POST: APIRoute = async ({ request, redirect, locals }) => {
-	if (locals.user?.role !== 'admin') {
-		return new Response('Forbidden', { status: 403 });
-	}
+export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
+	const forbidden = requireAdmin(locals);
+	if (forbidden) return forbidden;
 
 	const form = await request.formData();
 	const name = form.get('name')?.toString().trim();
@@ -27,5 +21,5 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
 	}
 
 	await createItem({ name, imageUrl });
-	return redirect(redirectTarget(form));
+	return redirect(safeRedirectTarget(form, url.origin));
 };

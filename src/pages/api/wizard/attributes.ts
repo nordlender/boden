@@ -8,24 +8,18 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { setItemAttributeValue } from '../../../lib/wizard';
-import { isSafeRedirectTarget } from '../../../lib/redirect';
+import { requireAdmin, safeRedirectTarget, isPositiveInteger } from '../../../lib/wizard-http';
 
-function redirectTarget(form: FormData): string {
-	const redirectTo = form.get('redirectTo');
-	return isSafeRedirectTarget(redirectTo) ? redirectTo : '/admin/items';
-}
-
-export const POST: APIRoute = async ({ request, redirect, locals }) => {
-	if (locals.user?.role !== 'admin') {
-		return new Response('Forbidden', { status: 403 });
-	}
+export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
+	const forbidden = requireAdmin(locals);
+	if (forbidden) return forbidden;
 
 	const form = await request.formData();
 	const itemId = Number(form.get('itemId'));
 	const key = form.get('key')?.toString().trim();
 	const value = form.get('value')?.toString() ?? '';
 
-	if (!Number.isInteger(itemId) || !key) {
+	if (!isPositiveInteger(itemId) || !key) {
 		return new Response('Item and attribute key are required', { status: 400 });
 	}
 
@@ -36,5 +30,5 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
 		return new Response(message, { status: 400 });
 	}
 
-	return redirect(redirectTarget(form));
+	return redirect(safeRedirectTarget(form, url.origin));
 };

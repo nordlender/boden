@@ -1,0 +1,69 @@
+---
+---
+
+<!--
+	This component can be rendered on a prerendered page (see astro.config.mjs
+	— catalogue/product pages are built once, ahead of any request), so there
+	is no per-visitor session to read server-side here the way src/pages/cart.astro
+	does with getSession(Astro.request). Instead it renders signed-out by
+	default and a client script below corrects it against auth-astro's own
+	session endpoint — no changes to src/auth.ts/src/lib/auth.ts/middleware
+	needed for this.
+-->
+<div data-user-menu-links>
+	<p data-user-email class="mb-2 truncate text-xs text-gray-500" hidden></p>
+	<ul class="flex flex-col gap-1">
+		<li data-signed-out>
+			<a href="/auth/login" class="block rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50">Sign in</a>
+		</li>
+		<li data-signed-in hidden>
+			<button
+				type="button"
+				data-sign-out
+				class="block w-full rounded-md px-2 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
+			>
+				Sign out
+			</button>
+		</li>
+	</ul>
+</div>
+
+<script>
+	import { signOut } from 'auth-astro/client';
+
+	async function loadSession() {
+		try {
+			const res = await fetch('/api/auth/session');
+			const session = await res.json();
+			const signedIn = Boolean(session?.user);
+
+			document.querySelectorAll<HTMLElement>('[data-signed-out]').forEach((el) => {
+				el.hidden = signedIn;
+			});
+			document.querySelectorAll<HTMLElement>('[data-signed-in]').forEach((el) => {
+				el.hidden = !signedIn;
+			});
+			document.querySelectorAll<HTMLElement>('[data-user-email]').forEach((el) => {
+				if (signedIn && session.user?.email) {
+					el.textContent = session.user.email;
+					el.hidden = false;
+				} else {
+					el.hidden = true;
+				}
+			});
+		} catch {
+			// Leave the default signed-out markup in place.
+		}
+	}
+
+	document.querySelectorAll<HTMLButtonElement>('[data-sign-out]').forEach((button) => {
+		button.addEventListener('click', () => {
+			// auth-astro's SignOutParams type pulls in `next-auth/react`, which
+			// isn't installed as a dependency here (same gap login.astro's signIn
+			// call works around) — cast rather than pull in next-auth for types.
+			void signOut({ callbackUrl: '/' } as Parameters<typeof signOut>[0]);
+		});
+	});
+
+	void loadSession();
+</script>

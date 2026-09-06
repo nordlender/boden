@@ -134,8 +134,11 @@ narrative/rationale.
   - The five wizard write routes (`src/pages/api/wizard/{items,archive,
     set-product,attributes,attributes/bulk}.ts`) each got an inline
     `locals.user?.role !== 'admin'` 403 check, matching `orders/create.ts`'s
-    existing pattern — none of them are covered by the middleware's
-    route-prefix gate (that only matches page routes, not `/api/...`).
+    existing pattern. At the time, none of them were covered by the
+    middleware's route-prefix gate (that only matched page routes, not
+    `/api/...`) — since fixed by adding `/api/wizard` to
+    `ADMIN_ROUTE_PREFIXES` (see `src/middleware/prefixes.ts`), so the inline
+    checks are now defense-in-depth rather than the sole protection.
     `admin/items.astro` itself *is* covered by the gate (`/admin` prefix) —
     its stale "no auth yet" TODO was removed.
 - First successful live end-to-end bloc OAuth login against the real API

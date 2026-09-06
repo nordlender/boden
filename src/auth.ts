@@ -2,7 +2,7 @@ import type { OAuthConfig, OAuthUserConfig } from '@auth/core/providers';
 import type { TokenSet } from '@auth/core/types';
 import { defineConfig } from 'auth-astro';
 import { db } from './db/client';
-import { users } from './db/schema';
+import { upsertSignedInUser } from './lib/upsertUser';
 
 declare module '@auth/core/types' {
   interface Session {
@@ -165,13 +165,7 @@ export default defineConfig({
     // letting a signed-in session exist with no matching users row.
     async signIn({ user }) {
       if (!user.id || !user.email) return false;
-      db.insert(users)
-        .values({ id: user.id, email: user.email, name: user.name ?? null })
-        .onConflictDoUpdate({
-          target: users.id,
-          set: { email: user.email, name: user.name ?? null },
-        })
-        .run();
+      await upsertSignedInUser(db, { id: user.id, email: user.email, name: user.name });
       return true;
     },
     // Persist the access token + bloc profile fields into the JWT so they're

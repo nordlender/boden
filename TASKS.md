@@ -65,6 +65,16 @@ narrative/rationale.
   worktree unless the debug toolkit gets used here and produces one.
 - Retire the `api-test` worktree/branch now that its auth+checkout work has
   been ported here.
+- `src/lib/redirect.ts`'s `isSafeRedirectTarget` (used only by
+  `cart/add.ts`) is a string-prefix denylist (`startsWith('/')` plus explicit
+  `//`/`/\` rejection). `fix/wizard-api-hardening`'s `src/lib/wizard-http.ts`
+  has a strictly more robust `safeRedirectTarget` that actually resolves the
+  URL against the request origin and compares `.origin` — flagged
+  2026-09-06 while resolving that branch's merge conflicts into
+  `feat/shop-cart-integration` (still pending as of this writing, location
+  TBD — see whoever's doing that merge). Once it lands, upgrade
+  `cart/add.ts` to the origin-based check and consolidate to one shared
+  implementation instead of two of differing quality.
 
 ### Deployment (not started — no rush pre-build)
 - nginx config, Certbot, daily SQLite backup cron, go-live checklist in

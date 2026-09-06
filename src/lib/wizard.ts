@@ -164,10 +164,38 @@ export async function setItemsProduct(itemIds: number[], productId: number): Pro
 	});
 }
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Looks up the product's attribute key by name, creating it and fanning out
+// a blank value to every existing item of the product if it doesn't exist
+// yet — schema_v3.md Work item "fan out new template fields to existing
+// items". Shared by the single-item and bulk attribute editing entry points
+// below so the fan-out logic can't drift between the two.
+function getOrCreateAttributeKey(tx: Tx, productId: number, trimmedKey: string): number {
+	const existing = tx
+		.select({ id: productAttributeKeys.id })
+		.from(productAttributeKeys)
+		.where(and(eq(productAttributeKeys.productId, productId), eq(productAttributeKeys.name, trimmedKey)))
+		.get();
+	if (existing) return existing.id;
+
+	const created = tx
+		.insert(productAttributeKeys)
+		.values({ productId, name: trimmedKey })
+		.returning({ id: productAttributeKeys.id })
+		.get();
+
+	const siblingItems = tx.select({ id: items.id }).from(items).where(eq(items.productId, productId)).all();
+	if (siblingItems.length > 0) {
+		tx.insert(itemAttributeValues)
+			.values(siblingItems.map((sibling) => ({ itemId: sibling.id, attributeId: created.id, value: '' })))
+			.run();
+	}
+
+	return created.id;
+}
+
 // schema_v3.md Work item: "attribute editing entry points" (single-item).
-// A key not yet in the product's template is created there and fanned out
-// (blank) to every sibling item first — Work item "fan out new template
-// fields to existing items" — before this item's own value is set.
 export async function setItemAttributeValue(itemId: number, key: string, value: string): Promise<void> {
 	const trimmedKey = key.trim();
 	if (!trimmedKey) throw new Error('Attribute key is required');
@@ -177,34 +205,10 @@ export async function setItemAttributeValue(itemId: number, key: string, value: 
 	const productId = item.productId;
 
 	db.transaction((tx) => {
-		let attributeKey = tx
-			.select({ id: productAttributeKeys.id })
-			.from(productAttributeKeys)
-			.where(and(eq(productAttributeKeys.productId, productId), eq(productAttributeKeys.name, trimmedKey)))
-			.get();
-
-		if (!attributeKey) {
-			attributeKey = tx
-				.insert(productAttributeKeys)
-				.values({ productId, name: trimmedKey })
-				.returning({ id: productAttributeKeys.id })
-				.get();
-
-			const siblingItems = tx.select({ id: items.id }).from(items).where(eq(items.productId, productId)).all();
-			tx.insert(itemAttributeValues)
-				.values(
-					siblingItems.map((sibling) => ({
-						itemId: sibling.id,
-						attributeId: attributeKey!.id,
-						value: sibling.id === itemId ? value : '',
-					})),
-				)
-				.run();
-			return;
-		}
+		const attributeId = getOrCreateAttributeKey(tx, productId, trimmedKey);
 
 		tx.insert(itemAttributeValues)
-			.values({ itemId, attributeId: attributeKey.id, value })
+			.values({ itemId, attributeId, value })
 			.onConflictDoUpdate({
 				target: [itemAttributeValues.itemId, itemAttributeValues.attributeId],
 				set: { value },
@@ -242,27 +246,10 @@ export async function setBulkAttributeValues(itemIds: number[], values: WizardAt
 			const trimmedKey = key.trim();
 			if (!trimmedKey) continue;
 
-			let attributeKey = tx
-				.select({ id: productAttributeKeys.id })
-				.from(productAttributeKeys)
-				.where(and(eq(productAttributeKeys.productId, productId), eq(productAttributeKeys.name, trimmedKey)))
-				.get();
-
-			if (!attributeKey) {
-				attributeKey = tx
-					.insert(productAttributeKeys)
-					.values({ productId, name: trimmedKey })
-					.returning({ id: productAttributeKeys.id })
-					.get();
-
-				const siblingItems = tx.select({ id: items.id }).from(items).where(eq(items.productId, productId)).all();
-				tx.insert(itemAttributeValues)
-					.values(siblingItems.map((sibling) => ({ itemId: sibling.id, attributeId: attributeKey!.id, value: '' })))
-					.run();
-			}
+			const attributeId = getOrCreateAttributeKey(tx, productId, trimmedKey);
 
 			tx.insert(itemAttributeValues)
-				.values(itemIds.map((itemId) => ({ itemId, attributeId: attributeKey!.id, value })))
+				.values(itemIds.map((itemId) => ({ itemId, attributeId, value })))
 				.onConflictDoUpdate({
 					target: [itemAttributeValues.itemId, itemAttributeValues.attributeId],
 					set: { value },

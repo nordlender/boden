@@ -40,6 +40,16 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   // Drop entries pointing at items that no longer exist or were archived —
   // stock shortfall itself is resolved later by the moderator at the confirm
   // step (see orderItems.retrievedQuantity), not here.
+  //
+  // Deliberately not checked here: item.product.status. Unlike
+  // getCartItems (src/lib/cart.ts), this doesn't drop an entry whose product
+  // was unpublished after it was added to the cart — so a stale/tampered
+  // cart can still produce an orderItems row for it. Accepted for now rather
+  // than fixed here: the not-yet-built moderator hand-out flow is expected to
+  // (a) warn when an order contains an item that's since become
+  // archived/unpublished, and (b) let the moderator hand out only a subset of
+  // an order's items, so they can simply decline to hand out that one instead
+  // of it being a hard failure. See the moderator-workflow-deferred memory.
   const entriesToOrder = input.cartEntries.filter((e) => validItemIds.has(e.itemId));
   if (entriesToOrder.length === 0) {
     return { ok: false, error: 'empty_cart' };

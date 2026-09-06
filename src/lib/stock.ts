@@ -9,6 +9,11 @@ import { orderItems, orders } from '../db/schema';
 // from). "In stock right now" is never stored: it's always stockCount minus
 // quantities tied up in orders whose status still holds a claim on the item
 // (requested/active).
+//
+// TODO(post-merge): once this PR has landed, revisit de-duplicating this
+// against wizard.ts's copy (e.g. export one shared version) — the
+// cross-feature scope concern above only applies while this PR is in
+// flight, not after.
 export async function reservedQuantitiesByItem(itemIds: number[]): Promise<Map<number, number>> {
 	if (itemIds.length === 0) return new Map();
 	const rows = await db

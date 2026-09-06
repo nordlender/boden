@@ -5,7 +5,7 @@
 // attribute template), with items as its unlabeled variants underneath, so
 // "/items/..." would be the wrong noun here. See this PR's description.
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import AppIcon from '../../components/icons/AppIcon.astro';
+import ImagePlaceholder from '../../components/shop/ImagePlaceholder.astro';
 import { getPublishedProductSlugs, getShopProductBySlug } from '../../lib/shop';
 
 export async function getStaticPaths() {
@@ -51,7 +51,7 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 				class="flex h-full w-full items-center justify-center text-gray-300"
 				hidden={Boolean(initialImageUrl)}
 			>
-				<AppIcon name="image" size={48} />
+				<ImagePlaceholder size={48} />
 			</div>
 		</div>
 

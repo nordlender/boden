@@ -1,5 +1,5 @@
 ---
-import AppIcon from '../icons/AppIcon.astro';
+import ImagePlaceholder from './ImagePlaceholder.astro';
 
 interface Attribute {
 	key: string;
@@ -30,7 +30,7 @@ const inStockBool = inStock > 0;
 				<img src={imageUrl} alt={productTitle} class="h-full w-full object-cover transition group-hover:scale-105" />
 			) : (
 				<div class="flex h-full w-full items-center justify-center text-gray-300">
-					<AppIcon name="image" size={32} />
+					<ImagePlaceholder size={32} />
 				</div>
 			)
 		}

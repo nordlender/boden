@@ -15,6 +15,13 @@
       "when": 1788728377770,
       "tag": "0001_wet_vivisector",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788730675373,
+      "tag": "0002_lying_impossible_man",
+      "breakpoints": true
     }
   ]
 }

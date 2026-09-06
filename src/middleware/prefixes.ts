@@ -22,7 +22,7 @@ export const MOD_ROUTE_PREFIXES = ['/moderator'];
 // inline (see those files), so this is redundant today — but it means a
 // future wizard route that forgets the inline check isn't left with zero
 // protection.
-export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard'];
+export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard', '/api/pickup-days'];
 
 export function matchesPrefix(routePattern: string, prefixes: string[]) {
   return prefixes.some((p) => routePattern === p || routePattern.startsWith(`${p}/`));

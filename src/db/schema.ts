@@ -186,8 +186,11 @@ export const orders = sqliteTable('orders', {
   }).notNull().default('requested'),
   // Reservation date range (YYYY-MM-DD, inclusive on both ends) chosen on the
   // /reservation page — the whole order (all its orderItems) shares one
-  // range. Availability for a range is computed from other requested/active
-  // orders whose range overlaps this one — see src/lib/reservation.ts.
+  // range. fromDate is the pick-up day, toDate the return day (see
+  // pickupAvailableDays below for which pick-up days have a moderator
+  // confirmed available to hand out the order). Availability for a range is
+  // computed from other requested/active orders whose range overlaps this
+  // one — see src/lib/reservation.ts.
   fromDate: text('from_date').notNull(),
   toDate: text('to_date').notNull(),
   note: text('note'), // optional note from member at checkout
@@ -221,6 +224,18 @@ export const orderItems = sqliteTable('order_items', {
   check('requested_quantity_positive', sql`${table.requestedQuantity} > 0`),
   check('retrieved_quantity_non_negative', sql`${table.retrievedQuantity} IS NULL OR ${table.retrievedQuantity} >= 0`),
 ]);
+
+// Which pick-up days (orders.fromDate) have a moderator confirmed available
+// to hand out orders — maintained by an admin (see /admin/pickup-days,
+// src/lib/pickupDays.ts) and expected to change often as moderator
+// availability is confirmed week to week. Existence of a row is the only
+// signal: a date with no row here just means nobody's confirmed a moderator
+// for it yet, not that pick-up is refused — the reservation page shows it
+// as "request pick up" rather than disallowing it.
+export const pickupAvailableDays = sqliteTable('pickup_available_days', {
+  date: text('date').primaryKey(), // YYYY-MM-DD
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+});
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
   subcategories: many(subcategories),

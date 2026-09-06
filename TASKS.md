@@ -72,6 +72,65 @@ narrative/rationale.
     worth confirming with the moderator-workflow retrieval/return timing
     once that's built. No UI for viewing/canceling a placed reservation yet
     either — this only covers creating one.
+  - **Rework pass (2026-09-06, same worktree), fixing real bugs found while
+    reviewing layout + adding pick-up-day coloring**:
+    - **Cally never actually ran in the browser.** `import 'cally'` (which
+      registers the custom elements) was in `ReservationCalendar.astro`'s
+      frontmatter — Astro frontmatter is server-render-only and is never
+      shipped to the client, so `<calendar-range>` sat inert with none of
+      Cally's JS. Moved the import into the component's `<script>` block
+      (a real client module); confirmed by checking the build output
+      (`dist/client/_astro/ReservationCalendar...js`) now actually contains
+      Cally's code, where before it didn't.
+    - **Two `<calendar-month>` siblings with no `offset` rendered the same
+      month twice** instead of two consecutive months — Cally's own docs
+      example sets `offset={1}` on the second; added.
+    - **`::part(selected)` never applied** — `calendar-range` is `type:
+      "range"`, which never emits a `selected` part (only
+      `range-start`/`range-end`/`range-inner`, confirmed by reading Cally's
+      day-rendering source). The chosen dates were rendering with zero
+      accent styling. Fixed to target `range-start`/`range-end`/`range-inner`.
+    - `CheckoutForm.astro` had no styling at all (plain browser-default
+      inputs/labels/button) directly below a fully Tailwind-styled calendar
+      and item list — restyled to match (`fieldClass`/`labelClass`,
+      disabled-button state).
+    - Added step headers ("1. Pick-up & return dates" / "2. Your items" /
+      "3. Your details"), a "Checking availability…" loading indicator, a
+      dynamic hint under the submit button explaining why it's disabled, and
+      a "Separate order" tag on a row once its split-order button is pressed
+      (previously only the icon's pressed state changed, easy to miss).
+    - **Pick-up-day availability coloring**: new `pickup_available_days`
+      table (`date` PK, `YYYY-MM-DD` — existence of a row is the only
+      signal) + `src/lib/pickupDays.ts`
+      (`getUpcomingAvailablePickupDates`/`listAvailablePickupDates`/
+      `addAvailablePickupDate`/`removeAvailablePickupDate`, covered by
+      `src/lib/__tests__/pickupDays.test.ts`). `reservation.astro`
+      fetches upcoming dates and passes them to `ReservationCalendar`, which
+      wires Cally's `getDayParts(date)` hook (a JS function prop, not an
+      HTML attribute — confirmed via Cally's source that it's read from the
+      `calendar-range` host and shared down to every day cell via context,
+      so setting it once on the host is sufficient) to mark matching days
+      with a `pickup-available` CSS part, styled green. A legend above the
+      calendar shows "● Pick up available" (green) / "○ Request pick up"
+      (default) per spec — not a restriction, just information: an
+      unmarked day is still selectable as pick-up, it just isn't yet
+      confirmed to have a moderator.
+    - New `/admin/pickup-days` page (add/remove dates, admin-gated like
+      `/admin/items`) + `/api/pickup-days/{add,remove}.ts` (inline admin
+      check, same pattern as `/api/wizard/*`), both prefixes added to
+      `ADMIN_ROUTE_PREFIXES`/`MEMBER_ROUTE_PREFIXES` as appropriate — without
+      this there was no way for anyone to populate the table short of
+      editing the db directly. No shared admin nav exists yet to link to it
+      from `/admin/items` (pre-existing gap, not introduced here) — reach it
+      by URL for now.
+    - Verified: migrations (including the new table) apply cleanly to a
+      fresh db; full build succeeds against the seeded example catalog;
+      full test suite is now 81 passing (was 75); lint/typecheck clean; manually
+      exercised `pickupDays.ts`'s add/list/remove against the seeded dev db
+      end-to-end via a throwaway script. **Not visually verified in a real
+      browser** — this repo's OAuth login can't be faked without real bloc
+      credentials in this environment, and per user preference screenshots
+      aren't attempted; user to check the rendered page directly.
 
 ### Order persistence
 - `hasUnpaidFees`/`userIsMember` still aren't columns on `orders` — the

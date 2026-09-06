@@ -2,6 +2,7 @@ import { db } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
 import { inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
+import { isUniqueConstraintViolation } from './db-errors';
 
 // Excludes ambiguous characters (0/O, 1/I) — this code is read aloud by
 // members to moderators and typed into the retrieve-order form.
@@ -67,8 +68,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       return { ok: true, orderId: result.id, orderCode: result.orderCode };
     } catch (err) {
       // Unique-constraint collision on order_code — retry with a fresh code.
-      const message = err instanceof Error ? err.message : String(err);
-      if (!message.includes('UNIQUE constraint failed') || attempt === MAX_ORDER_CODE_ATTEMPTS - 1) {
+      if (!isUniqueConstraintViolation(err) || attempt === MAX_ORDER_CODE_ATTEMPTS - 1) {
         throw err;
       }
     }

@@ -6,7 +6,7 @@ in the main session's working directory.
 
 ## Context
 
-`rental_shop.md` (§6–§8) and `src/db/schema.ts` already assume roles are never stored
+`docs/rental-shop.md` (§6–§8) and `src/db/schema.ts` already assume roles are never stored
 in our own database — they're fetched live from an external API on every request:
 
 ```
@@ -65,7 +65,7 @@ means the literal token never appears in shell history or in this instructions f
 1. `bloc_whoami` — confirm what identity/role this token resolves to.
 2. `bloc_list_api_capabilities` — enumerate what the API exposes.
 3. Summarize in plain terms: what data is accessible, what the response shape looks
-   like, and whether it matches the `{ role: "..." }` contract `rental_shop.md` §7
+   like, and whether it matches the `{ role: "..." }` contract `docs/rental-shop.md` §7
    already expects (or how it differs, if so).
 4. Propose — but do not execute — one safe, read-only test call beyond the two
    introspection calls above. Describe what it would return and why it's safe. Wait
@@ -86,7 +86,7 @@ means the literal token never appears in shell history or in this instructions f
 ## Out of scope (future work item — do not start without a fresh go-ahead)
 
 - Implementing `getRoleFromExternalApi` and the auth/role-gate middleware
-  (`rental_shop.md` §7–§8) against the bloc API.
+  (`docs/rental-shop.md` §7–§8) against the bloc API.
 - Deciding how the deployed app itself stores/passes the access token in production
   ("token handling" is intentionally deferred).
 - Merging the branch back into `main` — only after Phase 2 is implemented and
@@ -103,15 +103,15 @@ the member confirmed had real fee/membership data on bloc's own site. Ruled
 out: client-side caching (fresh call every time), stale data (persisted
 across a real wait + incognito retest), and a wrong endpoint (all four
 reachable methods were tried). This is being treated as a defect in bloc's
-API, reported to the provider by the user — see `auth_session_handoff.md` §7
+API, reported to the provider by the user — see `docs/auth-handoff.md` §7
 and `TASKS.md` for the full history.
 
 ## Reference
 
-- `rental_shop.md` §6 "Upsert user on sign-in", §7 "Role API integration",
+- `docs/rental-shop.md` §6 "Upsert user on sign-in", §7 "Role API integration",
   §8 "Middleware (auth + role gate)" — the contract this API is expected to satisfy.
 - `src/auth.ts` — where the OAuth access token is captured into the session JWT.
 - `src/db/schema.ts` — `users` table comment: role is fetched live, never stored.
-- `auth_testing_guide.md`'s "Live-testing bloc REST endpoints directly"
+- `docs/auth-testing.md`'s "Live-testing bloc REST endpoints directly"
   section — how to use the permanent `/api/debug/*` toolkit for live bloc
   calls (`src/lib/blocDebug.ts`).

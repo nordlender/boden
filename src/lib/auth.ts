@@ -3,7 +3,7 @@ import { getToken } from '@auth/core/jwt';
 export type Role = 'admin' | 'moderator' | 'member';
 
 // TEMPORARY: bloc doesn't expose a role endpoint yet (see
-// bloc_api_handoff.md), so admin/moderator status is a hardcoded allowlist of
+// docs/bloc-api.md), so admin/moderator status is a hardcoded allowlist of
 // bloc user ids (ADMIN_USER_IDS / MODERATOR_USER_IDS in .env, comma-separated)
 // rather than a live external lookup. getRole()'s signature (userId in, Role
 // out, cached) is deliberately the same shape a real

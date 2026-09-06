@@ -20,7 +20,7 @@ server started clean with no integration errors.
 
 ## Centralizing icon choices
 
-`dynamic_wizard.md` asks for `{placeholder}` tokens that resolve to icons
+`docs/wizard.md` asks for `{placeholder}` tokens that resolve to icons
 from one central file, so the actual icon can change later without hunting
 through every component. Two pieces:
 
@@ -104,7 +104,7 @@ noted above as a candidate instead).
 
 ## Morphing the dynamic icons
 
-`dynamic_wizard.md`'s semantic info section explicitly flags three
+`docs/wizard.md`'s semantic info section explicitly flags three
 placeholders as "dynamic icon" — `{select_header_icon}`, `{select_icon}`,
 `{dropdown_icon}`. Those are two-state icons (checkbox on/off, chevron
 open/closed) that were originally just hard-swapped via `<AppIcon>`'s
@@ -180,5 +180,5 @@ unchecked path. Actually clicking/toggling in a browser wasn't checked here
   an explicit `iconDir` config) if the log noise bothers you.
 
 `AppIcon.astro`, `src/lib/icons.ts`, `src/lib/icon-nodes.ts`, and the
-item-table/wizard components described in `dynamic_wizard.md` are built —
+item-table/wizard components described in `docs/wizard.md` are built —
 see `src/components/wizard/` and `src/pages/wizard-test.astro`.

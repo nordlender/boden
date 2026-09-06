@@ -156,6 +156,15 @@ export const itemAttributeValues = sqliteTable('item_attribute_values', {
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(), // ID from external OAuth provider
+  // WARNING: this UNIQUE constraint assumes bloc never reports the same
+  // email for two different, both-currently-valid userIds. bloc's own API
+  // does not document or enforce that (checked its OpenAPI spec — `email`
+  // is a plain nullable string with no uniqueness guarantee); not observed
+  // across this org's real 288-member roster as of 2026-09-06, but not
+  // ruled out either. If it happens, the two accounts will perpetually
+  // overwrite each other's email on alternating sign-ins — see the
+  // TODO(investigate) above upsertSignedInUser in src/lib/upsertUser.ts,
+  // and the tracking GitHub issue.
   email: text('email').notNull().unique(),
   name: text('name'),
   // Role is NOT stored here — it is fetched live from the external API on every request

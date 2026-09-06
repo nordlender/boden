@@ -24,6 +24,10 @@ narrative/rationale.
   the representative, with the per-item breakdown left to the product detail
   page as already built.
 
+### Reservation
+- Scaffold the design of the reservation functionality (reserving items
+  forward in time).
+
 ### Order persistence
 - `hasUnpaidFees`/`userIsMember` still aren't columns on `orders` — the
   checkout form already submits them (readonly Yes/No fields) and

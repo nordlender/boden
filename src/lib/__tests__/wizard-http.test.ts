@@ -51,6 +51,16 @@ describe('safeRedirectTarget', () => {
     form.set('redirectTo', new File(['x'], 'x.txt'));
     expect(safeRedirectTarget(form, ORIGIN)).toBe('/admin/items');
   });
+
+  it('normalizes a non-canonical origin (trailing slash) before comparing', () => {
+    expect(safeRedirectTarget(formWithRedirect('/admin/items/42'), `${ORIGIN}/`)).toBe('/admin/items/42');
+  });
+
+  it('normalizes an origin passed as a full URL with a path', () => {
+    expect(safeRedirectTarget(formWithRedirect('/admin/items/42'), `${ORIGIN}/admin/items`)).toBe(
+      '/admin/items/42',
+    );
+  });
 });
 
 describe('isPositiveInteger', () => {

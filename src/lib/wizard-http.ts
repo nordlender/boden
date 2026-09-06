@@ -36,6 +36,10 @@ export function requireAdmin(locals: APIContext['locals']): Response | null {
  * `https://evil.com/x`, so a bare "starts with /" check lets an attacker send
  * an admin's browser off-site after a wizard action. Resolving against the
  * request's own origin and comparing origins closes that hole.
+ *
+ * `origin` is normalized via `new URL(origin).origin` before comparison, so a
+ * caller passing a non-canonical value (a trailing slash, or a full URL with
+ * a path) still compares correctly instead of always falling back.
  */
 export function safeRedirectTarget(form: FormData, origin: string): string {
 	const fallback = '/admin/items';
@@ -45,14 +49,16 @@ export function safeRedirectTarget(form: FormData, origin: string): string {
 	// with "/". The origin check below closes that gap.
 	if (typeof redirectTo !== 'string' || !redirectTo.startsWith('/')) return fallback;
 
+	let normalizedOrigin: string;
 	let resolved: URL;
 	try {
-		resolved = new URL(redirectTo, origin);
+		normalizedOrigin = new URL(origin).origin;
+		resolved = new URL(redirectTo, normalizedOrigin);
 	} catch {
 		return fallback;
 	}
 
-	if (resolved.origin !== origin) return fallback;
+	if (resolved.origin !== normalizedOrigin) return fallback;
 
 	return `${resolved.pathname}${resolved.search}${resolved.hash}`;
 }

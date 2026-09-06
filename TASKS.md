@@ -11,6 +11,16 @@ narrative/rationale.
 
 ## To do
 
+### Admin wizard
+- Remove the "Add attribute" button and field under items/assigned items in
+  the admin wizard — attribute-adding will be handled as a separate,
+  dedicated flow instead.
+- Admin wizard should have a navbar on top. For now it should contain:
+  "Items", "Products", "Orders", "Account".
+- When adding items in the admin wizard, it should be possible to set stock.
+- When viewing item details in the admin wizard, it should be possible to
+  edit total stock (not in-stock/available count).
+
 ### Order persistence
 - `hasUnpaidFees`/`userIsMember` still aren't columns on `orders` — the
   checkout form already submits them (readonly Yes/No fields) and
@@ -19,6 +29,33 @@ narrative/rationale.
   read-through — decision recorded in `docs/moderator-review.md`. Still
   blocked on bloc's `hasUnpaidFees`/`userIsMember` API defect for real data,
   but the columns/wiring themselves aren't blocked.
+
+### Cart stock validation
+- Cart allows adding more of an item than is actually in stock — quantity
+  input/update isn't clamped against available stock.
+- The "Only x left in stock" warning message doesn't reflect real stock
+  levels. Both need to be fixed so cart quantity is validated correctly
+  against current stock.
+- Review both fixes against the forward-in-time reservation functionality
+  (items can be reserved for future dates) — "stock" here likely needs to
+  mean availability for the selected date range, not just a flat on-hand
+  count.
+
+### Cart UI
+- "Review order" button should be greyed out (disabled) when the cart is
+  empty.
+- Design of the submission form (`CheckoutForm.astro`) on `/cart` needs to be
+  completed — currently unfinished/unstyled.
+
+### Order confirmation
+- `checkout/success.astro` (order confirmation screen) needs to be completed
+  — should include a "Return to shop" button.
+- Order confirmation screen should include a "Cancel order" button that
+  spawns a confirmation dialogue box before actually cancelling.
+
+### Order numbering
+- Order numbers should follow the format `AAADDD` (three letters followed by
+  three digits, e.g. `ABC123`) instead of whatever's currently generated.
 
 ### Moderator pages (none exist yet)
 - `/moderator/retrieve`, `/moderator/orders/[id]`, `/moderator/confirm/[id]`
@@ -40,7 +77,43 @@ narrative/rationale.
 - `docs/bloc-api.md` Phase 1 step 4 (propose one safe read-only bloc call
   beyond `whoami`/`list_api_capabilities`) still hasn't been done.
 
+### General UI
+- Check for and implement the Font Provider API as described in
+  https://docs.astro.build/en/reference/modules/astro-assets/
+- Decide on fonts — will use the Google provider.
+- Build a standardized general-purpose dialogue box component — currently no
+  shared component for this. Consider splitting into info/action variants.
+- Build a standardized "verify/confirm" dialogue box (for actions like
+  cancel order), built on top of the standardized dialogue box component
+  above rather than as a one-off.
+
+### Security and correctness
+- Use import aliases as documented in the Astro imports guide:
+  https://docs.astro.build/en/guides/imports/#aliases
+- Investigate whether we should implement the Session Driver API as
+  described in https://docs.astro.build/en/reference/session-driver-reference/
+
+### Optimization
+- Consider adding compression, e.g. `astro-compress` — to be evaluated
+  against actual need.
+- Check the routing of the entire repo in accordance with
+  https://docs.astro.build/en/reference/routing-reference/ (could equally
+  well go under Security and correctness).
+- Check that our use of images and assets is in accordance with the runtime
+  API: https://docs.astro.build/en/reference/modules/astro-assets/
+- Look into better usage of prefetch — e.g. is it possible to prefetch the
+  `/cart` page once the user has added items to the cart?
+
+### Tooling
+- Investigate adding the Sonda bundle analyzer — might help optimization
+  through de-duplicating, code splitting, lazy loading, and removing unused
+  libraries.
+
 ### Housekeeping
+- Establish a naming convention for branches (e.g. `fix/`, `feat/`, and so
+  on).
+- Compare our site's config against the configuration reference:
+  https://docs.astro.build/en/reference/configuration-reference/
 - Populate `ADMIN_USER_IDS` (and `MODERATOR_USER_IDS` if needed) in `.env`
   with real bloc user id(s) — currently empty, so `/admin/items` 403s for
   everyone until at least one id is added. Log in once, read `user.id` off
@@ -70,6 +143,8 @@ narrative/rationale.
 ### Deployment (not started — no rush pre-build)
 - nginx config, Certbot, daily SQLite backup cron, go-live checklist in
   `docs/rental-shop.md` §13/§15.
+- Consider SEO and `robots.txt` — do we actually want this site to be
+  searchable? The `astro-robots-txt` integration might help.
 
 ## WIP
 
@@ -88,6 +163,7 @@ narrative/rationale.
 
 ## Completed
 
+- Set commit message rules, e.g. Conventional Commits.
 - **Shop catalogue + cart** (`feat/shop-cart-integration`, merged PR #11):
   home page (`index.astro` + `ItemGrid`/`ItemCard`) listing items with a
   stock badge; product detail page at `/products/[slug]` (deliberately not

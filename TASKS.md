@@ -11,6 +11,19 @@ narrative/rationale.
 
 ## To do
 
+### Shop catalogue
+- Homepage grid shows one tile per **item**, not per **product** — found
+  2026-09-06 while testing against seeded example data: the Dragon Cam's 6
+  size variants each render as their own separate grid tile instead of
+  collapsing into a single "Dragon Cam" product tile (which is what
+  `/products/[slug]` then lets you pick a size on). `src/lib/shop.ts`'s
+  `getShopItems()` returns one `ShopItem` row per item; `ItemGrid.astro`
+  (`src/components/shop/ItemGrid.astro`) maps over that list 1:1 via
+  `ItemCard`. Needs to group by `productId`/`productSlug` before rendering —
+  one card per product, using (e.g.) the first in-stock item's image/price as
+  the representative, with the per-item breakdown left to the product detail
+  page as already built.
+
 ### Order persistence
 - `hasUnpaidFees`/`userIsMember` still aren't columns on `orders` — the
   checkout form already submits them (readonly Yes/No fields) and

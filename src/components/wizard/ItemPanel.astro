@@ -1,0 +1,49 @@
+---
+import ButtonStrip from './ButtonStrip.astro';
+import TableHeader from './TableHeader.astro';
+import ItemRow from './ItemRow.astro';
+import type { PanelVariant } from './grid';
+
+export interface ItemView {
+	itemId: number;
+	name: string;
+	image?: string | null;
+	// Sub-category, product, description, and attributes are all inherited
+	// from the item's product — absent until the item is assigned.
+	subCategory?: string;
+	product?: string;
+	inStock: number;
+	totalStock: number;
+	description?: string | null;
+	attributes?: { key: string; value: string }[];
+	missingAttributeTemplate?: boolean;
+}
+
+interface Props {
+	variant: PanelVariant;
+	title: string;
+	items: ItemView[];
+	products: { id: number; title: string }[];
+	redirectTo: string;
+}
+
+const { variant, title, items, products, redirectTo } = Astro.props;
+// A bare, contentless <form> — every bulk control (checkboxes in ItemRow,
+// the Set/Delete controls in ButtonStrip) references it via `form={formId}`
+// rather than being a DOM descendant of it, since ItemRow's per-attribute
+// edit forms live inside the row list and forms can't nest.
+const formId = `wizard-${variant}-form`;
+---
+<section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+	<h2 class="border-b border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">{title}</h2>
+	<form id={formId} method="post" action="/api/wizard/archive"></form>
+	<ButtonStrip variant={variant} formId={formId} products={products} redirectTo={redirectTo} />
+	<TableHeader variant={variant} formId={formId} />
+	{items.length === 0 ? (
+		<p class="px-3 py-8 text-center text-sm text-slate-400">No items yet.</p>
+	) : (
+		<div>
+			{items.map((item) => <ItemRow variant={variant} formId={formId} {...item} />)}
+		</div>
+	)}
+</section>

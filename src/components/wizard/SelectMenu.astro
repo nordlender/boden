@@ -1,0 +1,59 @@
+---
+// The table header's select-all control: a fixed dropdown trigger (not a
+// tri-state indicator) opening None/All/Invert. Lives in the same grid
+// column as every row's SelectIcon checkbox, so the two align without
+// needing to share a component. Operates on real checkboxes scoped to the
+// panel's form (see ItemPanel.astro) — toggling `.checked` and dispatching
+// a `change` event so SelectIcon's own listener keeps each icon in sync,
+// rather than duplicating that logic here.
+import AppIcon from '../icons/AppIcon.astro';
+
+interface Props {
+	formId: string;
+}
+
+const { formId } = Astro.props;
+
+const options = [
+	{ label: 'None', icon: 'selectNone' as const, action: 'none' as const },
+	{ label: 'All', icon: 'selectAll' as const, action: 'all' as const },
+	{ label: 'Invert', icon: 'selectInvert' as const, action: 'invert' as const },
+];
+---
+<details class="relative">
+	<summary class="grid h-6 w-6 cursor-pointer list-none place-items-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 [&::-webkit-details-marker]:hidden" aria-label="Select items">
+		<AppIcon name="selectMenu" size={18} />
+	</summary>
+	<div class="select-menu absolute left-0 z-10 mt-1 min-w-[8rem] rounded-md border border-slate-200 bg-white py-1 shadow-lg" data-form-id={formId}>
+		{options.map((option) => (
+			<button type="button" class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50" data-select-action={option.action}>
+				<AppIcon name={option.icon} size={16} class="text-slate-400" />
+				<span>{option.label}</span>
+			</button>
+		))}
+	</div>
+</details>
+
+<script>
+	document.addEventListener('click', (event) => {
+		const button = (event.target as Element).closest<HTMLButtonElement>('[data-select-action]');
+		if (!button) return;
+		const menu = button.closest<HTMLElement>('.select-menu');
+		const formId = menu?.dataset.formId;
+		if (!formId) return;
+
+		const action = button.dataset.selectAction;
+		const checkboxes = document.querySelectorAll<HTMLInputElement>(
+			`input.select-checkbox-input[form="${formId}"]`,
+		);
+		checkboxes.forEach((checkbox) => {
+			const next = action === 'all' ? true : action === 'none' ? false : !checkbox.checked;
+			if (checkbox.checked !== next) {
+				checkbox.checked = next;
+				checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+			}
+		});
+
+		button.closest('details')?.removeAttribute('open');
+	});
+</script>

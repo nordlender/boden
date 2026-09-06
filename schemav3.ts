@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
-import { sqliteTable, text, integer, index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 // ---------------------------------------------------------------------------
 // Categories (unchanged from v1/v2)
@@ -14,9 +14,9 @@ export const categories = sqliteTable('categories', {
 
 // ---------------------------------------------------------------------------
 // Sub-categories — one level deep, scoped under a category (e.g.
-// Protection -> Cams). Slug uniqueness is per-parent category, not global,
-// so two different categories can each have their own "Cams" sub-category
-// without colliding.
+// Protection -> Cams). Slug uniqueness is per-parent category, not global —
+// see schema_v3.md "Resolved" for why this is a dedicated table rather than
+// a self-referencing parentId on categories.
 // ---------------------------------------------------------------------------
 
 export const subcategories = sqliteTable('subcategories', {
@@ -32,12 +32,12 @@ export const subcategories = sqliteTable('subcategories', {
 
 // ---------------------------------------------------------------------------
 // Products — the category-level listing. Deliberately never references
-// `items`: the only items->product lookups this app needs are
-// admin/moderator-side, and the customer-facing direction only ever needs
-// product->items, queried directly (`where items.productId = X`) rather
-// than through a column on products. A product keeps both categoryId and
-// subcategoryId, so it can be classified broadly (just "Protection") or
-// precisely ("Protection" -> "Cams").
+// `items` (carried forward from v2): the only items->product lookups this
+// app needs are admin/moderator-side; the customer-facing direction only
+// ever needs product->items, queried directly rather than via a column on
+// products. Keeps both categoryId and subcategoryId, so a product can be
+// classified broadly (just "Protection") or precisely ("Protection" ->
+// "Cams").
 // ---------------------------------------------------------------------------
 
 export const products = sqliteTable('products', {
@@ -47,11 +47,10 @@ export const products = sqliteTable('products', {
   description: text('description'),
   categoryId: integer('category_id').references(() => categories.id),
   subcategoryId: integer('subcategory_id').references(() => subcategories.id),
-  // "Hidden" is a deliberate, permanent admin choice — the product stays
-  // fully visible/manageable in admin/moderator views, it just isn't shown
-  // in the web shop. It does not imply an incomplete or abandoned product
-  // (see schema_v3.md's "Open question" re: the old draft-expiry sweep,
-  // deliberately not ported here).
+  // "Hidden" (not v2's "draft") is a deliberate, permanent admin choice —
+  // still fully visible/manageable in admin/moderator views, just excluded
+  // from the web shop. See schema_v3.md "Open question" re: the
+  // draft-expiry sweep this replaces the meaning of.
   status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden'),
   thumbnailImageUrl: text('thumbnail_image_url'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -62,9 +61,7 @@ export const products = sqliteTable('products', {
   index('products_status_idx').on(table.status),
 ]);
 
-// External links per product (e.g. manufacturer page, manual PDF). Moved
-// here from item-level (v1/v2's item_links) — a link like "manufacturer
-// page" describes the product, not one specific item permutation of it.
+// External links per product (e.g. manufacturer page, manual PDF) — unchanged from v2.
 export const productLinks = sqliteTable('product_links', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
@@ -78,10 +75,7 @@ export const productLinks = sqliteTable('product_links', {
 // Attribute keys — the TEMPLATE. The field names every item under this
 // product will have (e.g. "Weight", "Minimum Breaking Strength", "Length").
 // No values live here; each item owns its own value for each key it has
-// (see itemAttributeValues below). All items under one product share the
-// same set of keys, but not the same values — e.g. every "Rain Jacket" item
-// has a "Weight" field, but a size S item and a size M item hold different
-// numbers for it.
+// (see itemAttributeValues below).
 // ---------------------------------------------------------------------------
 
 export const productAttributeKeys = sqliteTable('product_attribute_keys', {
@@ -96,30 +90,25 @@ export const productAttributeKeys = sqliteTable('product_attribute_keys', {
 
 // ---------------------------------------------------------------------------
 // Items — created freeform by an admin (name, optional image, stock),
-// optionally assigned to a product afterward via "Set product". Category,
-// sub-category, description, and attribute keys all come from the assigned
-// product, not stored here.
+// optionally assigned to a product afterward via "Set product". Nothing
+// here is generated from option permutations anymore — v2's
+// productOptionGroups/productOptionValues/itemOptionSelections and the
+// bitmask permutation-uniqueness check are all dropped.
 // ---------------------------------------------------------------------------
 
 export const items = sqliteTable('items', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  // Nullable: an item can exist unassigned — the wizard's whole premise is
-  // creating items before (or instead of) assigning them to a product.
-  // onDelete is 'set null', not 'cascade': deleting a product must never
-  // delete items, since they may already be referenced by past orders.
+  // Nullable: an item can exist unassigned. onDelete 'set null' (not
+  // 'cascade'): deleting a product must never delete items — they're real
+  // inventory, possibly already referenced by past orders.
   productId: integer('product_id').references(() => products.id, { onDelete: 'set null' }),
   slug: text('slug').notNull().unique(),
   // Internal/admin-only label (e.g. "Blue Rain Jacket, size M") — never
-  // shown to end customers. The customer-facing product page reads from
-  // the product (title/description) and the item's attribute values, not
-  // from this field.
+  // shown to end customers.
   name: text('name').notNull(),
   imageUrl: text('image_url'),
-  // Total owned. "In stock right now" is never stored — it's always
-  // computed as stockCount minus quantities on currently active/requested
-  // rentals (see schema_fixes.md's original `available` derivation,
-  // carried forward unchanged): a stored second number can only drift out
-  // of sync.
+  // Total owned. "In stock right now" is never stored — always computed as
+  // stockCount minus quantities on currently active/requested rentals.
   stockCount: integer('stock_count').notNull().default(1),
   // Soft delete: items referenced by orderItems can't be hard-deleted.
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
@@ -130,17 +119,18 @@ export const items = sqliteTable('items', {
 
 // ---------------------------------------------------------------------------
 // Attribute values — items own these directly (plain FKs; no cross-product
-// enforcement at the DB level — see schema_v3.md's "Resolved" section for
-// why one was drafted and then dropped in favor of application-level
-// consistency, see the Work notes there). unique(itemId, attributeId)
-// guarantees one value per key per item, and attributeId must reference a
-// real productAttributeKeys row, so an item can never accumulate more
-// distinct values than its assigned product currently has keys.
+// enforcement trick, see schema_v3.md "Resolved"). unique(itemId,
+// attributeId) guarantees one value per key per item, and attributeId must
+// reference a real productAttributeKeys row, so an item can never
+// accumulate more distinct values than its assigned product currently has
+// keys. Rows are never shared between items — itemId is a plain FK, so two
+// items under the same product each get their own private row for
+// "Weight", even though the key is shared via the template.
 //
 // Not DB-enforced: that a row's attributeId belongs to the same product the
 // item is *currently* assigned to. If an item is reassigned, its old rows
-// go stale unless the reassignment logic explicitly clears them first —
-// see src/lib/wizard.ts's setItemProduct.
+// go stale unless the reassignment logic explicitly clears them first (see
+// schema_v3.md Work notes: "Set product" reassignment).
 // ---------------------------------------------------------------------------
 
 export const itemAttributeValues = sqliteTable('item_attribute_values', {
@@ -154,56 +144,57 @@ export const itemAttributeValues = sqliteTable('item_attribute_values', {
   index('item_attribute_values_attribute_id_idx').on(table.attributeId),
 ]);
 
+// ---------------------------------------------------------------------------
+// Users, orders, order items — unchanged from v1/v2. Rentals always
+// reference items, never products.
+// ---------------------------------------------------------------------------
+
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(), // ID from external OAuth provider
   email: text('email').notNull().unique(),
   name: text('name'),
-  // Role is NOT stored here — it is fetched live from the external API on every request
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
-// No `sessions` table: Auth.js (src/auth.ts) manages its own signed JWT
-// session cookie and does not use a database-backed session.
-
-// One order = one rental request, potentially covering multiple items
 export const orders = sqliteTable('orders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  // Short random alphanumeric code (6 chars, excludes ambiguous 0/O, 1/I) — this is
-  // what members read aloud to moderators and what appears in the retrieve-order URL.
+  // NNNAAA format (3 digits + 3 letters, e.g. "482KXQ") — generated and
+  // uniqueness-checked by generate_orderCode().
   orderCode: text('order_code').notNull().unique(),
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', {
     enum: ['requested', 'active', 'returned', 'rejected'],
   }).notNull().default('requested'),
-  note: text('note'), // optional note from member at checkout
-  // Moderator accountability: who confirmed retrieval / processed the return
+  note: text('note'),
   confirmedByUserId: text('confirmed_by_user_id').references(() => users.id),
   returnedByUserId: text('returned_by_user_id').references(() => users.id),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-  activatedAt: integer('activated_at', { mode: 'timestamp' }), // set when moderator confirms
-  returnedAt: integer('returned_at', { mode: 'timestamp' }), // set when moderator marks returned
-  rejectedAt: integer('rejected_at', { mode: 'timestamp' }), // set when moderator rejects
-  rejectedReason: text('rejected_reason'), // set when moderator rejects
-  // TODO: dueAt (rental due date) — not yet confirmed, see schema_fixes.md #9
+  activatedAt: integer('activated_at', { mode: 'timestamp' }),
+  returnedAt: integer('returned_at', { mode: 'timestamp' }),
+  rejectedAt: integer('rejected_at', { mode: 'timestamp' }),
+  rejectedReason: text('rejected_reason'),
 }, (table) => [
   index('orders_user_id_idx').on(table.userId),
   index('orders_status_idx').on(table.status),
 ]);
 
-// Line items: one row per item in an order
 export const orderItems = sqliteTable('order_items', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
   itemId: integer('item_id').notNull().references(() => items.id),
   requestedQuantity: integer('requested_quantity').notNull().default(1),
-  // Set by moderator at confirm step — may differ from requested if stock was short
   retrievedQuantity: integer('retrieved_quantity'),
+  // Booking-window prototype carried over from the navbar-homepage worktree.
+  reservedFrom: text('reserved_from'),
+  reservedTo: text('reserved_to'),
 }, (table) => [
   uniqueIndex('order_items_order_item_unique').on(table.orderId, table.itemId),
   index('order_items_order_id_idx').on(table.orderId),
-  check('requested_quantity_positive', sql`${table.requestedQuantity} > 0`),
-  check('retrieved_quantity_non_negative', sql`${table.retrievedQuantity} IS NULL OR ${table.retrievedQuantity} >= 0`),
 ]);
+
+// ---------------------------------------------------------------------------
+// Relations
+// ---------------------------------------------------------------------------
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
   subcategories: many(subcategories),
@@ -229,8 +220,9 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   }),
   links: many(productLinks),
   attributeKeys: many(productAttributeKeys),
-  // Convenience relation only — no real FK column on `products` (same
-  // pattern as usersRelations' `many(orders)` below).
+  // Drizzle-only convenience relation — no real FK column on `products`,
+  // same pattern as usersRelations' many(orders) below. The one-way design
+  // (items -> products) is unchanged.
   items: many(items),
 }));
 
@@ -246,7 +238,7 @@ export const productAttributeKeysRelations = relations(productAttributeKeys, ({ 
     fields: [productAttributeKeys.productId],
     references: [products.id],
   }),
-  values: many(itemAttributeValues),
+  itemValues: many(itemAttributeValues),
 }));
 
 export const itemsRelations = relations(items, ({ one, many }) => ({

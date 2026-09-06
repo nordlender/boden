@@ -23,6 +23,9 @@ pnpm-debug.log*
 .env
 .env.production
 
+# bloc API sample response with real contact info (see auth_work_items.md)
+listmypages.json
+
 # macOS-specific files
 .DS_Store
 

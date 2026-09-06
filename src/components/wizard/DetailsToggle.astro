@@ -1,0 +1,44 @@
+---
+// Replaces AttributesButton. Toggles the sibling `.item-details` panel
+// (bigger image, description, attributes — see ItemRow.astro) open/closed.
+// Not a native <details>/<summary> — the row also holds a SelectIcon
+// checkbox, and summary's whole-element click-to-toggle would fire on
+// every click inside it, including the checkbox. A plain button + a
+// delegated click listener (matching SelectIcon's pattern) sidesteps that.
+import MorphIcon from 'morphicons/astro';
+import { detailsToggle } from '../../lib/icon-nodes';
+
+interface Props {
+	label: string;
+	// schema_v3.md Work item: "UI cue for a product with no attribute
+	// template yet" — a small red hint on this button when the item's
+	// product currently defines zero productAttributeKeys.
+	warning?: boolean;
+}
+
+const { label, warning = false } = Astro.props;
+---
+<button type="button" class="details-toggle-button relative grid h-8 w-8 place-items-center justify-self-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-expanded="false" aria-label={label}>
+	<MorphIcon icon={detailsToggle.closed} size={17} class="details-toggle-icon" />
+	{warning && (
+		<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" title="This product has no attribute template yet"></span>
+	)}
+</button>
+
+<script>
+	import type { MorphIconElement } from 'morphicons/element';
+	import { detailsToggle } from '../../lib/icon-nodes';
+
+	document.addEventListener('click', (event) => {
+		const button = (event.target as Element).closest<HTMLButtonElement>('.details-toggle-button');
+		if (!button) return;
+		const row = button.closest('.item-row');
+		const panel = row?.querySelector<HTMLElement>('.item-details');
+		if (!panel) return;
+		const expanded = button.getAttribute('aria-expanded') !== 'true';
+		button.setAttribute('aria-expanded', String(expanded));
+		panel.classList.toggle('hidden', !expanded);
+		const icon = button.querySelector<MorphIconElement>('.details-toggle-icon');
+		if (icon) icon.icon = expanded ? detailsToggle.open : detailsToggle.closed;
+	});
+</script>

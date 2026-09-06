@@ -1,0 +1,49 @@
+---
+// Per-row checkbox — a real <input type="checkbox">, visually hidden under
+// the MorphIcon, so bulk actions (Delete, Set product, Set attributes) work
+// through plain form submission: every checked box's `value` (the item id)
+// arrives in the target route's formData as `itemIds`, no selection-tracking
+// JS needed. `form` associates it with the panel's form by id even though
+// it isn't a DOM descendant of that form — see ItemPanel.astro.
+import MorphIcon from 'morphicons/astro';
+import { selectCheckbox } from '../../lib/icon-nodes';
+
+interface Props {
+	itemId: number;
+	formId: string;
+	checked?: boolean;
+	label: string;
+}
+
+const { itemId, formId, checked = false, label } = Astro.props;
+---
+<label class="grid h-6 w-6 cursor-pointer place-items-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700">
+	<input
+		type="checkbox"
+		name="itemIds"
+		value={itemId}
+		form={formId}
+		checked={checked}
+		class="select-checkbox-input sr-only"
+		aria-label={label}
+	/>
+	<MorphIcon
+		icon={checked ? selectCheckbox.checked : selectCheckbox.unchecked}
+		size={18}
+		class:list={['select-icon', checked && 'text-blue-600']}
+	/>
+</label>
+
+<script>
+	import type { MorphIconElement } from 'morphicons/element';
+	import { selectCheckbox } from '../../lib/icon-nodes';
+
+	document.addEventListener('change', (event) => {
+		const input = event.target;
+		if (!(input instanceof HTMLInputElement) || !input.classList.contains('select-checkbox-input')) return;
+		const icon = input.closest('label')?.querySelector<MorphIconElement>('.select-icon');
+		if (!icon) return;
+		icon.icon = input.checked ? selectCheckbox.checked : selectCheckbox.unchecked;
+		icon.classList.toggle('text-blue-600', input.checked);
+	});
+</script>

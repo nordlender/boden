@@ -1,0 +1,146 @@
+---
+// The Set dropdown's items are no longer simple buttons (see Dropdown.astro)
+// — "Set product" and "Set attributes" both need real form controls, and
+// everything here targets the panel's selection form by id (`form={formId}`)
+// rather than nesting, since form elements can't nest and ItemRow.astro's
+// per-attribute edit forms already live inside the row list.
+//
+// Assign/Unassign are gone — "Set product" now handles both assigning an
+// unassigned item and reassigning an already-assigned one.
+// Unassigned: | Set | ---- | Add item | Delete n item(s) |
+// Assigned:   | Set | ---- | Delete n item(s)
+import MorphIcon from 'morphicons/astro';
+import { dropdownChevron } from '../../lib/icon-nodes';
+import AppIcon from '../icons/AppIcon.astro';
+import type { PanelVariant } from './grid';
+
+interface Props {
+	variant: PanelVariant;
+	formId: string;
+	products: { id: number; title: string }[];
+	redirectTo: string;
+}
+
+const { variant, formId, products, redirectTo } = Astro.props;
+
+// Fixed count of blank rows for the bulk "Set attributes" popup — no
+// dynamic add-row JS for now, just enough to be useful in one go.
+const bulkAttributeRows = 3;
+---
+<div class="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
+	<details class="set-dropdown relative inline-block">
+		<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-slate-300 px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+			<span>Set</span>
+			<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-slate-400" />
+		</summary>
+		<div class="absolute left-0 z-10 mt-1 w-80 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
+			<section class="border-b border-slate-100 pb-3">
+				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+					<AppIcon name="image" size={13} /> Set image
+				</p>
+				<p class="text-xs italic text-slate-400">Not wired up yet.</p>
+			</section>
+
+			<section class="border-b border-slate-100 py-3">
+				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+					<AppIcon name="product" size={13} /> Set product
+				</p>
+				<div class="flex items-center gap-2">
+					<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
+					<select name="productId" form={formId} class="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1 text-sm">
+						<option value="" disabled selected>Choose a product…</option>
+						{products.map((p) => (
+							<option value={p.id}>{p.title}</option>
+						))}
+					</select>
+					<button
+						type="submit"
+						form={formId}
+						formaction="/api/wizard/set-product"
+						class="shrink-0 rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-white"
+					>
+						Apply
+					</button>
+				</div>
+				<p class="mt-1 text-xs text-slate-400">Also how you reassign an already-assigned item — clears its old attribute values and stubs in the new product's fields.</p>
+			</section>
+
+			<section class="pt-3">
+				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+					<AppIcon name="attribute" size={13} /> Set attributes (selected items)
+				</p>
+				<p class="mb-1.5 text-xs text-slate-400">Only works if every selected item shares one product.</p>
+				<div class="flex flex-col gap-1">
+					{Array.from({ length: bulkAttributeRows }).map(() => (
+						<div class="flex items-center gap-2">
+							<input type="text" name="key" form={formId} placeholder="Key" class="w-24 shrink-0 rounded border border-slate-300 px-2 py-1 text-sm" />
+							<input type="text" name="value" form={formId} placeholder="Value" class="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1 text-sm" />
+						</div>
+					))}
+				</div>
+				<button
+					type="submit"
+					form={formId}
+					formaction="/api/wizard/attributes/bulk"
+					class="mt-1.5 rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-white"
+				>
+					Apply to selected
+				</button>
+			</section>
+		</div>
+	</details>
+
+	<div class="flex-1"></div>
+
+	{variant === 'unassigned' && (
+		<a
+			href="#add-item-name"
+			class="rounded bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
+		>
+			Add item
+		</a>
+	)}
+	<button
+		type="submit"
+		form={formId}
+		formaction="/api/wizard/archive"
+		class="flex items-center gap-1 rounded border border-red-200 px-2.5 py-1.5 text-sm text-red-600 hover:bg-red-50"
+	>
+		<AppIcon name="trash" size={16} />
+		Delete <span class="selected-count" data-form-id={formId}>0</span> item(s)
+	</button>
+</div>
+
+<script>
+	// Same chevron-morph pattern as Dropdown.astro, duplicated rather than
+	// reused because this trigger's menu content isn't a simple item list.
+	import type { MorphIconElement } from 'morphicons/element';
+	import { dropdownChevron } from '../../lib/icon-nodes';
+
+	document.addEventListener(
+		'toggle',
+		(event) => {
+			const details = event.target;
+			if (!(details instanceof HTMLDetailsElement) || !details.classList.contains('set-dropdown')) return;
+			const chevron = details.querySelector<MorphIconElement>('.dropdown-chevron');
+			if (!chevron) return;
+			chevron.icon = details.open ? dropdownChevron.open : dropdownChevron.closed;
+		},
+		true,
+	);
+
+	// Selection is client-only state (nothing persists it across the
+	// full-page reload every wizard action does), so this count starts at 0
+	// on every render and stays live via delegated `change` events rather
+	// than being computed server-side.
+	document.addEventListener('change', (event) => {
+		const input = event.target;
+		if (!(input instanceof HTMLInputElement) || !input.classList.contains('select-checkbox-input')) return;
+		const formId = input.getAttribute('form');
+		if (!formId) return;
+		const count = document.querySelectorAll(`input.select-checkbox-input[form="${formId}"]:checked`).length;
+		document.querySelectorAll(`.selected-count[data-form-id="${formId}"]`).forEach((el) => {
+			el.textContent = String(count);
+		});
+	});
+</script>

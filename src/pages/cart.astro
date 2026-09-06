@@ -1,0 +1,33 @@
+---
+export const prerender = false;
+
+import '../styles/global.css';
+import CheckoutForm from '../components/cart/CheckoutForm.astro';
+import { getCart } from '../lib/cart';
+import { getSession } from 'auth-astro/server';
+
+// Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
+const cart = getCart(Astro.cookies);
+const session = await getSession(Astro.request);
+---
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Cart</title>
+	</head>
+	<body>
+		<main>
+			<h1>Cart</h1>
+			<p>{cart.length} item{cart.length === 1 ? '' : 's'} in cart.</p>
+			<CheckoutForm
+				name={session?.user?.name ?? null}
+				email={session?.user?.email ?? null}
+				mobile={session?.bloc?.mobile ?? null}
+				hasUnpaidFees={session?.bloc?.hasUnpaidFees ?? null}
+				userIsMember={session?.bloc?.userIsMember ?? null}
+			/>
+		</main>
+	</body>
+</html>

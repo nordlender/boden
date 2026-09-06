@@ -1,0 +1,15 @@
+---
+// Inherited from the item's product, same as ProductTag — only rendered in
+// the Assigned panel (see ItemRow.astro).
+import AppIcon from '../icons/AppIcon.astro';
+
+interface Props {
+	name: string;
+}
+
+const { name } = Astro.props;
+---
+<span class="inline-flex max-w-full items-center gap-1 truncate rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700" title={name}>
+	<AppIcon name="subCategory" size={14} class="shrink-0 text-amber-500" />
+	<span class="truncate">{name}</span>
+</span>

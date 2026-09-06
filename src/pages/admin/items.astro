@@ -1,0 +1,56 @@
+---
+export const prerender = false;
+
+// Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
+// reached only when logged in with role === 'admin'.
+import '../../styles/global.css';
+import WizardHeader from '../../components/wizard/WizardHeader.astro';
+import ItemPanel from '../../components/wizard/ItemPanel.astro';
+import AddItemPanel from '../../components/wizard/AddItemPanel.astro';
+import { getWizardItems, listProductOptions } from '../../lib/wizard';
+
+const redirectTo = Astro.url.pathname;
+const [{ unassigned, assigned }, products] = await Promise.all([getWizardItems(), listProductOptions()]);
+
+const toItemView = (item: Awaited<ReturnType<typeof getWizardItems>>['unassigned'][number]) => ({
+	itemId: item.id,
+	name: item.name,
+	image: item.imageUrl,
+	subCategory: item.subCategory,
+	product: item.productTitle,
+	inStock: item.inStock,
+	totalStock: item.totalStock,
+	description: item.description,
+	attributes: item.attributes,
+	missingAttributeTemplate: item.missingAttributeTemplate,
+});
+---
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Items</title>
+	</head>
+	<body class="min-h-screen bg-slate-100 p-8">
+		<div class="mx-auto flex max-w-4xl flex-col gap-6">
+			<WizardHeader title="Items" />
+
+			<AddItemPanel redirectTo={redirectTo} />
+
+			<ItemPanel
+				variant="unassigned"
+				title="Unassigned items"
+				items={unassigned.map(toItemView)}
+				products={products}
+				redirectTo={redirectTo}
+			/>
+			<ItemPanel
+				variant="assigned"
+				title="Assigned items"
+				items={assigned.map(toItemView)}
+				products={products}
+				redirectTo={redirectTo}
+			/>
+		</div>
+	</body>
+</html>

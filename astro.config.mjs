@@ -3,6 +3,7 @@ import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import node from '@astrojs/node';
 import auth from 'auth-astro';
+import icon from 'astro-icon';
 
 // https://astro.build/config
 export default defineConfig({
@@ -10,8 +11,12 @@ export default defineConfig({
   // Every other route opts into per-request rendering with `export const prerender = false`.
   output: 'static',
   adapter: node({ mode: 'standalone' }),
-  integrations: [auth({ configFile: './src/auth.ts' })],
+  integrations: [auth({ configFile: './src/auth.ts' }), icon()],
   vite: {
     plugins: [tailwindcss()],
+    // Dev server is tunneled (see scripts/dev-tunnel.sh) through a random
+    // *.loca.lt hostname each run, which Vite's Host-header check would
+    // otherwise reject.
+    server: { allowedHosts: true },
   },
 });

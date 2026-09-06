@@ -1,0 +1,14 @@
+---
+// "in_stock / total_stock", right-aligned with tabular figures so the
+// digits line up down the column; muted-to-red when nothing's available.
+interface Props {
+	inStock: number;
+	total: number;
+}
+
+const { inStock, total } = Astro.props;
+---
+<span class:list={["tabular-nums text-sm text-right", inStock === 0 ? 'text-red-500' : 'text-slate-700']}>
+	<span class="font-medium">{inStock}</span>
+	<span class="text-slate-400"> / {total}</span>
+</span>

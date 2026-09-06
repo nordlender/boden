@@ -7,24 +7,38 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "dev:tunnel": "bash scripts/dev-tunnel.sh",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "astro check",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@astrojs/node": "^11.1.4",
     "@auth/core": "^0.37.4",
+    "@iconify-json/tabler": "^1.2.38",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.2.4",
+    "astro-icon": "^1.2.0",
     "auth-astro": "^4.2.0",
     "better-sqlite3": "^13.0.3",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
+    "morphicons": "^1.7.1",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@types/better-sqlite3": "^9.6.0",
-    "typescript": "^6.0.3"
+    "astro-eslint-parser": "^3.1.0",
+    "eslint": "^10.10.0",
+    "eslint-plugin-astro": "^3.1.0",
+    "globals": "^17.12.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^5.0.0"
   }
 }

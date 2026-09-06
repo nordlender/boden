@@ -9,7 +9,7 @@
 # Auth feature — work items
 
 Branch: `feature/auth`. Builds out real OAuth login + role-gated middleware for the
-rental-shop app, per `rental_shop.md` §6–§8, reconciled against what actually exists in
+rental-shop app, per `docs/rental-shop.md` §6–§8, reconciled against what actually exists in
 `src/auth.ts` / `src/db/schema.ts` today and against decisions made while scoping this
 work (see "Decisions" below). This is a work-item breakdown only — no implementation
 has started yet. Confirm before starting each item; some are blocked on open questions.
@@ -24,7 +24,7 @@ has started yet. Confirm before starting each item; some are blocked on open que
     `grant_type=authorization_code`, `redirect_uri`, `code`.
   - This is a generic OAuth2 flow, not one of Auth.js's built-in named providers — needs
     a custom `OAuthConfig` (via `@auth/core/providers/oauth`), not `GitHub(...)`.
-- Separately, `bloc_api_handoff.md` is exploring `rest.bloc.net`'s MCP surface as the
+- Separately, `docs/bloc-api.md` is exploring `rest.bloc.net`'s MCP surface as the
   candidate for `ROLE_API_URL` from §7 (the "what role does this user have" lookup).
   That is a **separate, isolated work item** (own worktree/branch) and has not reported
   back yet. Since bloc is now confirmed as the OAuth *identity* provider too, that
@@ -34,13 +34,13 @@ has started yet. Confirm before starting each item; some are blocked on open que
 
 1. **Session access in middleware**: use `getSession(request, authConfig)` from
    `auth-astro/server` to decode the Auth.js JWT directly, rather than the literal
-   `ctx.cookies.get('session')` / `sessionId` lookup sketched in `rental_shop.md` §8 —
+   `ctx.cookies.get('session')` / `sessionId` lookup sketched in `docs/rental-shop.md` §8 —
    Auth.js doesn't expose a bare session-id cookie, only the signed JWT. Role cache (§7)
    keys off `user.id`, not a `sessionId`.
 2. **Role API scope**: `getRoleFromExternalApi` gets built against the documented
    `{ "role": "..." }` contract with an adapter point for whatever shape bloc actually
    returns, behind a placeholder `ROLE_API_URL`. Wiring it to the *real* bloc role
-   endpoint is explicitly deferred until `bloc_api_handoff.md`'s exploration reports a
+   endpoint is explicitly deferred until `docs/bloc-api.md`'s exploration reports a
    confirmed response shape and a human gives explicit go-ahead.
 3. **Login page UX**: build a small custom `src/pages/auth/login.astro` with a "Sign
    in" button rather than linking bare UI at the default `/api/auth/signin/bloc` route.
@@ -74,7 +74,7 @@ has started yet. Confirm before starting each item; some are blocked on open que
 1. **Env & types plumbing** — add `OAUTH_REDIRECT_URI` and `ROLE_API_URL` (placeholder
    value) to `src/env.d.ts` `ImportMetaEnv`; create a git-ignored `.env` locally with
    `OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET` for the bloc app registration (never commit,
-   never paste real values into chat — same rule as `bloc_api_handoff.md`). Not blocked.
+   never paste real values into chat — same rule as `docs/bloc-api.md`). Not blocked.
 
 2. **`src/auth.ts`: swap GitHub for a custom bloc `OAuthConfig`** ✅ implemented,
    ⚠️ profile-selection heuristic unconfirmed (see open question above). Replaces the
@@ -87,7 +87,7 @@ has started yet. Confirm before starting each item; some are blocked on open que
    built-in `AdapterSession.userId`). Passes `astro check` with 0 errors.
 
 3. **`src/db/client.ts`** — create the Drizzle client singleton assumed by
-   `rental_shop.md` §4 but not yet present. Small, self-contained, unblocks item 4.
+   `docs/rental-shop.md` §4 but not yet present. Small, self-contained, unblocks item 4.
 
 4. **`src/auth.ts`: add the `signIn` callback (§6 upsert)** ⚠️ blocked on item 2/3
    (needs `user.id` / `user.email` populated correctly first, which depends on the
@@ -117,15 +117,15 @@ has started yet. Confirm before starting each item; some are blocked on open que
 ## Hard rules
 
 - No real OAuth client secret or bloc access token ever pasted into chat — same
-  handling as `bloc_api_handoff.md`: real values live only in the git-ignored `.env`.
-- Don't wire `ROLE_API_URL` to the real bloc endpoint until `bloc_api_handoff.md`'s
+  handling as `docs/bloc-api.md`: real values live only in the git-ignored `.env`.
+- Don't wire `ROLE_API_URL` to the real bloc endpoint until `docs/bloc-api.md`'s
   exploration reports back a confirmed shape and a human explicitly signs off (decision
   2). Item 5 stays against the placeholder/generic contract until then.
 - No merge back into `main` until this is implemented and reviewed like a PR.
 
 ## Reference
 
-- `rental_shop.md` §6–§8, §12 (env vars)
+- `docs/rental-shop.md` §6–§8, §12 (env vars)
 - `src/auth.ts`, `src/db/schema.ts`, `src/env.d.ts` (current state)
-- `bloc_api_handoff.md` (sibling, separate work item — role-API + possibly
+- `docs/bloc-api.md` (sibling, separate work item — role-API + possibly
   userinfo-endpoint exploration)

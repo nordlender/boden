@@ -2,8 +2,10 @@ import { and, eq, ne, sql } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { users } from '../db/schema';
 import type * as schema from '../db/schema';
+import { isUniqueConstraintViolation } from './db-errors';
 
 export type UsersDb = BetterSQLite3Database<typeof schema>;
+type UsersTx = Parameters<Parameters<UsersDb['transaction']>[0]>[0];
 
 export interface SignInUser {
   id: string;
@@ -47,49 +49,66 @@ export interface SignInUser {
 // alternative (an ON UPDATE CASCADE on the FKs into users.id) is a schema
 // change too, and this path is expected to be hit rarely enough that a
 // stray placeholder row isn't a real cost.
+//
+// TODO(investigate): this whole vacate-and-retry path only makes sense if
+// "some other id currently holds this email" always means reassignment
+// (the old id is dead). It can't distinguish that from two still-live bloc
+// accounts that simply share an email (e.g. a household/org address) — in
+// that case the two ids perpetually vacate each other's email on alternating
+// sign-ins. Open question: does bloc ever report one current email for two
+// live ids? If not (or if we're willing to treat that as "same person, two
+// bloc accounts" and not worry about it), consider instead just dropping
+// the UNIQUE constraint on `users.email` (schema.ts) and deleting this
+// entire fallback — nothing in this codebase looks up a user by email
+// (orders/etc. all key on `users.id`), so the constraint isn't protecting
+// any real invariant today.
+function upsertUserRow(tx: UsersTx, user: SignInUser, name: string | null): void {
+  tx.insert(users)
+    .values({ id: user.id, email: user.email, name })
+    .onConflictDoUpdate({
+      target: users.id,
+      set: { email: user.email, name },
+    })
+    .run();
+}
+
 export async function upsertSignedInUser(db: UsersDb, user: SignInUser): Promise<void> {
   const name = user.name ?? null;
 
   try {
     await db.transaction((tx) => {
-      tx.insert(users)
-        .values({ id: user.id, email: user.email, name })
-        .onConflictDoUpdate({
-          target: users.id,
-          set: { email: user.email, name },
-        })
-        .run();
+      upsertUserRow(tx, user, name);
     });
     return;
   } catch (err) {
-    if (!isUniqueEmailConflict(err)) throw err;
+    if (!isUniqueConstraintViolation(err, 'users.email')) throw err;
   }
 
   // Some other row (a different id) currently owns this email — vacate it
   // and retry the id-based upsert in one transaction. Both statements run
   // as a single atomic unit (a full rollback on any failure, nothing ever
-  // left half-done by a mid-way crash) and — since better-sqlite3 runs the
-  // transaction callback synchronously to completion — no other sign-in
-  // can interleave between the vacate and the retry, so a concurrent
-  // collision on the same email always resolves against whoever currently
-  // holds it rather than racing against stale state and throwing.
+  // left half-done by a mid-way crash), and — since better-sqlite3 runs the
+  // transaction callback synchronously to completion — no other sign-in can
+  // interleave between the vacate statement and the retry insert within
+  // THIS transaction.
+  //
+  // That guarantee does NOT extend across the gap between the failed first
+  // transaction above and this one: two concurrent signIns can both fail
+  // their first attempt against the same stale row, then race each other
+  // into this block. Confirmed empirically (two concurrent calls colliding
+  // on one stale email, via Promise.all) — whichever's fallback transaction
+  // commits first "wins" the email, and the other's fallback then vacates
+  // the winner's freshly-claimed row instead of the original stale one,
+  // silently stripping the email back off a signIn that itself reported
+  // success. Not fixed here — left for the TODO above to resolve, since a
+  // schema change removing the UNIQUE constraint would remove this whole
+  // fallback (and the race) rather than patch it.
   await db.transaction((tx) => {
     tx.update(users)
       .set({ email: sql`'vacated+' || ${users.id} || '@invalid.local'` })
       .where(and(eq(users.email, user.email), ne(users.id, user.id)))
       .run();
 
-    tx.insert(users)
-      .values({ id: user.id, email: user.email, name })
-      .onConflictDoUpdate({
-        target: users.id,
-        set: { email: user.email, name },
-      })
-      .run();
+    upsertUserRow(tx, user, name);
   });
-}
-
-function isUniqueEmailConflict(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
-  return message.includes('UNIQUE constraint failed') && message.includes('users.email');
 }

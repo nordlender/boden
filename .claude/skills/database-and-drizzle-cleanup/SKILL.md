@@ -17,7 +17,7 @@ This skill covers two distinct things — do only what the user actually asked f
   current dev — as often as useful — but never once a real production
   database exists with data that depends on the migration history.
 
-The schema-audit checklist originates from `schema_fixes.md` (items 1–8 already
+The schema-audit checklist originates from `docs/schema-legacy-fixes.md` (items 1–8 already
 applied to `src/db/schema.ts` as of the `feature/auth` work — see `TASKS.md`).
 
 ## 0. Always confirm first — no exceptions
@@ -66,7 +66,7 @@ before touching `src/db/schema.ts` or generating a migration.
 
 Don't invent fields to fill a gap you notice mid-audit. If something looks
 incomplete but the requirements aren't confirmed (for example, this project's
-`dueAt` on `orders` — deliberately left as a TODO per `schema_fixes.md` item
+`dueAt` on `orders` — deliberately left as a TODO per `docs/schema-legacy-fixes.md` item
 9), leave a `// TODO` comment explaining what's missing and why, and call it
 out to the user instead of deciding silently.
 

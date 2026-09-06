@@ -7,7 +7,7 @@ moderator order-review page, to be organized/expanded later.
 
 A moderator-facing page to **accept or deny a requested order before
 retrieval**. Distinct from the existing retrieve/confirm flow in
-`rental_shop.md` §9 (`/moderator/retrieve` → `/moderator/orders/[id]` →
+`docs/rental-shop.md` §9 (`/moderator/retrieve` → `/moderator/orders/[id]` →
 `/moderator/confirm/[id]`), which is about entering an order number and
 recording actual quantities retrieved. Retrieval will be its own, separate
 page — this review step happens earlier.
@@ -24,7 +24,7 @@ come back `null`/empty from **every** bloc method that exposes them
 not a caching or client-side issue. This is an external API defect on bloc's
 side; the user has contacted the provider to request a fix. Until that's
 resolved, this page cannot show real values for either field — see
-`auth_session_handoff.md` §7 and `TASKS.md` for the full history. Don't
+`docs/auth-handoff.md` §7 and `TASKS.md` for the full history. Don't
 mistake `null` for "no data submitted yet" once order persistence exists —
 it may just be bloc still not returning real values.
 
@@ -69,9 +69,9 @@ accept/deny controls themselves, etc.) still need to be listed out here.
    from the submitted form, per the decision above — not re-derive them from
    a live bloc session at review time.
 
-## Correspondence check against rental_shop.md
+## Correspondence check against docs/rental-shop.md
 
-- `rental_shop.md`'s "Order lifecycle" diagram was changed (at some point
+- `docs/rental-shop.md`'s "Order lifecycle" diagram was changed (at some point
   during this project) so the moderator's *Confirm Order* step now ends with
   `clicks "Accept" or "Reject"` instead of `clicks "Confirm"` — but the status
   line right below it still only says `status: active (rental is now live)`
@@ -83,9 +83,9 @@ accept/deny controls themselves, etc.) still need to be listed out here.
   builds against it.
 - The schema already supports a reject outcome: `orders.status` includes
   `'rejected'`, and `rejectedAt` / `rejectedReason` columns already exist in
-  `src/db/schema.ts` (added ahead of `schema_fixes.md` item #9's original
+  `src/db/schema.ts` (added ahead of `docs/schema-legacy-fixes.md` item #9's original
   "TODO-only" instruction — already decided to leave as-is). Good news: this
   page's "deny" action has schema support today.
-- `rental_shop.md`'s page-structure listing (§2) doesn't have an entry for
+- `docs/rental-shop.md`'s page-structure listing (§2) doesn't have an entry for
   this review page yet — only the three existing retrieve/confirm pages are
   documented.

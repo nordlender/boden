@@ -7,7 +7,7 @@ import { createOrder } from '../../../lib/orders';
 export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => {
   // Not covered by src/middleware/index.ts's route-prefix gate (that only
   // matches /cart, /checkout, /orders — not /api/...), so check auth here,
-  // same as rental_shop.md §9's confirm.ts/return.ts examples.
+  // same as docs/rental-shop.md §9's confirm.ts/return.ts examples.
   if (!locals.user) {
     return new Response('Unauthorized', { status: 401 });
   }

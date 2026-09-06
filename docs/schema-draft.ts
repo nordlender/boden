@@ -15,7 +15,7 @@ export const categories = sqliteTable('categories', {
 // ---------------------------------------------------------------------------
 // Sub-categories — one level deep, scoped under a category (e.g.
 // Protection -> Cams). Slug uniqueness is per-parent category, not global —
-// see schema_v3.md "Resolved" for why this is a dedicated table rather than
+// see docs/schema.md "Resolved" for why this is a dedicated table rather than
 // a self-referencing parentId on categories.
 // ---------------------------------------------------------------------------
 
@@ -49,7 +49,7 @@ export const products = sqliteTable('products', {
   subcategoryId: integer('subcategory_id').references(() => subcategories.id),
   // "Hidden" (not v2's "draft") is a deliberate, permanent admin choice —
   // still fully visible/manageable in admin/moderator views, just excluded
-  // from the web shop. See schema_v3.md "Open question" re: the
+  // from the web shop. See docs/schema.md "Open question" re: the
   // draft-expiry sweep this replaces the meaning of.
   status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden'),
   thumbnailImageUrl: text('thumbnail_image_url'),
@@ -119,7 +119,7 @@ export const items = sqliteTable('items', {
 
 // ---------------------------------------------------------------------------
 // Attribute values — items own these directly (plain FKs; no cross-product
-// enforcement trick, see schema_v3.md "Resolved"). unique(itemId,
+// enforcement trick, see docs/schema.md "Resolved"). unique(itemId,
 // attributeId) guarantees one value per key per item, and attributeId must
 // reference a real productAttributeKeys row, so an item can never
 // accumulate more distinct values than its assigned product currently has
@@ -130,7 +130,7 @@ export const items = sqliteTable('items', {
 // Not DB-enforced: that a row's attributeId belongs to the same product the
 // item is *currently* assigned to. If an item is reassigned, its old rows
 // go stale unless the reassignment logic explicitly clears them first (see
-// schema_v3.md Work notes: "Set product" reassignment).
+// docs/schema.md Work notes: "Set product" reassignment).
 // ---------------------------------------------------------------------------
 
 export const itemAttributeValues = sqliteTable('item_attribute_values', {

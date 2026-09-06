@@ -16,8 +16,11 @@ import { isSafeRedirectTarget } from '../../../lib/redirect';
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	const form = await request.formData();
 	const itemId = Number(form.get('itemId'));
+	// `required` on the product page's quantity input stops a real browser
+	// from ever submitting this empty — but that's client-side only, so an
+	// emptied field is still treated as "missing" here, not as invalid input.
 	const rawQuantity = form.get('quantity');
-	const quantity = rawQuantity === null ? 1 : Number(rawQuantity);
+	const quantity = rawQuantity === null || rawQuantity === '' ? 1 : Number(rawQuantity);
 	const redirectTo = form.get('redirect');
 
 	if (!Number.isInteger(itemId) || itemId <= 0 || !Number.isInteger(quantity) || quantity <= 0) {

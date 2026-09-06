@@ -40,15 +40,6 @@ narrative/rationale.
 - `bloc_api_handoff.md` Phase 1 step 4 (propose one safe read-only bloc call
   beyond `whoami`/`list_api_capabilities`) still hasn't been done.
 
-### Catalogue / nav
-- `index.astro` is still the unmodified Astro starter template — no
-  catalogue, item grid, or item detail page (`items/[slug].astro`) built yet.
-- Cart components beyond `CheckoutForm.astro` (`CartDrawer`, `CartItem`) not
-  built.
-- No Nav/layout component reflecting login state anywhere.
-- No logout page — `signOut()` from `auth-astro/client` isn't wired to
-  anything.
-
 ### Housekeeping
 - Populate `ADMIN_USER_IDS` (and `MODERATOR_USER_IDS` if needed) in `.env`
   with real bloc user id(s) — currently empty, so `/admin/items` 403s for
@@ -71,10 +62,10 @@ narrative/rationale.
   has a strictly more robust `safeRedirectTarget` that actually resolves the
   URL against the request origin and compares `.origin` — flagged
   2026-09-06 while resolving that branch's merge conflicts into
-  `feat/shop-cart-integration` (still pending as of this writing, location
-  TBD — see whoever's doing that merge). Once it lands, upgrade
-  `cart/add.ts` to the origin-based check and consolidate to one shared
-  implementation instead of two of differing quality.
+  `feat/shop-cart-integration`. That merge has since landed (PR #11) with
+  both implementations still present — upgrade `cart/add.ts` to the
+  origin-based check and consolidate to one shared implementation instead of
+  two of differing quality.
 
 ### Deployment (not started — no rush pre-build)
 - nginx config, Certbot, daily SQLite backup cron, go-live checklist in
@@ -88,9 +79,6 @@ narrative/rationale.
   than the earlier review step `moderator_order_review.md` describes).
   **User has explicitly deferred this fix — do not edit `rental_shop.md`
   without being asked.**
-- Profile-selection fallback (`profileTypeId === 0 ?? profiles[0]`) still
-  unconfirmed against a real multi-profile bloc account — only a single-profile
-  account has been tested.
 - bloc token-endpoint client-auth method and the auto-added
   `scope=openid profile email` are unconfirmed against bloc's actual docs —
   working so far, but nobody's verified they're correct rather than lucky.
@@ -100,6 +88,20 @@ narrative/rationale.
 
 ## Completed
 
+- **Shop catalogue + cart** (`feat/shop-cart-integration`, merged PR #11):
+  home page (`index.astro` + `ItemGrid`/`ItemCard`) listing items with a
+  stock badge; product detail page at `/products/[slug]` (deliberately not
+  `/items/[slug]` — a slug-routable page is a *product*, per the schema-v3
+  terminology, with items as its unlabeled variants underneath); `/cart`
+  page plus `CartSidebar` slide-in and the `cart/{add,remove,update}` API
+  routes; `Navbar`/`UserMenu`/`NavLinks`/`CartButton` reflecting real login
+  state; logout wired via `signOut()` in `UserMenuLinks.astro`. Covered by
+  `/api/wizard`'s middleware role-gate work below and by
+  `fix/wizard-api-hardening`/`fix/wizard-data-integrity` follow-ups.
+- Profile-selection fallback (`profileTypeId === 0 ?? profiles[0]`)
+  confirmed against a real multi-profile bloc account (2026-09-02) — see
+  `src/auth.ts`'s comment at the `listmypages` request. Correctly picked the
+  person profile over a company/org profile in the same account.
 - Astro + Tailwind + Drizzle/better-sqlite3 scaffold, `output: 'hybrid'` config.
 - Full `src/db/schema.ts` per `schema_fixes.md` items 1–8, later reworked
   further under `schema_v3.md` (products/categories/subcategories/attribute

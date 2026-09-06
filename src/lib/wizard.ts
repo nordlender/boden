@@ -19,7 +19,7 @@ export interface WizardItem {
 	description?: string | null;
 	attributes: WizardAttribute[];
 	// The item's product currently has zero productAttributeKeys rows —
-	// schema_v3.md's "UI cue for a product with no attribute template yet".
+	// docs/schema.md's "UI cue for a product with no attribute template yet".
 	missingAttributeTemplate: boolean;
 }
 
@@ -123,7 +123,7 @@ export async function archiveItems(itemIds: number[]): Promise<void> {
 	await db.update(items).set({ archived: true }).where(inArray(items.id, itemIds));
 }
 
-// schema_v3.md Work item: "'Set product' reassignment must keep attribute
+// docs/schema.md Work item: "'Set product' reassignment must keep attribute
 // values consistent" — one transaction: drop the old product's values,
 // point the items at the new product, then stub in a blank value for every
 // field the new product's template defines.
@@ -168,7 +168,7 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // Looks up the product's attribute key by name, creating it and fanning out
 // a blank value to every existing item of the product if it doesn't exist
-// yet — schema_v3.md Work item "fan out new template fields to existing
+// yet — docs/schema.md Work item "fan out new template fields to existing
 // items". Shared by the single-item and bulk attribute editing entry points
 // below so the fan-out logic can't drift between the two.
 function getOrCreateAttributeKey(tx: Tx, productId: number, trimmedKey: string): number {
@@ -195,7 +195,7 @@ function getOrCreateAttributeKey(tx: Tx, productId: number, trimmedKey: string):
 	return created.id;
 }
 
-// schema_v3.md Work item: "attribute editing entry points" (single-item).
+// docs/schema.md Work item: "attribute editing entry points" (single-item).
 export async function setItemAttributeValue(itemId: number, key: string, value: string): Promise<void> {
 	const trimmedKey = key.trim();
 	if (!trimmedKey) throw new Error('Attribute key is required');
@@ -232,7 +232,7 @@ async function sharedProductId(itemIds: number[]): Promise<number | null> {
 
 export type BulkAttributeResult = { ok: true } | { ok: false; error: 'no_shared_product' };
 
-// schema_v3.md Work item: "attribute editing entry points" (bulk). Applies
+// docs/schema.md Work item: "attribute editing entry points" (bulk). Applies
 // every key/value pair to every selected item, after confirming they all
 // share one product (i.e. one attribute template) — the caller is
 // responsible for surfacing `no_shared_product` as the doc's "warning...

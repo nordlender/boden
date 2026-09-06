@@ -7,7 +7,7 @@ interface ImportMetaEnv {
   readonly OAUTH_CLIENT_SECRET: string;
   readonly REDIRECT_URL: string;
   readonly AUTH_SECRET: string;
-  // TEMPORARY: bloc has no role endpoint yet (see bloc_api_handoff.md) — these
+  // TEMPORARY: bloc has no role endpoint yet (see docs/bloc-api.md) — these
   // are comma-separated bloc user ids treated as admin/moderator until a real
   // role API exists. See src/lib/auth.ts's getRole().
   readonly ADMIN_USER_IDS: string;

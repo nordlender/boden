@@ -96,7 +96,7 @@ happens on an actual new sign-in, not on ordinary requests. So:
   `null`/empty across all four bloc methods reachable with a real access
   token (`account/listmypages`, `Account/MyAccount`, `Profile/GetPage`,
   `account/listmypersonprofiles`). Reported to bloc by the user; see
-  `auth_session_handoff.md` §7 for the full writeup.
+  `docs/auth-handoff.md` §7 for the full writeup.
 - The profile-selection fallback (`profileTypeId === 0 ?? profiles[0]`) is
   now confirmed fine for this account specifically — it only ever returned
   one profile, already `profileTypeId: 0`, so the ambiguous-fallback path

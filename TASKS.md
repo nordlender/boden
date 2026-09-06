@@ -25,8 +25,28 @@ narrative/rationale.
   page as already built.
 
 ### Reservation
-- Scaffold the design of the reservation functionality (reserving items
-  forward in time).
+- **Design scaffold done** (`worktree-reservation`, branched off
+  `worktree-rework_dynamic`): new `/reservation` page between `/cart` and
+  order submission — `ReservationCalendar.astro` (Cally `<calendar-range>`,
+  styled via `::part()` to match the site), `ReservationItemRow.astro` (per-item
+  availability badge + `{separate_order_icon}` = `tabler:arrows-split-2`,
+  `src/lib/icons.ts`'s `splitOrder`), `ReservationForm.astro` composing both
+  plus the existing `CheckoutForm.astro` (moved here from `/cart`, which now
+  just links forward). Mixed-availability warning banner wired to
+  `POST /api/reservation/availability`.
+  - **Still a stub, not functional**: `src/lib/reservation.ts`'s
+    `stubAvailabilityFromCart` ignores the chosen date range entirely — it
+    reports today's date-less in-stock figure (`stock.ts`'s
+    `reservedQuantitiesByItem`) for every range. `orders`/`orderItems` have no
+    date columns yet (`src/db/schema.ts`), so there's nothing real to query.
+  - Next: schema (order date range + per-range/per-quantity availability
+    query — 2x item A can be unavailable in a range where 1x would not be),
+    backend (`/api/reservation/availability` made real, order-splitting
+    endpoint for the split-order action), middleware (gate `/reservation`
+    like the existing member routes). Planned as a follow-up worktree off
+    `worktree-reservation`. Split-order action should not be offered when an
+    order has more than one of the same item (quantity > 1 for that line) —
+    only whole distinct items get split out.
 
 ### Order persistence
 - `hasUnpaidFees`/`userIsMember` still aren't columns on `orders` — the

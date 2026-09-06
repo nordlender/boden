@@ -1,4 +1,4 @@
-// Central icon map for the dynamic wizard (see dynamic_wizard.md's
+// Central icon map for the dynamic wizard (see docs/wizard.md's
 // `{placeholder}` tokens). Swap a Tabler icon name here and every component
 // that renders it via <AppIcon> picks up the change — nothing else to hunt
 // through.

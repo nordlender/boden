@@ -1,0 +1,99 @@
+---
+// Date-range picker for the reservation page. Cally (https://github.com/WickyNilliams/cally)
+// ships a <calendar-range> custom element with no imposed styling — the
+// `::part()` rules below are what make it look like the rest of the site
+// (gray-900/gray-200 palette, rounded corners, same font as everything else).
+import 'cally';
+---
+
+<div class="reservation-calendar rounded-lg border border-gray-200 bg-white p-3">
+	<calendar-range data-reservation-calendar months={2} min={new Date().toISOString().slice(0, 10)}>
+		<svg slot="previous" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+			<path d="M15 6l-6 6l6 6" />
+		</svg>
+		<svg slot="next" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+			<path d="M9 6l6 6l-6 6" />
+		</svg>
+		<calendar-month></calendar-month>
+		<calendar-month></calendar-month>
+	</calendar-range>
+
+	<p class="mt-2 text-sm text-gray-600">
+		<span data-range-summary>Select a start and end date.</span>
+	</p>
+
+	<input type="hidden" name="fromDate" data-from-date-input />
+	<input type="hidden" name="toDate" data-to-date-input />
+</div>
+
+<style>
+	.reservation-calendar calendar-range {
+		--color-accent: var(--color-gray-900);
+		display: inline-block;
+		font-family: inherit;
+		font-size: 0.875rem;
+	}
+
+	.reservation-calendar calendar-range::part(button) {
+		border-radius: 0.375rem;
+		color: var(--color-gray-600);
+	}
+
+	.reservation-calendar calendar-range::part(button):hover {
+		background-color: var(--color-gray-100);
+	}
+
+	.reservation-calendar calendar-range::part(head) {
+		font-weight: 600;
+		color: var(--color-gray-900);
+	}
+
+	.reservation-calendar calendar-range::part(day) {
+		border-radius: 0.375rem;
+	}
+
+	.reservation-calendar calendar-range::part(selected) {
+		background-color: var(--color-gray-900);
+		color: white;
+	}
+
+	.reservation-calendar calendar-range::part(range-inner) {
+		background-color: var(--color-gray-100);
+	}
+
+	.reservation-calendar calendar-range::part(today) {
+		font-weight: 700;
+	}
+</style>
+
+<script>
+	const calendar = document.querySelector('[data-reservation-calendar]');
+	const summary = document.querySelector<HTMLElement>('[data-range-summary]');
+	const fromInput = document.querySelector<HTMLInputElement>('[data-from-date-input]');
+	const toInput = document.querySelector<HTMLInputElement>('[data-to-date-input]');
+
+	function formatDisplay(value: string) {
+		return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+		});
+	}
+
+	calendar?.addEventListener('change', () => {
+		// Cally's <calendar-range> reports the selection as a single
+		// space-separated `value` string ("YYYY-MM-DD YYYY-MM-DD") once both
+		// ends are picked.
+		const value = (calendar as HTMLElement & { value?: string }).value ?? '';
+		const [from, to] = value.split(/\s+/).filter(Boolean);
+
+		if (fromInput) fromInput.value = from ?? '';
+		if (toInput) toInput.value = to ?? '';
+
+		if (summary) {
+			summary.textContent = from && to ? `${formatDisplay(from)} – ${formatDisplay(to)}` : 'Select a start and end date.';
+		}
+
+		calendar?.dispatchEvent(new CustomEvent('reservation-range-change', { bubbles: true, detail: { from, to } }));
+	});
+</script>

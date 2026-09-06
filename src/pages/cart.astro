@@ -2,13 +2,10 @@
 export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
-import CheckoutForm from '../components/cart/CheckoutForm.astro';
 import { getCartItems } from '../lib/cart';
-import { getSession } from 'auth-astro/server';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
 const cartItems = await getCartItems(Astro.cookies);
-const session = await getSession(Astro.request);
 ---
 
 <BaseLayout title="Cart">
@@ -71,12 +68,15 @@ const session = await getSession(Astro.request);
 			)
 		}
 
-		<CheckoutForm
-			name={session?.user?.name ?? null}
-			email={session?.user?.email ?? null}
-			mobile={session?.bloc?.mobile ?? null}
-			hasUnpaidFees={session?.bloc?.hasUnpaidFees ?? null}
-			userIsMember={session?.bloc?.userIsMember ?? null}
-		/>
+		{
+			cartItems.length > 0 && (
+				<a
+					href="/reservation"
+					class="block rounded-md bg-gray-900 px-4 py-2 text-center text-sm font-medium text-white hover:bg-gray-800"
+				>
+					Continue to reservation dates
+				</a>
+			)
+		}
 	</div>
 </BaseLayout>

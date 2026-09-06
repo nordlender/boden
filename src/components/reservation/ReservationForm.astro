@@ -1,0 +1,156 @@
+---
+import ReservationCalendar from './ReservationCalendar.astro';
+import ReservationItemRow from './ReservationItemRow.astro';
+import CheckoutForm from '../cart/CheckoutForm.astro';
+import type { CartItem } from '../../lib/cart';
+
+interface Props {
+	cartItems: CartItem[];
+	name: string | null;
+	email: string | null;
+	mobile: string | null;
+	hasUnpaidFees: boolean | null;
+	userIsMember: boolean | null;
+}
+
+const { cartItems, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
+---
+
+<div data-reservation-form>
+	<ReservationCalendar />
+
+	<p
+		data-mixed-availability-warning
+		hidden
+		class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
+	>
+		At least one of the items is not available in this timeframe. You can set up a separate order by clicking the
+		split icon next to each item.
+	</p>
+
+	<div class="mt-4 divide-y divide-gray-200 border-y border-gray-200">
+		{
+			cartItems.map((item) => (
+				<ReservationItemRow
+					itemId={item.itemId}
+					productSlug={item.productSlug}
+					productTitle={item.productTitle}
+					imageUrl={item.imageUrl}
+					quantity={item.quantity}
+					attributes={item.attributes}
+				/>
+			))
+		}
+	</div>
+
+	<div class="mt-8">
+		<CheckoutForm name={name} email={email} mobile={mobile} hasUnpaidFees={hasUnpaidFees} userIsMember={userIsMember} />
+	</div>
+</div>
+
+<script is:inline define:vars={{ cartItems: cartItems.map((item) => ({ itemId: item.itemId, quantity: item.quantity })) }}>
+	// Wires the calendar's chosen [from, to] range to the per-item
+	// availability badges and the mixed-availability warning/split-order
+	// affordance. Availability itself comes from POST /api/reservation/
+	// availability, which is a stub today (see src/lib/reservation.ts) —
+	// this wiring is what the schema/backend follow-up worktree plugs a real
+	// date-aware answer into, with no changes needed here.
+	const form = document.querySelector('[data-reservation-form]');
+	const warning = document.querySelector('[data-mixed-availability-warning]');
+	const rows = document.querySelectorAll('[data-reservation-row]');
+	const checkoutForm = document.querySelector('.checkout-form');
+	const submitButton = checkoutForm?.querySelector('button[type="submit"]');
+
+	// The moved-to-separate-order set is UI-only for now: it lets the member
+	// preview how a split would group their items. Actually creating two
+	// orders from it is backend work — see TASKS.md's Reservation section.
+	const splitItemIds = new Set();
+
+	function setSubmitEnabled(enabled) {
+		if (submitButton instanceof HTMLButtonElement) submitButton.disabled = !enabled;
+	}
+
+	setSubmitEnabled(false);
+
+	function renderRow(row, availability) {
+		const badge = row.querySelector('[data-availability-badge]');
+		const splitButton = row.querySelector('[data-split-order-button]');
+		if (!(badge instanceof HTMLElement)) return;
+
+		badge.hidden = false;
+		if (availability.available) {
+			badge.textContent = 'Available';
+			badge.className = 'rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700';
+		} else {
+			badge.textContent = 'Not available';
+			badge.className = 'rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700';
+		}
+
+		if (splitButton instanceof HTMLButtonElement) {
+			// Splitting only makes sense for a whole distinct item — not offered
+			// when this line requests more than one of the same item, since a
+			// partial per-unit availability shortfall can't be represented by
+			// moving the whole line to a separate order.
+			splitButton.hidden = !form?.dataset.mixed || availability.requestedQuantity > 1;
+			const itemId = Number(row.dataset.itemId);
+			const pressed = splitItemIds.has(itemId);
+			splitButton.setAttribute('aria-pressed', String(pressed));
+		}
+	}
+
+	async function refreshAvailability(from, to) {
+		if (!from || !to) {
+			warning?.setAttribute('hidden', '');
+			delete form?.dataset.mixed;
+			setSubmitEnabled(false);
+			rows.forEach((row) => {
+				const badge = row.querySelector('[data-availability-badge]');
+				if (badge instanceof HTMLElement) badge.hidden = true;
+				const splitButton = row.querySelector('[data-split-order-button]');
+				if (splitButton instanceof HTMLElement) splitButton.hidden = true;
+			});
+			return;
+		}
+
+		const res = await fetch('/api/reservation/availability', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ from, to, items: cartItems }),
+		});
+		if (!res.ok) return;
+		const { availabilities } = await res.json();
+
+		const byItemId = new Map(availabilities.map((a) => [a.itemId, a]));
+		const allAvailable = availabilities.every((a) => a.available);
+		const someAvailable = availabilities.some((a) => a.available);
+		const mixed = someAvailable && !allAvailable;
+
+		if (mixed) form.dataset.mixed = '1';
+		else delete form.dataset.mixed;
+
+		warning?.toggleAttribute('hidden', !mixed);
+		setSubmitEnabled(allAvailable || (mixed && splitItemIds.size > 0));
+
+		rows.forEach((row) => {
+			const itemId = Number(row.dataset.itemId);
+			const availability = byItemId.get(itemId);
+			if (availability) renderRow(row, availability);
+		});
+	}
+
+	document.addEventListener('reservation-range-change', (event) => {
+		const { from, to } = event.detail;
+		refreshAvailability(from, to);
+	});
+
+	rows.forEach((row) => {
+		const splitButton = row.querySelector('[data-split-order-button]');
+		splitButton?.addEventListener('click', () => {
+			const itemId = Number(row.dataset.itemId);
+			if (splitItemIds.has(itemId)) splitItemIds.delete(itemId);
+			else splitItemIds.add(itemId);
+			splitButton.setAttribute('aria-pressed', String(splitItemIds.has(itemId)));
+			setSubmitEnabled(splitItemIds.size > 0);
+		});
+	});
+</script>

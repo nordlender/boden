@@ -50,24 +50,38 @@ const { cartItems, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.pr
 
 <script is:inline define:vars={{ cartItems: cartItems.map((item) => ({ itemId: item.itemId, quantity: item.quantity })) }}>
 	// Wires the calendar's chosen [from, to] range to the per-item
-	// availability badges and the mixed-availability warning/split-order
-	// affordance. Availability itself comes from POST /api/reservation/
-	// availability, which is a stub today (see src/lib/reservation.ts) —
-	// this wiring is what the schema/backend follow-up worktree plugs a real
-	// date-aware answer into, with no changes needed here.
+	// availability badges, the mixed-availability warning/split-order
+	// affordance, and the checkout form's hidden fromDate/toDate/splitItemIds
+	// fields — see POST /api/reservation/availability and
+	// src/lib/orders.ts's createOrder/createSplitOrders.
 	const form = document.querySelector('[data-reservation-form]');
 	const warning = document.querySelector('[data-mixed-availability-warning]');
 	const rows = document.querySelectorAll('[data-reservation-row]');
 	const checkoutForm = document.querySelector('.checkout-form');
 	const submitButton = checkoutForm?.querySelector('button[type="submit"]');
+	const fromDateInput = checkoutForm?.querySelector('[data-checkout-from-date]');
+	const toDateInput = checkoutForm?.querySelector('[data-checkout-to-date]');
+	const splitItemIdsInput = checkoutForm?.querySelector('[data-checkout-split-item-ids]');
 
-	// The moved-to-separate-order set is UI-only for now: it lets the member
-	// preview how a split would group their items. Actually creating two
-	// orders from it is backend work — see TASKS.md's Reservation section.
+	// Which items the member has moved into their own order via each row's
+	// split-order button — sent to the server as splitItemIds so
+	// createSplitOrders can partition the cart accordingly.
 	const splitItemIds = new Set();
+	let lastAllAvailable = false;
+	let lastMixed = false;
 
 	function setSubmitEnabled(enabled) {
 		if (submitButton instanceof HTMLButtonElement) submitButton.disabled = !enabled;
+	}
+
+	function syncSplitItemIdsInput() {
+		if (splitItemIdsInput instanceof HTMLInputElement) {
+			splitItemIdsInput.value = Array.from(splitItemIds).join(',');
+		}
+	}
+
+	function refreshSubmitState() {
+		setSubmitEnabled(lastAllAvailable || (lastMixed && splitItemIds.size > 0));
 	}
 
 	setSubmitEnabled(false);
@@ -99,9 +113,14 @@ const { cartItems, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.pr
 	}
 
 	async function refreshAvailability(from, to) {
+		if (fromDateInput instanceof HTMLInputElement) fromDateInput.value = from ?? '';
+		if (toDateInput instanceof HTMLInputElement) toDateInput.value = to ?? '';
+
 		if (!from || !to) {
 			warning?.setAttribute('hidden', '');
 			delete form?.dataset.mixed;
+			lastAllAvailable = false;
+			lastMixed = false;
 			setSubmitEnabled(false);
 			rows.forEach((row) => {
 				const badge = row.querySelector('[data-availability-badge]');
@@ -128,8 +147,15 @@ const { cartItems, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.pr
 		if (mixed) form.dataset.mixed = '1';
 		else delete form.dataset.mixed;
 
+		// Items no longer eligible to split (e.g. the range changed and
+		// availability is no longer mixed) shouldn't stay silently selected.
+		if (!mixed) splitItemIds.clear();
+
 		warning?.toggleAttribute('hidden', !mixed);
-		setSubmitEnabled(allAvailable || (mixed && splitItemIds.size > 0));
+		lastAllAvailable = allAvailable;
+		lastMixed = mixed;
+		syncSplitItemIdsInput();
+		refreshSubmitState();
 
 		rows.forEach((row) => {
 			const itemId = Number(row.dataset.itemId);
@@ -150,7 +176,8 @@ const { cartItems, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.pr
 			if (splitItemIds.has(itemId)) splitItemIds.delete(itemId);
 			else splitItemIds.add(itemId);
 			splitButton.setAttribute('aria-pressed', String(splitItemIds.has(itemId)));
-			setSubmitEnabled(splitItemIds.size > 0);
+			syncSplitItemIdsInput();
+			refreshSubmitState();
 		});
 	});
 </script>

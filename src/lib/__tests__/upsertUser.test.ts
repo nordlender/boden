@@ -69,7 +69,7 @@ describe('upsertSignedInUser', () => {
     // with no ON UPDATE CASCADE, so a naive fix that reassigns the stale
     // row's id instead of its email would throw a foreign-key violation here.
     db.insert(schema.orders)
-      .values({ orderCode: 'ABC123', userId: 'old-id', note: null })
+      .values({ orderCode: 'ABC123', userId: 'old-id', note: null, fromDate: '2026-01-01', toDate: '2026-01-02' })
       .run();
 
     await expect(

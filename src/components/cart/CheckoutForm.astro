@@ -9,7 +9,7 @@ interface Props {
 
 const { name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
 
-// Yes/No display per the moderator-review-page spec (moderator_order_review.md)
+// Yes/No display per the moderator-review-page spec (docs/moderator-review.md)
 // — hasUnpaidFees/userIsMember are semester-membership-fee flags from bloc,
 // not something a member can self-report, hence readonly (not disabled: a
 // disabled field wouldn't submit with the form once order persistence exists).

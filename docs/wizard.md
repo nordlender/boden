@@ -105,7 +105,7 @@ The last, untitled column's button ({details_icon}) expands a box directly benea
 This replaces the original plan's Attributes button, which just opened a small menu.
 
 ## Handoff: DB / schema work
-Resolved — see `schema_v3.md` (and its matching `schemav3.ts`), which
+Resolved — see `docs/schema.md` (and its matching `docs/schema-draft.ts`), which
 replaces `schema_v2.md`/`schemav2.ts` entirely:
 - Attributes are now a template/value split: `productAttributeKeys` (the
   field names, scoped to the product) and `itemAttributeValues` (each
@@ -116,7 +116,7 @@ replaces `schema_v2.md`/`schemav2.ts` entirely:
 - `items.productId` is nullable — an item can exist unassigned, matching
   this doc's premise.
 
-Wired up to real data. `schema_v3.md`'s "Work notes" section's
+Wired up to real data. `docs/schema.md`'s "Work notes" section's
 application-layer pieces are all implemented in `src/lib/wizard.ts` and
 `src/pages/api/wizard/*.ts`, and the wizard now lives at `/admin/items`
 (`src/pages/admin/items.astro`), reading and writing the real database

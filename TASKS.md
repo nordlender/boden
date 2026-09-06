@@ -1,8 +1,8 @@
 # Project tasks
 
-Originally consolidated from `rental_shop.md`, `auth_work_items.md`,
-`auth_session_handoff.md`, `auth_testing_guide.md`, `bloc_api_handoff.md`,
-`moderator_order_review.md`, and `schema_fixes.md` on the `api-test-work`
+Originally consolidated from `docs/rental-shop.md`, `docs/auth-work-items.md`,
+`docs/auth-handoff.md`, `docs/auth-testing.md`, `docs/bloc-api.md`,
+`docs/moderator-review.md`, and `docs/schema-legacy-fixes.md` on the `api-test-work`
 branch. **Ported into `rework_dynamic` on 2026-09-05**, reconciled against
 this branch's independent schema-v3/wizard work — see "Completed" for what
 changed in the port. Update this file as items move between sections — don't
@@ -16,20 +16,20 @@ narrative/rationale.
   checkout form already submits them (readonly Yes/No fields) and
   `src/pages/api/orders/create.ts` already reads them from the form with a
   TODO comment, but nothing persists them yet. Add the columns and wire the
-  read-through — decision recorded in `moderator_order_review.md`. Still
+  read-through — decision recorded in `docs/moderator-review.md`. Still
   blocked on bloc's `hasUnpaidFees`/`userIsMember` API defect for real data,
   but the columns/wiring themselves aren't blocked.
 
 ### Moderator pages (none exist yet)
 - `/moderator/retrieve`, `/moderator/orders/[id]`, `/moderator/confirm/[id]`
-  + `src/api/orders/confirm.ts` / `return.ts`, per `rental_shop.md` §9. These
+  + `src/api/orders/confirm.ts` / `return.ts`, per `docs/rental-shop.md` §9. These
   need the same inline `locals.user?.role` check as the wizard API routes
   (not covered by the middleware's route-prefix gate for the `/api/...` half,
   only for `/moderator/*` pages themselves).
 - New moderator order-review page (accept/deny *before* retrieval) per
-  `moderator_order_review.md` — route not named yet (`/moderator/review/[id]`
+  `docs/moderator-review.md` — route not named yet (`/moderator/review/[id]`
   proposed), needs the rest of its fields listed out, and needs
-  `rental_shop.md`'s lifecycle diagram reconciled first (see WIP below) plus a
+  `docs/rental-shop.md`'s lifecycle diagram reconciled first (see WIP below) plus a
   §2 page-structure entry once that's settled.
 
 ### Role API (temporary allowlist in place — see Completed)
@@ -37,7 +37,7 @@ narrative/rationale.
   endpoint. `src/lib/auth.ts`'s `getRole()` is written so swapping the
   allowlist body for a real external-API call later shouldn't require
   touching `validateSession()` or the middleware.
-- `bloc_api_handoff.md` Phase 1 step 4 (propose one safe read-only bloc call
+- `docs/bloc-api.md` Phase 1 step 4 (propose one safe read-only bloc call
   beyond `whoami`/`list_api_capabilities`) still hasn't been done.
 
 ### Housekeeping
@@ -69,15 +69,15 @@ narrative/rationale.
 
 ### Deployment (not started — no rush pre-build)
 - nginx config, Certbot, daily SQLite backup cron, go-live checklist in
-  `rental_shop.md` §13/§15.
+  `docs/rental-shop.md` §13/§15.
 
 ## WIP
 
-- **`rental_shop.md`'s order-lifecycle diagram is inconsistent** (Confirm step
+- **`docs/rental-shop.md`'s order-lifecycle diagram is inconsistent** (Confirm step
   says "Accept or Reject" but the status line under it still only covers
   `active`, and it places accept/reject at the same step as retrieval rather
-  than the earlier review step `moderator_order_review.md` describes).
-  **User has explicitly deferred this fix — do not edit `rental_shop.md`
+  than the earlier review step `docs/moderator-review.md` describes).
+  **User has explicitly deferred this fix — do not edit `docs/rental-shop.md`
   without being asked.**
 - bloc token-endpoint client-auth method and the auto-added
   `scope=openid profile email` are unconfirmed against bloc's actual docs —
@@ -103,8 +103,8 @@ narrative/rationale.
   `src/auth.ts`'s comment at the `listmypages` request. Correctly picked the
   person profile over a company/org profile in the same account.
 - Astro + Tailwind + Drizzle/better-sqlite3 scaffold, `output: 'hybrid'` config.
-- Full `src/db/schema.ts` per `schema_fixes.md` items 1–8, later reworked
-  further under `schema_v3.md` (products/categories/subcategories/attribute
+- Full `src/db/schema.ts` per `docs/schema-legacy-fixes.md` items 1–8, later reworked
+  further under `docs/schema.md` (products/categories/subcategories/attribute
   templates) — `users`/`orders`/`orderItems` unchanged by that rework and
   identical to what the auth/checkout work below assumes.
 - `src/db/client.ts` — Drizzle singleton.
@@ -162,9 +162,9 @@ narrative/rationale.
 - First successful live end-to-end bloc OAuth login against the real API
   (on the `api-test-work` branch, before this port — not yet re-verified on
   this branch/worktree's own origin).
-- `bloc_api_handoff.md` Phase 1 steps 1–3 (isolated worktree, `.env` token,
+- `docs/bloc-api.md` Phase 1 steps 1–3 (isolated worktree, `.env` token,
   `whoami`/`list_api_capabilities` exploration, findings folded into
-  `auth_work_items.md`'s open-questions section) — step 4 still open, see To do.
+  `docs/auth-work-items.md`'s open-questions section) — step 4 still open, see To do.
 - **`hasUnpaidFees`/`userIsMember` null-fields question — resolved as an
   external API defect (2026-09-02).** Tested against the real logged-in
   account across all four bloc methods reachable with a real OAuth access
@@ -173,8 +173,8 @@ narrative/rationale.
   one of them — not a client-side bug, not stale caching (fresh calls each
   time), not a fixable code issue. Root cause is on bloc's side. User is
   contacting the provider to request a fix. Full detail in
-  `auth_session_handoff.md` §7 and `auth_testing_guide.md`'s "Open items"
+  `docs/auth-handoff.md` §7 and `docs/auth-testing.md`'s "Open items"
   section. **Still blocks real data on the moderator-review page** (see
-  `moderator_order_review.md`) until bloc fixes it upstream — that part of
+  `docs/moderator-review.md`) until bloc fixes it upstream — that part of
   the To do list stays blocked, just externally now rather than by an
   unresolved investigation.

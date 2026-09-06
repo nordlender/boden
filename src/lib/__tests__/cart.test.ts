@@ -57,9 +57,24 @@ vi.mock('../../db/client', async () => {
     .returning();
   await db.insert(schema.items).values({ productId: hiddenProduct.id, slug: 'hidden-rope-item', name: 'Hidden Rope Item', stockCount: 4 }).returning();
 
+  // item5.id === 5 — two attributes whose sortOrder (Length=0, Color=1) is
+  // the reverse of insertion order below, for asserting getCartItems sorts
+  // attributes by sortOrder rather than returning them in whatever order the
+  // db/query happens to yield.
+  const [colorKey] = await db
+    .insert(schema.productAttributeKeys)
+    .values({ productId: product.id, name: 'Color', sortOrder: 1 })
+    .returning();
+  await db
+    .insert(schema.items)
+    .values({ productId: product.id, slug: 'test-rope-80m', name: 'Test Rope 80m (internal)', stockCount: 6 })
+    .returning();
+
   await db.insert(schema.itemAttributeValues).values([
     { itemId: 1, attributeId: lengthKey.id, value: '60m' },
     { itemId: 2, attributeId: lengthKey.id, value: '70m' },
+    { itemId: 5, attributeId: colorKey.id, value: 'Red' },
+    { itemId: 5, attributeId: lengthKey.id, value: '80m' },
   ]);
 
   return { db };
@@ -270,6 +285,15 @@ describe('getCartItems', () => {
   it('drops entries whose product has since been unpublished', async () => {
     setCart(cookies, [{ itemId: 4, quantity: 1 }]);
     expect(await getCartItems(cookies)).toEqual([]);
+  });
+
+  it('sorts attributes by sortOrder, not by insertion/query order', async () => {
+    setCart(cookies, [{ itemId: 5, quantity: 1 }]);
+    const [result] = await getCartItems(cookies);
+    expect(result.attributes).toEqual([
+      { key: 'Length', value: '80m' },
+      { key: 'Color', value: 'Red' },
+    ]);
   });
 
   it('preserves cart order across multiple line items', async () => {

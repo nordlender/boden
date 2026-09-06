@@ -53,7 +53,7 @@ export interface ShopProduct {
 	items: ShopItem[];
 }
 
-function sortAttributes(
+export function sortAttributes(
 	values: { value: string; attribute: { name: string; sortOrder: number } }[],
 ): ShopAttribute[] {
 	return values

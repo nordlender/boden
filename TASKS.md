@@ -21,6 +21,10 @@ narrative/rationale.
 - When viewing item details in the admin wizard, it should be possible to
   edit total stock (not in-stock/available count).
 
+### Reservation
+- Scaffold the design of the reservation functionality (reserving items
+  forward in time).
+
 ### Order persistence
 - `hasUnpaidFees`/`userIsMember` still aren't columns on `orders` — the
   checkout form already submits them (readonly Yes/No fields) and

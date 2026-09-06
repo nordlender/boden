@@ -1,20 +1,17 @@
 import type { APIRoute } from 'astro';
-import { db } from '../../../db/client';
-import { reservedQuantitiesByItem } from '../../../lib/stock';
-import { stubAvailabilityFromCart, isValidDateRange } from '../../../lib/reservation';
+import { getReservationAvailability, isValidDateRange } from '../../../lib/reservation';
 
 export const prerender = false;
 
-// Recomputes per-item availability for a chosen [from, to] range.
-//
-// STUB: `from`/`to` are validated but not yet used to scope the query — see
-// src/lib/reservation.ts's stubAvailabilityFromCart. Today this returns the
-// same date-less "in stock right now" figure src/lib/cart.ts uses, just
-// reshaped for the reservation page. The schema/backend follow-up worktree
-// is what makes this endpoint actually date-aware (and, per TASKS.md,
-// quantity-aware per range — e.g. 2x item A can be unavailable in a range
-// where 1x item A would not be).
-export const POST: APIRoute = async ({ request }) => {
+// Per-item, date- and quantity-aware availability for a chosen [from, to]
+// range — see src/lib/reservation.ts's getReservationAvailability. Requires
+// auth: this queries other members' orders (indirectly, via aggregated
+// quantities only — no order details are returned).
+export const POST: APIRoute = async ({ request, locals }) => {
+	if (!locals.user) {
+		return new Response('Unauthorized', { status: 401 });
+	}
+
 	let body: { from?: string; to?: string; items?: { itemId: number; quantity: number }[] };
 	try {
 		body = await request.json();
@@ -27,21 +24,7 @@ export const POST: APIRoute = async ({ request }) => {
 		return new Response(JSON.stringify({ error: 'invalid_request' }), { status: 400 });
 	}
 
-	const itemIds = items.map((entry) => entry.itemId);
-	const rows = await db.query.items.findMany({
-		where: (t, { inArray }) => inArray(t.id, itemIds),
-		columns: { id: true, stockCount: true },
-	});
-	const stockById = new Map(rows.map((row) => [row.id, row.stockCount]));
-	const reserved = await reservedQuantitiesByItem(itemIds);
-
-	const availabilities = stubAvailabilityFromCart(
-		items.map((entry) => ({
-			itemId: entry.itemId,
-			quantity: entry.quantity,
-			inStock: (stockById.get(entry.itemId) ?? 0) - (reserved.get(entry.itemId) ?? 0),
-		})),
-	);
+	const availabilities = await getReservationAvailability({ from: body.from!, to: body.to! }, items);
 
 	return new Response(JSON.stringify({ availabilities }), {
 		headers: { 'Content-Type': 'application/json' },

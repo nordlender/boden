@@ -1,0 +1,241 @@
+---
+// Route name: "/products/[slug]" (matching src/db/schema.ts's `products`
+// table) rather than worktree-navbar-homepage's "/items/[slug]" — in schema
+// v3 a slug-routable, customer-facing page is a product (title/description/
+// attribute template), with items as its unlabeled variants underneath, so
+// "/items/..." would be the wrong noun here. See this PR's description.
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ImagePlaceholder from '../../components/shop/ImagePlaceholder.astro';
+import { getPublishedProductSlugs, getShopProductBySlug } from '../../lib/shop';
+
+export async function getStaticPaths() {
+	const slugs = await getPublishedProductSlugs();
+	return slugs.map((slug) => ({ params: { slug } }));
+}
+
+const { slug } = Astro.params;
+const product = await getShopProductBySlug(slug!);
+
+if (!product) {
+	return Astro.redirect('/404');
+}
+
+// This page is prerendered (static output, see astro.config.mjs), so
+// Astro.url.searchParams reflects the build-time request, not a real
+// visitor's URL — a `?item=` variant preselect is applied client-side
+// instead (see the script below). Server-side, just default to the first
+// item.
+const initialItem = product.items[0] ?? null;
+const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? null;
+---
+
+<BaseLayout title={product.title}>
+	<div class="mx-auto grid max-w-4xl gap-8 px-4 py-12 sm:grid-cols-2">
+		<div class="aspect-square overflow-hidden rounded-lg bg-gray-100">
+			<!--
+				Both the image and its placeholder are always in the DOM (rather
+				than picking one at render time) so the variant-select script can
+				reliably toggle between them — an empty data-image on a variant
+				with no photo of its own needs to fall back to the placeholder,
+				not silently keep showing the previous variant's photo.
+			-->
+			<img
+				data-product-image
+				src={initialImageUrl ?? ''}
+				alt={product.title}
+				class="h-full w-full object-cover"
+				hidden={!initialImageUrl}
+			/>
+			<div
+				data-product-image-placeholder
+				class="flex h-full w-full items-center justify-center text-gray-300"
+				hidden={Boolean(initialImageUrl)}
+			>
+				<ImagePlaceholder size={48} />
+			</div>
+		</div>
+
+		<div class="flex flex-col gap-4">
+			<div>
+				{product.subcategoryName && <p class="text-xs uppercase tracking-wide text-gray-500">{product.subcategoryName}</p>}
+				<h1 class="text-2xl font-semibold tracking-tight text-gray-900">{product.title}</h1>
+			</div>
+
+			{product.description && <p class="text-sm text-gray-600">{product.description}</p>}
+
+			{
+				product.items.length === 0 ? (
+					<p class="text-sm text-red-700">No items available for this product yet.</p>
+				) : (
+					<form action="/api/cart/add" method="post" class="flex flex-col gap-4 border-t border-gray-200 pt-4">
+						<input type="hidden" name="redirect" value={`/products/${product.slug}`} />
+
+						{product.items.length > 1 ? (
+							<div>
+								<label class="mb-2 block text-sm font-medium text-gray-900" for="itemId">
+									Choose a variant
+								</label>
+								<select id="itemId" name="itemId" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+									{product.items.map((item) => {
+										const label = item.attributes.map((a) => a.value).join(' / ') || `Option ${item.id}`;
+										return (
+											<option
+												value={item.id}
+												selected={item.id === initialItem?.id}
+												disabled={item.inStock <= 0}
+												data-image={item.imageUrl ?? product.thumbnailImageUrl ?? ''}
+												data-stock={item.inStock}
+												data-attributes={JSON.stringify(item.attributes)}
+											>
+												{label}
+												{item.inStock <= 0 ? ' (out of stock)' : ''}
+											</option>
+										);
+									})}
+								</select>
+							</div>
+						) : (
+							<input type="hidden" name="itemId" value={product.items[0].id} />
+						)}
+
+						{product.attributeKeyOrder.length > 0 && (
+							<dl data-item-attributes class="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-gray-200 pt-4 text-sm">
+								{(initialItem?.attributes ?? []).map((attribute) => (
+									<div class="contents">
+										<dt class="text-gray-500">{attribute.key}</dt>
+										<dd class="text-gray-900">{attribute.value}</dd>
+									</div>
+								))}
+							</dl>
+						)}
+
+						<p
+							data-stock-message
+							class={`text-sm font-medium ${(initialItem?.inStock ?? 0) > 0 ? 'text-emerald-700' : 'text-red-700'}`}
+						>
+							{(initialItem?.inStock ?? 0) > 0 ? `${initialItem?.inStock} in stock` : 'Out of stock'}
+						</p>
+
+						<div class="flex items-center gap-3">
+							<input
+								type="number"
+								name="quantity"
+								value="1"
+								min="1"
+								max={Math.max(initialItem?.inStock ?? 1, 1)}
+								required
+								data-quantity-input
+								class="w-16 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+							/>
+							<button
+								type="submit"
+								data-add-to-cart
+								disabled={(initialItem?.inStock ?? 0) <= 0}
+								class="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+							>
+								Add to cart
+							</button>
+						</div>
+					</form>
+				)
+			}
+
+			{
+				product.links.length > 0 && (
+					<ul class="flex flex-col gap-1 border-t border-gray-200 pt-4 text-sm">
+						{product.links.map((link) => (
+							<li>
+								<a href={link.url} target="_blank" rel="noopener noreferrer" class="text-gray-700 underline hover:text-gray-900">
+									{link.label}
+								</a>
+							</li>
+						))}
+					</ul>
+				)
+			}
+		</div>
+	</div>
+</BaseLayout>
+
+<script>
+	// Keeps the image, stock message, quantity cap, and attribute list in
+	// sync with whichever variant is selected — including a `?item=<id>`
+	// preselect from an ItemCard link, applied here rather than server-side
+	// since this page is prerendered (see the frontmatter comment above).
+	const select = document.querySelector<HTMLSelectElement>('select[name="itemId"]');
+	const image = document.querySelector<HTMLImageElement>('[data-product-image]');
+	const imagePlaceholder = document.querySelector<HTMLElement>('[data-product-image-placeholder]');
+	const stockMessage = document.querySelector<HTMLElement>('[data-stock-message]');
+	const quantityInput = document.querySelector<HTMLInputElement>('[data-quantity-input]');
+	const submitButton = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
+	const attributesList = document.querySelector<HTMLElement>('[data-item-attributes]');
+
+	function renderAttributes(json: string | undefined) {
+		if (!attributesList || !json) return;
+		let attributes: { key: string; value: string }[];
+		try {
+			attributes = JSON.parse(json);
+		} catch {
+			return;
+		}
+
+		attributesList.replaceChildren();
+		for (const { key, value } of attributes) {
+			const wrapper = document.createElement('div');
+			wrapper.className = 'contents';
+
+			const dt = document.createElement('dt');
+			dt.className = 'text-gray-500';
+			dt.textContent = key;
+
+			const dd = document.createElement('dd');
+			dd.className = 'text-gray-900';
+			dd.textContent = value;
+
+			wrapper.append(dt, dd);
+			attributesList.appendChild(wrapper);
+		}
+	}
+
+	function applyOption(option: HTMLOptionElement) {
+		const stock = Number(option.dataset.stock ?? '0');
+		const imageUrl = option.dataset.image ?? '';
+
+		if (image) {
+			if (imageUrl) {
+				image.src = imageUrl;
+				image.hidden = false;
+				if (imagePlaceholder) imagePlaceholder.hidden = true;
+			} else {
+				image.hidden = true;
+				image.removeAttribute('src');
+				if (imagePlaceholder) imagePlaceholder.hidden = false;
+			}
+		}
+
+		if (stockMessage) {
+			stockMessage.textContent = stock > 0 ? `${stock} in stock` : 'Out of stock';
+			stockMessage.className = `text-sm font-medium ${stock > 0 ? 'text-emerald-700' : 'text-red-700'}`;
+		}
+
+		if (quantityInput) quantityInput.max = String(Math.max(stock, 1));
+		if (submitButton) submitButton.disabled = stock <= 0;
+
+		renderAttributes(option.dataset.attributes);
+	}
+
+	if (select) {
+		const preselect = new URLSearchParams(location.search).get('item');
+		if (preselect && select.querySelector(`option[value="${CSS.escape(preselect)}"]`)) {
+			select.value = preselect;
+		}
+
+		select.addEventListener('change', () => {
+			const option = select.selectedOptions[0];
+			if (option) applyOption(option);
+		});
+
+		const initialOption = select.selectedOptions[0];
+		if (initialOption) applyOption(initialOption);
+	}
+</script>

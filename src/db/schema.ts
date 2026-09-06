@@ -184,6 +184,12 @@ export const orders = sqliteTable('orders', {
   status: text('status', {
     enum: ['requested', 'active', 'returned', 'rejected'],
   }).notNull().default('requested'),
+  // Reservation date range (YYYY-MM-DD, inclusive on both ends) chosen on the
+  // /reservation page — the whole order (all its orderItems) shares one
+  // range. Availability for a range is computed from other requested/active
+  // orders whose range overlaps this one — see src/lib/reservation.ts.
+  fromDate: text('from_date').notNull(),
+  toDate: text('to_date').notNull(),
   note: text('note'), // optional note from member at checkout
   // Moderator accountability: who confirmed retrieval / processed the return
   confirmedByUserId: text('confirmed_by_user_id').references(() => users.id),
@@ -197,6 +203,8 @@ export const orders = sqliteTable('orders', {
 }, (table) => [
   index('orders_user_id_idx').on(table.userId),
   index('orders_status_idx').on(table.status),
+  index('orders_date_range_idx').on(table.fromDate, table.toDate),
+  check('order_date_range_valid', sql`${table.toDate} >= ${table.fromDate}`),
 ]);
 
 // Line items: one row per item in an order

@@ -17,6 +17,9 @@ const yesNo = (value: boolean | null) => (value === null ? 'Unknown' : value ? '
 ---
 
 <form class="checkout-form" method="POST" action="/api/orders/create">
+	<input type="hidden" name="fromDate" data-checkout-from-date />
+	<input type="hidden" name="toDate" data-checkout-to-date />
+	<input type="hidden" name="splitItemIds" data-checkout-split-item-ids />
 	{hasUnpaidFees && (
 		<p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
 			Note: you have an unpaid fee. You can still submit the form. Please check your payments on osiklatring.no. If you have paid the current semester fee, this could be an error.

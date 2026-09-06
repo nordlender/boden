@@ -39,14 +39,39 @@ narrative/rationale.
     reports today's date-less in-stock figure (`stock.ts`'s
     `reservedQuantitiesByItem`) for every range. `orders`/`orderItems` have no
     date columns yet (`src/db/schema.ts`), so there's nothing real to query.
-  - Next: schema (order date range + per-range/per-quantity availability
-    query — 2x item A can be unavailable in a range where 1x would not be),
-    backend (`/api/reservation/availability` made real, order-splitting
-    endpoint for the split-order action), middleware (gate `/reservation`
-    like the existing member routes). Planned as a follow-up worktree off
-    `worktree-reservation`. Split-order action should not be offered when an
-    order has more than one of the same item (quantity > 1 for that line) —
-    only whole distinct items get split out.
+  - **Schema/backend/middleware follow-up done** (`worktree-reservation-backend`,
+    branched off `worktree-reservation`): `orders` now has
+    `fromDate`/`toDate` (`YYYY-MM-DD`, both required, `toDate >= fromDate`
+    check constraint) — the whole order shares one range.
+    `src/lib/reservation.ts`'s `getReservationAvailability` replaces the
+    stub: for each requested item, sweeps a per-day timeline over every
+    other `requested`/`active` order whose range overlaps the query to find
+    the *peak concurrent* quantity already reserved, then compares
+    `stockCount - peakReserved` against the requested quantity — this is
+    what makes 2x item A able to be unavailable in a range where 1x would
+    not be. `POST /api/reservation/availability` now calls it for real
+    (still requires auth). `/reservation` and `/api/{reservation,orders}`
+    added to `MEMBER_ROUTE_PREFIXES` (`src/middleware/prefixes.ts`).
+    `createOrder`/`createSplitOrders` (`src/lib/orders.ts`) both require
+    `fromDate`/`toDate`; `createSplitOrders` partitions the cart into up to
+    two orders sharing the same range — the reservation page's split-order
+    button feeds it `splitItemIds` via a hidden field on `CheckoutForm`.
+    `checkout/success.astro` takes a comma-separated `order=` param so a
+    split checkout can land on both orders at once. Covered by
+    `src/lib/__tests__/reservation.test.ts` (peak-concurrent-demand cases)
+    plus the existing suite (75 tests, all passing).
+  - Split-order action is not offered when an order has more than one of the
+    same item (quantity > 1 for that line) — enforced both client-side
+    (`ReservationForm.astro`) and implicitly server-side (splitting always
+    moves a whole line).
+  - Not yet done: per-day (rather than whole-order-range) granularity would
+    let two back-to-back reservations of the same item not falsely conflict
+    on their shared boundary day — currently a reservation ending 01-10 and
+    one starting 01-10 for the same item DO count as overlapping (inclusive
+    ends), which may or may not be the desired handout/return-day semantics;
+    worth confirming with the moderator-workflow retrieval/return timing
+    once that's built. No UI for viewing/canceling a placed reservation yet
+    either — this only covers creating one.
 
 ### Order persistence
 - `hasUnpaidFees`/`userIsMember` still aren't columns on `orders` — the

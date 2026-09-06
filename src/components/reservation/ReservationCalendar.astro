@@ -21,9 +21,6 @@ import 'cally';
 	<p class="mt-2 text-sm text-gray-600">
 		<span data-range-summary>Select a start and end date.</span>
 	</p>
-
-	<input type="hidden" name="fromDate" data-from-date-input />
-	<input type="hidden" name="toDate" data-to-date-input />
 </div>
 
 <style>
@@ -69,8 +66,6 @@ import 'cally';
 <script>
 	const calendar = document.querySelector('[data-reservation-calendar]');
 	const summary = document.querySelector<HTMLElement>('[data-range-summary]');
-	const fromInput = document.querySelector<HTMLInputElement>('[data-from-date-input]');
-	const toInput = document.querySelector<HTMLInputElement>('[data-to-date-input]');
 
 	function formatDisplay(value: string) {
 		return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
@@ -86,9 +81,6 @@ import 'cally';
 		// ends are picked.
 		const value = (calendar as HTMLElement & { value?: string }).value ?? '';
 		const [from, to] = value.split(/\s+/).filter(Boolean);
-
-		if (fromInput) fromInput.value = from ?? '';
-		if (toInput) toInput.value = to ?? '';
 
 		if (summary) {
 			summary.textContent = from && to ? `${formatDisplay(from)} – ${formatDisplay(to)}` : 'Select a start and end date.';

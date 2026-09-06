@@ -1,6 +1,7 @@
 import type { AstroCookies } from 'astro';
 import { db } from '../db/client';
 import { reservedQuantitiesByItem } from './stock';
+import { sortAttributes } from './shop';
 
 export type CartEntry = { itemId: number; quantity: number };
 
@@ -106,11 +107,12 @@ export async function getCartItems(cookies: AstroCookies): Promise<CartItem[]> {
 	});
 
 	const visibleRows = rows.filter((row) => !row.archived && row.product?.status === 'published');
+	const rowsById = new Map(visibleRows.map((row) => [row.id, row]));
 	const reserved = await reservedQuantitiesByItem(visibleRows.map((row) => row.id));
 
 	return cart
 		.map((entry): CartItem | null => {
-			const row = visibleRows.find((r) => r.id === entry.itemId);
+			const row = rowsById.get(entry.itemId);
 			if (!row) return null;
 			return {
 				itemId: row.id,
@@ -120,7 +122,7 @@ export async function getCartItems(cookies: AstroCookies): Promise<CartItem[]> {
 				quantity: entry.quantity,
 				stockCount: row.stockCount,
 				inStock: row.stockCount - (reserved.get(row.id) ?? 0),
-				attributes: row.attributeValues.map((v) => ({ key: v.attribute.name, value: v.value })),
+				attributes: sortAttributes(row.attributeValues),
 			};
 		})
 		.filter((item): item is CartItem => item !== null);

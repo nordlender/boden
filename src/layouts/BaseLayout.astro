@@ -1,0 +1,29 @@
+---
+import '../styles/global.css';
+import Navbar from '../components/Navbar.astro';
+import CartSidebar from '../components/cart/CartSidebar.astro';
+
+interface Props {
+	title?: string;
+}
+
+const { title = 'Rental Shop' } = Astro.props;
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+	</head>
+	<body class="min-h-screen bg-white">
+		<Navbar />
+		<main>
+			<slot />
+		</main>
+		<CartSidebar />
+	</body>
+</html>

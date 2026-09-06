@@ -1,17 +1,16 @@
 ---
-import '../styles/global.css';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ItemGrid from '../components/shop/ItemGrid.astro';
+import { getShopItems } from '../lib/shop';
+
+// Prerendered (static output, see astro.config.mjs) — this query runs once
+// at build time, same as worktree-navbar-homepage's index.astro did against
+// the old schema.
+const items = await getShopItems();
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout title="OSI Klatring">
+	<div class="mx-auto max-w-6xl px-4 py-8">
+		<ItemGrid items={items} />
+	</div>
+</BaseLayout>

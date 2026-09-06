@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "astro dev",
     "dev:tunnel": "bash scripts/dev-tunnel.sh",
+    "branches": "bash scripts/branch-status.sh",
+    "worktrees:prune": "bash scripts/prune-worktrees.sh",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",

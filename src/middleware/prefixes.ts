@@ -10,7 +10,11 @@
 // middleware sees differ from the route Astro actually matches internally.
 // routePattern is Astro's own route resolution, so there's no such gap to
 // exploit. https://docs.astro.build/en/guides/authentication/
-export const MEMBER_ROUTE_PREFIXES = ['/cart', '/checkout', '/orders'];
+// /api/reservation and /api/orders are included here as defense-in-depth:
+// both already re-implement their own inline auth check (see those files),
+// so this is redundant today — but it means a future route in either group
+// that forgets the inline check isn't left with zero protection.
+export const MEMBER_ROUTE_PREFIXES = ['/cart', '/checkout', '/orders', '/reservation', '/api/reservation', '/api/orders'];
 export const MOD_ROUTE_PREFIXES = ['/moderator'];
 // /api/wizard is included here as defense-in-depth: the five /api/wizard/*
 // write routes (archive, attributes, attributes/bulk, items, set-product)
@@ -18,7 +22,7 @@ export const MOD_ROUTE_PREFIXES = ['/moderator'];
 // inline (see those files), so this is redundant today — but it means a
 // future wizard route that forgets the inline check isn't left with zero
 // protection.
-export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard'];
+export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard', '/api/pickup-days'];
 
 export function matchesPrefix(routePattern: string, prefixes: string[]) {
   return prefixes.some((p) => routePattern === p || routePattern.startsWith(`${p}/`));

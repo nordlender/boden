@@ -1,0 +1,151 @@
+---
+---
+
+<div data-cart-backdrop class="fixed inset-0 z-40 hidden bg-black/30"></div>
+
+<aside
+	id="cart-sidebar"
+	data-cart-sidebar
+	class="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm translate-x-full flex-col bg-white shadow-xl transition-transform duration-200"
+	aria-hidden="true"
+>
+	<div class="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+		<h2 class="text-sm font-semibold text-gray-900">Cart</h2>
+		<button type="button" data-cart-close aria-label="Close cart" class="text-lg leading-none text-gray-500 hover:text-gray-900">
+			&times;
+		</button>
+	</div>
+
+	<div data-cart-list class="flex-1 divide-y divide-gray-100 overflow-y-auto px-4">
+		<p data-cart-empty class="py-6 text-sm text-gray-500">Your cart is empty.</p>
+	</div>
+
+	<div class="border-t border-gray-200 p-4">
+		<a
+			href="/cart"
+			class="block rounded-md bg-gray-900 px-4 py-2 text-center text-sm font-medium text-white hover:bg-gray-800"
+		>
+			Review order
+		</a>
+	</div>
+</aside>
+
+<script>
+	// Pages using this sidebar (via BaseLayout) can be prerendered — see
+	// astro.config.mjs — so there is no per-request cart cookie to read
+	// server-side. It always fetches its content client-side instead, from
+	// GET /api/cart (src/pages/api/cart.ts), which wraps
+	// src/lib/cart.ts's getCartItems.
+	type CartApiItem = {
+		itemId: number;
+		productSlug: string | null;
+		productTitle: string;
+		imageUrl: string | null;
+		quantity: number;
+		attributes: { key: string; value: string }[];
+	};
+
+	const sidebar = document.querySelector<HTMLElement>('[data-cart-sidebar]');
+	const backdrop = document.querySelector<HTMLElement>('[data-cart-backdrop]');
+	const list = document.querySelector<HTMLElement>('[data-cart-list]');
+	const emptyMessage = document.querySelector<HTMLElement>('[data-cart-empty]');
+	const toggleButtons = document.querySelectorAll<HTMLElement>('[data-cart-toggle]');
+
+	if (sidebar && backdrop && list && emptyMessage) {
+		const isOpen = () => !sidebar.classList.contains('translate-x-full');
+
+		async function loadCart() {
+			let cartItems: CartApiItem[] = [];
+			try {
+				const res = await fetch('/api/cart');
+				cartItems = await res.json();
+			} catch {
+				return;
+			}
+
+			list?.querySelectorAll('[data-cart-row]').forEach((row) => row.remove());
+
+			if (cartItems.length === 0) {
+				emptyMessage!.hidden = false;
+				return;
+			}
+			emptyMessage!.hidden = true;
+
+			for (const item of cartItems) {
+				const row = document.createElement('div');
+				row.dataset.cartRow = '';
+				row.className = 'flex items-center gap-3 py-3';
+
+				const img = document.createElement('img');
+				img.src = item.imageUrl ?? '/favicon.svg';
+				img.alt = item.productTitle;
+				img.className = 'h-12 w-12 shrink-0 rounded object-cover bg-gray-100';
+
+				const info = document.createElement('div');
+				info.className = 'min-w-0 flex-1 text-sm';
+
+				const name = document.createElement('a');
+				name.href = item.productSlug ? `/products/${item.productSlug}` : '/cart';
+				name.className = 'block truncate font-medium text-gray-900 hover:underline';
+				name.textContent = item.productTitle;
+				info.appendChild(name);
+
+				const variantLabel = item.attributes.map((a) => a.value).join(' / ');
+				if (variantLabel) {
+					const variant = document.createElement('p');
+					variant.className = 'truncate text-gray-500';
+					variant.textContent = variantLabel;
+					info.appendChild(variant);
+				}
+
+				const qty = document.createElement('p');
+				qty.className = 'text-gray-500';
+				qty.textContent = `Qty: ${item.quantity}`;
+				info.appendChild(qty);
+
+				const removeButton = document.createElement('button');
+				removeButton.type = 'button';
+				removeButton.className = 'shrink-0 self-start text-xs text-red-600 hover:underline';
+				removeButton.textContent = 'Remove';
+				removeButton.addEventListener('click', async () => {
+					const body = new FormData();
+					body.set('itemId', String(item.itemId));
+					await fetch('/api/cart/remove', { method: 'POST', body });
+					loadCart();
+				});
+
+				row.append(img, info, removeButton);
+				list?.appendChild(row);
+			}
+		}
+
+		function setOpen(open: boolean) {
+			sidebar!.classList.toggle('translate-x-full', !open);
+			sidebar!.setAttribute('aria-hidden', String(!open));
+			backdrop!.classList.toggle('hidden', !open);
+			toggleButtons.forEach((button) => button.setAttribute('aria-expanded', String(open)));
+			if (open) loadCart();
+		}
+
+		toggleButtons.forEach((button) => {
+			button.addEventListener('click', () => setOpen(!isOpen()));
+		});
+
+		document.querySelectorAll('[data-cart-close]').forEach((button) => {
+			button.addEventListener('click', () => setOpen(false));
+		});
+
+		backdrop.addEventListener('click', () => setOpen(false));
+
+		document.addEventListener('keydown', (event) => {
+			if (event.key === 'Escape') setOpen(false);
+		});
+
+		if (new URLSearchParams(location.search).get('cartOpen') === '1') {
+			setOpen(true);
+			const url = new URL(location.href);
+			url.searchParams.delete('cartOpen');
+			history.replaceState({}, '', url);
+		}
+	}
+</script>

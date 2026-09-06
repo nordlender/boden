@@ -4,10 +4,11 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { setItemsProduct } from '../../../lib/wizard';
+import { isSafeRedirectTarget } from '../../../lib/redirect';
 
 function redirectTarget(form: FormData): string {
 	const redirectTo = form.get('redirectTo');
-	return typeof redirectTo === 'string' && redirectTo.startsWith('/') ? redirectTo : '/admin/items';
+	return isSafeRedirectTarget(redirectTo) ? redirectTo : '/admin/items';
 }
 
 export const POST: APIRoute = async ({ request, redirect, locals }) => {

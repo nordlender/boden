@@ -49,6 +49,14 @@ vi.mock('../../db/client', async () => {
     .returning();
   await db.insert(schema.items).values({ slug: 'archived-rope', name: 'Archived Rope', stockCount: 3, archived: true }).returning();
 
+  // item4.id === 4 — tied to a 'hidden' product, for asserting getCartItems
+  // drops items whose product has been unpublished (not just archived items).
+  const [hiddenProduct] = await db
+    .insert(schema.products)
+    .values({ slug: 'hidden-rope', title: 'Hidden Rope', categoryId: category.id, status: 'hidden' })
+    .returning();
+  await db.insert(schema.items).values({ productId: hiddenProduct.id, slug: 'hidden-rope-item', name: 'Hidden Rope Item', stockCount: 4 }).returning();
+
   await db.insert(schema.itemAttributeValues).values([
     { itemId: 1, attributeId: lengthKey.id, value: '60m' },
     { itemId: 2, attributeId: lengthKey.id, value: '70m' },
@@ -256,6 +264,11 @@ describe('getCartItems', () => {
 
   it('drops entries for items that have since been archived', async () => {
     setCart(cookies, [{ itemId: 3, quantity: 1 }]);
+    expect(await getCartItems(cookies)).toEqual([]);
+  });
+
+  it('drops entries whose product has since been unpublished', async () => {
+    setCart(cookies, [{ itemId: 4, quantity: 1 }]);
     expect(await getCartItems(cookies)).toEqual([]);
   });
 

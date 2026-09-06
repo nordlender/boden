@@ -141,6 +141,12 @@ narrative/rationale.
     checks are now defense-in-depth rather than the sole protection.
     `admin/items.astro` itself *is* covered by the gate (`/admin` prefix) —
     its stale "no auth yet" TODO was removed.
+    **Correction to commit effad25's note:** it claimed Astro's `onRequest`
+    middleware never runs for POST requests to endpoint routes. That's
+    wrong — verified live against that same commit: an unauthenticated POST
+    to `/api/wizard/items` and `/api/wizard/archive` each returned 401 from
+    the middleware's own `isApiRoute` branch. The wizard/orders inline
+    admin checks are defense-in-depth, not the sole protection.
 - First successful live end-to-end bloc OAuth login against the real API
   (on the `api-test-work` branch, before this port — not yet re-verified on
   this branch/worktree's own origin).

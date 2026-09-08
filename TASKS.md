@@ -24,9 +24,15 @@ narrative/rationale.
   the representative, with the per-item breakdown left to the product detail
   page as already built.
 
+### Admin wizard
+- [ ui ] Consider using the "percentage-50" icon for the invert-selection
+  button.
+
 ### Reservation
-- Scaffold the design of the reservation functionality (reserving items
-  forward in time).
+- [ ui ] Future investigation: implement a heatmap on the reservation form's
+  calendar reflecting item availability per day, ranging from red (not
+  available) through yellow (some available) to white (all available).
+  Possibly with a legend showing real values, e.g. white = 10 available.
 
 ### Order persistence
 - `hasUnpaidFees`/`userIsMember` still aren't columns on `orders` — the
@@ -90,6 +96,8 @@ narrative/rationale.
 
 ## WIP
 
+- Scaffold the design of the reservation functionality (reserving items
+  forward in time).
 - **`docs/rental-shop.md`'s order-lifecycle diagram is inconsistent** (Confirm step
   says "Accept or Reject" but the status line under it still only covers
   `active`, and it places accept/reject at the same step as retrieval rather

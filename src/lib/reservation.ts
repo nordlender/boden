@@ -26,6 +26,11 @@ export interface ReservationDateRange {
 export function isValidDateRange(range: Partial<ReservationDateRange>): range is ReservationDateRange {
 	if (!range.from || !range.to) return false;
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(range.from) || !/^\d{4}-\d{2}-\d{2}$/.test(range.to)) return false;
+	// The calendar's `min` attribute (ReservationCalendar.astro) only stops a
+	// past date client-side — this is the server-side backstop against a
+	// direct POST bypassing it.
+	const todayIso = new Date().toISOString().slice(0, 10);
+	if (range.from < todayIso) return false;
 	return range.from <= range.to;
 }
 
@@ -36,23 +41,33 @@ export function isValidDateRange(range: Partial<ReservationDateRange>): range is
 // back with different `available` verdicts for the same range — the whole
 // point of tracking peak concurrent demand rather than just "is there any
 // order at all in this range".
-export async function getReservationAvailability(
+// `executor` defaults to the top-level `db` (used by the live-preview API
+// route), but callers that must check availability atomically alongside an
+// insert (src/lib/orders.ts) pass the transaction handle instead. Both
+// support the same synchronous `.all()` call — the better-sqlite3 driver
+// executes queries synchronously regardless of `await`, and a transaction's
+// callback here must stay synchronous (see insertOrder's comment).
+type QueryExecutor = Pick<typeof db, 'select'>;
+
+export function getReservationAvailability(
 	range: ReservationDateRange,
 	requestedItems: { itemId: number; quantity: number }[],
 	excludeOrderId?: number,
-): Promise<ReservationAvailability[]> {
+	executor: QueryExecutor = db,
+): ReservationAvailability[] {
 	if (requestedItems.length === 0) return [];
 	const itemIds = requestedItems.map((entry) => entry.itemId);
 
-	const itemRows = await db
+	const itemRows = executor
 		.select({ id: items.id, stockCount: items.stockCount })
 		.from(items)
-		.where(inArray(items.id, itemIds));
+		.where(inArray(items.id, itemIds))
+		.all();
 	const stockById = new Map(itemRows.map((row) => [row.id, row.stockCount]));
 
 	// Overlap test on two inclusive ranges [a.from, a.to] and [b.from, b.to]:
 	// a.from <= b.to AND a.to >= b.from.
-	const overlapping = await db
+	const overlapping = executor
 		.select({
 			itemId: orderItems.itemId,
 			quantity: orderItems.requestedQuantity,
@@ -69,7 +84,8 @@ export async function getReservationAvailability(
 				lte(orders.fromDate, range.to),
 				gte(orders.toDate, range.from),
 			),
-		);
+		)
+		.all();
 
 	const intervalsByItem = new Map<number, { start: string; end: string; quantity: number }[]>();
 	for (const row of overlapping) {
@@ -110,7 +126,12 @@ function peakConcurrentQuantity(intervals: { start: string; end: string; quantit
 		events.push({ date: start, delta: quantity });
 		events.push({ date: dayAfter(end), delta: -quantity });
 	}
-	events.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+	// On a tie, process decrements (an interval ending) before increments (one
+	// starting) — otherwise two back-to-back, non-overlapping reservations can
+	// transiently sum together depending on incidental row order, since a
+	// start event and another interval's day-after-end sentinel can land on
+	// the same date.
+	events.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.delta - b.delta));
 
 	let running = 0;
 	let peak = 0;

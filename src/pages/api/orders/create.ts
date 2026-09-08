@@ -45,10 +45,15 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
       ? await createSplitOrders({ userId: locals.user.id, note, cartEntries: cart, fromDate, toDate, splitItemIds })
       : await createOrder({ userId: locals.user.id, note, cartEntries: cart, fromDate, toDate });
   if (!result.ok) {
+    // 'unavailable': re-checked at insert time (see orders.ts's insertOrder)
+    // and found the member's cart/dates changed since the last availability
+    // preview — same query-param error pattern as 'invalid_dates' below.
+    if (result.error === 'unavailable') {
+      return redirect('/reservation?error=unavailable');
+    }
     return redirect('/cart?error=empty_cart');
   }
 
   setCart(cookies, []);
-  const orderCodes = 'orders' in result ? result.orders.map((o) => o.orderCode) : [result.orderCode];
-  return redirect(`/checkout/success?order=${orderCodes.join(',')}`, 303);
+  return redirect(`/checkout/success?receipt=${result.checkoutToken}`, 303);
 };

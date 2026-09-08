@@ -180,6 +180,12 @@ export const orders = sqliteTable('orders', {
   // Short random alphanumeric code (6 chars, excludes ambiguous 0/O, 1/I) — this is
   // what members read aloud to moderators and what appears in the retrieve-order URL.
   orderCode: text('order_code').notNull().unique(),
+  // Shared by every order created from one checkout submission (split or
+  // not) — the confirmation page looks orders up by this instead of by
+  // (potentially duplicated/tampered) order codes joined in a URL. Not
+  // unique: two rows from the same split submission share one token by
+  // design. Independently random, deliberately not derived from orderCode.
+  checkoutToken: text('checkout_token').notNull(),
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', {
     enum: ['requested', 'active', 'returned', 'rejected'],
@@ -207,6 +213,7 @@ export const orders = sqliteTable('orders', {
   index('orders_user_id_idx').on(table.userId),
   index('orders_status_idx').on(table.status),
   index('orders_date_range_idx').on(table.fromDate, table.toDate),
+  index('orders_checkout_token_idx').on(table.checkoutToken),
   check('order_date_range_valid', sql`${table.toDate} >= ${table.fromDate}`),
 ]);
 

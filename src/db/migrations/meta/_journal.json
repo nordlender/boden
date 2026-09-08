@@ -22,6 +22,13 @@
       "when": 1788730675373,
       "tag": "0002_lying_impossible_man",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788836881056,
+      "tag": "0003_add_checkout_token",
+      "breakpoints": true
     }
   ]
 }

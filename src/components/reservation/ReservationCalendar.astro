@@ -38,6 +38,7 @@ const todayIso = new Date().toISOString().slice(0, 10);
 	<calendar-range
 		data-reservation-calendar
 		months={2}
+		page-by="single"
 		min={todayIso}
 		data-available-pickup-dates={JSON.stringify(availablePickupDates)}
 	>
@@ -59,9 +60,44 @@ const todayIso = new Date().toISOString().slice(0, 10);
 <style>
 	.reservation-calendar calendar-range {
 		--color-accent: var(--color-gray-900);
-		display: inline-block;
+		display: block;
+		width: 100%;
 		font-family: inherit;
 		font-size: 0.875rem;
+	}
+
+	/* Cally's shadow DOM renders ::part(container) (column flex: the
+	   header — prev/next/heading — above ::part(months), the <slot> the two
+	   <calendar-month> children below land in) and both parts default to a
+	   content-fit width, not a stretched one. Widen everything to fill this
+	   card, and only flip ::part(months) to a row on desktop — the header
+	   always stays above regardless of viewport. */
+	.reservation-calendar calendar-range::part(container),
+	.reservation-calendar calendar-range::part(header) {
+		width: 100%;
+	}
+
+	.reservation-calendar calendar-range::part(months) {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		width: 100%;
+	}
+
+	.reservation-calendar calendar-range calendar-month {
+		width: 100%;
+	}
+
+	@media (min-width: 48rem) {
+		.reservation-calendar calendar-range::part(months) {
+			flex-direction: row;
+		}
+
+		.reservation-calendar calendar-range calendar-month {
+			width: auto;
+			min-width: 0;
+			flex: 1 1 0%;
+		}
 	}
 
 	.reservation-calendar calendar-range::part(button) {
@@ -138,10 +174,15 @@ const todayIso = new Date().toISOString().slice(0, 10);
 
 	calendar?.addEventListener('change', () => {
 		// Cally's <calendar-range> reports the selection as a single
-		// space-separated `value` string ("YYYY-MM-DD YYYY-MM-DD") once both
-		// ends are picked.
+		// slash-separated `value` string ("YYYY-MM-DD/YYYY-MM-DD") once both
+		// ends are picked — confirmed against cally's source (the `value`
+		// hook calendar-range uses joins with "/", unlike calendar-multi's
+		// space-separated one). Splitting on whitespace here left `to`
+		// undefined on every real selection, which silently reset the whole
+		// form back to its unselected state instead of ever calling
+		// /api/reservation/availability.
 		const value = calendar.value ?? '';
-		const [from, to] = value.split(/\s+/).filter(Boolean);
+		const [from, to] = value.split('/').filter(Boolean);
 
 		if (summary) {
 			summary.textContent = from && to ? `Pick-up ${formatDisplay(from)} · Return ${formatDisplay(to)}` : 'Select a pick-up and return date.';

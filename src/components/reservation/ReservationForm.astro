@@ -131,14 +131,30 @@ const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, use
 		}
 
 		const itemId = Number(row.dataset.itemId);
+
+		// A row that's become available again is no longer eligible to be
+		// split out — clear any stale selection now, rather than only when the
+		// whole cart stops being mixed. Otherwise, once this row's own button
+		// goes hidden below, there's no control left to un-press it, and it
+		// would still get silently split into its own order on submit even
+		// though it no longer needs to be.
+		if (availability.available && splitItemIds.has(itemId)) {
+			splitItemIds.delete(itemId);
+			syncSplitItemIdsInput();
+			refreshSubmitState();
+		}
+
 		const pressed = splitItemIds.has(itemId);
 
 		if (splitButton instanceof HTMLButtonElement) {
-			// Splitting only makes sense for a whole distinct item — not offered
-			// when this line requests more than one of the same item, since a
-			// partial per-unit availability shortfall can't be represented by
-			// moving the whole line to a separate order.
-			splitButton.hidden = !form?.dataset.mixed || availability.requestedQuantity > 1;
+			// Only offered on a row that's actually unavailable — splitting off
+			// an already-available row wouldn't do anything to resolve the
+			// mixed-availability warning, and would let the member satisfy the
+			// enable-submit condition without ever touching the blocked item.
+			// Also not offered when this line requests more than one of the same
+			// item, since a partial per-unit availability shortfall can't be
+			// represented by moving the whole line to a separate order.
+			splitButton.hidden = !form?.dataset.mixed || availability.available || availability.requestedQuantity > 1;
 			splitButton.setAttribute('aria-pressed', String(pressed));
 		}
 		if (splitTag instanceof HTMLElement) {

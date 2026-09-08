@@ -1,9 +1,10 @@
 import type { APIRoute } from 'astro';
 import { addAvailablePickupDate, isValidDateString } from '../../../lib/pickupDays';
+import { safeRedirectTarget } from '../../../lib/wizard-http';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request, locals, redirect }) => {
+export const POST: APIRoute = async ({ request, locals, redirect, url }) => {
 	// Not covered by src/middleware/index.ts's route-prefix gate for the
 	// /api/... half (only /admin gates the page) — inline check, same
 	// pattern as the /api/wizard/* routes.
@@ -13,7 +14,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
 	const form = await request.formData();
 	const date = form.get('date')?.toString() ?? '';
-	const redirectTo = form.get('redirectTo')?.toString() || '/admin/pickup-days';
+	const redirectTo = safeRedirectTarget(form, url.origin, '/admin/pickup-days');
 
 	if (!isValidDateString(date)) {
 		return redirect(`${redirectTo}?error=invalid_date`);

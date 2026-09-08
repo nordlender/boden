@@ -5,10 +5,14 @@ export const prerender = false;
 // reached only when logged in with role === 'admin'.
 import '../../styles/global.css';
 import { listAvailablePickupDates } from '../../lib/pickupDays';
+import { todayIsoInClubTimezone } from '../../lib/dates';
 
 const redirectTo = Astro.url.pathname;
 const dates = await listAvailablePickupDates();
-const todayIso = new Date().toISOString().slice(0, 10);
+// Same club-calendar-day anchoring as the member-facing calendar
+// (src/lib/dates.ts) — this drives both the date input's `min` and the
+// "already passed" strikethrough below.
+const todayIso = todayIsoInClubTimezone();
 const error = Astro.url.searchParams.get('error');
 
 function formatDisplay(value: string) {

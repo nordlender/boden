@@ -82,6 +82,19 @@ describe('isValidDateRange', () => {
 	it('accepts a from date of exactly today', () => {
 		expect(isValidDateRange({ from: '2025-12-01', to: '2025-12-05' })).toBe(true);
 	});
+
+	it('measures "today" in the club timezone, not UTC', () => {
+		// 23:30 UTC on Dec 1 is already 00:30 on Dec 2 in Oslo (CET, UTC+1),
+		// so Dec 1 is a past date for the club even though UTC still says
+		// it's today. The clock is restored to the suite-wide pin afterwards.
+		vi.setSystemTime(new Date('2025-12-01T23:30:00Z'));
+		try {
+			expect(isValidDateRange({ from: '2025-12-01', to: '2025-12-05' })).toBe(false);
+			expect(isValidDateRange({ from: '2025-12-02', to: '2025-12-05' })).toBe(true);
+		} finally {
+			vi.setSystemTime(new Date('2025-12-01T00:00:00Z'));
+		}
+	});
 });
 
 describe('hasMixedAvailability', () => {

@@ -19,8 +19,12 @@ interface Props {
 	availablePickupDates?: string[];
 }
 
+import { todayIsoInClubTimezone } from '../../lib/dates';
+
 const { availablePickupDates = [] } = Astro.props;
-const todayIso = new Date().toISOString().slice(0, 10);
+// The calendar's `min` is a club calendar day, so it must not be derived in
+// the server process's timezone (src/lib/dates.ts).
+const todayIso = todayIsoInClubTimezone();
 ---
 
 <div class="reservation-calendar rounded-lg border border-gray-200 bg-white p-3">
@@ -144,6 +148,10 @@ const todayIso = new Date().toISOString().slice(0, 10);
 
 <script>
 	import 'cally';
+	// src/lib/dates.ts is dependency-free (no db, no node-only APIs), so it
+	// bundles into this client module just as well as it imports in the
+	// frontmatter above — both sides derive day strings the same way.
+	import { isoDateFromUtcMidnight } from '../../lib/dates';
 
 	type RangeCalendar = HTMLElement & {
 		value?: string;
@@ -161,7 +169,16 @@ const todayIso = new Date().toISOString().slice(0, 10);
 			availableDates = new Set();
 		}
 
-		calendar.getDayParts = (date) => (availableDates.has(date.toISOString().slice(0, 10)) ? 'pickup-available' : '');
+		// Cally hands each cell its plain calendar date encoded as a Date at
+		// *UTC* midnight (its `E()` helper: `new Date(Date.UTC(y, m - 1, d))`),
+		// not a local-midnight instant — so this comparison must read the
+		// value back with UTC fields, which is exactly what
+		// isoDateFromUtcMidnight does. Routing it through the viewer's own
+		// timezone (bare Date accessors) or through Europe/Oslo would both be
+		// wrong here; only the club-day *strings* in `availableDates` carry a
+		// timezone meaning, and they arrive already normalized from the
+		// server.
+		calendar.getDayParts = (date) => (availableDates.has(isoDateFromUtcMidnight(date)) ? 'pickup-available' : '');
 	}
 
 	function formatDisplay(value: string) {

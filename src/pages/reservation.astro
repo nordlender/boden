@@ -5,6 +5,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import ReservationForm from '../components/reservation/ReservationForm.astro';
 import { getCartItems } from '../lib/cart';
 import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
+import { todayIsoInClubTimezone } from '../lib/dates';
 import { getSession } from 'auth-astro/server';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
@@ -15,7 +16,10 @@ if (cartItems.length === 0) {
 	return Astro.redirect('/cart');
 }
 
-const todayIso = new Date().toISOString().slice(0, 10);
+// The club's calendar day, not the server process's (src/lib/dates.ts) —
+// otherwise a UTC-hosted server drops today's pick-up day from the calendar
+// for the whole CET evening.
+const todayIso = todayIsoInClubTimezone();
 const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
 ---
 

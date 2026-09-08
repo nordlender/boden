@@ -1,6 +1,7 @@
 import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 import { db } from '../db/client';
 import { items, orderItems, orders } from '../db/schema';
+import { isoDateFromUtcMidnight, todayIsoInClubTimezone } from './dates';
 
 // Reservation page backend (docs/TASKS.md "Reservation"). Orders carry a
 // date range (src/db/schema.ts's orders.fromDate/toDate, both YYYY-MM-DD,
@@ -28,8 +29,10 @@ export function isValidDateRange(range: Partial<ReservationDateRange>): range is
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(range.from) || !/^\d{4}-\d{2}-\d{2}$/.test(range.to)) return false;
 	// The calendar's `min` attribute (ReservationCalendar.astro) only stops a
 	// past date client-side — this is the server-side backstop against a
-	// direct POST bypassing it.
-	const todayIso = new Date().toISOString().slice(0, 10);
+	// direct POST bypassing it. "Today" is the club's calendar day
+	// (src/lib/dates.ts), so the cut-off doesn't move with the server
+	// process's timezone.
+	const todayIso = todayIsoInClubTimezone();
 	if (range.from < todayIso) return false;
 	return range.from <= range.to;
 }
@@ -142,10 +145,13 @@ function peakConcurrentQuantity(intervals: { start: string; end: string; quantit
 	return peak;
 }
 
+// Pure calendar arithmetic on a YYYY-MM-DD string: the date is pinned to UTC
+// midnight and read straight back out in UTC, so the result never depends on
+// the host's timezone.
 function dayAfter(date: string): string {
 	const d = new Date(`${date}T00:00:00Z`);
 	d.setUTCDate(d.getUTCDate() + 1);
-	return d.toISOString().slice(0, 10);
+	return isoDateFromUtcMidnight(d);
 }
 
 // True when some (but not all) items are unavailable for their requested

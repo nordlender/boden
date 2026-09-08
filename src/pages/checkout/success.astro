@@ -8,24 +8,30 @@ import { db } from '../../db/client';
 // Gated by src/middleware/index.ts (MEMBER_ROUTE_PREFIXES via /checkout) —
 // reached only when logged in, so Astro.locals.user is non-null here.
 //
-// `order` can be a comma-separated list — the reservation page's
-// split-order action (src/lib/orders.ts's createSplitOrders) creates two
-// orders from one checkout submission, both landing here together.
-const orderCodes = (Astro.url.searchParams.get('order') ?? '').split(',').filter(Boolean);
-const foundOrders = orderCodes.length
+// `receipt` is orders.checkoutToken (src/db/schema.ts), not an order code:
+// every order created from one checkout submission — split or not, see
+// src/lib/orders.ts's createOrder/createSplitOrders — shares one token, so
+// a single equality lookup naturally returns all of them together. This
+// replaced an earlier design keyed on a comma-separated list of order codes
+// in the URL, which broke on a duplicated code in that list (looked like
+// tampering) and tied the confirmation link's shape to the order code
+// itself.
+const receipt = Astro.url.searchParams.get('receipt') ?? '';
+const foundOrders = receipt
   ? await db.query.orders.findMany({
-      where: (t, { inArray }) => inArray(t.orderCode, orderCodes),
+      where: (t, { eq }) => eq(t.checkoutToken, receipt),
       with: { orderItems: { with: { item: true } } },
     })
   : [];
 
-// Don't leak another member's order by guessing/enumerating codes.
-if (foundOrders.length !== orderCodes.length || foundOrders.some((o) => o.userId !== Astro.locals.user?.id)) {
+// Don't leak another member's order by guessing/enumerating tokens.
+if (foundOrders.length === 0 || foundOrders.some((o) => o.userId !== Astro.locals.user?.id)) {
   return Astro.redirect('/cart');
 }
-// Preserve the order codes appeared in the URL (query result order isn't guaranteed).
-const ordersByCode = new Map(foundOrders.map((o) => [o.orderCode, o]));
-const orderedOrders = orderCodes.map((code) => ordersByCode.get(code)!);
+// createSplitOrders always inserts the main group before the split group
+// (see its `groups` array) — sorting by id recovers that order without
+// needing to track it separately.
+const orderedOrders = [...foundOrders].sort((a, b) => a.id - b.id);
 ---
 <html lang="en">
 	<head>
@@ -37,6 +43,10 @@ const orderedOrders = orderCodes.map((code) => ordersByCode.get(code)!);
 	<body>
 		<main>
 			{orderedOrders.length > 1 && <p>Your items were split across {orderedOrders.length} separate orders:</p>}
+			<p>
+				Please take a screenshot of this page for your records — it's the easiest way to have your order code(s) on
+				hand when you come to pick up.
+			</p>
 			{orderedOrders.map((order) => (
 				<UserOrderSummary
 					orderCode={order.orderCode}

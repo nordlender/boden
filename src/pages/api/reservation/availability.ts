@@ -24,7 +24,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		return new Response(JSON.stringify({ error: 'invalid_request' }), { status: 400 });
 	}
 
-	const availabilities = await getReservationAvailability({ from: body.from!, to: body.to! }, items);
+	const availabilities = getReservationAvailability({ from: body.from!, to: body.to! }, items);
 
 	return new Response(JSON.stringify({ availabilities }), {
 		headers: { 'Content-Type': 'application/json' },

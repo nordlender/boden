@@ -25,7 +25,7 @@ interface Props {
 	inStock: number;
 	totalStock: number;
 	// Description and attributes are inherited from the item's product, so
-	// both are absent until the item is assigned — see dynamic_wizard.md's
+	// both are absent until the item is assigned — see docs/wizard.md's
 	// "What's inherited from the product" notes.
 	description?: string | null;
 	attributes?: AttributeEntry[];
@@ -59,7 +59,7 @@ const {
 			<p class="truncate text-sm font-medium text-slate-800">{name}</p>
 			<p class="font-mono text-xs text-slate-400">#{itemId}</p>
 		</div>
-		{variant === 'assigned' && subCategory && <SubCategoryTag name={subCategory} />}
+		{variant === 'assigned' && (subCategory ? <SubCategoryTag name={subCategory} /> : <span></span>)}
 		{variant === 'assigned' && product && <ProductTag name={product} />}
 		<StockIndicator inStock={inStock} total={totalStock} />
 		<DetailsToggle label={`Show details for ${name}`} warning={missingAttributeTemplate} />

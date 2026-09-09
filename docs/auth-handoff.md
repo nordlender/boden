@@ -14,11 +14,11 @@ agent (or human) picking this up with no other context.
 ## Repo state right now
 
 ```
- M rental_shop.md      -- NOT edited by this session, see "rental_shop.md" below
+ M docs/rental-shop.md      -- NOT edited by this session, see "docs/rental-shop.md" below
  M src/auth.ts
  M src/env.d.ts
-?? auth_testing_guide.md
-?? moderator_order_review.md
+?? docs/auth-testing.md
+?? docs/moderator-review.md
 ?? src/components/
 ?? src/db/client.ts
 ?? src/lib/
@@ -38,8 +38,8 @@ There is no test suite in this repo.
 
 ## What this session did
 
-### 1. Finished the auth scaffolding that `auth_work_items.md` had left undone
-Items 1, 3, 5–8 from `auth_work_items.md` were still entirely missing before
+### 1. Finished the auth scaffolding that `docs/auth-work-items.md` had left undone
+Items 1, 3, 5–8 from `docs/auth-work-items.md` were still entirely missing before
 this session (only the bloc OAuth provider config in `src/auth.ts` existed).
 Built:
 - `src/db/client.ts` — Drizzle + better-sqlite3 singleton.
@@ -52,7 +52,7 @@ Built:
 
 Item 4 (the `signIn` upsert callback) and wiring the real `ROLE_API_URL` are
 **still intentionally not done** — both are blocked on explicit human sign-off
-per `auth_work_items.md`'s hard rules. Do not add either without being asked.
+per `docs/auth-work-items.md`'s hard rules. Do not add either without being asked.
 
 ### 2. Real bugs found and fixed along the way (not just missing scaffolding)
 All in `src/auth.ts` / `src/middleware/index.ts`:
@@ -119,14 +119,14 @@ out of scope, was never asked for.
 - `hasUnpaidFees`/`userIsMember` → **should** be persisted as part of the
   order once persistence exists — a snapshot at submission time (that's why
   they're already in the form with `name` attributes), not re-derived live
-  later. See "Decision (2026-08-26)" in `moderator_order_review.md`.
+  later. See "Decision (2026-08-26)" in `docs/moderator-review.md`.
 
-### 5. `moderator_order_review.md` created
+### 5. `docs/moderator-review.md` created
 Lightweight starting notes for a not-yet-built moderator page: accept/deny a
 requested order *before* retrieval (a separate, earlier step than the existing
-retrieve/confirm flow in `rental_shop.md` §9). Documents the two fields and
+retrieve/confirm flow in `docs/rental-shop.md` §9). Documents the two fields and
 their color rules (`hasUnpaidFees`: Yes→red; `userIsMember`: Yes→green,
-No→red), the persistence decision above, and flags that `rental_shop.md`'s
+No→red), the persistence decision above, and flags that `docs/rental-shop.md`'s
 lifecycle diagram doesn't line up with this yet (see below).
 
 ### 6. Housekeeping
@@ -134,7 +134,7 @@ Removed the redundant, empty `.claude/worktrees/bloc-role-api` worktree and
 its branch (zero unique commits, safe). The other one,
 `.claude/worktrees/feature+bloc-role-api`, still exists and still holds real
 exploration output (`bloc_field_keys.json`, `session_variables.json`) —
-**leave that one alone**, it's referenced from `auth_work_items.md`.
+**leave that one alone**, it's referenced from `docs/auth-work-items.md`.
 
 Still flagged, not actioned: `listmypages.json` (real member contact info, per
 its own git-ignore comment) sits in this main working tree, not just the
@@ -144,9 +144,10 @@ nobody needs to reference it anymore.
 ### 7. First live bloc OAuth login test
 Real credentials now in `.env` (see above). Findings:
 - The dev server needed `astro dev --host --background`, not just
-  `--background` (per `AGENTS.md`) — default Astro dev only binds loopback,
-  which wasn't reachable at this project's `REDIRECT_URL`
-  (`http://172.17.0.2:4321/`, a docker-internal address).
+  `--background` (per `AGENTS.md` at the time) — default Astro dev only binds
+  loopback, which wasn't reachable at this project's `REDIRECT_URL`
+  (`http://172.17.0.2:4321/`, a docker-internal address). `AGENTS.md` now
+  always binds to `0.0.0.0`, so this is no longer a special case.
 - First login attempt failed: `CallbackRouteError` from a `403` on
   `account/listmypages` (our own new `res.ok` check caught this cleanly).
   Every attempt since has succeeded, no code change in between — **cause not
@@ -166,24 +167,24 @@ Real credentials now in `.env` (see above). Findings:
   (the sibling method flagged below) — against the same real logged-in
   account. Both fields came back `null`/empty on every single one. The user
   is contacting bloc to request a fix; until that lands, the moderator-review
-  page (`moderator_order_review.md`) has no real data source for these two
+  page (`docs/moderator-review.md`) has no real data source for these two
   fields. See `TASKS.md`'s "Completed" section for the consolidated note.
 - A **temporary debug log is still present** in `src/auth.ts`'s
   `userinfo.request` (search for `[bloc debug]`) — dumps the raw
   `ListOfMyProfiles` array and the selected profile to `.astro/dev.log` only.
   Remove it once the `hasUnpaidFees`/`userIsMember` question above is settled.
-- `auth_testing_guide.md` was written capturing all of the above as a runnable
+- `docs/auth-testing.md` was written capturing all of the above as a runnable
   procedure — start here before re-testing.
 
-### 8. `rental_shop.md` — not edited by this session, but worth knowing about
-`git diff rental_shop.md` currently shows one uncommitted line changed (not by
+### 8. `docs/rental-shop.md` — not edited by this session, but worth knowing about
+`git diff docs/rental-shop.md` currently shows one uncommitted line changed (not by
 this session): the moderator's Confirm Order step now reads
 `clicks "Accept" or "Reject"` instead of `clicks "Confirm"` — but the status
 line right below it is unchanged (`status: active` for both outcomes, which
 can't be right for a rejection), and it still places accept/reject at the same
 step as entering retrieved quantities, not as the earlier, separate review
-step described in `moderator_order_review.md`. **The user has explicitly
-asked to defer fixing this — do not edit `rental_shop.md` unless asked.** This
+step described in `docs/moderator-review.md`. **The user has explicitly
+asked to defer fixing this — do not edit `docs/rental-shop.md` unless asked.** This
 is saved in cross-session memory (`rental_shop_md_needs_edit.md` in the memory
 store) so it isn't forgotten.
 
@@ -196,11 +197,11 @@ store) so it isn't forgotten.
    further investigation here.
 2. **Remove the temporary debug log** in `src/auth.ts` — no longer blocked
    now that #1 is settled, safe to remove whenever convenient.
-3. **`rental_shop.md`'s lifecycle diagram needs reconciling** — deferred by
+3. **`docs/rental-shop.md`'s lifecycle diagram needs reconciling** — deferred by
    the user, needs to be explicitly asked for, not assumed.
 4. **Still blocked, needs explicit human sign-off**: the `signIn` upsert
    callback (item 4) and wiring the real `ROLE_API_URL`. Don't build either
-   without being asked — this is a hard rule from `auth_work_items.md`, not
+   without being asked — this is a hard rule from `docs/auth-work-items.md`, not
    just caution.
 5. **Nothing beyond auth is built**: no order persistence
    (`/api/orders/create.ts`, `order_items` inserts), no moderator
@@ -221,12 +222,12 @@ store) so it isn't forgotten.
 - Never put real bloc secrets/tokens in chat — `.env` only, already gitignored.
 - Don't wire `ROLE_API_URL` to the real endpoint or add the `signIn` upsert
   without explicit human go-ahead.
-- Don't edit `rental_shop.md` without being asked.
+- Don't edit `docs/rental-shop.md` without being asked.
 - `name`/`email`/`mobile` stay session-only, no schema changes — but
   `hasUnpaidFees`/`userIsMember` are meant to persist once order persistence
   exists (see §4 above) — these are different decisions, don't conflate.
 - `orders.rejectedAt`/`rejectedReason` in `src/db/schema.ts` were implemented
-  ahead of `schema_fixes.md` item #9's original "TODO-only" instruction —
+  ahead of `docs/schema-legacy-fixes.md` item #9's original "TODO-only" instruction —
   deliberately left as-is, not a bug.
 - `profile()`'s extra bloc fields in `src/auth.ts` are deliberately unused
   dead-looking code pending future work — don't delete them as cleanup.
@@ -237,9 +238,9 @@ store) so it isn't forgotten.
   `src/pages/auth/login.astro`, `src/env.d.ts`.
 - Checkout: `src/lib/cart.ts`, `src/components/cart/CheckoutForm.astro`,
   `src/pages/cart.astro`.
-- Docs: `auth_work_items.md` (original work breakdown, still the source of
-  truth for what's blocked/why), `moderator_order_review.md` (future
-  review-page notes), `auth_testing_guide.md` (how to re-test bloc login),
-  `bloc_api_handoff.md` (the separate role-API exploration, still open),
-  `schema_fixes.md` (schema history/context), `rental_shop.md` (original
+- Docs: `docs/auth-work-items.md` (original work breakdown, still the source of
+  truth for what's blocked/why), `docs/moderator-review.md` (future
+  review-page notes), `docs/auth-testing.md` (how to re-test bloc login),
+  `docs/bloc-api.md` (the separate role-API exploration, still open),
+  `docs/schema-legacy-fixes.md` (schema history/context), `docs/rental-shop.md` (original
   spec — has the pending inconsistency noted above).

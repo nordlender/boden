@@ -50,7 +50,7 @@ export const products = sqliteTable('products', {
   // "Hidden" is a deliberate, permanent admin choice — the product stays
   // fully visible/manageable in admin/moderator views, it just isn't shown
   // in the web shop. It does not imply an incomplete or abandoned product
-  // (see schema_v3.md's "Open question" re: the old draft-expiry sweep,
+  // (see docs/schema.md's "Open question" re: the old draft-expiry sweep,
   // deliberately not ported here).
   status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden'),
   thumbnailImageUrl: text('thumbnail_image_url'),
@@ -117,7 +117,7 @@ export const items = sqliteTable('items', {
   imageUrl: text('image_url'),
   // Total owned. "In stock right now" is never stored — it's always
   // computed as stockCount minus quantities on currently active/requested
-  // rentals (see schema_fixes.md's original `available` derivation,
+  // rentals (see docs/schema-legacy-fixes.md's original `available` derivation,
   // carried forward unchanged): a stored second number can only drift out
   // of sync.
   stockCount: integer('stock_count').notNull().default(1),
@@ -130,7 +130,7 @@ export const items = sqliteTable('items', {
 
 // ---------------------------------------------------------------------------
 // Attribute values — items own these directly (plain FKs; no cross-product
-// enforcement at the DB level — see schema_v3.md's "Resolved" section for
+// enforcement at the DB level — see docs/schema.md's "Resolved" section for
 // why one was drafted and then dropped in favor of application-level
 // consistency, see the Work notes there). unique(itemId, attributeId)
 // guarantees one value per key per item, and attributeId must reference a
@@ -156,6 +156,15 @@ export const itemAttributeValues = sqliteTable('item_attribute_values', {
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(), // ID from external OAuth provider
+  // WARNING: this UNIQUE constraint assumes bloc never reports the same
+  // email for two different, both-currently-valid userIds. bloc's own API
+  // does not document or enforce that (checked its OpenAPI spec — `email`
+  // is a plain nullable string with no uniqueness guarantee); not observed
+  // across this org's real 288-member roster as of 2026-09-06, but not
+  // ruled out either. If it happens, the two accounts will perpetually
+  // overwrite each other's email on alternating sign-ins — see the
+  // TODO(investigate) above upsertSignedInUser in src/lib/upsertUser.ts,
+  // and the tracking GitHub issue.
   email: text('email').notNull().unique(),
   name: text('name'),
   // Role is NOT stored here — it is fetched live from the external API on every request
@@ -184,7 +193,7 @@ export const orders = sqliteTable('orders', {
   returnedAt: integer('returned_at', { mode: 'timestamp' }), // set when moderator marks returned
   rejectedAt: integer('rejected_at', { mode: 'timestamp' }), // set when moderator rejects
   rejectedReason: text('rejected_reason'), // set when moderator rejects
-  // TODO: dueAt (rental due date) — not yet confirmed, see schema_fixes.md #9
+  // TODO: dueAt (rental due date) — not yet confirmed, see docs/schema-legacy-fixes.md #9
 }, (table) => [
   index('orders_user_id_idx').on(table.userId),
   index('orders_status_idx').on(table.status),

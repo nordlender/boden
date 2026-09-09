@@ -114,7 +114,40 @@ loose, unrelated issue and cross-linking manually. Only nest under a parent
 when the relationship is real — don't force sub-issue structure onto tasks
 that just happen to be nearby in scope.
 
-## 8. Relationship to TASKS.md
+## 8. Listing/checking remaining work
+
+When the user asks what's left to do, to check remaining tasks, or to get
+"all issues" (or similar phrasing), don't guess from memory or from
+TASKS.md — query GitHub directly, since it's now the source of truth:
+
+```bash
+gh issue list --repo nordlender/boden --state open
+```
+
+Filter with `--label <label>` or `--search "<keywords>"` when the user
+scopes the question (e.g. "what UI tasks are left"). Use `--state all` only
+when they're asking about history/completed work too, not just what remains.
+
+## 10. Linking work back to its issue
+
+When you start work on a known issue:
+
+- **If a PR already exists** for that work, mention the issue in it (e.g.
+  add "Relates to #N" / "Closes #N" to the PR description via `gh pr edit
+  <number> --body ...`) rather than leaving the link implicit.
+- **If no PR exists yet**, don't open one unprompted — ask the user whether
+  they want a PR opened, and onto which branch.
+  - Default suggestion: the nearest parent branch, not always `main`. If the
+    current branch/worktree was branched off some other branch (e.g. a
+    worktree branched off `reservation`), the PR target should default to
+    that parent, not `main` — check with `git merge-base` against candidate
+    branches (or ask the user directly) to find the actual fork point if
+    it's not obvious from context.
+  - Example: a worktree branched off `reservation` doing work tied to a
+    tracked issue should default to proposing a PR from the current branch
+    onto `reservation`, not onto `main`.
+
+## 11. Relationship to TASKS.md
 
 TASKS.md may still exist in this repo as a running log. Converting its
 entries to issues does not imply deleting or editing TASKS.md — leave it

@@ -4,7 +4,7 @@ This supersedes `schema_v2.md` and `schemav2.ts` (both deleted). Schema v2
 was designed around an admin wizard that generated items as systematic
 permutations of product option values (Size × Color, etc.), driven by an
 Options → Attributes → Specifications → Display-options flow. That wizard no
-longer exists — see `dynamic_wizard.md` for the wizard that replaced it,
+longer exists — see `docs/wizard.md` for the wizard that replaced it,
 which was already partly built (`src/components/wizard/`,
 `src/pages/wizard-test.astro`) by the time this schema was designed against
 it.
@@ -148,7 +148,7 @@ export const items = sqliteTable('items', {
   // Total owned. "In stock right now" is never stored — it's always
   // computed as stockCount minus quantities on currently active/requested
   // rentals, same derivation already established for the old `available`
-  // boolean (see the original schema_fixes.md decision, carried forward
+  // boolean (see the original docs/schema-legacy-fixes.md decision, carried forward
   // unchanged): a stored second number can only drift out of sync.
   stockCount: integer('stock_count').notNull().default(1),
   // Soft delete: items referenced by orderItems can't be hard-deleted.
@@ -239,7 +239,7 @@ export const orderItems = sqliteTable('order_items', {
 - `productOptionGroups`, `productOptionValues`, `itemOptionSelections`
 - `items.permutationKey`, `items.isDefault`, `items.status`
 - `productOptionValues.bitPosition` and the `items_product_permutation_unique` index
-- The `types` table that `dynamic_wizard.md`'s original handoff asked for —
+- The `types` table that `docs/wizard.md`'s original handoff asked for —
   the wizard's own most recent commit removed the per-item Type concept in
   favor of product-inherited category/sub-category, so a types table is no
   longer needed at all.

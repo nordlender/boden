@@ -19,7 +19,7 @@ export interface WizardItem {
 	description?: string | null;
 	attributes: WizardAttribute[];
 	// The item's product currently has zero productAttributeKeys rows —
-	// schema_v3.md's "UI cue for a product with no attribute template yet".
+	// docs/schema.md's "UI cue for a product with no attribute template yet".
 	missingAttributeTemplate: boolean;
 }
 
@@ -123,15 +123,32 @@ export async function archiveItems(itemIds: number[]): Promise<void> {
 	await db.update(items).set({ archived: true }).where(inArray(items.id, itemIds));
 }
 
-// schema_v3.md Work item: "'Set product' reassignment must keep attribute
+// docs/schema.md Work item: "'Set product' reassignment must keep attribute
 // values consistent" — one transaction: drop the old product's values,
 // point the items at the new product, then stub in a blank value for every
 // field the new product's template defines.
+//
+// Only items whose productId is actually *changing* get their attribute
+// values wiped and re-blanked. An item already on `productId` (e.g. a
+// misclick, or an explicit re-assign to the same product) is left alone —
+// its existing values are already correct for that product's template, and
+// wiping them would be silent, uninvited data loss.
 export async function setItemsProduct(itemIds: number[], productId: number): Promise<void> {
 	if (itemIds.length === 0) return;
 	db.transaction((tx) => {
-		tx.delete(itemAttributeValues).where(inArray(itemAttributeValues.itemId, itemIds)).run();
+		const current = tx
+			.select({ id: items.id, productId: items.productId })
+			.from(items)
+			.where(inArray(items.id, itemIds))
+			.all();
+
+		const changingIds = current.filter((item) => item.productId !== productId).map((item) => item.id);
+
 		tx.update(items).set({ productId }).where(inArray(items.id, itemIds)).run();
+
+		if (changingIds.length === 0) return;
+
+		tx.delete(itemAttributeValues).where(inArray(itemAttributeValues.itemId, changingIds)).run();
 
 		const keys = tx
 			.select({ id: productAttributeKeys.id })
@@ -141,16 +158,44 @@ export async function setItemsProduct(itemIds: number[], productId: number): Pro
 
 		if (keys.length > 0) {
 			tx.insert(itemAttributeValues)
-				.values(itemIds.flatMap((itemId) => keys.map((key) => ({ itemId, attributeId: key.id, value: '' }))))
+				.values(changingIds.flatMap((itemId) => keys.map((key) => ({ itemId, attributeId: key.id, value: '' }))))
 				.run();
 		}
 	});
 }
 
-// schema_v3.md Work item: "attribute editing entry points" (single-item).
-// A key not yet in the product's template is created there and fanned out
-// (blank) to every sibling item first — Work item "fan out new template
-// fields to existing items" — before this item's own value is set.
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Looks up the product's attribute key by name, creating it and fanning out
+// a blank value to every existing item of the product if it doesn't exist
+// yet — docs/schema.md Work item "fan out new template fields to existing
+// items". Shared by the single-item and bulk attribute editing entry points
+// below so the fan-out logic can't drift between the two.
+function getOrCreateAttributeKey(tx: Tx, productId: number, trimmedKey: string): number {
+	const existing = tx
+		.select({ id: productAttributeKeys.id })
+		.from(productAttributeKeys)
+		.where(and(eq(productAttributeKeys.productId, productId), eq(productAttributeKeys.name, trimmedKey)))
+		.get();
+	if (existing) return existing.id;
+
+	const created = tx
+		.insert(productAttributeKeys)
+		.values({ productId, name: trimmedKey })
+		.returning({ id: productAttributeKeys.id })
+		.get();
+
+	const siblingItems = tx.select({ id: items.id }).from(items).where(eq(items.productId, productId)).all();
+	if (siblingItems.length > 0) {
+		tx.insert(itemAttributeValues)
+			.values(siblingItems.map((sibling) => ({ itemId: sibling.id, attributeId: created.id, value: '' })))
+			.run();
+	}
+
+	return created.id;
+}
+
+// docs/schema.md Work item: "attribute editing entry points" (single-item).
 export async function setItemAttributeValue(itemId: number, key: string, value: string): Promise<void> {
 	const trimmedKey = key.trim();
 	if (!trimmedKey) throw new Error('Attribute key is required');
@@ -160,34 +205,10 @@ export async function setItemAttributeValue(itemId: number, key: string, value: 
 	const productId = item.productId;
 
 	db.transaction((tx) => {
-		let attributeKey = tx
-			.select({ id: productAttributeKeys.id })
-			.from(productAttributeKeys)
-			.where(and(eq(productAttributeKeys.productId, productId), eq(productAttributeKeys.name, trimmedKey)))
-			.get();
-
-		if (!attributeKey) {
-			attributeKey = tx
-				.insert(productAttributeKeys)
-				.values({ productId, name: trimmedKey })
-				.returning({ id: productAttributeKeys.id })
-				.get();
-
-			const siblingItems = tx.select({ id: items.id }).from(items).where(eq(items.productId, productId)).all();
-			tx.insert(itemAttributeValues)
-				.values(
-					siblingItems.map((sibling) => ({
-						itemId: sibling.id,
-						attributeId: attributeKey!.id,
-						value: sibling.id === itemId ? value : '',
-					})),
-				)
-				.run();
-			return;
-		}
+		const attributeId = getOrCreateAttributeKey(tx, productId, trimmedKey);
 
 		tx.insert(itemAttributeValues)
-			.values({ itemId, attributeId: attributeKey.id, value })
+			.values({ itemId, attributeId, value })
 			.onConflictDoUpdate({
 				target: [itemAttributeValues.itemId, itemAttributeValues.attributeId],
 				set: { value },
@@ -211,48 +232,29 @@ async function sharedProductId(itemIds: number[]): Promise<number | null> {
 
 export type BulkAttributeResult = { ok: true } | { ok: false; error: 'no_shared_product' };
 
-// schema_v3.md Work item: "attribute editing entry points" (bulk). Applies
+// docs/schema.md Work item: "attribute editing entry points" (bulk). Applies
 // every key/value pair to every selected item, after confirming they all
 // share one product (i.e. one attribute template) — the caller is
 // responsible for surfacing `no_shared_product` as the doc's "warning...
 // disable every control except Cancel/Close".
 export async function setBulkAttributeValues(itemIds: number[], values: WizardAttribute[]): Promise<BulkAttributeResult> {
 	const productId = await sharedProductId(itemIds);
-	if (!productId) return { ok: false, error: 'no_shared_product' };
+	if (productId === null) return { ok: false, error: 'no_shared_product' };
 
 	db.transaction((tx) => {
 		for (const { key, value } of values) {
 			const trimmedKey = key.trim();
 			if (!trimmedKey) continue;
 
-			let attributeKey = tx
-				.select({ id: productAttributeKeys.id })
-				.from(productAttributeKeys)
-				.where(and(eq(productAttributeKeys.productId, productId), eq(productAttributeKeys.name, trimmedKey)))
-				.get();
+			const attributeId = getOrCreateAttributeKey(tx, productId, trimmedKey);
 
-			if (!attributeKey) {
-				attributeKey = tx
-					.insert(productAttributeKeys)
-					.values({ productId, name: trimmedKey })
-					.returning({ id: productAttributeKeys.id })
-					.get();
-
-				const siblingItems = tx.select({ id: items.id }).from(items).where(eq(items.productId, productId)).all();
-				tx.insert(itemAttributeValues)
-					.values(siblingItems.map((sibling) => ({ itemId: sibling.id, attributeId: attributeKey!.id, value: '' })))
-					.run();
-			}
-
-			for (const itemId of itemIds) {
-				tx.insert(itemAttributeValues)
-					.values({ itemId, attributeId: attributeKey.id, value })
-					.onConflictDoUpdate({
-						target: [itemAttributeValues.itemId, itemAttributeValues.attributeId],
-						set: { value },
-					})
-					.run();
-			}
+			tx.insert(itemAttributeValues)
+				.values(itemIds.map((itemId) => ({ itemId, attributeId, value })))
+				.onConflictDoUpdate({
+					target: [itemAttributeValues.itemId, itemAttributeValues.attributeId],
+					set: { value },
+				})
+				.run();
 		}
 	});
 

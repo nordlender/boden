@@ -2,7 +2,7 @@ import type { OAuthConfig, OAuthUserConfig } from '@auth/core/providers';
 import type { TokenSet } from '@auth/core/types';
 import { defineConfig } from 'auth-astro';
 import { db } from './db/client';
-import { users } from './db/schema';
+import { upsertSignedInUser } from './lib/upsertUser';
 
 declare module '@auth/core/types' {
   interface Session {
@@ -67,7 +67,7 @@ interface BlocProfile {
 
 // bloc (rest.bloc.net) as OAuth2 identity provider. Not one of Auth.js's built-in
 // named providers, so this is a hand-rolled generic OAuthConfig — see
-// auth_work_items.md for the confirmed authorize/token endpoints.
+// docs/auth-work-items.md for the confirmed authorize/token endpoints.
 function Bloc(config: OAuthUserConfig<BlocProfile> & { redirectUri: string }): OAuthConfig<BlocProfile> {
   return {
     id: 'bloc',
@@ -77,7 +77,7 @@ function Bloc(config: OAuthUserConfig<BlocProfile> & { redirectUri: string }): O
     clientSecret: config.clientSecret,
     authorization: {
       url: 'https://rest.bloc.net/OAuth/Authorize',
-      // bloc's authorize endpoint per auth_work_items.md: client_id, response_type,
+      // bloc's authorize endpoint per docs/auth-work-items.md: client_id, response_type,
       // redirect_uri. redirect_uri is explicit here (built from REDIRECT_URL +
       // BLOC_CALLBACK_PATH below) rather than Auth.js's auto-computed callback
       // URL, since bloc's app registration pins an exact redirect_uri value —
@@ -132,7 +132,7 @@ function Bloc(config: OAuthUserConfig<BlocProfile> & { redirectUri: string }): O
         name,
         email: profile.email || null,
         image: profile.image || null,
-        // TODO: implement later — not yet consumed anywhere (see rental_shop.md §6 upsert).
+        // TODO: implement later — not yet consumed anywhere (see docs/rental-shop.md §6 upsert).
         userId: profile.userId,
         mobile: profile.mobile,
         profileTypeId: profile.profileTypeId,
@@ -158,20 +158,14 @@ export default defineConfig({
   ],
 
   callbacks: {
-    // Upsert into `users` on every sign-in (rental_shop.md §6) — this is what
+    // Upsert into `users` on every sign-in (docs/rental-shop.md §6) — this is what
     // gives orders.userId a real row to reference once an order is placed.
     // Runs before jwt()/session(), using the same id/email profile() already
     // produced. Fails closed (returns false -> sign-in rejected) rather than
     // letting a signed-in session exist with no matching users row.
     async signIn({ user }) {
       if (!user.id || !user.email) return false;
-      db.insert(users)
-        .values({ id: user.id, email: user.email, name: user.name ?? null })
-        .onConflictDoUpdate({
-          target: users.id,
-          set: { email: user.email, name: user.name ?? null },
-        })
-        .run();
+      await upsertSignedInUser(db, { id: user.id, email: user.email, name: user.name });
       return true;
     },
     // Persist the access token + bloc profile fields into the JWT so they're

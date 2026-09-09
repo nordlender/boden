@@ -1,21 +1,15 @@
 export const prerender = false;
 
-// Not covered by src/middleware/index.ts's route-prefix gate (that only
-// matches /admin, /cart, /checkout, /orders — not /api/...), same as
-// src/pages/api/orders/create.ts — so the admin check happens here instead.
+// Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES ('/api/wizard'),
+// but that's defense-in-depth — keep this inline check too (see prefixes.ts).
 
 import type { APIRoute } from 'astro';
 import { createItem } from '../../../lib/wizard';
+import { requireAdmin, safeRedirectTarget } from '../../../lib/wizard-http';
 
-function redirectTarget(form: FormData): string {
-	const redirectTo = form.get('redirectTo');
-	return typeof redirectTo === 'string' && redirectTo.startsWith('/') ? redirectTo : '/admin/items';
-}
-
-export const POST: APIRoute = async ({ request, redirect, locals }) => {
-	if (locals.user?.role !== 'admin') {
-		return new Response('Forbidden', { status: 403 });
-	}
+export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
+	const forbidden = requireAdmin(locals);
+	if (forbidden) return forbidden;
 
 	const form = await request.formData();
 	const name = form.get('name')?.toString().trim();
@@ -26,5 +20,5 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
 	}
 
 	await createItem({ name, imageUrl });
-	return redirect(redirectTarget(form));
+	return redirect(safeRedirectTarget(form, url.origin));
 };

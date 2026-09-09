@@ -15,11 +15,11 @@ Written up after the first live test on 2026-08-26/27.
 ## Starting the server
 
 ```
-npx astro dev --host --background
+npx astro dev --host 0.0.0.0 --background
 ```
 
-`--host` matters here, beyond what `AGENTS.md`'s plain `astro dev --background`
-covers: by default Astro's dev server only binds to loopback, which was not
+`AGENTS.md` now has the dev server always bind to `0.0.0.0` for this reason:
+by default Astro's dev server only binds to loopback, which was not
 reachable at this project's `REDIRECT_URL` (a docker-internal address like
 `172.17.0.2`) — only `localhost`/`127.0.0.1` worked without it. If bloc needs
 to redirect a real browser back to this app, the server needs to be reachable
@@ -96,7 +96,7 @@ happens on an actual new sign-in, not on ordinary requests. So:
   `null`/empty across all four bloc methods reachable with a real access
   token (`account/listmypages`, `Account/MyAccount`, `Profile/GetPage`,
   `account/listmypersonprofiles`). Reported to bloc by the user; see
-  `auth_session_handoff.md` §7 for the full writeup.
+  `docs/auth-handoff.md` §7 for the full writeup.
 - The profile-selection fallback (`profileTypeId === 0 ?? profiles[0]`) is
   now confirmed fine for this account specifically — it only ever returned
   one profile, already `profileTypeId: 0`, so the ambiguous-fallback path

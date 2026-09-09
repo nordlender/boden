@@ -24,113 +24,15 @@ narrative/rationale.
   the representative, with the per-item breakdown left to the product detail
   page as already built.
 
+### Admin wizard
+- [ ui ] Consider using the "percentage-50" icon for the invert-selection
+  button.
+
 ### Reservation
-- **Design scaffold done** (`worktree-reservation`, branched off
-  `worktree-rework_dynamic`): new `/reservation` page between `/cart` and
-  order submission — `ReservationCalendar.astro` (Cally `<calendar-range>`,
-  styled via `::part()` to match the site), `ReservationItemRow.astro` (per-item
-  availability badge + `{separate_order_icon}` = `tabler:arrows-split-2`,
-  `src/lib/icons.ts`'s `splitOrder`), `ReservationForm.astro` composing both
-  plus the existing `CheckoutForm.astro` (moved here from `/cart`, which now
-  just links forward). Mixed-availability warning banner wired to
-  `POST /api/reservation/availability`.
-  - **Still a stub, not functional**: `src/lib/reservation.ts`'s
-    `stubAvailabilityFromCart` ignores the chosen date range entirely — it
-    reports today's date-less in-stock figure (`stock.ts`'s
-    `reservedQuantitiesByItem`) for every range. `orders`/`orderItems` have no
-    date columns yet (`src/db/schema.ts`), so there's nothing real to query.
-  - **Schema/backend/middleware follow-up done** (`worktree-reservation-backend`,
-    branched off `worktree-reservation`): `orders` now has
-    `fromDate`/`toDate` (`YYYY-MM-DD`, both required, `toDate >= fromDate`
-    check constraint) — the whole order shares one range.
-    `src/lib/reservation.ts`'s `getReservationAvailability` replaces the
-    stub: for each requested item, sweeps a per-day timeline over every
-    other `requested`/`active` order whose range overlaps the query to find
-    the *peak concurrent* quantity already reserved, then compares
-    `stockCount - peakReserved` against the requested quantity — this is
-    what makes 2x item A able to be unavailable in a range where 1x would
-    not be. `POST /api/reservation/availability` now calls it for real
-    (still requires auth). `/reservation` and `/api/{reservation,orders}`
-    added to `MEMBER_ROUTE_PREFIXES` (`src/middleware/prefixes.ts`).
-    `createOrder`/`createSplitOrders` (`src/lib/orders.ts`) both require
-    `fromDate`/`toDate`; `createSplitOrders` partitions the cart into up to
-    two orders sharing the same range — the reservation page's split-order
-    button feeds it `splitItemIds` via a hidden field on `CheckoutForm`.
-    `checkout/success.astro` takes a comma-separated `order=` param so a
-    split checkout can land on both orders at once. Covered by
-    `src/lib/__tests__/reservation.test.ts` (peak-concurrent-demand cases)
-    plus the existing suite (75 tests, all passing).
-  - Split-order action is not offered when an order has more than one of the
-    same item (quantity > 1 for that line) — enforced both client-side
-    (`ReservationForm.astro`) and implicitly server-side (splitting always
-    moves a whole line).
-  - Not yet done: per-day (rather than whole-order-range) granularity would
-    let two back-to-back reservations of the same item not falsely conflict
-    on their shared boundary day — currently a reservation ending 01-10 and
-    one starting 01-10 for the same item DO count as overlapping (inclusive
-    ends), which may or may not be the desired handout/return-day semantics;
-    worth confirming with the moderator-workflow retrieval/return timing
-    once that's built. No UI for viewing/canceling a placed reservation yet
-    either — this only covers creating one.
-  - **Rework pass (2026-09-06, same worktree), fixing real bugs found while
-    reviewing layout + adding pick-up-day coloring**:
-    - **Cally never actually ran in the browser.** `import 'cally'` (which
-      registers the custom elements) was in `ReservationCalendar.astro`'s
-      frontmatter — Astro frontmatter is server-render-only and is never
-      shipped to the client, so `<calendar-range>` sat inert with none of
-      Cally's JS. Moved the import into the component's `<script>` block
-      (a real client module); confirmed by checking the build output
-      (`dist/client/_astro/ReservationCalendar...js`) now actually contains
-      Cally's code, where before it didn't.
-    - **Two `<calendar-month>` siblings with no `offset` rendered the same
-      month twice** instead of two consecutive months — Cally's own docs
-      example sets `offset={1}` on the second; added.
-    - **`::part(selected)` never applied** — `calendar-range` is `type:
-      "range"`, which never emits a `selected` part (only
-      `range-start`/`range-end`/`range-inner`, confirmed by reading Cally's
-      day-rendering source). The chosen dates were rendering with zero
-      accent styling. Fixed to target `range-start`/`range-end`/`range-inner`.
-    - `CheckoutForm.astro` had no styling at all (plain browser-default
-      inputs/labels/button) directly below a fully Tailwind-styled calendar
-      and item list — restyled to match (`fieldClass`/`labelClass`,
-      disabled-button state).
-    - Added step headers ("1. Pick-up & return dates" / "2. Your items" /
-      "3. Your details"), a "Checking availability…" loading indicator, a
-      dynamic hint under the submit button explaining why it's disabled, and
-      a "Separate order" tag on a row once its split-order button is pressed
-      (previously only the icon's pressed state changed, easy to miss).
-    - **Pick-up-day availability coloring**: new `pickup_available_days`
-      table (`date` PK, `YYYY-MM-DD` — existence of a row is the only
-      signal) + `src/lib/pickupDays.ts`
-      (`getUpcomingAvailablePickupDates`/`listAvailablePickupDates`/
-      `addAvailablePickupDate`/`removeAvailablePickupDate`, covered by
-      `src/lib/__tests__/pickupDays.test.ts`). `reservation.astro`
-      fetches upcoming dates and passes them to `ReservationCalendar`, which
-      wires Cally's `getDayParts(date)` hook (a JS function prop, not an
-      HTML attribute — confirmed via Cally's source that it's read from the
-      `calendar-range` host and shared down to every day cell via context,
-      so setting it once on the host is sufficient) to mark matching days
-      with a `pickup-available` CSS part, styled green. A legend above the
-      calendar shows "● Pick up available" (green) / "○ Request pick up"
-      (default) per spec — not a restriction, just information: an
-      unmarked day is still selectable as pick-up, it just isn't yet
-      confirmed to have a moderator.
-    - New `/admin/pickup-days` page (add/remove dates, admin-gated like
-      `/admin/items`) + `/api/pickup-days/{add,remove}.ts` (inline admin
-      check, same pattern as `/api/wizard/*`), both prefixes added to
-      `ADMIN_ROUTE_PREFIXES`/`MEMBER_ROUTE_PREFIXES` as appropriate — without
-      this there was no way for anyone to populate the table short of
-      editing the db directly. No shared admin nav exists yet to link to it
-      from `/admin/items` (pre-existing gap, not introduced here) — reach it
-      by URL for now.
-    - Verified: migrations (including the new table) apply cleanly to a
-      fresh db; full build succeeds against the seeded example catalog;
-      full test suite is now 81 passing (was 75); lint/typecheck clean; manually
-      exercised `pickupDays.ts`'s add/list/remove against the seeded dev db
-      end-to-end via a throwaway script. **Not visually verified in a real
-      browser** — this repo's OAuth login can't be faked without real bloc
-      credentials in this environment, and per user preference screenshots
-      aren't attempted; user to check the rendered page directly.
+- [ ui ] Future investigation: implement a heatmap on the reservation form's
+  calendar reflecting item availability per day, ranging from red (not
+  available) through yellow (some available) to white (all available).
+  Possibly with a legend showing real values, e.g. white = 10 available.
 
 ### Order persistence
 - `hasUnpaidFees`/`userIsMember` still aren't columns on `orders` — the
@@ -194,6 +96,8 @@ narrative/rationale.
 
 ## WIP
 
+- Scaffold the design of the reservation functionality (reserving items
+  forward in time).
 - **`docs/rental-shop.md`'s order-lifecycle diagram is inconsistent** (Confirm step
   says "Accept or Reject" but the status line under it still only covers
   `active`, and it places accept/reject at the same step as retrieval rather

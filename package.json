@@ -6,7 +6,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "astro dev",
+    "dev": "astro dev --host 0.0.0.0",
     "dev:tunnel": "bash scripts/dev-tunnel.sh",
     "branches": "bash scripts/branch-status.sh",
     "worktrees:prune": "bash scripts/prune-worktrees.sh",

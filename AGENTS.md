@@ -47,3 +47,13 @@ Consult these guides before working on related tasks:
 - [Adding or managing content](https://docs.astro.build/en/guides/content-collections/)
 - [Adding styles or using Tailwind](https://docs.astro.build/en/guides/styling/)
 - [Supporting multiple languages](https://docs.astro.build/en/guides/internationalization/)
+
+## Workflow
+### Tasks
+Tasks are now done through GitHub issues. Use the github-issue-tasks skill. When planning work-items this should be used.
+
+### Commits
+All commits should use the conventional commits format.
+
+### PR's
+Generally work is done on separate worktrees. If there is one set of features for one worktree, one can continue there. For example, one worktree for reservation, one for cart, and so on. Also, worktrees can branch off existing worktrees for minor work items or new features. If, for example, there is a functioning cart page, and one wants to add a new feature, a new PR should be created for that feature branching off cart.

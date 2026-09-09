@@ -15,11 +15,11 @@ Written up after the first live test on 2026-08-26/27.
 ## Starting the server
 
 ```
-npx astro dev --host --background
+npx astro dev --host 0.0.0.0 --background
 ```
 
-`--host` matters here, beyond what `AGENTS.md`'s plain `astro dev --background`
-covers: by default Astro's dev server only binds to loopback, which was not
+`AGENTS.md` now has the dev server always bind to `0.0.0.0` for this reason:
+by default Astro's dev server only binds to loopback, which was not
 reachable at this project's `REDIRECT_URL` (a docker-internal address like
 `172.17.0.2`) — only `localhost`/`127.0.0.1` worked without it. If bloc needs
 to redirect a real browser back to this app, the server needs to be reachable

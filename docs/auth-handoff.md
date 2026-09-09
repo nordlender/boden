@@ -144,9 +144,10 @@ nobody needs to reference it anymore.
 ### 7. First live bloc OAuth login test
 Real credentials now in `.env` (see above). Findings:
 - The dev server needed `astro dev --host --background`, not just
-  `--background` (per `AGENTS.md`) — default Astro dev only binds loopback,
-  which wasn't reachable at this project's `REDIRECT_URL`
-  (`http://172.17.0.2:4321/`, a docker-internal address).
+  `--background` (per `AGENTS.md` at the time) — default Astro dev only binds
+  loopback, which wasn't reachable at this project's `REDIRECT_URL`
+  (`http://172.17.0.2:4321/`, a docker-internal address). `AGENTS.md` now
+  always binds to `0.0.0.0`, so this is no longer a special case.
 - First login attempt failed: `CallbackRouteError` from a `403` on
   `account/listmypages` (our own new `res.ok` check caught this cleanly).
   Every attempt since has succeeded, no code change in between — **cause not

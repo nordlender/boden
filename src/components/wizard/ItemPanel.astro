@@ -34,13 +34,13 @@ const { variant, title, items, products, redirectTo } = Astro.props;
 // edit forms live inside the row list and forms can't nest.
 const formId = `wizard-${variant}-form`;
 ---
-<section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
-	<h2 class="border-b border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">{title}</h2>
+<section class="overflow-hidden rounded-lg border border-border bg-surface">
+	<h2 class="border-b border-border px-3 py-2 text-sm font-semibold text-text">{title}</h2>
 	<form id={formId} method="post" action="/api/wizard/archive"></form>
 	<ButtonStrip variant={variant} formId={formId} products={products} redirectTo={redirectTo} />
 	<TableHeader variant={variant} formId={formId} />
 	{items.length === 0 ? (
-		<p class="px-3 py-8 text-center text-sm text-slate-400">No items yet.</p>
+		<p class="px-3 py-8 text-center text-sm text-text-muted">No items yet.</p>
 	) : (
 		<div>
 			{items.map((item) => <ItemRow variant={variant} formId={formId} {...item} />)}

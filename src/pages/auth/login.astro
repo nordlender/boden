@@ -11,23 +11,27 @@ const next = Astro.url.searchParams.get('next') ?? '/';
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Sign in</title>
+		<title>Signing in…</title>
 	</head>
-	<body>
-		<main>
-			<h1>Sign in</h1>
-			<button id="signin" data-next={next} type="button">Sign in with bloc</button>
-		</main>
+	<body data-next={next}>
+		<!--
+			No visible login screen by design (issue #58) — this fires the bloc
+			sign-in redirect immediately on load instead of waiting for a click.
+			signIn() has to run client-side (it POSTs a CSRF token fetched from
+			/api/auth/csrf, which a plain server-side redirect can't do without
+			reimplementing Auth.js's CSRF handling), so this brief document is
+			unavoidable, but the user never sees an interactive login screen —
+			just an instant redirect to bloc.
+		-->
+		<p>Signing in…</p>
 		<script>
 			import { signIn } from 'auth-astro/client';
 
-			const button = document.getElementById('signin') as HTMLButtonElement;
-			button.addEventListener('click', () => {
-				// auth-astro's SignInOptions type pulls in `next-auth/react`, which
-				// isn't installed as a dependency here — cast to bypass the resulting
-				// type gap rather than pull in the whole next-auth package for types.
-				signIn('bloc', { callbackUrl: button.dataset.next || '/' } as Parameters<typeof signIn>[1]);
-			});
+			const next = document.body.dataset.next || '/';
+			// auth-astro's SignInOptions type pulls in `next-auth/react`, which
+			// isn't installed as a dependency here — cast to bypass the resulting
+			// type gap rather than pull in the whole next-auth package for types.
+			signIn('bloc', { callbackUrl: next } as Parameters<typeof signIn>[1]);
 		</script>
 	</body>
 </html>

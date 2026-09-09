@@ -20,10 +20,19 @@
 	--ui-surface: var(--color-white);
 	--ui-border: var(--color-slate-200);
 	--ui-border-strong: var(--color-slate-300);
+	/* Not just a stronger divider: this is for borders that are the *only*
+	 * boundary cue on an interactive control (inputs, checkboxes), so it's
+	 * held to WCAG 1.4.11's 3:1 non-text contrast minimum in both themes. */
+	--ui-border-interactive: var(--color-slate-500);
 
 	--ui-text: var(--color-slate-900);
 	--ui-text-muted: var(--color-slate-500);
 	--ui-text-inverted: var(--color-white);
+
+	--ui-disabled-bg: var(--color-slate-100);
+	--ui-disabled-text: var(--color-slate-400);
+
+	--ui-overlay: color-mix(in oklab, var(--color-black) 40%, transparent);
 
 	--ui-accent: var(--color-blue-600);
 	--ui-accent-hover: var(--color-blue-700);
@@ -69,6 +78,11 @@
 		--ui-text: var(--color-slate-100);
 		--ui-text-muted: var(--color-slate-400);
 		--ui-text-inverted: var(--color-slate-900);
+
+		--ui-disabled-bg: var(--color-slate-800);
+		--ui-disabled-text: var(--color-slate-600);
+
+		--ui-overlay: color-mix(in oklab, var(--color-black) 60%, transparent);
 
 		--ui-accent: var(--color-blue-500);
 		--ui-accent-hover: var(--color-blue-400);
@@ -121,6 +135,11 @@
 	--ui-text-muted: var(--color-slate-400);
 	--ui-text-inverted: var(--color-slate-900);
 
+	--ui-disabled-bg: var(--color-slate-800);
+	--ui-disabled-text: var(--color-slate-600);
+
+	--ui-overlay: color-mix(in oklab, var(--color-black) 60%, transparent);
+
 	--ui-accent: var(--color-blue-500);
 	--ui-accent-hover: var(--color-blue-400);
 	--ui-accent-subtle: color-mix(in oklab, var(--color-blue-500) 15%, transparent);
@@ -159,10 +178,16 @@
 	--color-surface: var(--ui-surface);
 	--color-border: var(--ui-border);
 	--color-border-strong: var(--ui-border-strong);
+	--color-border-interactive: var(--ui-border-interactive);
 
 	--color-text: var(--ui-text);
 	--color-text-muted: var(--ui-text-muted);
 	--color-text-inverted: var(--ui-text-inverted);
+
+	--color-disabled-bg: var(--ui-disabled-bg);
+	--color-disabled-text: var(--ui-disabled-text);
+
+	--color-overlay: var(--ui-overlay);
 
 	--color-accent: var(--ui-accent);
 	--color-accent-hover: var(--ui-accent-hover);

@@ -13,7 +13,7 @@
 		fill="none"
 		stroke="currentColor"
 		stroke-width="2"
-		class="h-5 w-5 [[data-theme='dark']_&]:hidden"
+		class="h-5 w-5"
 		data-icon="sun"
 	>
 		<circle cx="12" cy="12" r="4" />
@@ -28,12 +28,39 @@
 		fill="none"
 		stroke="currentColor"
 		stroke-width="2"
-		class="hidden h-5 w-5 [[data-theme='dark']_&]:block"
+		class="h-5 w-5"
 		data-icon="moon"
 	>
 		<path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
 	</svg>
 </button>
+
+<style>
+	/*
+	 * Mirrors global.css's theme selectors exactly, so the icon reflects the
+	 * theme that's actually rendered — including the OS-preference case where
+	 * data-theme is never set explicitly (see BaseLayout's init script).
+	 */
+	[data-icon='moon'] {
+		display: none;
+	}
+
+	:global(html[data-theme='dark']) [data-icon='sun'] {
+		display: none;
+	}
+	:global(html[data-theme='dark']) [data-icon='moon'] {
+		display: block;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:global(html:not([data-theme='light'])) [data-icon='sun'] {
+			display: none;
+		}
+		:global(html:not([data-theme='light'])) [data-icon='moon'] {
+			display: block;
+		}
+	}
+</style>
 
 <script is:inline>
 	(function () {

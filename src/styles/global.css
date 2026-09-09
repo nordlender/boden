@@ -13,6 +13,8 @@
  */
 
 :root {
+	color-scheme: light dark;
+
 	--ui-bg: var(--color-white);
 	--ui-bg-subtle: var(--color-slate-50);
 	--ui-surface: var(--color-white);
@@ -102,7 +104,13 @@
 }
 
 /* Explicit user choice (via the theme toggle) always wins over OS preference. */
+:root[data-theme="light"] {
+	color-scheme: light;
+}
+
 :root[data-theme="dark"] {
+	color-scheme: dark;
+
 	--ui-bg: var(--color-slate-950);
 	--ui-bg-subtle: var(--color-slate-900);
 	--ui-surface: var(--color-slate-900);

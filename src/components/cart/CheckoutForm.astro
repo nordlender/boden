@@ -24,6 +24,7 @@ const labelClass = 'block text-sm font-medium text-gray-700';
 	<input type="hidden" name="fromDate" data-checkout-from-date />
 	<input type="hidden" name="toDate" data-checkout-to-date />
 	<input type="hidden" name="splitItemIds" data-checkout-split-item-ids />
+	{/* TODO: Style later, warning? — this is advisory ("you can still submit"), not a blocking error. */}
 	{hasUnpaidFees && (
 		<p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
 			Note: you have an unpaid fee. You can still submit the form. Please check your payments on osiklatring.no. If you have paid the current semester fee, this could be an error.
@@ -57,7 +58,7 @@ const labelClass = 'block text-sm font-medium text-gray-700';
 	</label>
 	<button
 		type="submit"
-		class="self-start rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+		class="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
 	>
 		Place order
 	</button>

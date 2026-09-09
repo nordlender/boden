@@ -22,7 +22,7 @@ export const icons = {
 	selectMenu: 'tabler:square-chevron-down',
 	selectNone: 'tabler:circle-dashed',
 	selectAll: 'tabler:circle-asterisk',
-	selectInvert: 'tabler:circle-half-2',
+	selectInvert: 'tabler:percentage-50',
 	trash: 'tabler:trash',
 	// {edit_icon} — sits next to an attribute's value in the details box;
 	// clicking it reveals the inline edit form for that field.

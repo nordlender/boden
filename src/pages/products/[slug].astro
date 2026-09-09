@@ -31,7 +31,7 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 
 <BaseLayout title={product.title}>
 	<div class="mx-auto grid max-w-4xl gap-8 px-4 py-12 sm:grid-cols-2">
-		<div class="aspect-square overflow-hidden rounded-lg bg-gray-100">
+		<div class="aspect-square overflow-hidden rounded-lg bg-bg-subtle">
 			<!--
 				Both the image and its placeholder are always in the DOM (rather
 				than picking one at render time) so the variant-select script can
@@ -48,7 +48,7 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 			/>
 			<div
 				data-product-image-placeholder
-				class="flex h-full w-full items-center justify-center text-gray-300"
+				class="flex h-full w-full items-center justify-center text-disabled-text"
 				hidden={Boolean(initialImageUrl)}
 			>
 				<ImagePlaceholder size={48} />
@@ -57,25 +57,26 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 
 		<div class="flex flex-col gap-4">
 			<div>
-				{product.subcategoryName && <p class="text-xs uppercase tracking-wide text-gray-500">{product.subcategoryName}</p>}
-				<h1 class="text-2xl font-semibold tracking-tight text-gray-900">{product.title}</h1>
+				{product.subcategoryName && <p class="text-xs uppercase tracking-wide text-text-muted">{product.subcategoryName}</p>}
+				<h1 class="text-2xl font-semibold tracking-tight text-text">{product.title}</h1>
 			</div>
 
-			{product.description && <p class="text-sm text-gray-600">{product.description}</p>}
+			{product.description && <p class="text-sm text-text-muted">{product.description}</p>}
 
 			{
 				product.items.length === 0 ? (
-					<p class="text-sm text-red-700">No items available for this product yet.</p>
+					// TODO: Style later, warning? — no items yet isn't necessarily an error state.
+					<p class="text-sm text-error-text">No items available for this product yet.</p>
 				) : (
-					<form action="/api/cart/add" method="post" class="flex flex-col gap-4 border-t border-gray-200 pt-4">
+					<form action="/api/cart/add" method="post" class="flex flex-col gap-4 border-t border-border pt-4">
 						<input type="hidden" name="redirect" value={`/products/${product.slug}`} />
 
 						{product.items.length > 1 ? (
 							<div>
-								<label class="mb-2 block text-sm font-medium text-gray-900" for="itemId">
+								<label class="mb-2 block text-sm font-medium text-text" for="itemId">
 									Choose a variant
 								</label>
-								<select id="itemId" name="itemId" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+								<select id="itemId" name="itemId" class="w-full rounded-md border border-border-interactive px-3 py-2 text-sm">
 									{product.items.map((item) => {
 										const label = item.attributes.map((a) => a.value).join(' / ') || `Option ${item.id}`;
 										return (
@@ -99,19 +100,20 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 						)}
 
 						{product.attributeKeyOrder.length > 0 && (
-							<dl data-item-attributes class="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-gray-200 pt-4 text-sm">
+							<dl data-item-attributes class="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-sm">
 								{(initialItem?.attributes ?? []).map((attribute) => (
 									<div class="contents">
-										<dt class="text-gray-500">{attribute.key}</dt>
-										<dd class="text-gray-900">{attribute.value}</dd>
+										<dt class="text-text-muted">{attribute.key}</dt>
+										<dd class="text-text">{attribute.value}</dd>
 									</div>
 								))}
 							</dl>
 						)}
 
+						{/* TODO: Style later, warning? — is "out of stock" an error or a warning state? */}
 						<p
 							data-stock-message
-							class={`text-sm font-medium ${(initialItem?.inStock ?? 0) > 0 ? 'text-emerald-700' : 'text-red-700'}`}
+							class={`text-sm font-medium ${(initialItem?.inStock ?? 0) > 0 ? 'text-success-text' : 'text-error-text'}`}
 						>
 							{(initialItem?.inStock ?? 0) > 0 ? `${initialItem?.inStock} in stock` : 'Out of stock'}
 						</p>
@@ -125,13 +127,13 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 								max={Math.max(initialItem?.inStock ?? 1, 1)}
 								required
 								data-quantity-input
-								class="w-16 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+								class="w-16 rounded-md border border-border-interactive px-2 py-1.5 text-sm"
 							/>
 							<button
 								type="submit"
 								data-add-to-cart
 								disabled={(initialItem?.inStock ?? 0) <= 0}
-								class="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+								class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-disabled-bg"
 							>
 								Add to cart
 							</button>
@@ -142,10 +144,10 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 
 			{
 				product.links.length > 0 && (
-					<ul class="flex flex-col gap-1 border-t border-gray-200 pt-4 text-sm">
+					<ul class="flex flex-col gap-1 border-t border-border pt-4 text-sm">
 						{product.links.map((link) => (
 							<li>
-								<a href={link.url} target="_blank" rel="noopener noreferrer" class="text-gray-700 underline hover:text-gray-900">
+								<a href={link.url} target="_blank" rel="noopener noreferrer" class="text-text-muted underline hover:text-text">
 									{link.label}
 								</a>
 							</li>
@@ -185,11 +187,11 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 			wrapper.className = 'contents';
 
 			const dt = document.createElement('dt');
-			dt.className = 'text-gray-500';
+			dt.className = 'text-text-muted';
 			dt.textContent = key;
 
 			const dd = document.createElement('dd');
-			dd.className = 'text-gray-900';
+			dd.className = 'text-text';
 			dd.textContent = value;
 
 			wrapper.append(dt, dd);
@@ -215,7 +217,8 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 
 		if (stockMessage) {
 			stockMessage.textContent = stock > 0 ? `${stock} in stock` : 'Out of stock';
-			stockMessage.className = `text-sm font-medium ${stock > 0 ? 'text-emerald-700' : 'text-red-700'}`;
+			// TODO: Style later, warning? — is "out of stock" an error or a warning state?
+			stockMessage.className = `text-sm font-medium ${stock > 0 ? 'text-success-text' : 'text-error-text'}`;
 		}
 
 		if (quantityInput) quantityInput.max = String(Math.max(stock, 1));

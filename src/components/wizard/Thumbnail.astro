@@ -16,7 +16,7 @@ const style = `width: ${size}px; height: ${size}px;`;
 {src ? (
 	<img src={src} alt={alt} class="rounded object-cover" style={style} />
 ) : (
-	<div class="grid place-items-center rounded bg-slate-100 text-slate-400" style={style}>
+	<div class="grid place-items-center rounded bg-bg-subtle text-text-muted" style={style}>
 		<AppIcon name="image" size={Math.round(size * 0.45)} />
 	</div>
 )}

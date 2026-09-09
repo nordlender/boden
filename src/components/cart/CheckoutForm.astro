@@ -17,8 +17,9 @@ const yesNo = (value: boolean | null) => (value === null ? 'Unknown' : value ? '
 ---
 
 <form class="checkout-form" method="POST" action="/api/orders/create">
+	{/* TODO: Style later, warning? — this is advisory ("you can still submit"), not a blocking error. */}
 	{hasUnpaidFees && (
-		<p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+		<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
 			Note: you have an unpaid fee. You can still submit the form. Please check your payments on osiklatring.no. If you have paid the current semester fee, this could be an error.
 		</p>
 	)}

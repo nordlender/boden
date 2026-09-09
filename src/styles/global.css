@@ -40,6 +40,14 @@
 	--ui-accent-text: var(--color-blue-700);
 	--ui-focus-ring: var(--color-blue-500);
 
+	/* Same hue as accent today, but its own token: a rebrand could change the
+	 * brand color without touching what "this is selected" looks like (and
+	 * vice versa). Shared by wizard row-selection and calendar day-selection. */
+	--ui-selected: var(--color-blue-600);
+	--ui-selected-subtle: var(--color-blue-50);
+	--ui-selected-border: var(--color-blue-200);
+	--ui-selected-text: var(--color-blue-700);
+
 	--ui-success: var(--color-emerald-600);
 	--ui-success-subtle: var(--color-emerald-50);
 	--ui-success-border: var(--color-emerald-200);
@@ -89,6 +97,11 @@
 		--ui-accent-subtle: color-mix(in oklab, var(--color-blue-500) 15%, transparent);
 		--ui-accent-text: var(--color-blue-300);
 		--ui-focus-ring: var(--color-blue-400);
+
+		--ui-selected: var(--color-blue-500);
+		--ui-selected-subtle: color-mix(in oklab, var(--color-blue-500) 15%, transparent);
+		--ui-selected-border: var(--color-blue-800);
+		--ui-selected-text: var(--color-blue-300);
 
 		--ui-success: var(--color-emerald-500);
 		--ui-success-subtle: var(--color-emerald-950);
@@ -146,6 +159,11 @@
 	--ui-accent-text: var(--color-blue-300);
 	--ui-focus-ring: var(--color-blue-400);
 
+	--ui-selected: var(--color-blue-500);
+	--ui-selected-subtle: color-mix(in oklab, var(--color-blue-500) 15%, transparent);
+	--ui-selected-border: var(--color-blue-800);
+	--ui-selected-text: var(--color-blue-300);
+
 	--ui-success: var(--color-emerald-500);
 	--ui-success-subtle: var(--color-emerald-950);
 	--ui-success-border: var(--color-emerald-800);
@@ -194,6 +212,11 @@
 	--color-accent-subtle: var(--ui-accent-subtle);
 	--color-accent-text: var(--ui-accent-text);
 	--color-focus-ring: var(--ui-focus-ring);
+
+	--color-selected: var(--ui-selected);
+	--color-selected-subtle: var(--ui-selected-subtle);
+	--color-selected-border: var(--ui-selected-border);
+	--color-selected-text: var(--ui-selected-text);
 
 	--color-success: var(--ui-success);
 	--color-success-subtle: var(--ui-success-subtle);

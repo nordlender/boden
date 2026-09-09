@@ -11,7 +11,7 @@ const { items } = Astro.props;
 
 {
 	items.length === 0 ? (
-		<p class="text-sm text-gray-600">No items available.</p>
+		<p class="text-sm text-text-muted">No items available.</p>
 	) : (
 		<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
 			{items.map((item) => (

@@ -18,10 +18,13 @@ interface Props {
 
 const { label, warning = false } = Astro.props;
 ---
-<button type="button" class="details-toggle-button relative grid h-8 w-8 place-items-center justify-self-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-expanded="false" aria-label={label}>
+<button type="button" class="details-toggle-button relative grid h-8 w-8 place-items-center justify-self-center rounded text-text-muted hover:bg-bg-subtle hover:text-text" aria-expanded="false" aria-label={label}>
 	<MorphIcon icon={detailsToggle.closed} size={17} class="details-toggle-icon" />
 	{warning && (
-		<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" title="This product has no attribute template yet"></span>
+		// TODO: Style later — bg-warning only clears ~2.9:1 against the
+		// button's hover:bg-bg-subtle background, short of WCAG's 3:1 for
+		// graphical objects. Consider a ring or a darker warning shade here.
+		<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-warning" title="This product has no attribute template yet"></span>
 	)}
 </button>
 

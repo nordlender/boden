@@ -24,7 +24,6 @@ const labelClass = 'block text-sm font-medium text-gray-700';
 	<input type="hidden" name="fromDate" data-checkout-from-date />
 	<input type="hidden" name="toDate" data-checkout-to-date />
 	<input type="hidden" name="splitItemIds" data-checkout-split-item-ids />
-<form class="checkout-form" method="POST" action="/api/orders/create">
 	{/* TODO: Style later, warning? — this is advisory ("you can still submit"), not a blocking error. */}
 	{hasUnpaidFees && (
 		<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">

@@ -6,27 +6,10 @@ import { getCartItems } from '../lib/cart';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
 const cartItems = await getCartItems(Astro.cookies);
-import CheckoutForm from '../components/cart/CheckoutForm.astro';
-import { getCartItems } from '../lib/cart';
-import { getSession } from 'auth-astro/server';
-
-// Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
-const cartItems = await getCartItems(Astro.cookies);
-const session = await getSession(Astro.request);
 ---
 
 <BaseLayout title="Cart">
 	<div class="mx-auto max-w-3xl px-4 py-8">
-		<h1 class="mb-6 text-2xl font-semibold tracking-tight text-gray-900">Cart</h1>
-
-		{
-			cartItems.length === 0 ? (
-				<p class="mb-8 text-sm text-gray-600">Your cart is empty.</p>
-			) : (
-				<div class="mb-8 divide-y divide-gray-200 border-y border-gray-200">
-					{cartItems.map((item) => (
-						<div class="flex flex-wrap items-center gap-4 py-4">
-							<div class="h-16 w-16 shrink-0 overflow-hidden rounded bg-gray-100">
 		<h1 class="mb-6 text-2xl font-semibold tracking-tight text-text">Cart</h1>
 
 		{
@@ -43,16 +26,11 @@ const session = await getSession(Astro.request);
 							<div class="min-w-0 flex-1">
 								<a
 									href={item.productSlug ? `/products/${item.productSlug}` : '#'}
-									class="font-medium text-gray-900 hover:underline"
 									class="font-medium text-text hover:underline"
 								>
 									{item.productTitle}
 								</a>
 								{item.attributes.length > 0 && (
-									<p class="text-sm text-gray-500">{item.attributes.map((a) => a.value).join(' / ')}</p>
-								)}
-								{item.quantity > item.inStock && (
-									<p class="text-sm text-red-600">Only {Math.max(item.inStock, 0)} left in stock</p>
 									<p class="text-sm text-text-muted">{item.attributes.map((a) => a.value).join(' / ')}</p>
 								)}
 								{item.quantity > item.inStock && (
@@ -72,9 +50,6 @@ const session = await getSession(Astro.request);
 									name="quantity"
 									value={item.quantity}
 									min="0"
-									class="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm"
-								/>
-								<button type="submit" class="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50">
 									class="w-16 rounded-md border border-border-interactive px-2 py-1 text-sm"
 								/>
 								<button type="submit" class="rounded-md border border-border-strong px-2 py-1 text-sm text-text-muted hover:bg-bg-subtle">
@@ -84,7 +59,6 @@ const session = await getSession(Astro.request);
 
 							<form method="post" action="/api/cart/remove">
 								<input type="hidden" name="itemId" value={item.itemId} />
-								<button type="submit" class="text-sm text-red-600 hover:underline">
 								<button type="submit" class="text-sm text-error hover:underline">
 									Remove
 								</button>
@@ -99,18 +73,11 @@ const session = await getSession(Astro.request);
 			cartItems.length > 0 && (
 				<a
 					href="/reservation"
-					class="block rounded-md bg-gray-900 px-4 py-2 text-center text-sm font-medium text-white hover:bg-gray-800"
+					class="block rounded-md bg-accent px-4 py-2 text-center text-sm font-medium text-text-inverted hover:bg-accent-hover"
 				>
 					Continue to reservation dates
 				</a>
 			)
 		}
-		<CheckoutForm
-			name={session?.user?.name ?? null}
-			email={session?.user?.email ?? null}
-			mobile={session?.bloc?.mobile ?? null}
-			hasUnpaidFees={session?.bloc?.hasUnpaidFees ?? null}
-			userIsMember={session?.bloc?.userIsMember ?? null}
-		/>
 	</div>
 </BaseLayout>

@@ -9,10 +9,10 @@ See `schema_v3.md` for the full schema and design rationale.
 
 ## Development
 
-When starting the dev server, use background mode:
+When starting the dev server, use background mode and bind to `0.0.0.0` so it's reachable from outside loopback (needed for the localtunnel workflow and other network-based testing):
 
 ```
-astro dev --background
+astro dev --background --host 0.0.0.0
 ```
 
 Manage the background server with `astro dev stop`, `astro dev status`, and `astro dev logs`.

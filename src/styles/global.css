@@ -1,2 +1,194 @@
 @import "tailwindcss";
 @config "../../tailwind.config.mjs";
+
+/*
+ * Semantic theme tokens (issue #67) + dark mode (issue #68).
+ *
+ * Two layers, on purpose: the `--ui-*` variables below hold the actual
+ * color values and are what light/dark mode override. The `@theme inline`
+ * block then aliases them to `--color-*` names so Tailwind generates
+ * ordinary utilities (bg-surface, text-muted, border-info, ...) that stay
+ * in sync with the active theme automatically — `@theme` (without
+ * `inline`) would bake the light-mode value in at build time instead.
+ */
+
+:root {
+	--ui-bg: var(--color-white);
+	--ui-bg-subtle: var(--color-slate-50);
+	--ui-surface: var(--color-white);
+	--ui-border: var(--color-slate-200);
+	--ui-border-strong: var(--color-slate-300);
+
+	--ui-text: var(--color-slate-900);
+	--ui-text-muted: var(--color-slate-500);
+	--ui-text-inverted: var(--color-white);
+
+	--ui-accent: var(--color-blue-600);
+	--ui-accent-hover: var(--color-blue-700);
+	--ui-accent-subtle: var(--color-blue-50);
+	--ui-accent-text: var(--color-blue-700);
+	--ui-focus-ring: var(--color-blue-500);
+
+	--ui-success: var(--color-emerald-600);
+	--ui-success-subtle: var(--color-emerald-50);
+	--ui-success-border: var(--color-emerald-200);
+	--ui-success-text: var(--color-emerald-800);
+
+	--ui-info: var(--color-blue-600);
+	--ui-info-subtle: var(--color-blue-50);
+	--ui-info-border: var(--color-blue-200);
+	--ui-info-text: var(--color-blue-800);
+
+	--ui-warning: var(--color-amber-600);
+	--ui-warning-subtle: var(--color-amber-50);
+	--ui-warning-border: var(--color-amber-200);
+	--ui-warning-text: var(--color-amber-800);
+
+	--ui-error: var(--color-red-600);
+	--ui-error-subtle: var(--color-red-50);
+	--ui-error-border: var(--color-red-200);
+	--ui-error-text: var(--color-red-800);
+
+	--ui-help: var(--color-violet-600);
+	--ui-help-subtle: var(--color-violet-50);
+	--ui-help-border: var(--color-violet-200);
+	--ui-help-text: var(--color-violet-800);
+}
+
+/* Follow OS preference unless the user has picked an explicit theme. */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--ui-bg: var(--color-slate-950);
+		--ui-bg-subtle: var(--color-slate-900);
+		--ui-surface: var(--color-slate-900);
+		--ui-border: var(--color-slate-800);
+		--ui-border-strong: var(--color-slate-700);
+
+		--ui-text: var(--color-slate-100);
+		--ui-text-muted: var(--color-slate-400);
+		--ui-text-inverted: var(--color-slate-900);
+
+		--ui-accent: var(--color-blue-500);
+		--ui-accent-hover: var(--color-blue-400);
+		--ui-accent-subtle: color-mix(in oklab, var(--color-blue-500) 15%, transparent);
+		--ui-accent-text: var(--color-blue-300);
+		--ui-focus-ring: var(--color-blue-400);
+
+		--ui-success: var(--color-emerald-500);
+		--ui-success-subtle: var(--color-emerald-950);
+		--ui-success-border: var(--color-emerald-800);
+		--ui-success-text: var(--color-emerald-200);
+
+		--ui-info: var(--color-blue-500);
+		--ui-info-subtle: var(--color-blue-950);
+		--ui-info-border: var(--color-blue-800);
+		--ui-info-text: var(--color-blue-200);
+
+		--ui-warning: var(--color-amber-500);
+		--ui-warning-subtle: var(--color-amber-950);
+		--ui-warning-border: var(--color-amber-800);
+		--ui-warning-text: var(--color-amber-200);
+
+		--ui-error: var(--color-red-500);
+		--ui-error-subtle: var(--color-red-950);
+		--ui-error-border: var(--color-red-800);
+		--ui-error-text: var(--color-red-200);
+
+		--ui-help: var(--color-violet-500);
+		--ui-help-subtle: var(--color-violet-950);
+		--ui-help-border: var(--color-violet-800);
+		--ui-help-text: var(--color-violet-200);
+	}
+}
+
+/* Explicit user choice (via the theme toggle) always wins over OS preference. */
+:root[data-theme="dark"] {
+	--ui-bg: var(--color-slate-950);
+	--ui-bg-subtle: var(--color-slate-900);
+	--ui-surface: var(--color-slate-900);
+	--ui-border: var(--color-slate-800);
+	--ui-border-strong: var(--color-slate-700);
+
+	--ui-text: var(--color-slate-100);
+	--ui-text-muted: var(--color-slate-400);
+	--ui-text-inverted: var(--color-slate-900);
+
+	--ui-accent: var(--color-blue-500);
+	--ui-accent-hover: var(--color-blue-400);
+	--ui-accent-subtle: color-mix(in oklab, var(--color-blue-500) 15%, transparent);
+	--ui-accent-text: var(--color-blue-300);
+	--ui-focus-ring: var(--color-blue-400);
+
+	--ui-success: var(--color-emerald-500);
+	--ui-success-subtle: var(--color-emerald-950);
+	--ui-success-border: var(--color-emerald-800);
+	--ui-success-text: var(--color-emerald-200);
+
+	--ui-info: var(--color-blue-500);
+	--ui-info-subtle: var(--color-blue-950);
+	--ui-info-border: var(--color-blue-800);
+	--ui-info-text: var(--color-blue-200);
+
+	--ui-warning: var(--color-amber-500);
+	--ui-warning-subtle: var(--color-amber-950);
+	--ui-warning-border: var(--color-amber-800);
+	--ui-warning-text: var(--color-amber-200);
+
+	--ui-error: var(--color-red-500);
+	--ui-error-subtle: var(--color-red-950);
+	--ui-error-border: var(--color-red-800);
+	--ui-error-text: var(--color-red-200);
+
+	--ui-help: var(--color-violet-500);
+	--ui-help-subtle: var(--color-violet-950);
+	--ui-help-border: var(--color-violet-800);
+	--ui-help-text: var(--color-violet-200);
+}
+
+@theme inline {
+	--color-bg: var(--ui-bg);
+	--color-bg-subtle: var(--ui-bg-subtle);
+	--color-surface: var(--ui-surface);
+	--color-border: var(--ui-border);
+	--color-border-strong: var(--ui-border-strong);
+
+	--color-text: var(--ui-text);
+	--color-text-muted: var(--ui-text-muted);
+	--color-text-inverted: var(--ui-text-inverted);
+
+	--color-accent: var(--ui-accent);
+	--color-accent-hover: var(--ui-accent-hover);
+	--color-accent-subtle: var(--ui-accent-subtle);
+	--color-accent-text: var(--ui-accent-text);
+	--color-focus-ring: var(--ui-focus-ring);
+
+	--color-success: var(--ui-success);
+	--color-success-subtle: var(--ui-success-subtle);
+	--color-success-border: var(--ui-success-border);
+	--color-success-text: var(--ui-success-text);
+
+	--color-info: var(--ui-info);
+	--color-info-subtle: var(--ui-info-subtle);
+	--color-info-border: var(--ui-info-border);
+	--color-info-text: var(--ui-info-text);
+
+	--color-warning: var(--ui-warning);
+	--color-warning-subtle: var(--ui-warning-subtle);
+	--color-warning-border: var(--ui-warning-border);
+	--color-warning-text: var(--ui-warning-text);
+
+	--color-error: var(--ui-error);
+	--color-error-subtle: var(--ui-error-subtle);
+	--color-error-border: var(--ui-error-border);
+	--color-error-text: var(--ui-error-text);
+
+	--color-help: var(--ui-help);
+	--color-help-subtle: var(--ui-help-subtle);
+	--color-help-border: var(--ui-help-border);
+	--color-help-text: var(--ui-help-text);
+}
+
+body {
+	background-color: var(--color-bg);
+	color: var(--color-text);
+}

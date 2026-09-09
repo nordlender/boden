@@ -18,8 +18,21 @@ const { title = 'Rental Shop' } = Astro.props;
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
+		<script is:inline>
+			// Runs before paint so the page never flashes the wrong theme.
+			(function () {
+				try {
+					const stored = localStorage.getItem('theme');
+					if (stored === 'light' || stored === 'dark') {
+						document.documentElement.setAttribute('data-theme', stored);
+					}
+				} catch {
+					// localStorage may be unavailable (privacy mode); fall back to OS preference.
+				}
+			})();
+		</script>
 	</head>
-	<body class="min-h-screen bg-white">
+	<body class="min-h-screen bg-bg text-text">
 		<Navbar />
 		<main>
 			<slot />

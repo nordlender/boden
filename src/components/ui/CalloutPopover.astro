@@ -1,0 +1,25 @@
+---
+import Callout from './Callout.astro';
+
+type Variant = 'info' | 'warning' | 'error' | 'success' | 'help';
+
+interface Props {
+	variant: Variant;
+	title?: string;
+	triggerLabel: string;
+	id: string;
+}
+
+const { variant, title, triggerLabel, id } = Astro.props;
+const popoverId = `${id}-popover`;
+---
+
+<button type="button" popovertarget={popoverId} class="text-sm font-medium text-accent-text underline underline-offset-2 hover:text-accent">
+	{triggerLabel}
+</button>
+
+<div id={popoverId} popover="auto" class="m-auto max-w-sm [&:popover-open]:block">
+	<Callout variant={variant} title={title}>
+		<slot />
+	</Callout>
+</div>

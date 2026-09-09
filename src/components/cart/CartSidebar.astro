@@ -1,29 +1,29 @@
 ---
 ---
 
-<div data-cart-backdrop class="fixed inset-0 z-40 hidden bg-black/30"></div>
+<div data-cart-backdrop class="fixed inset-0 z-40 hidden bg-overlay"></div>
 
 <aside
 	id="cart-sidebar"
 	data-cart-sidebar
-	class="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm translate-x-full flex-col bg-white shadow-xl transition-transform duration-200"
+	class="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm translate-x-full flex-col bg-surface shadow-xl transition-transform duration-200"
 	aria-hidden="true"
 >
-	<div class="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-		<h2 class="text-sm font-semibold text-gray-900">Cart</h2>
-		<button type="button" data-cart-close aria-label="Close cart" class="text-lg leading-none text-gray-500 hover:text-gray-900">
+	<div class="flex items-center justify-between border-b border-border px-4 py-3">
+		<h2 class="text-sm font-semibold text-text">Cart</h2>
+		<button type="button" data-cart-close aria-label="Close cart" class="text-lg leading-none text-text-muted hover:text-text">
 			&times;
 		</button>
 	</div>
 
-	<div data-cart-list class="flex-1 divide-y divide-gray-100 overflow-y-auto px-4">
-		<p data-cart-empty class="py-6 text-sm text-gray-500">Your cart is empty.</p>
+	<div data-cart-list class="flex-1 divide-y divide-border overflow-y-auto px-4">
+		<p data-cart-empty class="py-6 text-sm text-text-muted">Your cart is empty.</p>
 	</div>
 
-	<div class="border-t border-gray-200 p-4">
+	<div class="border-t border-border p-4">
 		<a
 			href="/cart"
-			class="block rounded-md bg-gray-900 px-4 py-2 text-center text-sm font-medium text-white hover:bg-gray-800"
+			class="block rounded-md bg-accent px-4 py-2 text-center text-sm font-medium text-text-inverted hover:bg-accent-hover"
 		>
 			Review order
 		</a>
@@ -79,33 +79,34 @@
 				const img = document.createElement('img');
 				img.src = item.imageUrl ?? '/favicon.svg';
 				img.alt = item.productTitle;
-				img.className = 'h-12 w-12 shrink-0 rounded object-cover bg-gray-100';
+				img.className = 'h-12 w-12 shrink-0 rounded object-cover bg-bg-subtle';
 
 				const info = document.createElement('div');
 				info.className = 'min-w-0 flex-1 text-sm';
 
 				const name = document.createElement('a');
 				name.href = item.productSlug ? `/products/${item.productSlug}` : '/cart';
-				name.className = 'block truncate font-medium text-gray-900 hover:underline';
+				name.className = 'block truncate font-medium text-text hover:underline';
 				name.textContent = item.productTitle;
 				info.appendChild(name);
 
 				const variantLabel = item.attributes.map((a) => a.value).join(' / ');
 				if (variantLabel) {
 					const variant = document.createElement('p');
-					variant.className = 'truncate text-gray-500';
+					variant.className = 'truncate text-text-muted';
 					variant.textContent = variantLabel;
 					info.appendChild(variant);
 				}
 
 				const qty = document.createElement('p');
-				qty.className = 'text-gray-500';
+				qty.className = 'text-text-muted';
 				qty.textContent = `Qty: ${item.quantity}`;
 				info.appendChild(qty);
 
+				// Destructive action — error color is the conventional choice here.
 				const removeButton = document.createElement('button');
 				removeButton.type = 'button';
-				removeButton.className = 'shrink-0 self-start text-xs text-red-600 hover:underline';
+				removeButton.className = 'shrink-0 self-start text-xs text-error hover:underline';
 				removeButton.textContent = 'Remove';
 				removeButton.addEventListener('click', async () => {
 					const body = new FormData();

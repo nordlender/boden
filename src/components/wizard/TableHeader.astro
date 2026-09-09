@@ -12,7 +12,7 @@ interface Props {
 const { variant, formId } = Astro.props;
 ---
 <div
-	class="grid items-center gap-3 border-b border-slate-200 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-slate-400"
+	class="grid items-center gap-3 border-b border-border px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-text-muted"
 	style={`grid-template-columns: ${GRID_TEMPLATE[variant]}`}
 >
 	<SelectMenu formId={formId} />

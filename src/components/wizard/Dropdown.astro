@@ -22,15 +22,15 @@ interface Props {
 const { triggerLabel, triggerIcon, items, align = 'left' } = Astro.props;
 ---
 <details class="relative inline-block">
-	<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-slate-300 px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+	<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
 		{triggerIcon && <AppIcon name={triggerIcon} size={16} />}
 		{triggerLabel && <span>{triggerLabel}</span>}
-		<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-slate-400" />
+		<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
 	</summary>
-	<div class:list={["absolute z-10 mt-1 min-w-[10rem] rounded-md border border-slate-200 bg-white py-1 shadow-lg", align === 'right' ? 'right-0' : 'left-0']}>
+	<div class:list={["absolute z-10 mt-1 min-w-[10rem] rounded-md border border-border bg-surface py-1 shadow-lg", align === 'right' ? 'right-0' : 'left-0']}>
 		{items.map((item) => (
-			<button type="button" class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50">
-				{item.icon && <AppIcon name={item.icon} size={16} class="text-slate-400" />}
+			<button type="button" class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-text hover:bg-bg-subtle">
+				{item.icon && <AppIcon name={item.icon} size={16} class="text-text-muted" />}
 				<span>{item.label}</span>
 			</button>
 		))}

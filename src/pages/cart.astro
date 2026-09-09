@@ -13,31 +13,32 @@ const session = await getSession(Astro.request);
 
 <BaseLayout title="Cart">
 	<div class="mx-auto max-w-3xl px-4 py-8">
-		<h1 class="mb-6 text-2xl font-semibold tracking-tight text-gray-900">Cart</h1>
+		<h1 class="mb-6 text-2xl font-semibold tracking-tight text-text">Cart</h1>
 
 		{
 			cartItems.length === 0 ? (
-				<p class="mb-8 text-sm text-gray-600">Your cart is empty.</p>
+				<p class="mb-8 text-sm text-text-muted">Your cart is empty.</p>
 			) : (
-				<div class="mb-8 divide-y divide-gray-200 border-y border-gray-200">
+				<div class="mb-8 divide-y divide-border border-y border-border">
 					{cartItems.map((item) => (
 						<div class="flex flex-wrap items-center gap-4 py-4">
-							<div class="h-16 w-16 shrink-0 overflow-hidden rounded bg-gray-100">
+							<div class="h-16 w-16 shrink-0 overflow-hidden rounded bg-bg-subtle">
 								{item.imageUrl && <img src={item.imageUrl} alt={item.productTitle} class="h-full w-full object-cover" />}
 							</div>
 
 							<div class="min-w-0 flex-1">
 								<a
 									href={item.productSlug ? `/products/${item.productSlug}` : '#'}
-									class="font-medium text-gray-900 hover:underline"
+									class="font-medium text-text hover:underline"
 								>
 									{item.productTitle}
 								</a>
 								{item.attributes.length > 0 && (
-									<p class="text-sm text-gray-500">{item.attributes.map((a) => a.value).join(' / ')}</p>
+									<p class="text-sm text-text-muted">{item.attributes.map((a) => a.value).join(' / ')}</p>
 								)}
 								{item.quantity > item.inStock && (
-									<p class="text-sm text-red-600">Only {Math.max(item.inStock, 0)} left in stock</p>
+									// TODO: Style later, warning? — low-stock notice, not necessarily an error.
+									<p class="text-sm text-error">Only {Math.max(item.inStock, 0)} left in stock</p>
 								)}
 							</div>
 
@@ -52,16 +53,16 @@ const session = await getSession(Astro.request);
 									name="quantity"
 									value={item.quantity}
 									min="0"
-									class="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm"
+									class="w-16 rounded-md border border-border-interactive px-2 py-1 text-sm"
 								/>
-								<button type="submit" class="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50">
+								<button type="submit" class="rounded-md border border-border-strong px-2 py-1 text-sm text-text-muted hover:bg-bg-subtle">
 									Update
 								</button>
 							</form>
 
 							<form method="post" action="/api/cart/remove">
 								<input type="hidden" name="itemId" value={item.itemId} />
-								<button type="submit" class="text-sm text-red-600 hover:underline">
+								<button type="submit" class="text-sm text-error hover:underline">
 									Remove
 								</button>
 							</form>

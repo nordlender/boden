@@ -22,23 +22,24 @@ const inStockBool = inStock > 0;
 
 <a
 	href={`/products/${productSlug}?item=${itemId}`}
-	class="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition hover:border-gray-300 hover:shadow-sm"
+	class="group flex flex-col overflow-hidden rounded-lg border border-border bg-surface transition hover:border-border-strong hover:shadow-sm"
 >
-	<div class="aspect-square overflow-hidden bg-gray-100">
+	<div class="aspect-square overflow-hidden bg-bg-subtle">
 		{
 			imageUrl ? (
 				<img src={imageUrl} alt={productTitle} class="h-full w-full object-cover transition group-hover:scale-105" />
 			) : (
-				<div class="flex h-full w-full items-center justify-center text-gray-300">
+				<div class="flex h-full w-full items-center justify-center text-disabled-text">
 					<ImagePlaceholder size={32} />
 				</div>
 			)
 		}
 	</div>
 	<div class="flex flex-1 flex-col gap-1 p-3">
-		<h3 class="text-sm font-medium text-gray-900">{productTitle}</h3>
-		{variantLabel && <p class="text-xs text-gray-500">{variantLabel}</p>}
-		<span class={`text-xs ${inStockBool ? 'text-emerald-700' : 'text-red-700'}`}>
+		<h3 class="text-sm font-medium text-text">{productTitle}</h3>
+		{variantLabel && <p class="text-xs text-text-muted">{variantLabel}</p>}
+		{/* TODO: Style later, warning? — is "out of stock" an error or a warning state? */}
+		<span class={`text-xs ${inStockBool ? 'text-success-text' : 'text-error-text'}`}>
 			{inStockBool ? `${inStock} in stock` : 'Out of stock'}
 		</span>
 	</div>

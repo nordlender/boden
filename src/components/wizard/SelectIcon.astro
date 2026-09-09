@@ -17,7 +17,7 @@ interface Props {
 
 const { itemId, formId, checked = false, label } = Astro.props;
 ---
-<label class="grid h-6 w-6 cursor-pointer place-items-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700">
+<label class="grid h-6 w-6 cursor-pointer place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text">
 	<input
 		type="checkbox"
 		name="itemIds"
@@ -30,7 +30,7 @@ const { itemId, formId, checked = false, label } = Astro.props;
 	<MorphIcon
 		icon={checked ? selectCheckbox.checked : selectCheckbox.unchecked}
 		size={18}
-		class:list={['select-icon', checked && 'text-blue-600']}
+		class:list={['select-icon', checked && 'text-selected']}
 	/>
 </label>
 
@@ -44,6 +44,6 @@ const { itemId, formId, checked = false, label } = Astro.props;
 		const icon = input.closest('label')?.querySelector<MorphIconElement>('.select-icon');
 		if (!icon) return;
 		icon.icon = input.checked ? selectCheckbox.checked : selectCheckbox.unchecked;
-		icon.classList.toggle('text-blue-600', input.checked);
+		icon.classList.toggle('text-selected', input.checked);
 	});
 </script>

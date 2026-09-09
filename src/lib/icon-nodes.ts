@@ -44,6 +44,19 @@ export const themeToggle = {
 	] satisfies IconNode,
 };
 
+// The navbar's mobile menu trigger: hamburger closed, X open.
+export const navMenu = {
+	closed: [
+		['path', { d: 'M4 6l16 0' }],
+		['path', { d: 'M4 12l16 0' }],
+		['path', { d: 'M4 18l16 0' }],
+	] satisfies IconNode,
+	open: [
+		['path', { d: 'M18 6l-12 12' }],
+		['path', { d: 'M6 6l12 12' }],
+	] satisfies IconNode,
+};
+
 // The item row's expand/collapse toggle: list-details when collapsed,
 // circle-chevron-up once the details box is open.
 export const detailsToggle = {

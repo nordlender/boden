@@ -30,6 +30,11 @@ export const icons = {
 	// Not one of the doc's named placeholders — added for the main-section
 	// search bar, which the doc calls for but doesn't assign an icon to.
 	search: 'tabler:search',
+	// The navbar logo (src/icons/logo.svg, astro-icon's local-icon
+	// convention — a bare name, no `collection:` prefix). Uses `fill="currentColor"`
+	// in the source file so it recolors with the theme instead of staying
+	// hardcoded black in dark mode, the same way the Tabler icons already do.
+	logo: 'logo',
 } as const;
 
 export type IconName = keyof typeof icons;

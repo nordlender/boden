@@ -1,13 +1,8 @@
 ---
-interface Props {
-	src?: string;
-	alt?: string;
-}
-
-const { src = '/osilogo.svg', alt = 'OSI Klatring' } = Astro.props;
+import AppIcon from '../icons/AppIcon.astro';
 ---
 
 <a href="/" class="flex items-center gap-2">
-	<img src={src} alt={alt} class="h-8 w-8" />
+	<AppIcon name="logo" size={32} class="text-text" />
 	<span class="text-lg font-semibold tracking-tight text-text">OSI Klatring</span>
 </a>

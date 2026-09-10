@@ -31,6 +31,22 @@ export interface ShopItem {
 	attributes: ShopAttribute[];
 }
 
+// One grid tile per product (see getShopGridProducts): a representative
+// item stands in for the whole group (first in-stock item, or the first
+// item at all if none are in stock — see that function's comment), and
+// `inStock` is summed across every item in the group so the interim stock
+// badge (issue #64 hasn't settled its final shape yet) reads "in stock if
+// any item in the group is available" rather than just reflecting the one
+// representative item.
+export interface ShopGridProduct {
+	productId: number;
+	productSlug: string;
+	productTitle: string;
+	imageUrl: string | null;
+	inStock: number;
+	representativeItemId: number;
+}
+
 export interface ShopProductLink {
 	id: number;
 	label: string;
@@ -121,6 +137,40 @@ export async function getShopItems(): Promise<ShopItem[]> {
 	const reserved = await reservedQuantitiesByItem(published.map((row) => row.id));
 
 	return published.map((row) => toShopItem(row, row.product, reserved));
+}
+
+// Groups getShopItems()'s one-row-per-item results into one row per
+// product, for the homepage grid (issue #17: the grid was rendering one
+// tile per item — e.g. all 6 Dragon Cam sizes as separate tiles — instead
+// of one "Dragon Cam" tile that /products/[slug] then lets you pick a size
+// on). Item order within each group follows getShopItems's `orderBy id`,
+// so "first in-stock item" and "first item" below are both stable/lowest-id.
+export function groupShopItemsByProduct(items: ShopItem[]): ShopGridProduct[] {
+	const groups = new Map<number, ShopItem[]>();
+	for (const item of items) {
+		const group = groups.get(item.productId);
+		if (group) group.push(item);
+		else groups.set(item.productId, [item]);
+	}
+
+	return Array.from(groups.values()).map((group) => {
+		const representative = group.find((item) => item.inStock > 0) ?? group[0];
+		const inStock = group.reduce((sum, item) => sum + Math.max(item.inStock, 0), 0);
+		return {
+			productId: representative.productId,
+			productSlug: representative.productSlug,
+			productTitle: representative.productTitle,
+			imageUrl: representative.imageUrl,
+			inStock,
+			representativeItemId: representative.id,
+		};
+	});
+}
+
+// Homepage grid: one row per published product (see groupShopItemsByProduct
+// for how items collapse into their product's representative tile).
+export async function getShopGridProducts(): Promise<ShopGridProduct[]> {
+	return groupShopItemsByProduct(await getShopItems());
 }
 
 // Every published product's slug with at least a wizard-created row —

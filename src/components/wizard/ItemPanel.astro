@@ -39,16 +39,16 @@ const formId = `wizard-${variant}-form`;
 		No `overflow-hidden` here (previously used to clip children to the
 		rounded corners) — it also clipped ButtonStrip's "Set" <details>
 		popover, since an ancestor with `overflow` set creates a clipping
-		context for it regardless of z-index. Corners are preserved manually
-		below instead (rounded-t-lg on the header, rounded-b-lg on the
-		bottom-most content) rather than via section-level overflow.
+		context for it regardless of z-index. The section's own border-radius
+		still rounds its outline; only the items-list div below needs its own
+		overflow-hidden to clip row backgrounds to the bottom corners.
 	-->
-	<h2 class="rounded-t-lg border-b border-border px-3 py-2 text-sm font-semibold text-text">{title}</h2>
+	<h2 class="border-b border-border px-3 py-2 text-sm font-semibold text-text">{title}</h2>
 	<form id={formId} method="post" action="/api/wizard/archive"></form>
 	<ButtonStrip variant={variant} formId={formId} products={products} redirectTo={redirectTo} />
 	<TableHeader variant={variant} formId={formId} />
 	{items.length === 0 ? (
-		<p class="rounded-b-lg px-3 py-8 text-center text-sm text-text-muted">No items yet.</p>
+		<p class="px-3 py-8 text-center text-sm text-text-muted">No items yet.</p>
 	) : (
 		<div class="overflow-hidden rounded-b-lg">
 			{items.map((item) => <ItemRow variant={variant} formId={formId} {...item} />)}

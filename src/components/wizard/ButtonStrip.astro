@@ -1,9 +1,9 @@
 ---
 // The Set dropdown's items are no longer simple buttons (see Dropdown.astro)
-// — "Set product" and "Set attributes" both need real form controls, and
-// everything here targets the panel's selection form by id (`form={formId}`)
-// rather than nesting, since form elements can't nest and ItemRow.astro's
-// per-attribute edit forms already live inside the row list.
+// — "Set product" needs real form controls, and everything here targets the
+// panel's selection form by id (`form={formId}`) rather than nesting, since
+// form elements can't nest and ItemRow.astro's per-attribute edit forms
+// already live inside the row list.
 //
 // Assign/Unassign are gone — "Set product" now handles both assigning an
 // unassigned item and reassigning an already-assigned one.

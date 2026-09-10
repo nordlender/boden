@@ -28,8 +28,8 @@ export function requireAdmin(locals: APIContext['locals']): Response | null {
 
 /**
  * Picks a safe post-submit redirect target out of a form's `redirectTo`
- * field, falling back to `/admin/items` for anything that isn't a same-origin
- * path.
+ * field, falling back to `fallback` (default `/admin/items`) for anything
+ * that isn't a same-origin path.
  *
  * `redirectTo.startsWith('/')` alone is not enough: browsers resolve a
  * protocol-relative URL like `//evil.com/x` in a `Location` header as
@@ -40,9 +40,11 @@ export function requireAdmin(locals: APIContext['locals']): Response | null {
  * `origin` is normalized via `new URL(origin).origin` before comparison, so a
  * caller passing a non-canonical value (a trailing slash, or a full URL with
  * a path) still compares correctly instead of always falling back.
+ *
+ * Despite the "wizard" module name, this is shared by any admin form using
+ * the same `redirectTo` pattern (e.g. /api/pickup-days/*) — not wizard-specific.
  */
-export function safeRedirectTarget(form: FormData, origin: string): string {
-	const fallback = '/admin/items';
+export function safeRedirectTarget(form: FormData, origin: string, fallback = '/admin/items'): string {
 	const redirectTo = form.get('redirectTo');
 	// Require a path (leading "/"), same as before — this alone still lets a
 	// protocol-relative URL like "//evil.com/x" through, since it also starts

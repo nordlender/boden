@@ -1,0 +1,50 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ReservationForm from '../components/reservation/ReservationForm.astro';
+import { getCartItems } from '../lib/cart';
+import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
+import { getSession } from 'auth-astro/server';
+
+// Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
+const cartItems = await getCartItems(Astro.cookies);
+const session = await getSession(Astro.request);
+
+if (cartItems.length === 0) {
+	return Astro.redirect('/cart');
+}
+
+const todayIso = new Date().toISOString().slice(0, 10);
+const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
+
+// Surfaces the two error redirects /api/orders/create can send back here
+// (invalid_dates, unavailable) — previously the form just silently
+// re-rendered with no indication anything had failed.
+const error = Astro.url.searchParams.get('error');
+const errorMessage =
+	error === 'invalid_dates'
+		? 'Your selected dates were invalid, or the pick-up date has already passed — please choose your dates again.'
+		: error === 'unavailable'
+			? "One or more items in your cart are no longer available for the selected dates — check the availability badges below and adjust your dates, or split off the unavailable item(s), before submitting again."
+			: null;
+---
+
+<BaseLayout title="Reservation dates">
+	<div class="mx-auto max-w-3xl px-4 py-8">
+		<h1 class="mb-2 text-2xl font-semibold tracking-tight text-gray-900">Reserve your items</h1>
+		<p class="mb-6 text-sm text-gray-600">Choose your dates, then review your items and submit your request.</p>
+
+		{errorMessage && <p class="mb-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMessage}</p>}
+
+		<ReservationForm
+			cartItems={cartItems}
+			availablePickupDates={availablePickupDates}
+			name={session?.user?.name ?? null}
+			email={session?.user?.email ?? null}
+			mobile={session?.bloc?.mobile ?? null}
+			hasUnpaidFees={session?.bloc?.hasUnpaidFees ?? null}
+			userIsMember={session?.bloc?.userIsMember ?? null}
+		/>
+	</div>
+</BaseLayout>

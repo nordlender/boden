@@ -1,12 +1,14 @@
 ---
 import UserMenuLinks from './UserMenuLinks.astro';
+import AppIcon from '../icons/AppIcon.astro';
 ---
 
 <details class="group relative">
 	<summary
-		class="flex cursor-pointer list-none items-center gap-2 rounded-full border border-border-strong px-3 py-1.5 text-sm text-text-muted hover:bg-bg-subtle [&::-webkit-details-marker]:hidden"
+		class="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-border-strong text-text-muted hover:bg-bg-subtle [&::-webkit-details-marker]:hidden"
+		aria-label="Account"
 	>
-		Account
+		<AppIcon name="user" size={20} />
 	</summary>
 	<div class="absolute right-0 z-10 mt-2 w-48 rounded-md border border-border bg-surface p-2 shadow-lg">
 		<UserMenuLinks />

@@ -38,7 +38,18 @@ const bulkAttributeRows = 3;
 				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
 					<AppIcon name="image" size={13} /> Set image
 				</p>
-				<p class="text-xs italic text-text-muted">Not wired up yet.</p>
+				<div class="flex items-center gap-2">
+					<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
+					<input type="text" name="imageUrl" form={formId} placeholder="https://…" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm" />
+					<button
+						type="submit"
+						form={formId}
+						formaction="/api/wizard/set-image"
+						class="shrink-0 rounded border border-border-strong px-2 py-1 text-xs text-text-muted hover:bg-surface"
+					>
+						Apply
+					</button>
+				</div>
 			</section>
 
 			<section class="border-b border-border py-3">

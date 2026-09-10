@@ -123,6 +123,14 @@ export async function archiveItems(itemIds: number[]): Promise<void> {
 	await db.update(items).set({ archived: true }).where(inArray(items.id, itemIds));
 }
 
+// Bulk "Set image" — assigns the same imageUrl to every selected item, same
+// shape as archiveItems above. Unlike setItemsProduct there's no attribute
+// fan-out to worry about, so this is a plain single-statement bulk update.
+export async function setItemsImage(itemIds: number[], imageUrl: string): Promise<void> {
+	if (itemIds.length === 0) return;
+	await db.update(items).set({ imageUrl }).where(inArray(items.id, itemIds));
+}
+
 // docs/schema.md Work item: "'Set product' reassignment must keep attribute
 // values consistent" — one transaction: drop the old product's values,
 // point the items at the new product, then stub in a blank value for every

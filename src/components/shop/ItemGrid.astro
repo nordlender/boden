@@ -1,27 +1,26 @@
 ---
 import ItemCard from './ItemCard.astro';
-import type { ShopItem } from '../../lib/shop';
+import type { ShopGridProduct } from '../../lib/shop';
 
 interface Props {
-	items: ShopItem[];
+	products: ShopGridProduct[];
 }
 
-const { items } = Astro.props;
+const { products } = Astro.props;
 ---
 
 {
-	items.length === 0 ? (
+	products.length === 0 ? (
 		<p class="text-sm text-text-muted">No items available.</p>
 	) : (
 		<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-			{items.map((item) => (
+			{products.map((product) => (
 				<ItemCard
-					itemId={item.id}
-					productSlug={item.productSlug}
-					productTitle={item.productTitle}
-					imageUrl={item.imageUrl}
-					inStock={item.inStock}
-					attributes={item.attributes}
+					itemId={product.representativeItemId}
+					productSlug={product.productSlug}
+					productTitle={product.productTitle}
+					imageUrl={product.imageUrl}
+					inStock={product.inStock}
 				/>
 			))}
 		</div>

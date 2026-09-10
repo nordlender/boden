@@ -1,22 +1,20 @@
 ---
 import ImagePlaceholder from './ImagePlaceholder.astro';
 
-interface Attribute {
-	key: string;
-	value: string;
-}
-
 interface Props {
 	itemId: number;
 	productSlug: string;
 	productTitle: string;
 	imageUrl: string | null;
 	inStock: number;
-	attributes: Attribute[];
 }
 
-const { itemId, productSlug, productTitle, imageUrl, inStock, attributes } = Astro.props;
-const variantLabel = attributes.map((a) => a.value).join(' / ');
+// This card now renders one tile per product (see ItemGrid.astro / shop.ts's
+// groupShopItemsByProduct) — `itemId` is only the representative item used
+// to preselect a variant on the product page, so there's no single item's
+// attributes left to show as a variant label here; per-item variant
+// selection stays on /products/[slug] as already built.
+const { itemId, productSlug, productTitle, imageUrl, inStock } = Astro.props;
 const inStockBool = inStock > 0;
 ---
 
@@ -37,7 +35,6 @@ const inStockBool = inStock > 0;
 	</div>
 	<div class="flex flex-1 flex-col gap-1 p-3">
 		<h3 class="text-sm font-medium text-text">{productTitle}</h3>
-		{variantLabel && <p class="text-xs text-text-muted">{variantLabel}</p>}
 		{/* TODO: Style later, warning? — is "out of stock" an error or a warning state? */}
 		<span class={`text-xs ${inStockBool ? 'text-success-text' : 'text-error-text'}`}>
 			{inStockBool ? `${inStock} in stock` : 'Out of stock'}

@@ -82,10 +82,17 @@ const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, use
 	// createSplitOrders can partition the cart accordingly.
 	const splitItemIds = new Set();
 	let lastAllAvailable = false;
-	let lastMixed = false;
 	// Guards against an in-flight request landing after a later one (rapid
 	// date changes while typing/dragging the calendar selection).
 	let requestToken = 0;
+
+	// form.dataset.mixed is the single source of truth for the
+	// mixed-availability flag (also read directly by renderRow's split-button
+	// visibility check) — derive the boolean from it rather than hand-syncing
+	// a second copy.
+	function isMixed() {
+		return form?.dataset.mixed === '1';
+	}
 
 	function setSubmitEnabled(enabled) {
 		if (submitButton instanceof HTMLButtonElement) submitButton.disabled = !enabled;
@@ -102,11 +109,11 @@ const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, use
 	}
 
 	function refreshSubmitState() {
-		const enabled = lastAllAvailable || (lastMixed && splitItemIds.size > 0);
+		const enabled = lastAllAvailable || (isMixed() && splitItemIds.size > 0);
 		setSubmitEnabled(enabled);
 		if (enabled) {
 			setSubmitHint('');
-		} else if (lastMixed) {
+		} else if (isMixed()) {
 			setSubmitHint('Move the unavailable item(s) to a separate order to continue, or choose different dates.');
 		} else {
 			setSubmitHint('Select your pick-up and return dates above to continue.');
@@ -180,7 +187,6 @@ const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, use
 			loadingIndicator?.setAttribute('hidden', '');
 			delete form?.dataset.mixed;
 			lastAllAvailable = false;
-			lastMixed = false;
 			refreshSubmitState();
 			rows.forEach((row) => {
 				const badge = row.querySelector('[data-availability-badge]');
@@ -229,7 +235,6 @@ const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, use
 
 		warning?.toggleAttribute('hidden', !mixed);
 		lastAllAvailable = allAvailable;
-		lastMixed = mixed;
 		syncSplitItemIdsInput();
 		refreshSubmitState();
 

@@ -2,6 +2,7 @@ import type { OAuthConfig, OAuthUserConfig } from '@auth/core/providers';
 import type { TokenSet } from '@auth/core/types';
 import { defineConfig } from 'auth-astro';
 import { db } from './db/client';
+import { getBlocProfile, type BlocProfile } from './lib/blocProfile';
 import { upsertSignedInUser } from './lib/upsertUser';
 
 declare module '@auth/core/types' {
@@ -48,22 +49,6 @@ const BLOC_API_BASE_URL = 'https://rest.bloc.net/api/';
 // varies (localhost in dev, a real domain in prod); this path is joined onto
 // it to build the full redirect_uri sent to bloc.
 const BLOC_CALLBACK_PATH = 'api/auth/callback/bloc';
-
-interface BlocProfile {
-  userId: number;
-  username: string | null;
-  firstname: string | null;
-  lastname: string | null;
-  email: string | null;
-  mobile: string | null;
-  image: string | null;
-  profileTypeId: number;
-  hasUnpaidFees: boolean | null;
-  userIsMember: boolean | null;
-  success: boolean;
-  code: number;
-  message: string | null;
-}
 
 // bloc (rest.bloc.net) as OAuth2 identity provider. Not one of Auth.js's built-in
 // named providers, so this is a hand-rolled generic OAuthConfig — see
@@ -171,7 +156,7 @@ export default defineConfig({
     // Fails closed (returns false -> sign-in rejected) rather than letting a
     // signed-in session exist with no matching users row.
     async signIn({ user, profile }) {
-      const blocUserId = (profile as unknown as BlocProfile | undefined)?.userId;
+      const blocUserId = getBlocProfile(profile)?.userId;
       if (!blocUserId || !user.email) return false;
       await upsertSignedInUser(db, { id: String(blocUserId), email: user.email, name: user.name });
       return true;
@@ -184,8 +169,8 @@ export default defineConfig({
       if (account?.access_token) {
         token.accessToken = account.access_token;
       }
-      if (profile) {
-        const p = profile as unknown as BlocProfile;
+      const p = getBlocProfile(profile);
+      if (p) {
         token.bloc = {
           userId: p.userId,
           mobile: p.mobile,

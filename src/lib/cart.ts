@@ -121,7 +121,10 @@ export async function getCartItems(cookies: AstroCookies): Promise<CartItem[]> {
 				imageUrl: row.imageUrl ?? row.product?.thumbnailImageUrl ?? null,
 				quantity: entry.quantity,
 				stockCount: row.stockCount,
-				inStock: row.stockCount - (reserved.get(row.id) ?? 0),
+				// serviceQuantity (issue #62) is excluded the same way reserved
+				// quantity is — an item pulled for service/quarantine isn't
+				// available to rent even if no other order is holding it.
+				inStock: row.stockCount - row.serviceQuantity - (reserved.get(row.id) ?? 0),
 				attributes: sortAttributes(row.attributeValues),
 			};
 		})

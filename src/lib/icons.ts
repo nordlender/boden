@@ -34,6 +34,8 @@ export const icons = {
 	// an order mixes available and unavailable items for the chosen date
 	// range: lets the member split that one item out into its own order.
 	splitOrder: 'tabler:arrows-split-2',
+	// Item details box's "Service / quarantine" section (issue #62).
+	warning: 'tabler:tool',
 } as const;
 
 export type IconName = keyof typeof icons;

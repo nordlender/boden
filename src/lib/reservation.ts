@@ -14,6 +14,8 @@ export interface ReservationAvailability {
 	// order at any single point within [from, to] — i.e. the peak
 	// concurrent demand this request would be competing with.
 	peakReserved: number;
+	// Owned stock minus whatever's currently flagged in-service/quarantine
+	// (items.serviceQuantity, issue #62) — not the item's raw stockCount.
 	stockCount: number;
 	available: boolean;
 }
@@ -59,11 +61,14 @@ export function getReservationAvailability(
 	const itemIds = requestedItems.map((entry) => entry.itemId);
 
 	const itemRows = executor
-		.select({ id: items.id, stockCount: items.stockCount })
+		.select({ id: items.id, stockCount: items.stockCount, serviceQuantity: items.serviceQuantity })
 		.from(items)
 		.where(inArray(items.id, itemIds))
 		.all();
-	const stockById = new Map(itemRows.map((row) => [row.id, row.stockCount]));
+	// Quantity an admin has pulled out for service/quarantine (issue #62) is
+	// subtracted up front, the same way reserved quantity is below — a service
+	// item is unavailable regardless of what other orders exist.
+	const stockById = new Map(itemRows.map((row) => [row.id, row.stockCount - row.serviceQuantity]));
 
 	// Overlap test on two inclusive ranges [a.from, a.to] and [b.from, b.to]:
 	// a.from <= b.to AND a.to >= b.from.

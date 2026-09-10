@@ -160,12 +160,20 @@ export default defineConfig({
   callbacks: {
     // Upsert into `users` on every sign-in (docs/rental-shop.md §6) — this is what
     // gives orders.userId a real row to reference once an order is placed.
-    // Runs before jwt()/session(), using the same id/email profile() already
-    // produced. Fails closed (returns false -> sign-in rejected) rather than
-    // letting a signed-in session exist with no matching users row.
-    async signIn({ user }) {
-      if (!user.id || !user.email) return false;
-      await upsertSignedInUser(db, { id: user.id, email: user.email, name: user.name });
+    // Runs before jwt()/session(), keyed on bloc's own numeric userId rather
+    // than `user.id` — Auth.js's oauth callback handler (getUserAndAccount in
+    // @auth/core) always overwrites the id our profile() sets with a fresh
+    // crypto.randomUUID() (it reserves `user.id` for an adapter-assigned
+    // identity and carries the provider's own id separately as
+    // account.providerAccountId), so `user.id` here is never bloc's userId.
+    // `profile` is the raw bloc userinfo response (unaffected by that
+    // override), so read userId from there instead — see #59.
+    // Fails closed (returns false -> sign-in rejected) rather than letting a
+    // signed-in session exist with no matching users row.
+    async signIn({ user, profile }) {
+      const blocUserId = (profile as unknown as BlocProfile | undefined)?.userId;
+      if (!blocUserId || !user.email) return false;
+      await upsertSignedInUser(db, { id: String(blocUserId), email: user.email, name: user.name });
       return true;
     },
     // Persist the access token + bloc profile fields into the JWT so they're
@@ -188,6 +196,12 @@ export default defineConfig({
           code: p.code,
           message: p.message,
         };
+        // On initial sign-in, Auth.js pre-seeds token.sub from `user.id` —
+        // which is its own generated UUID, not the profile id our profile()
+        // set (see the signIn callback above for why). Overwrite it here
+        // with bloc's actual userId so token.sub / session.user.id / users.id
+        // all agree (#59).
+        token.sub = String(p.userId);
       }
       return token;
     },

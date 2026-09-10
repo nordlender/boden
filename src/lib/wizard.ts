@@ -13,6 +13,10 @@ export interface WizardItem {
 	imageUrl: string | null;
 	inStock: number;
 	totalStock: number;
+	// Quantity currently pulled out for service/quarantine (issue #62) —
+	// admin-only, manual, not timed. Excluded from inStock, same as reserved
+	// quantity.
+	serviceQuantity: number;
 	productId: number | null;
 	productTitle?: string;
 	subCategory?: string;
@@ -81,8 +85,9 @@ export async function getWizardItems(): Promise<{ unassigned: WizardItem[]; assi
 		id: row.id,
 		name: row.name,
 		imageUrl: row.imageUrl,
-		inStock: row.stockCount - (reserved.get(row.id) ?? 0),
+		inStock: row.stockCount - row.serviceQuantity - (reserved.get(row.id) ?? 0),
 		totalStock: row.stockCount,
+		serviceQuantity: row.serviceQuantity,
 		productId: row.productId,
 		productTitle: row.product?.title,
 		subCategory: row.product?.subcategory?.name,
@@ -121,6 +126,26 @@ export async function createItem(input: { name: string; imageUrl?: string | null
 export async function archiveItems(itemIds: number[]): Promise<void> {
 	if (itemIds.length === 0) return;
 	await db.update(items).set({ archived: true }).where(inArray(items.id, itemIds));
+}
+
+export type SetServiceQuantityResult = { ok: true } | { ok: false; error: 'not_found' | 'out_of_range' };
+
+// Admin-only manual flag (issue #62): pulls `quantity` units of an item out
+// of the rentable pool for service/repair or quarantine, or clears it back
+// to 0 — no timer, no auto-expiry, just a number an admin sets and later
+// resets. Every availability query (reservation.ts, shop.ts, cart.ts,
+// getWizardItems above) subtracts it the same way reserved quantity is
+// subtracted, so this alone is enough to pull stock out of every listing —
+// order history (orders/orderItems) is never touched.
+export async function setItemServiceQuantity(itemId: number, quantity: number): Promise<SetServiceQuantityResult> {
+	const item = await db.query.items.findFirst({ where: (t, { eq }) => eq(t.id, itemId) });
+	if (!item) return { ok: false, error: 'not_found' };
+	if (!Number.isInteger(quantity) || quantity < 0 || quantity > item.stockCount) {
+		return { ok: false, error: 'out_of_range' };
+	}
+
+	await db.update(items).set({ serviceQuantity: quantity }).where(eq(items.id, itemId));
+	return { ok: true };
 }
 
 // docs/schema.md Work item: "'Set product' reassignment must keep attribute

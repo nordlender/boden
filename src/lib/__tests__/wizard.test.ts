@@ -31,7 +31,7 @@ function freshDb(): BetterSQLite3Database<typeof schema> {
 
 // Import after the mock is set up so wizard.ts's `import { db }` resolves to
 // the mocked module.
-const { setItemsProduct, setBulkAttributeValues } = await import('../wizard');
+const { setItemsProduct, setBulkAttributeValues, setItemServiceQuantity, getWizardItems } = await import('../wizard');
 
 function seedProduct(database: BetterSQLite3Database<typeof schema>, opts: { slug: string; title: string; keys?: string[] }) {
 	const [product] = database
@@ -51,10 +51,10 @@ function seedProduct(database: BetterSQLite3Database<typeof schema>, opts: { slu
 	return { id: product.id, keyIds };
 }
 
-function seedItem(database: BetterSQLite3Database<typeof schema>, opts: { slug: string; name: string; productId?: number | null }) {
+function seedItem(database: BetterSQLite3Database<typeof schema>, opts: { slug: string; name: string; productId?: number | null; stockCount?: number }) {
 	const [item] = database
 		.insert(schema.items)
-		.values({ slug: opts.slug, name: opts.name, productId: opts.productId ?? null })
+		.values({ slug: opts.slug, name: opts.name, productId: opts.productId ?? null, stockCount: opts.stockCount ?? 1 })
 		.returning({ id: schema.items.id })
 		.all();
 	return item.id;
@@ -196,6 +196,55 @@ describe('wizard', () => {
 
 			const result = await setBulkAttributeValues([item1, item2], [{ key: 'Weight', value: '1kg' }]);
 			expect(result).toEqual({ ok: false, error: 'no_shared_product' });
+		});
+	});
+
+	// Issue #62: admin-only, manual, un-timed service/quarantine quantity.
+	describe('setItemServiceQuantity', () => {
+		it('sets the quantity and excludes it from inStock', async () => {
+			const itemId = seedItem(testDb, { slug: 'item-1', name: 'Item 1', stockCount: 5 });
+
+			const result = await setItemServiceQuantity(itemId, 2);
+			expect(result).toEqual({ ok: true });
+
+			const { unassigned } = await getWizardItems();
+			const item = unassigned.find((i) => i.id === itemId);
+			expect(item?.serviceQuantity).toBe(2);
+			expect(item?.inStock).toBe(3);
+			expect(item?.totalStock).toBe(5);
+		});
+
+		it('clears the flag back to 0', async () => {
+			const itemId = seedItem(testDb, { slug: 'item-1', name: 'Item 1', stockCount: 5 });
+			await setItemServiceQuantity(itemId, 5);
+			await setItemServiceQuantity(itemId, 0);
+
+			const { unassigned } = await getWizardItems();
+			const item = unassigned.find((i) => i.id === itemId);
+			expect(item?.serviceQuantity).toBe(0);
+			expect(item?.inStock).toBe(5);
+		});
+
+		it('rejects a quantity above the item\'s total stock', async () => {
+			const itemId = seedItem(testDb, { slug: 'item-1', name: 'Item 1', stockCount: 3 });
+
+			const result = await setItemServiceQuantity(itemId, 4);
+			expect(result).toEqual({ ok: false, error: 'out_of_range' });
+
+			const { unassigned } = await getWizardItems();
+			expect(unassigned.find((i) => i.id === itemId)?.serviceQuantity).toBe(0);
+		});
+
+		it('rejects a negative quantity', async () => {
+			const itemId = seedItem(testDb, { slug: 'item-1', name: 'Item 1', stockCount: 3 });
+
+			const result = await setItemServiceQuantity(itemId, -1);
+			expect(result).toEqual({ ok: false, error: 'out_of_range' });
+		});
+
+		it('returns not_found for a nonexistent item', async () => {
+			const result = await setItemServiceQuantity(999999, 1);
+			expect(result).toEqual({ ok: false, error: 'not_found' });
 		});
 	});
 });

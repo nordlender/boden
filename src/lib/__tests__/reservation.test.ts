@@ -19,6 +19,7 @@ afterAll(() => {
 // autoincrement counters start at 1 per table per in-memory db instance).
 const ITEM_A_ID = 1;
 const ITEM_B_ID = 2;
+const ITEM_C_ID = 3;
 
 vi.mock('../../db/client', async () => {
 	const { default: Database } = await import('better-sqlite3');
@@ -39,6 +40,10 @@ vi.mock('../../db/client', async () => {
 	// Item A: 2 in stock. Item B: 5 in stock, never reserved by anyone.
 	await db.insert(schema.items).values({ productId: product.id, slug: 'item-a', name: 'Item A', stockCount: 2 });
 	await db.insert(schema.items).values({ productId: product.id, slug: 'item-b', name: 'Item B', stockCount: 5 });
+	// Item C: 4 in stock, 3 pulled out for service/quarantine (issue #62) —
+	// never reserved by anyone, so this isolates the serviceQuantity exclusion
+	// from the reserved-quantity sweep tested elsewhere in this file.
+	await db.insert(schema.items).values({ productId: product.id, slug: 'item-c', name: 'Item C', stockCount: 4, serviceQuantity: 3 });
 	const [user] = await db.insert(schema.users).values({ id: 'other-user', name: 'Other', email: 'other@example.com' }).returning();
 
 	// An existing order holds 1x item A for 2026-01-05..2026-01-10.
@@ -137,5 +142,22 @@ describe('getReservationAvailability', () => {
 		]);
 		expect(availability.peakReserved).toBe(1);
 		expect(availability.available).toBe(true);
+	});
+
+	// Issue #62: quantity an admin has flagged in-service/quarantine must be
+	// excluded from availability the same way a reserved quantity is, even
+	// with zero competing orders.
+	it('excludes serviceQuantity from availability even with no overlapping orders', () => {
+		// Item C: 4 in stock, 3 in service -> only 1 truly free.
+		const [availableAtOne] = getReservationAvailability({ from: '2026-02-01', to: '2026-02-05' }, [
+			{ itemId: ITEM_C_ID, quantity: 1 },
+		]);
+		expect(availableAtOne.available).toBe(true);
+		expect(availableAtOne.stockCount).toBe(1);
+
+		const [unavailableAtTwo] = getReservationAvailability({ from: '2026-02-01', to: '2026-02-05' }, [
+			{ itemId: ITEM_C_ID, quantity: 2 },
+		]);
+		expect(unavailableAtTwo.available).toBe(false);
 	});
 });

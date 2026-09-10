@@ -4,23 +4,34 @@ export const prerender = false;
 import '../../styles/global.css';
 import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import { db } from '../../db/client';
-import { orders } from '../../db/schema';
-import { eq } from 'drizzle-orm';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTE_PREFIXES via /checkout) —
 // reached only when logged in, so Astro.locals.user is non-null here.
-const orderCode = Astro.url.searchParams.get('order');
-const order = orderCode
-  ? await db.query.orders.findFirst({
-      where: eq(orders.orderCode, orderCode),
+//
+// `receipt` is orders.checkoutToken (src/db/schema.ts), not an order code:
+// every order created from one checkout submission — split or not, see
+// src/lib/orders.ts's createOrder/createSplitOrders — shares one token, so
+// a single equality lookup naturally returns all of them together. This
+// replaced an earlier design keyed on a comma-separated list of order codes
+// in the URL, which broke on a duplicated code in that list (looked like
+// tampering) and tied the confirmation link's shape to the order code
+// itself.
+const receipt = Astro.url.searchParams.get('receipt') ?? '';
+const foundOrders = receipt
+  ? await db.query.orders.findMany({
+      where: (t, { eq }) => eq(t.checkoutToken, receipt),
       with: { orderItems: { with: { item: true } } },
     })
-  : null;
+  : [];
 
-// Don't leak another member's order by guessing/enumerating codes.
-if (!order || order.userId !== Astro.locals.user?.id) {
+// Don't leak another member's order by guessing/enumerating tokens.
+if (foundOrders.length === 0 || foundOrders.some((o) => o.userId !== Astro.locals.user?.id)) {
   return Astro.redirect('/cart');
 }
+// createSplitOrders always inserts the main group before the split group
+// (see its `groups` array) — sorting by id recovers that order without
+// needing to track it separately.
+const orderedOrders = [...foundOrders].sort((a, b) => a.id - b.id);
 ---
 <html lang="en">
 	<head>
@@ -31,15 +42,22 @@ if (!order || order.userId !== Astro.locals.user?.id) {
 	</head>
 	<body>
 		<main>
-			<UserOrderSummary
-				orderCode={order.orderCode}
-				status={order.status}
-				note={order.note}
-				items={order.orderItems.map((oi) => ({
-					itemName: oi.item.name,
-					requestedQuantity: oi.requestedQuantity,
-				}))}
-			/>
+			{orderedOrders.length > 1 && <p>Your items were split across {orderedOrders.length} separate orders:</p>}
+			<p>
+				Please take a screenshot of this page for your records — it's the easiest way to have your order code(s) on
+				hand when you come to pick up.
+			</p>
+			{orderedOrders.map((order) => (
+				<UserOrderSummary
+					orderCode={order.orderCode}
+					status={order.status}
+					note={order.note}
+					items={order.orderItems.map((oi) => ({
+						itemName: oi.item.name,
+						requestedQuantity: oi.requestedQuantity,
+					}))}
+				/>
+			))}
 		</main>
 	</body>
 </html>

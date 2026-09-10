@@ -34,15 +34,23 @@ const { variant, title, items, products, redirectTo } = Astro.props;
 // edit forms live inside the row list and forms can't nest.
 const formId = `wizard-${variant}-form`;
 ---
-<section class="overflow-hidden rounded-lg border border-border bg-surface">
-	<h2 class="border-b border-border px-3 py-2 text-sm font-semibold text-text">{title}</h2>
+<section class="rounded-lg border border-border bg-surface">
+	<!--
+		No `overflow-hidden` here (previously used to clip children to the
+		rounded corners) — it also clipped ButtonStrip's "Set" <details>
+		popover, since an ancestor with `overflow` set creates a clipping
+		context for it regardless of z-index. Corners are preserved manually
+		below instead (rounded-t-lg on the header, rounded-b-lg on the
+		bottom-most content) rather than via section-level overflow.
+	-->
+	<h2 class="rounded-t-lg border-b border-border px-3 py-2 text-sm font-semibold text-text">{title}</h2>
 	<form id={formId} method="post" action="/api/wizard/archive"></form>
 	<ButtonStrip variant={variant} formId={formId} products={products} redirectTo={redirectTo} />
 	<TableHeader variant={variant} formId={formId} />
 	{items.length === 0 ? (
-		<p class="px-3 py-8 text-center text-sm text-text-muted">No items yet.</p>
+		<p class="rounded-b-lg px-3 py-8 text-center text-sm text-text-muted">No items yet.</p>
 	) : (
-		<div>
+		<div class="overflow-hidden rounded-b-lg">
 			{items.map((item) => <ItemRow variant={variant} formId={formId} {...item} />)}
 		</div>
 	)}

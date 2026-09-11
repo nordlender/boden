@@ -84,7 +84,7 @@ src/
 
 ## Documentation
 
-- [`TASKS.md`](TASKS.md) — the live task tracker: what's done, in progress, and blocked. Check this first.
+- Tasks are tracked as [GitHub issues](https://github.com/nordlender/boden/issues), not a `TASKS.md` file.
 - [`docs/schema.md`](docs/schema.md) — the current database schema and design rationale.
 - [`docs/wizard.md`](docs/wizard.md) — the admin product/item wizard design and implementation notes.
 - [`docs/icons.md`](docs/icons.md) — icon system (astro-icon + morphicons).

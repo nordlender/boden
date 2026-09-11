@@ -1,15 +1,34 @@
 # Astro + SQLite rental shop — setup guide
 
+> This is the original project spec, kept up to date with what's actually
+> built (last full pass: 2026-09-11). For the authoritative schema
+> rationale see [`docs/schema.md`](schema.md); for the planned
+> moderator-review page see [`docs/moderator-review.md`](moderator-review.md).
+> Where something below is planned but not yet built, it's marked
+> **(planned)**.
+
+## Terminology
+
+- **Product** — a category-level listing an admin creates (e.g. "Edelrid
+  Harness"). Holds shared info (title, description, category/subcategory,
+  external links) and the attribute-key template (e.g. Size, Color) that
+  every one of its items fills in.
+- **Item** — one specific permutation of a product's options (e.g. "Edelrid
+  Harness, Green, M"). Items are what actually get rented — orders always
+  reference items, never products directly. An item can also exist
+  unassigned (no product yet) while an admin is still building it out in
+  the wizard.
+
 ## Stack overview
 
 | Layer | Choice | Why |
 |---|---|---|
-| Framework | Astro 4 | Static-first, zero JS by default, built-in image optimisation |
-| Styling | Tailwind CSS v3 | Responsive utilities, mobile-first, great for image grids |
+| Framework | Astro ^7 | Static-first, zero JS by default, built-in image optimisation |
+| Styling | Tailwind CSS v4 (`@tailwindcss/vite`) | Responsive utilities, mobile-first, great for image grids |
 | Database | SQLite via `better-sqlite3` | Zero-config, file-based, perfect for low traffic |
 | ORM | Drizzle ORM | Type-safe, lightweight, works great with SQLite |
-| Auth | Auth.js v5 (NextAuth) | Handles the full OAuth flow; official Astro adapter; large provider library |
-| Image storage | Local `/public/uploads` or S3-compatible bucket | Start local, move to object storage when needed |
+| Auth | `auth-astro` + `@auth/core`, custom bloc OAuth provider | Login and membership status come from [bloc](https://bloc.net) (osiklatring.no's membership backend), not a separate account system — see §7 |
+| Image storage | Referenced by URL only — no upload endpoint yet | Admin pastes an image URL in the wizard; `/public/uploads` currently holds manually-seeded fixture images, not app uploads (see §12) |
 | Deployment | Single VPS (e.g. Hetzner, DigitalOcean) with Node adapter | SQLite needs a persistent filesystem — no serverless |
 
 ---
@@ -20,46 +39,67 @@
 
 | Role | What they can do |
 |---|---|
-| `member` | Browse catalogue, manage cart, place orders, view own order history |
-| `moderator` | Everything a member can do + retrieve orders, confirm handoffs, mark returns |
-| `admin` | Everything a moderator can do + add/remove items, count stock, manage user roles |
+| `member` | Browse catalogue, manage cart, choose reservation dates, place orders, view own order history |
+| `moderator` | Everything a member can do + review/accept-reject, retrieve, confirm handoff, and mark returns **(planned — no moderator pages exist yet, see §10)** |
+| `admin` | Everything a moderator can do + manage products/items via the wizard (`/admin/items`), set pickup-day availability (`/admin/pickup-days`) |
+
+Role assignment itself is **not** an in-app admin feature today: it's a
+temporary comma-separated bloc-user-id allowlist in env vars
+(`ADMIN_USER_IDS` / `MODERATOR_USER_IDS`, see §8) until bloc ships a real
+role endpoint.
 
 ### Order lifecycle
 
 ```
-member places order
-  → status: requested
+member browses catalogue, adds items to cart
+  → cart lives in a cookie only — no database row yet (§5)
 
-moderator reviews order on Review Order page (before retrieval)
+member goes to /reservation, picks pick-up/return dates
+  → live availability check against existing requested/active orders
+  → may split off a mixed-availability item into its own order
+  → submits → POST /api/orders/create
+  → status: requested
+  → order code (6 chars, read aloud at pick-up) + checkout token
+    (groups every order from one checkout, split or not) generated
+  → redirected to /checkout/success?receipt=<checkoutToken>
+
+moderator reviews order on Review Order page (before retrieval) (planned)
   → sees member bio, hasUnpaidFees / userIsMember flags, requested items
   → clicks "Accept" or "Reject"
   → status: requested (accept — unchanged, proceeds to retrieval below)
   → status: rejected  (reject — moved to archive, rejectedReason recorded)
 
-moderator enters order number into Retrieve Order form
+moderator enters order number into Retrieve Order form (planned)
   → sees Moderator Order Summary (items, quantities, user bio)
   → clicks "Go to confirm"
 
-moderator fetches items from storage
+moderator fetches items from storage (planned)
   → Confirm Order page: enters actual quantity retrieved per item
   → clicks "Confirm"
   → status: active  (rental is now live)
 
 member returns items on-site
-  → moderator marks order as returned
+  → moderator marks order as returned (planned)
   → status: returned  (moved to archive)
 ```
 
+Cart → reservation → order-creation is implemented today
+(`src/lib/orders.ts`, `src/pages/api/orders/create.ts`). The review,
+retrieve, and confirm steps are design-only — see §10.
+
 ---
 
-## 1. Project scaffold
+## 1. Project scaffold (historical)
+
+The project is already scaffolded; this records how, for reference.
 
 ```bash
 npm create astro@latest rental-shop -- --template minimal --typescript strict
 cd rental-shop
-npx astro add tailwind
 npm install better-sqlite3 drizzle-orm drizzle-kit
 npm install -D @types/better-sqlite3
+npm install tailwindcss @tailwindcss/vite
+npm install auth-astro @auth/core astro-icon
 ```
 
 Install the Node.js server adapter (required for SSR routes):
@@ -73,104 +113,74 @@ npx astro add node
 ## 2. Project structure
 
 ```
-rental-shop/
+boden/
 ├── src/
+│   ├── auth.ts                              # bloc OAuth provider config (auth-astro) — §7
+│   ├── env.d.ts
 │   ├── pages/
-│   │   ├── index.astro                      # Item catalogue — static, home page
-│   │   ├── items/
-│   │   │   └── [slug].astro                 # Item detail: image, description, links, attributes — static
-│   │   ├── cart.astro                       # Cart review + checkout form — SSR
+│   │   ├── index.astro                      # Catalogue — static, home page
+│   │   ├── products/
+│   │   │   └── [slug].astro                 # Product detail: variant select, image, attributes, links — static
+│   │   ├── cart.astro                       # Cart review — SSR
+│   │   ├── reservation.astro                # Pick-up/return dates, availability, split-order — SSR
 │   │   ├── checkout/
-│   │   │   └── success.astro                # User order summary after placing — SSR
-│   │   ├── orders/
-│   │   │   └── index.astro                  # Member: my order history — SSR
+│   │   │   └── success.astro                # Order receipt(s) after placing — SSR
 │   │   ├── admin/
-│   │   │   ├── items.astro                  # Add/remove items, image upload, count stock — SSR, admin only
-│   │   │   ├── orders.astro                 # All orders overview — SSR, admin only
-│   │   │   ├── orders/
-│   │   │   │   └── [id].astro               # Admin order summary + user bio — SSR, admin only
-│   │   │   └── archive.astro                # Returned orders archive — SSR, admin only
-│   │   ├── moderator/
-│   │   │   ├── retrieve.astro               # Enter order number — SSR, mod+
-│   │   │   ├── orders/
-│   │   │   │   └── [id].astro               # Moderator order summary — SSR, mod+
-│   │   │   └── confirm/
-│   │   │       └── [id].astro               # Enter retrieved quantities, confirm — SSR, mod+
+│   │   │   ├── items.astro                  # Product/item wizard — SSR, admin only
+│   │   │   └── pickup-days.astro            # Set which pick-up dates have moderator coverage — SSR, admin only
+│   │   ├── moderator/                       # (planned — see §10; no pages exist yet)
 │   │   └── auth/
-│   │       ├── login.astro                  # Redirect to provider
-│   │       └── callback.astro               # Handle OAuth callback
+│   │       └── login.astro                  # Redirect to bloc
 │   │
-│   ├── api/
-│   │   ├── items/
-│   │   │   ├── create.ts                    # POST — admin only
-│   │   │   ├── delete.ts                    # POST — admin only
-│   │   │   └── count.ts                     # POST — update stock count, admin only
+│   ├── pages/api/
+│   │   ├── cart/
+│   │   │   ├── add.ts                       # POST — add item to cookie cart
+│   │   │   ├── remove.ts                    # POST — remove item
+│   │   │   └── update.ts                    # POST — set a line's quantity
 │   │   ├── orders/
-│   │   │   ├── create.ts                    # POST — member places order
-│   │   │   ├── confirm.ts                   # POST — moderator confirms retrieval
-│   │   │   └── return.ts                    # POST — moderator marks as returned
-│   │   └── cart/
-│   │       ├── add.ts                       # POST — add item to session cart
-│   │       ├── remove.ts                    # POST — remove item from cart
-│   │       └── clear.ts                     # POST — empty cart
+│   │   │   └── create.ts                    # POST — member places order(s), see §6
+│   │   ├── reservation/
+│   │   │   └── availability.ts              # POST — live availability preview for chosen dates
+│   │   ├── pickup-days/
+│   │   │   ├── add.ts                       # POST — admin only
+│   │   │   └── remove.ts                    # POST — admin only
+│   │   ├── wizard/                          # archive / attributes / attributes/bulk / items / set-product — admin only
+│   │   └── debug/                           # bloc API exploration endpoints, see docs/bloc-api.md
 │   │
 │   ├── db/
 │   │   ├── client.ts                        # SQLite connection singleton
-│   │   ├── schema.ts                        # Drizzle schema
+│   │   ├── schema.ts                        # Drizzle schema — §4, full rationale in docs/schema.md
 │   │   └── migrations/                      # Generated by drizzle-kit
 │   │
 │   ├── lib/
-│   │   ├── auth.ts                          # Session helpers, validateSession
-│   │   ├── cart.ts                          # Cart read/write (cookie-based)
-│   │   └── images.ts                        # Image upload helpers
+│   │   ├── auth.ts                          # Role gate: getRole/validateSession — §8
+│   │   ├── cart.ts                          # Cart read/write (cookie-based) — §5
+│   │   ├── orders.ts                        # createOrder / createSplitOrders — §6
+│   │   ├── reservation.ts                   # Date-range validation + availability queries
+│   │   ├── shop.ts                          # Customer-facing catalogue/product queries
+│   │   ├── stock.ts                         # reservedQuantitiesByItem — "in stock now" derivation
+│   │   ├── pickupDays.ts, wizard.ts, wizard-http.ts, upsertUser.ts, icons.ts, ...
 │   │
 │   ├── middleware/
-│   │   └── index.ts                         # Auth gate: protects /cart, /orders, /admin, /moderator
+│   │   ├── index.ts                         # Auth + role gate — §9
+│   │   └── prefixes.ts                      # Route-prefix tables, unit-testable in isolation
 │   │
 │   ├── components/
-│   │   │
-│   │   ├── layout/
-│   │   │   └── Nav.astro                    # Top nav with cart icon + badge, login/logout, role links
-│   │   │
-│   │   ├── catalogue/
-│   │   │   ├── ItemCard.astro               # Image, name, availability badge, "add to cart" button
-│   │   │   ├── ItemGrid.astro               # Responsive grid of ItemCards
-│   │   │   └── CategoryFilters.astro        # Filter bar (by category tag); updates grid client-side
-│   │   │
-│   │   ├── item/
-│   │   │   ├── Description.astro            # Item long description block
-│   │   │   ├── AttributesTable.astro        # Key/value attributes (weight, size, etc.)
-│   │   │   └── ExternalLinks.astro          # List of labelled external links
-│   │   │
-│   │   ├── cart/
-│   │   │   ├── CartDrawer.astro             # Slide-in cart panel (or /cart page on mobile)
-│   │   │   ├── CartItem.astro               # Single row: image, name, quantity stepper, remove
-│   │   │   └── CheckoutForm.astro           # Optional note field + "Place order" submit
-│   │   │
-│   │   ├── orders/
-│   │   │   └── UserOrderSummary.astro       # Confirmation shown to member after placing: order #, items, status
-│   │   │
-│   │   ├── admin/
-│   │   │   ├── AdminItemCreation.astro      # Form: name, description, category, attributes, links, image upload
-│   │   │   ├── ImageUpload.astro            # Drag-and-drop / file input with preview
-│   │   │   ├── AdminItemRemoval.astro       # List with remove buttons + confirmation step
-│   │   │   ├── AdminCount.astro             # Per-item stock count input + save
-│   │   │   ├── AdminOrderOverview.astro     # Table: all orders, all statuses, sortable
-│   │   │   ├── AdminRequestedOrderOverview.astro  # Filtered view: status = requested
-│   │   │   ├── AdminArchiveOverview.astro   # Filtered view: status = returned
-│   │   │   ├── AdminOrderSummary.astro      # Full order detail: items, quantities, timeline
-│   │   │   └── AdminOrderSummaryUserBio.astro     # User card: name, email, role, order history count
-│   │   │
-│   │   └── moderator/
-│   │       ├── ModeratorRetrieveOrder.astro # Input field for order number + "Look up" button
-│   │       ├── ModeratorOrderSummary.astro  # Order detail + user bio + "Go to confirm" button
-│   │       └── ModeratorConfirmOrder.astro  # Per-item quantity inputs + "Confirm retrieval" button
+│   │   ├── shop/                            # ItemCard, ItemGrid, ImagePlaceholder
+│   │   ├── cart/                            # CartSidebar, CheckoutForm
+│   │   ├── reservation/                     # ReservationForm, ReservationCalendar, ReservationItemRow
+│   │   ├── orders/                          # UserOrderSummary
+│   │   ├── nav/                             # Logo, NavLinks, CartButton, UserMenu, ThemeToggle
+│   │   ├── wizard/                          # Admin product/item wizard, see docs/wizard.md
+│   │   ├── icons/                           # AppIcon
+│   │   └── ui/                              # Callout, CalloutPopover
 │   │
 │   └── layouts/
-│       └── Base.astro                       # HTML shell, Nav, Tailwind, slot
+│       └── BaseLayout.astro                 # HTML shell, Navbar, Tailwind, slot
 │
 ├── public/
-│   └── uploads/                             # Item images
+│   ├── uploads/                             # Manually-seeded fixture item images (no upload endpoint — §12)
+│   └── product/                             # Manually-seeded fixture product images
 ├── data/
 │   └── rental.db                            # SQLite database file
 ├── drizzle.config.ts
@@ -184,97 +194,166 @@ rental-shop/
 ```ts
 // astro.config.mjs
 import { defineConfig } from 'astro/config';
-import tailwind from '@astrojs/tailwind';
+import tailwindcss from '@tailwindcss/vite';
 import node from '@astrojs/node';
+import auth from 'auth-astro';
+import icon from 'astro-icon';
 
 export default defineConfig({
-  integrations: [tailwind()],
-  output: 'hybrid',           // static by default, SSR where you opt in
+  // Static by default (catalogue + product pages are pre-rendered at build time).
+  // Every other route opts into per-request rendering with `export const prerender = false`.
+  output: 'static',
   adapter: node({ mode: 'standalone' }),
+  integrations: [auth({ configFile: './src/auth.ts' }), icon()],
+  vite: {
+    plugins: [tailwindcss()],
+    server: { allowedHosts: true }, // dev server is tunneled through a random *.loca.lt hostname
+  },
 });
 ```
 
-`output: 'hybrid'` is the key setting. The catalogue (`/`) and item pages (`/items/[slug]`) stay fully static — pre-rendered at build time, served from disk instantly with no database involved. Every other section is marked `export const prerender = false` and rendered on the server per-request.
+`output: 'static'` is the key setting: `/` and `/products/[slug]` are pre-rendered at build time, served from disk with no database round-trip per visitor. Every other route is marked `export const prerender = false` and rendered on the server per-request.
 
 ---
 
 ## 4. Database schema
 
+Full rationale for every design decision lives in
+[`docs/schema.md`](schema.md); this is a condensed, current mirror of
+`src/db/schema.ts`.
+
 ```ts
-// src/db/schema.ts
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+// src/db/schema.ts (condensed — see docs/schema.md for the full rationale)
+import { sql, relations } from 'drizzle-orm';
+import { sqliteTable, text, integer, index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
 
 export const categories = sqliteTable('categories', {
-  id:   integer('id').primaryKey({ autoIncrement: true }),
+  id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull().unique(),
   slug: text('slug').notNull().unique(),
 });
 
-export const items = sqliteTable('items', {
-  id:          integer('id').primaryKey({ autoIncrement: true }),
-  slug:        text('slug').notNull().unique(),
-  name:        text('name').notNull(),
-  description: text('description'),
-  imageUrl:    text('image_url').notNull(),
-  categoryId:  integer('category_id').references(() => categories.id),
-  stockCount:  integer('stock_count').notNull().default(1),
-  available:   integer('available', { mode: 'boolean' }).notNull().default(true),
-  createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
-});
-
-// Flexible key/value attributes per item (e.g. "Weight" → "2.4 kg")
-export const itemAttributes = sqliteTable('item_attributes', {
-  id:     integer('id').primaryKey({ autoIncrement: true }),
-  itemId: integer('item_id').notNull().references(() => items.id, { onDelete: 'cascade' }),
-  key:    text('key').notNull(),
-  value:  text('value').notNull(),
+export const subcategories = sqliteTable('subcategories', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  categoryId: integer('category_id').notNull().references(() => categories.id),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),        // unique per-category, not global
   sortOrder: integer('sort_order').notNull().default(0),
 });
 
-// External links per item (e.g. manufacturer page, manual PDF)
-export const itemLinks = sqliteTable('item_links', {
-  id:     integer('id').primaryKey({ autoIncrement: true }),
+// The category-level listing. Never references items — the customer-facing
+// direction is always queried as product -> items, not a column here.
+export const products = sqliteTable('products', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  slug: text('slug').notNull().unique(),
+  title: text('title').notNull(),
+  description: text('description'),
+  categoryId: integer('category_id').references(() => categories.id),
+  subcategoryId: integer('subcategory_id').references(() => subcategories.id),
+  status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden'),
+  thumbnailImageUrl: text('thumbnail_image_url'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+});
+
+// External links per product (manufacturer page, manual PDF, ...)
+export const productLinks = sqliteTable('product_links', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  label: text('label').notNull(),
+  url: text('url').notNull(),
+});
+
+// The attribute-key TEMPLATE (e.g. "Size", "Weight") — every item under a
+// product shares these keys, but not the values (see itemAttributeValues).
+export const productAttributeKeys = sqliteTable('product_attribute_keys', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+});
+
+// Created freeform by an admin, optionally assigned to a product afterward
+// ("Set product" in the wizard). productId is nullable and onDelete:
+// 'set null' — deleting a product must never delete items already
+// referenced by past orders.
+export const items = sqliteTable('items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  productId: integer('product_id').references(() => products.id, { onDelete: 'set null' }),
+  slug: text('slug').notNull().unique(),
+  name: text('name').notNull(),        // internal/admin-only label — never shown to customers
+  imageUrl: text('image_url'),
+  stockCount: integer('stock_count').notNull().default(1),
+  // "In stock right now" is never stored — always computed as stockCount
+  // minus quantities on currently requested/active orders (src/lib/stock.ts).
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false), // soft delete
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+});
+
+// One value per (item, attributeId); attributeId must reference a real
+// productAttributeKeys row, so an item can't accumulate more distinct
+// values than its assigned product currently has keys.
+export const itemAttributeValues = sqliteTable('item_attribute_values', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   itemId: integer('item_id').notNull().references(() => items.id, { onDelete: 'cascade' }),
-  label:  text('label').notNull(),
-  url:    text('url').notNull(),
+  attributeId: integer('attribute_id').notNull().references(() => productAttributeKeys.id, { onDelete: 'cascade' }),
+  value: text('value').notNull().default(''),
 });
 
 export const users = sqliteTable('users', {
-  id:        text('id').primaryKey(),        // ID from external OAuth provider
-  email:     text('email').notNull().unique(),
-  name:      text('name'),
-  // Role is NOT stored here — it is fetched live from the external API on every request
-  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  id: text('id').primaryKey(),          // bloc user id
+  email: text('email').notNull().unique(),
+  name: text('name'),
+  // Role is NOT stored here — see §8's temporary allowlist gate.
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
-export const sessions = sqliteTable('sessions', {
-  id:        text('id').primaryKey(),
-  userId:    text('user_id').notNull().references(() => users.id),
-  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
-});
+// No `sessions` table: Auth.js manages its own signed JWT session cookie.
 
-// One order = one rental request, potentially covering multiple items
+// One order = one rental request, potentially covering multiple items.
+// A checkout that got split across dates/availability produces multiple
+// order rows sharing one checkoutToken.
 export const orders = sqliteTable('orders', {
-  id:        integer('id').primaryKey({ autoIncrement: true }),
-  userId:    text('user_id').notNull().references(() => users.id),
-  status:    text('status', {
-               enum: ['requested', 'active', 'returned', 'rejected']
-             }).notNull().default('requested'),
-  note:      text('note'),          // optional note from member at checkout
-  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
-  activatedAt: integer('activated_at', { mode: 'timestamp' }),  // set when moderator confirms
-  returnedAt:  integer('returned_at',  { mode: 'timestamp' }),  // set when moderator marks returned
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  orderCode: text('order_code').notNull().unique(),      // 6-char code, read aloud at pick-up
+  checkoutToken: text('checkout_token').notNull(),        // groups every order from one checkout submission
+  userId: text('user_id').notNull().references(() => users.id),
+  status: text('status', { enum: ['requested', 'active', 'returned', 'rejected'] }).notNull().default('requested'),
+  fromDate: text('from_date').notNull(),                  // YYYY-MM-DD, pick-up day
+  toDate: text('to_date').notNull(),                      // YYYY-MM-DD, return day
+  note: text('note'),
+  confirmedByUserId: text('confirmed_by_user_id').references(() => users.id),
+  returnedByUserId: text('returned_by_user_id').references(() => users.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  activatedAt: integer('activated_at', { mode: 'timestamp' }),
+  returnedAt: integer('returned_at', { mode: 'timestamp' }),
+  rejectedAt: integer('rejected_at', { mode: 'timestamp' }),
+  rejectedReason: text('rejected_reason'),
+}, (table) => [
+  check('order_date_range_valid', sql`${table.toDate} >= ${table.fromDate}`),
+]);
+
+export const orderItems = sqliteTable('order_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  itemId: integer('item_id').notNull().references(() => items.id),
+  requestedQuantity: integer('requested_quantity').notNull().default(1),
+  retrievedQuantity: integer('retrieved_quantity'),        // set by moderator at confirm step
+}, (table) => [
+  check('requested_quantity_positive', sql`${table.requestedQuantity} > 0`),
+]);
+
+// Which pick-up dates (orders.fromDate) have a moderator confirmed
+// available. Existence of a row is the only signal — no row just means
+// nobody's confirmed a moderator for that date yet.
+export const pickupAvailableDays = sqliteTable('pickup_available_days', {
+  date: text('date').primaryKey(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
-// Line items: one row per item in an order
-export const orderItems = sqliteTable('order_items', {
-  id:                integer('id').primaryKey({ autoIncrement: true }),
-  orderId:           integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
-  itemId:            integer('item_id').notNull().references(() => items.id),
-  requestedQuantity: integer('requested_quantity').notNull().default(1),
-  // Set by moderator at confirm step — may differ from requested if stock was short
-  retrievedQuantity: integer('retrieved_quantity'),
-});
+// relations() are defined for every table above — see src/db/schema.ts for
+// the full set (categories<->subcategories<->products<->items<->
+// itemAttributeValues, users<->orders<->orderItems).
 ```
 
 ```ts
@@ -296,8 +375,8 @@ import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
   schema: './src/db/schema.ts',
-  out:    './src/db/migrations',
-  driver: 'better-sqlite',
+  out: './src/db/migrations',
+  dialect: 'sqlite',
   dbCredentials: { url: './data/rental.db' },
 });
 ```
@@ -305,7 +384,7 @@ export default defineConfig({
 Run migrations:
 
 ```bash
-npx drizzle-kit generate:sqlite
+npx drizzle-kit generate
 npx drizzle-kit migrate
 ```
 
@@ -313,488 +392,263 @@ npx drizzle-kit migrate
 
 ## 5. Cart (cookie-based, no database)
 
-The cart lives in a signed cookie as a JSON array of `{ itemId, quantity }` pairs. No database row is created until the member submits the checkout form. This keeps things simple and means unauthenticated users can browse and add to cart before logging in.
+The cart cookie stores only `{ itemId, quantity }[]` — no database row is created until checkout. `src/lib/cart.ts` joins that against `items`/`products` on read to build a display shape (`CartItem`: product title/slug, image, attribute values, `stockCount` vs. `inStock` — the latter accounting for other requested/active orders via `src/lib/stock.ts`). Entries pointing at an item that no longer exists, is archived, or whose product is unpublished are silently dropped when reading the cart for display.
 
 ```ts
-// src/lib/cart.ts
-import type { AstroCookies } from 'astro';
-
+// src/lib/cart.ts (core shape)
 export type CartEntry = { itemId: number; quantity: number };
 
-export function getCart(cookies: AstroCookies): CartEntry[] {
-  try {
-    return JSON.parse(cookies.get('cart')?.value ?? '[]');
-  } catch {
-    return [];
-  }
-}
-
-export function setCart(cookies: AstroCookies, cart: CartEntry[]) {
-  cookies.set('cart', JSON.stringify(cart), {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7,  // 1 week
-  });
-}
-
-export function addToCart(cookies: AstroCookies, itemId: number, quantity = 1) {
-  const cart = getCart(cookies);
-  const existing = cart.find(e => e.itemId === itemId);
-  if (existing) {
-    existing.quantity += quantity;
-  } else {
-    cart.push({ itemId, quantity });
-  }
-  setCart(cookies, cart);
-}
+export function getCart(cookies: AstroCookies): CartEntry[] { /* JSON.parse the 'cart' cookie, [] on failure */ }
+export function setCart(cookies: AstroCookies, cart: CartEntry[]) { /* httpOnly, sameSite=lax, 1 week */ }
+export function addToCart(cookies, itemId, quantity = 1) { /* adds to existing quantity */ }
+export function updateCartQuantity(cookies, itemId, quantity) { /* sets outright; <= 0 removes the line */ }
+export function removeFromCart(cookies, itemId) { /* ... */ }
+export async function getCartItems(cookies): Promise<CartItem[]> { /* joins against items/products for display */ }
 ```
 
 ---
 
-## 6. Authentication
+## 6. Reservation & checkout (implemented)
 
-Auth.js handles the full OAuth flow — redirects, PKCE, token exchange, callback, and session cookie — so we don't write any of that ourselves. It has an official Astro adapter and a large built-in provider list.
+Placing an order is a three-step flow, not a single "place order" action:
 
-```bash
-npm install auth-astro @auth/core
-```
-
-### Auth.js config
+1. **`/cart`** — review cart lines, adjust quantity, remove. Links to `/reservation`.
+2. **`/reservation`** — pick a pick-up (`fromDate`) and return (`toDate`) date. A live `POST /api/reservation/availability` preview flags any cart line that's unavailable for the chosen range; the member may split an unavailable item into its own order (`splitItemIds`) rather than changing dates. The form also displays (read-only, from the bloc session) name/email/mobile and the `hasUnpaidFees`/`userIsMember` flags.
+3. **`POST /api/orders/create`** — re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently). Generates a random 6-character `orderCode` per order and one shared `checkoutToken` per submission, then redirects to `/checkout/success?receipt=<checkoutToken>`.
 
 ```ts
-// src/auth.ts
-import GitHub from '@auth/core/providers/github';  // swap for any provider
+// src/lib/orders.ts (signatures)
+export async function createOrder(input: {
+  userId: string; note: string | null; cartEntries: CartEntry[]; fromDate: string; toDate: string;
+}): Promise<
+  | { ok: true; orderId: number; orderCode: string; checkoutToken: string }
+  | { ok: false; error: 'empty_cart' }
+  | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
+>;
+
+// Splits cartEntries into up to two orders (sharing one date range and one
+// checkoutToken) when the member moved some items into their own order via
+// the reservation page's split action.
+export async function createSplitOrders(input: CreateOrderInput & { splitItemIds: number[] }): Promise<CreateSplitOrdersResult>;
+```
+
+`/checkout/success` looks orders up by `checkoutToken` (not by order code) — every order from one submission, split or not, shares a token, so a single query returns the whole group. It refuses to render if any matched order doesn't belong to the signed-in user (no enumerating another member's orders by guessing tokens).
+
+---
+
+## 7. Authentication
+
+`auth-astro` (Auth.js) handles the OAuth flow — redirects, token exchange, callback, session cookie. The identity provider is **bloc** (`rest.bloc.net`), the climbing club's membership backend — not a generic named Auth.js provider, since bloc isn't one of Auth.js's built-ins. It's a hand-rolled `OAuthConfig`.
+
+```ts
+// src/auth.ts (shape)
 import { defineConfig } from 'auth-astro';
 
-export default defineConfig({
-  providers: [
-    GitHub({
-      clientId:     import.meta.env.OAUTH_CLIENT_ID,
-      clientSecret: import.meta.env.OAUTH_CLIENT_SECRET,
-    }),
-  ],
+function Bloc(config): OAuthConfig<BlocProfile> {
+  return {
+    id: 'bloc',
+    type: 'oauth',
+    authorization: { url: 'https://rest.bloc.net/OAuth/Authorize', params: { response_type: 'code', redirect_uri: config.redirectUri } },
+    token: 'https://rest.bloc.net/OAuth/Token',
+    checks: ['state'], // PKCE support unconfirmed on bloc's side
+    userinfo: { url: '.../account/listmypages', async request({ tokens }) { /* fetch + pick profileTypeId 0 */ } },
+    profile(profile) { /* maps bloc fields -> Auth.js user + custom fields (mobile, hasUnpaidFees, userIsMember, ...) */ },
+  };
+}
 
+export default defineConfig({
+  providers: [Bloc({ clientId: import.meta.env.BLOC_APPID, clientSecret: import.meta.env.OAUTH_CLIENT_SECRET, redirectUri: /* app base + /api/auth/callback/bloc */ })],
   callbacks: {
-    // Persist the access token into the JWT so it's available on every request
-    async jwt({ token, account }) {
-      if (account?.access_token) {
-        token.accessToken = account.access_token;
-      }
-      return token;
+    async signIn({ user }) {
+      if (!user.id || !user.email) return false;
+      await upsertSignedInUser(db, { id: user.id, email: user.email, name: user.name }); // fails closed
+      return true;
     },
-    async session({ session, token }) {
-      session.accessToken = token.accessToken as string;
-      return session;
-    },
+    async jwt({ token, account, profile }) { /* persists access token + bloc.{mobile,hasUnpaidFees,userIsMember,...} into the JWT */ },
+    async session({ session, token }) { /* exposes token.sub as session.user.id, token.bloc as session.bloc */ },
   },
-
-  // Auth.js handles the session cookie and /auth/signin + /auth/callback routes automatically
 });
 ```
 
-Update `astro.config.mjs` to add the Auth.js integration:
+No `sessions` table — Auth.js manages its own signed JWT cookie. `session.bloc.*` (mobile, `hasUnpaidFees`, `userIsMember`) is snapshotted onto the checkout form so a moderator can review it later even after the member's live session ends (see `docs/moderator-review.md`) — as of 2026-09-02, `hasUnpaidFees`/`userIsMember` currently always come back `null` from bloc (an external API defect, see `docs/bloc-api.md`), and orders don't yet persist these fields (they're read at checkout but not written to the `orders` row — the moderator-review page doesn't exist to consume them yet).
 
-```ts
-import { defineConfig } from 'astro/config';
-import tailwind from '@astrojs/tailwind';
-import node from '@astrojs/node';
-import auth from 'auth-astro';
-
-export default defineConfig({
-  integrations: [tailwind(), auth()],
-  output: 'hybrid',
-  adapter: node({ mode: 'standalone' }),
-});
-```
-
-### Upsert user on sign-in
-
-Auth.js fires a `signIn` callback after every successful OAuth login. Use it to upsert the user into our SQLite database:
-
-```ts
-// src/auth.ts — add to defineConfig
-callbacks: {
-  async signIn({ user, account }) {
-    if (!user.id || !user.email) return false;
-    await db.insert(users)
-      .values({ id: user.id, email: user.email, name: user.name ?? null })
-      .onConflictDoUpdate({
-        target: users.id,
-        set: { name: user.name ?? null },
-      });
-    return true;  // allow sign-in
-  },
-  // ...jwt and session callbacks from above
-}
-```
-
-### Dropping the custom sessions table
-
-Auth.js manages its own session cookie (a signed JWT by default) — it does not use our `sessions` SQLite table. Remove that table from the schema; it is no longer needed.
-
-```ts
-// src/db/schema.ts — delete the sessions table entirely
-// Auth.js session = a signed JWT cookie, not a database row
-```
-
-The access token travels inside the JWT, which Auth.js decodes on every request. Our middleware reads it from there to call the role API.
+See `docs/auth-handoff.md` / `docs/auth-testing.md` / `docs/auth-work-items.md` for the full implementation history and manual test guide.
 
 ---
 
-## 7. Role API integration
+## 8. Role gate (temporary allowlist)
 
-Roles are never stored in our database. On every authenticated request, the middleware calls `validateSession`, which in turn calls `getRoleFromExternalApi` with the stored access token. The response determines what the user can see and do for that request.
-
-### What the external API must return
-
-`GET ROLE_API_URL` with `Authorization: Bearer <access_token>`:
-
-```json
-{ "role": "admin" }
-```
-
-The `role` field should be one of `"admin"`, `"moderator"`, or anything else (treated as `"member"`). If the API is unreachable or returns a non-2xx status, the user is safely downgraded to `"member"` — they can still browse but cannot access protected routes.
-
-### Adapting to your API's response shape
-
-If your external API uses a different field name or nesting, update the mapping in `getRoleFromExternalApi`:
+Bloc doesn't expose a role endpoint yet, so admin/moderator status is a **temporary hardcoded allowlist** of bloc user ids, not a live external lookup.
 
 ```ts
-// Examples — adjust to match your API
-const role = data.role;           // { "role": "admin" }
-const role = data.user.role;      // { "user": { "role": "admin" } }
-const role = data.permissions[0]; // { "permissions": ["moderator"] }
-```
+// src/lib/auth.ts
+export type Role = 'admin' | 'moderator' | 'member';
 
-### Performance note
+const ADMIN_USER_IDS = parseIdAllowlist(import.meta.env.ADMIN_USER_IDS);       // comma-separated
+const MODERATOR_USER_IDS = parseIdAllowlist(import.meta.env.MODERATOR_USER_IDS);
 
-Calling an external HTTP endpoint on every request adds latency. For a low-traffic internal tool this is fine. If it becomes a concern, add a short in-memory cache (e.g. a `Map` with a 30-second TTL) keyed by session ID — roles change rarely, so a small window of staleness is acceptable.
-
-```ts
-// Optional: lightweight in-memory role cache
-const roleCache = new Map<string, { role: Role; fetchedAt: number }>();
-const CACHE_TTL_MS = 30_000; // 30 seconds
-
-export async function getRoleFromExternalApi(accessToken: string, sessionId: string): Promise<Role> {
-  const cached = roleCache.get(sessionId);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return cached.role;
-  }
-  // ... fetch from API ...
-  roleCache.set(sessionId, { role, fetchedAt: Date.now() });
-  return role;
+export async function getRole(userId: string): Promise<Role> {
+  // 30s in-memory cache (size-capped, simple LRU via Map re-insertion), then:
+  return ADMIN_USER_IDS.has(userId) ? 'admin' : MODERATOR_USER_IDS.has(userId) ? 'moderator' : 'member';
 }
+
+// Decodes the Auth.js JWT cookie directly via @auth/core/jwt's getToken()
+// (not auth-astro's getSession(), which serves the same shape to client JS —
+// this must stay server-only) and resolves the role.
+export async function validateSession(request: Request): Promise<{ id: string; email: string; name: string | null; role: Role } | null>;
 ```
+
+`getRole()`'s shape (`userId in, Role out, cached`) deliberately mirrors what a real `getRoleFromExternalApi(accessToken, cacheKey)` would look like, so swapping the body for a live bloc role lookup later shouldn't require touching `validateSession()` or the middleware.
 
 ---
 
-## 8. Middleware (auth + role gate)
+## 9. Middleware (auth + role gate)
+
+Matches against Astro's own resolved `ctx.routePattern` (e.g. `/moderator/orders/[id]`), not raw `ctx.url.pathname` — Astro's auth guide warns that pathname string-matching can be bypassed by a configured `base`, URL encoding, or duplicate slashes; `routePattern` has no such gap.
+
+```ts
+// src/middleware/prefixes.ts
+export const MEMBER_ROUTE_PREFIXES = ['/cart', '/checkout', '/orders', '/reservation', '/api/reservation', '/api/orders'];
+export const MOD_ROUTE_PREFIXES = ['/moderator'];
+export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard', '/api/pickup-days'];
+
+export function matchesPrefix(routePattern: string, prefixes: string[]) {
+  return prefixes.some((p) => routePattern === p || routePattern.startsWith(`${p}/`));
+}
+export function isApiRoute(routePattern: string) { return routePattern.startsWith('/api/'); }
+```
 
 ```ts
 // src/middleware/index.ts
-import { defineMiddleware } from 'astro:middleware';
-import { validateSession } from '../lib/auth';
-
-// Requires login
-const MEMBER_ROUTES = ['/cart', '/checkout', '/orders'];
-// Requires moderator or admin
-const MOD_ROUTES    = ['/moderator'];
-// Requires admin
-const ADMIN_ROUTES  = ['/admin'];
-
 export const onRequest = defineMiddleware(async (ctx, next) => {
-  const sessionId = ctx.cookies.get('session')?.value;
-  const user = sessionId ? await validateSession(sessionId) : null;
+  if (ctx.isPrerendered) { ctx.locals.user = null; return next(); } // no real Request on a prerendered page
+
+  const user = await validateSession(ctx.request);
   ctx.locals.user = user;
+  const { routePattern } = ctx;
+  const allProtected = [...MEMBER_ROUTE_PREFIXES, ...MOD_ROUTE_PREFIXES, ...ADMIN_ROUTE_PREFIXES];
 
-  const path = ctx.url.pathname;
-
-  if ([...MEMBER_ROUTES, ...MOD_ROUTES, ...ADMIN_ROUTES].some(p => path.startsWith(p)) && !user) {
-    return ctx.redirect(`/auth/login?next=${encodeURIComponent(path)}`);
+  if (matchesPrefix(routePattern, allProtected) && !user) {
+    // API callers get a plain 401 (redirecting into OAuth login would send Auth.js's
+    // callback back to a POST-only route with a GET, which 404s); page routes get redirected.
+    if (isApiRoute(routePattern)) return new Response('Unauthorized', { status: 401 });
+    return ctx.redirect(`/auth/login?next=${encodeURIComponent(ctx.url.pathname)}`);
   }
-
-  if (MOD_ROUTES.some(p => path.startsWith(p)) && user?.role === 'member') {
-    return new Response('Forbidden', { status: 403 });
-  }
-
-  if (ADMIN_ROUTES.some(p => path.startsWith(p)) && !['admin'].includes(user?.role ?? '')) {
-    return new Response('Forbidden', { status: 403 });
-  }
-
+  if (matchesPrefix(routePattern, MOD_ROUTE_PREFIXES) && user?.role === 'member') return new Response('Forbidden', { status: 403 });
+  if (matchesPrefix(routePattern, ADMIN_ROUTE_PREFIXES) && user?.role !== 'admin') return new Response('Forbidden', { status: 403 });
   return next();
 });
 ```
 
+`/api/wizard/*`, `/api/pickup-days/*`, `/api/reservation`, and `/api/orders` are each listed here **and** re-implement their own inline role/auth check — this middleware gate is defense-in-depth for those routes, not their only protection.
+
 ```ts
 // src/env.d.ts
-/// <reference types="astro/client" />
-import type { Role } from './lib/auth';
-
 declare namespace App {
   interface Locals {
-    user: {
-      id: string;
-      email: string;
-      name: string | null;
-      role: Role;   // always freshly fetched from the external API, never from our DB
-    } | null;
+    user: { id: string; email: string; name: string | null; role: Role } | null;
   }
 }
 ```
 
 ---
 
-## 9. Moderator flow — page by page
+## 10. Moderator flow — page by page (planned, not yet built)
+
+No `src/pages/moderator/*` routes exist yet. This documents the intended design — see `docs/moderator-review.md` for the review step's open questions (exact route not named yet, order persistence for `hasUnpaidFees`/`userIsMember` not wired).
+
+### Step 0 — Review order (`/moderator/review/[id]`, route not finalized)
+
+Accept or reject a requested order **before** retrieval — see the lifecycle diagram above and `docs/moderator-review.md`. Accept leaves `status: requested` unchanged; reject sets `status: rejected` and records `rejectedReason`.
 
 ### Step 1 — Retrieve order (`/moderator/retrieve`)
 
-The moderator types in an order number. On submit the form POSTs to itself, looks up the order, and redirects to the order summary.
+The moderator types in an order code. On submit the form POSTs to itself, looks up the order, and redirects to the order summary.
 
 ```astro
 ---
-// src/pages/moderator/retrieve.astro
+// src/pages/moderator/retrieve.astro (planned)
 export const prerender = false;
-
-import Base from '../../layouts/Base.astro';
-import ModeratorRetrieveOrder from '../../components/moderator/ModeratorRetrieveOrder.astro';
-
-let error = '';
-if (Astro.request.method === 'POST') {
-  const form    = await Astro.request.formData();
-  const orderId = Number(form.get('orderId'));
-  if (!orderId) { error = 'Please enter a valid order number.'; }
-  else { return Astro.redirect(`/moderator/orders/${orderId}`); }
-}
+// ... looks up orders.orderCode, redirects to /moderator/orders/[id]
 ---
-<Base title="Retrieve order">
-  <main class="max-w-md mx-auto px-4 py-16">
-    <ModeratorRetrieveOrder error={error} />
-  </main>
-</Base>
 ```
 
 ### Step 2 — Order summary (`/moderator/orders/[id]`)
 
-Shows the full order: member details, items requested with quantities. Button links to confirm page.
-
-```astro
----
-// src/pages/moderator/orders/[id].astro
-export const prerender = false;
-
-import Base from '../../../layouts/Base.astro';
-import ModeratorOrderSummary from '../../../components/moderator/ModeratorOrderSummary.astro';
-import { db } from '../../../db/client';
-import { orders, orderItems, items, users } from '../../../db/schema';
-import { eq } from 'drizzle-orm';
-
-const orderId = Number(Astro.params.id);
-const order   = await db.query.orders.findFirst({
-  where: eq(orders.id, orderId),
-  with: {
-    user: true,
-    orderItems: { with: { item: true } },
-  },
-});
-
-if (!order) return Astro.redirect('/moderator/retrieve');
----
-<Base title={`Order #${orderId}`}>
-  <main class="max-w-2xl mx-auto px-4 py-10">
-    <ModeratorOrderSummary order={order} />
-  </main>
-</Base>
-```
+Shows the full order: member details, requested items with quantities. Button links to confirm page.
 
 ### Step 3 — Confirm retrieval (`/moderator/confirm/[id]`)
 
-Moderator enters the actual quantity retrieved for each line item (may be less than requested if stock ran short), then hits confirm. The API route sets status to `active` and stamps `activatedAt`.
-
-```astro
----
-// src/pages/moderator/confirm/[id].astro
-export const prerender = false;
-
-import Base from '../../../layouts/Base.astro';
-import ModeratorConfirmOrder from '../../../components/moderator/ModeratorConfirmOrder.astro';
-import { db } from '../../../db/client';
-import { orders } from '../../../db/schema';
-import { eq } from 'drizzle-orm';
-
-const orderId = Number(Astro.params.id);
-const order   = await db.query.orders.findFirst({
-  where: eq(orders.id, orderId),
-  with: { orderItems: { with: { item: true } } },
-});
-
-if (!order || order.status !== 'requested') return Astro.redirect('/moderator/retrieve');
----
-<Base title={`Confirm order #${orderId}`}>
-  <main class="max-w-2xl mx-auto px-4 py-10">
-    <ModeratorConfirmOrder order={order} />
-  </main>
-</Base>
-```
+Moderator enters the actual quantity retrieved per line item (may be less than requested if stock ran short), then confirms. The API route sets `status: 'active'` and stamps `activatedAt`.
 
 ```ts
-// src/api/orders/confirm.ts
-export const prerender = false;
-
-import type { APIRoute } from 'astro';
-import { db } from '../../db/client';
-import { orders, orderItems } from '../../db/schema';
-import { eq } from 'drizzle-orm';
-
+// src/pages/api/orders/confirm.ts (planned)
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (!locals.user || locals.user.role === 'member') {
-    return new Response('Forbidden', { status: 403 });
-  }
-
-  const form    = await request.formData();
-  const orderId = Number(form.get('orderId'));
-
-  // Update each line item's retrieved quantity
-  for (const [key, value] of form.entries()) {
-    if (key.startsWith('qty_')) {
-      const orderItemId     = Number(key.replace('qty_', ''));
-      const retrievedQty    = Number(value);
-      await db.update(orderItems)
-        .set({ retrievedQuantity: retrievedQty })
-        .where(eq(orderItems.id, orderItemId));
-    }
-  }
-
-  // Activate the order
-  await db.update(orders)
-    .set({ status: 'active', activatedAt: new Date() })
-    .where(eq(orders.id, orderId));
-
-  return new Response(null, { status: 303, headers: { Location: `/admin/orders/${orderId}` } });
+  if (!locals.user || locals.user.role === 'member') return new Response('Forbidden', { status: 403 });
+  // update each order_items.retrievedQuantity, then orders.status = 'active', activatedAt = now
 };
 ```
 
 ```ts
-// src/api/orders/return.ts
-export const prerender = false;
-
-import type { APIRoute } from 'astro';
-import { db } from '../../db/client';
-import { orders } from '../../db/schema';
-import { eq } from 'drizzle-orm';
-
+// src/pages/api/orders/return.ts (planned)
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (!locals.user || locals.user.role === 'member') {
-    return new Response('Forbidden', { status: 403 });
-  }
-  const form    = await request.formData();
-  const orderId = Number(form.get('orderId'));
-
-  await db.update(orders)
-    .set({ status: 'returned', returnedAt: new Date() })
-    .where(eq(orders.id, orderId));
-
-  return new Response(null, { status: 303, headers: { Location: `/admin/orders/${orderId}` } });
+  if (!locals.user || locals.user.role === 'member') return new Response('Forbidden', { status: 403 });
+  // orders.status = 'returned', returnedAt = now
 };
 ```
 
 ---
 
-## 10. Item detail page (static)
+## 11. Product detail page (static)
 
 ```astro
 ---
-// src/pages/items/[slug].astro
-import Base from '../../layouts/Base.astro';
-import Description from '../../components/item/Description.astro';
-import AttributesTable from '../../components/item/AttributesTable.astro';
-import ExternalLinks from '../../components/item/ExternalLinks.astro';
-import { db } from '../../db/client';
-import { items, itemAttributes, itemLinks } from '../../db/schema';
-import { eq } from 'drizzle-orm';
+// src/pages/products/[slug].astro
+// Route is "/products/[slug]", not "/items/[slug]": a slug-routable,
+// customer-facing page is a product (title/description/attribute
+// template), with items as its unlabeled variants underneath.
+import { getPublishedProductSlugs, getShopProductBySlug } from '../../lib/shop';
 
 export async function getStaticPaths() {
-  const allItems = await db.select().from(items);
-  return allItems.map(item => ({ params: { slug: item.slug } }));
+  const slugs = await getPublishedProductSlugs();
+  return slugs.map((slug) => ({ params: { slug } }));
 }
 
-const { slug }  = Astro.params;
-const item      = await db.query.items.findFirst({
-  where: eq(items.slug, slug),
-  with: { attributes: true, links: true },
-});
-
-if (!item) return Astro.redirect('/');
+const product = await getShopProductBySlug(Astro.params.slug!);
+if (!product) return Astro.redirect('/404');
 ---
-
-<Base title={item.name}>
-  <main class="max-w-4xl mx-auto px-4 py-10">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-      <div class="aspect-[4/3] rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-900">
-        <img src={item.imageUrl} alt={item.name}
-             class="w-full h-full object-cover" width="800" height="600" />
-      </div>
-      <div class="flex flex-col gap-6">
-        <div>
-          <h1 class="text-2xl font-medium">{item.name}</h1>
-          <span class={`mt-2 inline-block text-xs px-2 py-0.5 rounded-full font-medium
-            ${item.available ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}>
-            {item.available ? 'Available' : 'On loan'}
-          </span>
-        </div>
-        <Description text={item.description} />
-        {item.attributes.length > 0 && <AttributesTable attributes={item.attributes} />}
-        {item.links.length > 0 && <ExternalLinks links={item.links} />}
-        <form action="/api/cart/add" method="POST">
-          <input type="hidden" name="itemId" value={item.id} />
-          <input type="hidden" name="quantity" value="1" />
-          <button type="submit"
-                  class="w-full py-3 rounded-xl border border-zinc-300 text-sm font-medium
-                         hover:bg-zinc-50 dark:hover:bg-zinc-800 transition"
-                  disabled={!item.available}>
-            {item.available ? 'Add to cart' : 'Not available'}
-          </button>
-        </form>
-      </div>
-    </div>
-  </main>
-</Base>
+<!-- variant <select> (one option per item, disabled when inStock <= 0),
+     image + ImagePlaceholder fallback, attribute list, quantity input
+     capped at inStock, "Add to cart" POSTing to /api/cart/add.
+     A client-side <script> keeps image/stock/attributes/quantity-cap in
+     sync on variant change (including a ?item=<id> preselect from an
+     ItemCard link) — this page is prerendered, so there's no per-request
+     server render to do it there. -->
 ```
 
 ---
 
-## 11. Image uploads
+## 12. Item images
 
-```ts
-// src/lib/images.ts
-import { writeFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
-import path from 'node:path';
-
-export async function saveUploadedImage(file: File): Promise<string> {
-  const ext      = file.name.split('.').pop() ?? 'jpg';
-  const filename = `${randomUUID()}.${ext}`;
-  const dest     = path.join(process.cwd(), 'public', 'uploads', filename);
-  await writeFile(dest, Buffer.from(await file.arrayBuffer()));
-  return `/uploads/${filename}`;
-}
-```
+There is currently **no upload endpoint**. The wizard's "Add item" panel takes a plain `imageUrl` text field (and products have a `thumbnailImageUrl` the same way) — an admin pastes a URL rather than uploading a file. `/public/uploads` and `/public/product` hold manually-seeded fixture images checked into the repo, not anything the app wrote. A real upload flow (`saveUploadedImage`-style, writing into `/public/uploads` with a generated filename) is a known gap, not yet built.
 
 ---
 
-## 12. Environment variables
+## 13. Environment variables
 
 ```bash
-# .env
-OAUTH_CLIENT_ID=your_client_id
-OAUTH_CLIENT_SECRET=your_client_secret
-OAUTH_REDIRECT_URI=https://yourdomain.com/auth/callback
-ROLE_API_URL=https://your-external-api.example.com/api/me/role
+# .env — see .env.example
+BLOC_APPID=                 # bloc OAuth app client id
+OAUTH_CLIENT_SECRET=        # bloc OAuth app client secret
+REDIRECT_URL=http://localhost:4321/   # app's own base URL; joined with the fixed bloc callback path
+AUTH_SECRET=                 # auth-astro session encryption key — openssl rand -base64 32
+ADMIN_USER_IDS=              # comma-separated bloc user ids — temporary role allowlist, see §8
+MODERATOR_USER_IDS=          # comma-separated bloc user ids
 ```
 
 ---
 
-## 13. Deployment (single VPS)
+## 14. Deployment (single VPS)
 
 SQLite requires a persistent filesystem — deploy to a plain VPS, not a serverless platform.
 
@@ -810,7 +664,6 @@ pm2 save
 # /etc/nginx/sites-available/rental-shop
 server {
     server_name yourdomain.com;
-    client_max_body_size 20M;   # allow image uploads up to 20 MB
     location / {
         proxy_pass http://localhost:4321;
         proxy_http_version 1.1;
@@ -835,28 +688,19 @@ Daily database backup:
 
 ---
 
-## 14. Switching OAuth providers
+## 15. Auth provider notes
 
-```ts
-import { GitHub }           from 'arctic';  // current example
-import { MicrosoftEntraId } from 'arctic';  // Azure AD / Microsoft 365
-import { Google }           from 'arctic';  // Google Workspace
-import { Discord }          from 'arctic';  // Discord
-```
-
-Change the import and constructor arguments in `src/lib/auth.ts` — everything else stays identical.
+Unlike a generic named Auth.js provider, bloc isn't swappable by changing an import — it's a hand-rolled `OAuthConfig` (§7) built against bloc's specific endpoints and response shape (`account/listmypages`, `profileTypeId` person-profile selection, etc.). Moving to a different identity provider means writing a new config in that shape, not a one-line change in `src/auth.ts`.
 
 ---
 
-## 15. Checklist before go-live
+## 16. Checklist before go-live
 
-- [ ] Set `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_REDIRECT_URI` in production env
-- [ ] Register `/auth/callback` in your OAuth provider's app settings
-- [ ] Ensure `data/` and `public/uploads/` are writable by the Node process
-- [ ] Set `client_max_body_size` in nginx for image uploads
+- [ ] Set `BLOC_APPID`, `OAUTH_CLIENT_SECRET`, `REDIRECT_URL`, `AUTH_SECRET` in production env
+- [ ] Register the production callback URL (`<REDIRECT_URL>api/auth/callback/bloc`) with bloc
+- [ ] Set `ADMIN_USER_IDS` / `MODERATOR_USER_IDS` for the real production bloc user ids
+- [ ] Ensure `data/` is writable by the Node process
 - [ ] Set up daily SQLite backups
 - [ ] Enable HTTPS via Certbot
-- [ ] Set `ROLE_API_URL` in production env and verify the endpoint returns the expected `role` field
-- [ ] Confirm the OAuth access token is accepted by the role API (scopes, audience, etc.)
-- [ ] Test moderator flow end-to-end: place order → retrieve → confirm → return
-- [ ] Test on mobile at 375px: catalogue grid, item detail, cart, checkout form, moderator retrieve form
+- [ ] Build the moderator review/retrieve/confirm/return pages (§10) before relying on the full order lifecycle in production — today only cart → reservation → order creation is implemented
+- [ ] Test on mobile at 375px: catalogue grid, product detail, cart, reservation form, checkout form

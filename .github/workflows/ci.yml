@@ -17,36 +17,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Determine commit range
-        id: range
-        run: |
-          git fetch origin main --quiet
-
-          # A commit already reachable from main has already passed this check
-          # (on main's own CI run, or on the PR that merged it in) -- re-linting
-          # it here just replays history a branch picked up via `merge main`.
-          # Scope the range to commits that are actually new:
-          #   - on main itself, that's whatever the push added (event `before`)
-          #   - on any other ref, that's everything not yet an ancestor of main
-          if [ "${{ github.ref }}" = "refs/heads/main" ] && [ -n "${{ github.event.before }}" ] \
-             && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
-            FROM="${{ github.event.before }}"
-          else
-            FROM="$(git merge-base origin/main HEAD)"
-          fi
-          echo "from=$FROM" >> "$GITHUB_OUTPUT"
-
       - name: Lint commits
-        run: npx commitlint --from "${{ steps.range.outputs.from }}" --to HEAD --verbose
+        uses: wagoid/commitlint-github-action@v6
 
   build:
     runs-on: ubuntu-latest

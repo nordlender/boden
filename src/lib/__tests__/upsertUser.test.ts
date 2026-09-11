@@ -112,7 +112,14 @@ describe('upsertSignedInUser', () => {
 
     await upsertSignedInUser(db, { id: legacyId, email: 'carol@example.com', name: 'Carol' });
     db.insert(schema.orders)
-      .values({ orderCode: 'CARL01', userId: legacyId, note: null })
+      .values({
+        orderCode: 'CARL01',
+        checkoutToken: 'TESTTOKEN2',
+        userId: legacyId,
+        note: null,
+        fromDate: '2026-01-01',
+        toDate: '2026-01-02',
+      })
       .run();
     db.update(schema.orders)
       .set({ confirmedByUserId: legacyId, returnedByUserId: legacyId })
@@ -140,7 +147,14 @@ describe('upsertSignedInUser', () => {
     // this must NOT be mistaken for the legacy-UUID migration case.
     await upsertSignedInUser(db, { id: '111', email: 'shared2@example.com', name: 'First' });
     db.insert(schema.orders)
-      .values({ orderCode: 'DEF456', userId: '111', note: null })
+      .values({
+        orderCode: 'DEF456',
+        checkoutToken: 'TESTTOKEN3',
+        userId: '111',
+        note: null,
+        fromDate: '2026-01-01',
+        toDate: '2026-01-02',
+      })
       .run();
 
     await expect(

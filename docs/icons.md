@@ -79,25 +79,35 @@ const iconName = typeof entry === 'string' ? entry : entry[variant as keyof type
 | Placeholder | Meaning | Tabler icon(s) | Notes |
 |---|---|---|---|
 | `{product_icon}` | marks a product reference on an item row | `tabler:package` | reads clearly as "this is the product" next to the product name |
-| `{type_icon}` | an item's type (e.g. "Jacket", "Tent") | `tabler:tag` | new column + field, replacing the original Attributes dropdown in Add Item |
-| `{attribute_icon}` | marks the attributes button/menu | `tabler:list-details` | was `tabler:tag`, freed up for `{type_icon}` above. `tabler:clipboard-list` and `tabler:chart-bar` noted as candidates if this needs to change again |
+| `{subcategory_icon}` | marks an item's sub-category (inherited from its product) | `tabler:category` | `icons.ts`'s `subCategory` key |
+| `{attribute_icon}` | small section-label icon inside the expanded details box's Attributes section | `tabler:list-details` | not a standalone button — `{details_icon}` below (a separate morph pair) is the row's actual expand/collapse toggle, sharing the same artwork in its closed state |
 | `{img_icon}` | image cell / "set image" action | `tabler:photo` | |
+| `{details_icon}` | the row's expand/collapse toggle for the details box | `list-details` (closed) / `circle-chevron-up` (open) | animated with morphicons — `detailsToggle` in `icon-nodes.ts`, used by `DetailsToggle.astro`. See "Morphing the dynamic icons" |
 | `{select_icon}` | per-row checkbox | `square` (unchecked) / `square-check` (checked) | two states only — the header no longer mirrors row selection state, see below. Animated with morphicons, not `<AppIcon>` — see "Morphing the dynamic icons" |
 | `{select_menu_icon}` | table header's select-all control | `tabler:square-chevron-down` | fixed dropdown trigger, not a tri-state indicator — supersedes the old `{select_header_icon}` idea. Opens None/All/Invert, which moved here from the button strip |
 | `{select_none_icon}` | "None" option in the select menu | `tabler:circle-dashed` | |
 | `{select_all_icon}` | "All" option in the select menu | `tabler:circle-asterisk` | |
 | `{select_invert_icon}` | "Invert" option in the select menu | `tabler:circle-half-2` | |
-| `{dropdown_icon}` | generic dropdown trigger chevron | `chevron-down` (closed) / `chevron-up` (open) | reused by the Set dropdown and the Add Item panel's Type dropdown. Animated with morphicons, not `<AppIcon>` — see "Morphing the dynamic icons" |
+| `{dropdown_icon}` | generic dropdown trigger chevron | `chevron-down` (closed) / `chevron-up` (open) | reused by the Set dropdown. Animated with morphicons, not `<AppIcon>` — see "Morphing the dynamic icons" |
+| *(not a wizard-doc placeholder)* | trash / "Delete n item(s)" button | `tabler:trash` | `icons.ts`'s `trash` key |
+| *(not a wizard-doc placeholder)* | inline edit trigger next to an attribute's value in the details box | `tabler:pencil` | `icons.ts`'s `edit` key |
+| *(not a wizard-doc placeholder)* | main-section search bar | `tabler:search` | `docs/wizard.md` calls for a search bar but doesn't assign it an icon; added here |
+| `{separate_order_icon}` | reservation page: split a mixed-availability item into its own order | `tabler:arrows-split-2` | not part of the admin wizard — `icons.ts`'s `splitOrder` key, used on `/reservation` |
 
 All of the above exist in the installed Tabler set — checked against
 `@iconify-json/tabler`'s `icons.json` directly, not just assumed from the
-icon browser. `tabler:cart-bar` does not exist (likely meant `chart-bar`,
-noted above as a candidate instead).
+icon browser.
+
+**Note:** an earlier version of this table documented a `{type_icon}`
+placeholder for a per-item "Type" field. That field was removed from the
+wizard's design (see `docs/wizard.md`'s "What's inherited from the product" —
+category/sub-category replaced it) and never shipped in `src/lib/icons.ts`;
+the row has been removed here to match.
 
 ## Resolved
 
-- `{attribute_icon}`: went with `list-details`, since `tag` was reassigned
-  to the new `{type_icon}`.
+- `{attribute_icon}`: went with `list-details`. `tabler:tag` (an earlier
+  candidate) isn't used anywhere in the current icon map.
 - The header select control does not mirror row selection state anymore
   (no indeterminate icon) — it's a fixed dropdown trigger, so
   `select.indeterminate` was dropped from `icons.ts` as dead code.
@@ -144,6 +154,9 @@ Wired into the two components that actually flagged "dynamic":
   real (if still local-only) interactivity in the wizard — no state escapes
   the button yet, so "N selected" counts in the button strip and bulk
   actions (Assign/Unassign/Delete) still need real wiring later.
+- **`DetailsToggle.astro`** — the row's details-box expand/collapse button
+  also renders `<MorphIcon>`, morphing between `detailsToggle.closed`
+  (`list-details`) and `.open` (`circle-chevron-up`) on click.
 - `icons.ts` dropped its `dropdown` and `select` entries — those two
   components were their only consumers, so the iconify-string versions are
   dead now that both render through morphicons instead of `<AppIcon>`.

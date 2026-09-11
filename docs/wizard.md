@@ -105,8 +105,8 @@ The last, untitled column's button ({details_icon}) expands a box directly benea
 This replaces the original plan's Attributes button, which just opened a small menu.
 
 ## Handoff: DB / schema work
-Resolved — see `docs/schema.md` (and its matching `docs/schema-draft.ts`), which
-replaces `schema_v2.md`/`schemav2.ts` entirely:
+Resolved — see `docs/schema.md`, which replaces `schema_v2.md`/`schemav2.ts`
+entirely:
 - Attributes are now a template/value split: `productAttributeKeys` (the
   field names, scoped to the product) and `itemAttributeValues` (each
   item's own value per field). The old item-scoped `itemAttributes` table

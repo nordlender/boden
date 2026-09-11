@@ -89,7 +89,7 @@ src/
 - [`docs/wizard.md`](docs/wizard.md) — the admin product/item wizard design and implementation notes.
 - [`docs/icons.md`](docs/icons.md) — icon system (astro-icon + morphicons).
 - [`docs/moderator-review.md`](docs/moderator-review.md) — the moderator order-review page (planned).
-- [`docs/auth-handoff.md`](docs/auth-handoff.md), [`docs/auth-testing.md`](docs/auth-testing.md), [`docs/auth-work-items.md`](docs/auth-work-items.md) — bloc OAuth implementation history, manual testing guide, and open items.
+- [`docs/auth-testing.md`](docs/auth-testing.md) — manual bloc-login testing guide and open items.
 - [`docs/bloc-api.md`](docs/bloc-api.md) — notes from exploring bloc's API.
 - [`docs/rental-shop.md`](docs/rental-shop.md) — the original project spec.
 - [`docs/schema-legacy-fixes.md`](docs/schema-legacy-fixes.md) — historical, superseded by `docs/schema.md`; kept because a few decisions in it are still cited by number elsewhere.

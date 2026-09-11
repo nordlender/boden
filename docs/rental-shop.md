@@ -472,7 +472,7 @@ export default defineConfig({
 
 No `sessions` table — Auth.js manages its own signed JWT cookie. `session.bloc.*` (mobile, `hasUnpaidFees`, `userIsMember`) is snapshotted onto the checkout form so a moderator can review it later even after the member's live session ends (see `docs/moderator-review.md`) — as of 2026-09-02, `hasUnpaidFees`/`userIsMember` currently always come back `null` from bloc (an external API defect, see `docs/bloc-api.md`), and orders don't yet persist these fields (they're read at checkout but not written to the `orders` row — the moderator-review page doesn't exist to consume them yet).
 
-See `docs/auth-handoff.md` / `docs/auth-testing.md` / `docs/auth-work-items.md` for the full implementation history and manual test guide.
+See `docs/auth-testing.md` for the manual test guide.
 
 ---
 

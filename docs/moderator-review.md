@@ -24,7 +24,9 @@ come back `null`/empty from **every** bloc method that exposes them
 not a caching or client-side issue. This is an external API defect on bloc's
 side; the user has contacted the provider to request a fix. Until that's
 resolved, this page cannot show real values for either field — see
-`docs/auth-handoff.md` §7 and `TASKS.md` for the full history. Don't
+`docs/bloc-api.md`'s "Addendum" for the investigation and
+`docs/auth-testing.md`'s "Known, still-open items" for the retest procedure.
+Don't
 mistake `null` for "no data submitted yet" once order persistence exists —
 it may just be bloc still not returning real values.
 

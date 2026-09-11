@@ -1,10 +1,9 @@
 > **Status: fully applied and superseded.** Items 1–8 were implemented against
 > the pre-v3 schema and later carried forward (or superseded outright) by
 > `docs/schema.md`'s products/categories/subcategories/attribute-template
-> rework — see `TASKS.md`'s Completed section. Kept here only as the decision
-> record item numbers below are still cited by: `docs/schema.md` (item 6,
-> `available` vs. derived stock), `docs/moderator-review.md` and
-> `docs/auth-handoff.md` (item 9, `rejectedAt`/`rejectedReason`), and the
+> rework. Kept here only as the decision record item numbers below are still
+> cited by: `docs/schema.md` (item 6, `available` vs. derived stock),
+> `docs/moderator-review.md` (item 9, `rejectedAt`/`rejectedReason`), and the
 > `database-and-drizzle-cleanup` skill (item 9, `dueAt`). Don't use this doc
 > as a guide to the current schema — read `docs/schema.md` and
 > `src/db/schema.ts` for that.

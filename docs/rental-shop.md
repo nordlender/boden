@@ -30,6 +30,12 @@
 member places order
   → status: requested
 
+moderator reviews order on Review Order page (before retrieval)
+  → sees member bio, hasUnpaidFees / userIsMember flags, requested items
+  → clicks "Accept" or "Reject"
+  → status: requested (accept — unchanged, proceeds to retrieval below)
+  → status: rejected  (reject — moved to archive, rejectedReason recorded)
+
 moderator enters order number into Retrieve Order form
   → sees Moderator Order Summary (items, quantities, user bio)
   → clicks "Go to confirm"

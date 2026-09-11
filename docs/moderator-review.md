@@ -71,16 +71,12 @@ accept/deny controls themselves, etc.) still need to be listed out here.
 
 ## Correspondence check against docs/rental-shop.md
 
-- `docs/rental-shop.md`'s "Order lifecycle" diagram was changed (at some point
-  during this project) so the moderator's *Confirm Order* step now ends with
-  `clicks "Accept" or "Reject"` instead of `clicks "Confirm"` — but the status
-  line right below it still only says `status: active (rental is now live)`
-  for that step, for both outcomes. That doesn't hold up for a rejection, and
-  it also places accept/reject at the *same* step as entering retrieved
-  quantities (i.e., during retrieval) — not as an earlier, separate review
-  step like this task describes. **This diagram looks like a partial edit and
-  needs a pass to reconcile with what's being asked for here** before anyone
-  builds against it.
+- Fixed (2026-09-11): `docs/rental-shop.md`'s "Order lifecycle" diagram now has
+  its own earlier review step (`moderator reviews order on Review Order page
+  (before retrieval)`, ending in `clicks "Accept" or "Reject"`) ahead of the
+  retrieve/confirm flow, instead of conflating accept/reject with the
+  *Confirm Order* step. Accept leaves `status: requested` unchanged (retrieval
+  still sets `active` at Confirm); reject sets `status: rejected`.
 - The schema already supports a reject outcome: `orders.status` includes
   `'rejected'`, and `rejectedAt` / `rejectedReason` columns already exist in
   `src/db/schema.ts` (added ahead of `docs/schema-legacy-fixes.md` item #9's original

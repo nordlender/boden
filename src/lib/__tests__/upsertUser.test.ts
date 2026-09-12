@@ -106,6 +106,73 @@ describe('upsertSignedInUser', () => {
     expect(rowB?.email).not.toBe('taken@example.com');
   });
 
+  it('migrates a legacy-UUID row in place onto a new numeric bloc id, preserving order history', async () => {
+    const legacyId = '3fa85f64-5717-4562-b3fc-2c963f66afa6'; // shape of Auth.js's old crypto.randomUUID() ids
+    const newId = '482913'; // shape of a bloc numeric userId, stringified
+
+    await upsertSignedInUser(db, { id: legacyId, email: 'carol@example.com', name: 'Carol' });
+    db.insert(schema.orders)
+      .values({
+        orderCode: 'CARL01',
+        checkoutToken: 'TESTTOKEN2',
+        userId: legacyId,
+        note: null,
+        fromDate: '2026-01-01',
+        toDate: '2026-01-02',
+      })
+      .run();
+    db.update(schema.orders)
+      .set({ confirmedByUserId: legacyId, returnedByUserId: legacyId })
+      .where(eq(schema.orders.orderCode, 'CARL01'))
+      .run();
+
+    await expect(
+      upsertSignedInUser(db, { id: newId, email: 'carol@example.com', name: 'Carol B.' }),
+    ).resolves.not.toThrow();
+
+    const rows = db.select().from(schema.users).all();
+    expect(rows).toHaveLength(1); // no vacated row left behind — the row itself was migrated
+    expect(rows[0]).toMatchObject({ id: newId, email: 'carol@example.com', name: 'Carol B.' });
+
+    const order = db.select().from(schema.orders).where(eq(schema.orders.orderCode, 'CARL01')).get();
+    expect(order).toMatchObject({
+      userId: newId,
+      confirmedByUserId: newId,
+      returnedByUserId: newId,
+    });
+  });
+
+  it('still vacates (does not merge) when two non-legacy-shaped ids collide on an email', async () => {
+    // Both ids are already numeric bloc-style ids (post-migration shape) —
+    // this must NOT be mistaken for the legacy-UUID migration case.
+    await upsertSignedInUser(db, { id: '111', email: 'shared2@example.com', name: 'First' });
+    db.insert(schema.orders)
+      .values({
+        orderCode: 'DEF456',
+        checkoutToken: 'TESTTOKEN3',
+        userId: '111',
+        note: null,
+        fromDate: '2026-01-01',
+        toDate: '2026-01-02',
+      })
+      .run();
+
+    await expect(
+      upsertSignedInUser(db, { id: '222', email: 'shared2@example.com', name: 'Second' }),
+    ).resolves.not.toThrow();
+
+    const rows = db.select().from(schema.users).all();
+    expect(rows).toHaveLength(2); // genuine collision — vacated, not merged
+
+    const order = db.select().from(schema.orders).where(eq(schema.orders.orderCode, 'DEF456')).get();
+    expect(order?.userId).toBe('111'); // stale row's history untouched
+
+    const newRow = rows.find((r) => r.id === '222');
+    expect(newRow).toMatchObject({ id: '222', email: 'shared2@example.com', name: 'Second' });
+    const oldRow = rows.find((r) => r.id === '111');
+    expect(oldRow?.email).not.toBe('shared2@example.com');
+  });
+
   it('treats a missing name as null', async () => {
     await upsertSignedInUser(db, { id: 'u2', email: 'b@example.com' });
     const row = db.select().from(schema.users).where(eq(schema.users.id, 'u2')).get();

@@ -103,8 +103,9 @@ the member confirmed had real fee/membership data on bloc's own site. Ruled
 out: client-side caching (fresh call every time), stale data (persisted
 across a real wait + incognito retest), and a wrong endpoint (all four
 reachable methods were tried). This is being treated as a defect in bloc's
-API, reported to the provider by the user — see `docs/auth-handoff.md` §7
-and `TASKS.md` for the full history.
+API, reported to the provider by the user — see `docs/moderator-review.md`'s
+"Known issue" section for what this blocks and `docs/auth-testing.md`'s
+"Known, still-open items" for the retest procedure.
 
 ## Reference
 

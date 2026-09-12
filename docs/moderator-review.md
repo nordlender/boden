@@ -24,7 +24,9 @@ come back `null`/empty from **every** bloc method that exposes them
 not a caching or client-side issue. This is an external API defect on bloc's
 side; the user has contacted the provider to request a fix. Until that's
 resolved, this page cannot show real values for either field — see
-`docs/auth-handoff.md` §7 and `TASKS.md` for the full history. Don't
+`docs/bloc-api.md`'s "Addendum" for the investigation and
+`docs/auth-testing.md`'s "Known, still-open items" for the retest procedure.
+Don't
 mistake `null` for "no data submitted yet" once order persistence exists —
 it may just be bloc still not returning real values.
 
@@ -71,16 +73,12 @@ accept/deny controls themselves, etc.) still need to be listed out here.
 
 ## Correspondence check against docs/rental-shop.md
 
-- `docs/rental-shop.md`'s "Order lifecycle" diagram was changed (at some point
-  during this project) so the moderator's *Confirm Order* step now ends with
-  `clicks "Accept" or "Reject"` instead of `clicks "Confirm"` — but the status
-  line right below it still only says `status: active (rental is now live)`
-  for that step, for both outcomes. That doesn't hold up for a rejection, and
-  it also places accept/reject at the *same* step as entering retrieved
-  quantities (i.e., during retrieval) — not as an earlier, separate review
-  step like this task describes. **This diagram looks like a partial edit and
-  needs a pass to reconcile with what's being asked for here** before anyone
-  builds against it.
+- Fixed (2026-09-11): `docs/rental-shop.md`'s "Order lifecycle" diagram now has
+  its own earlier review step (`moderator reviews order on Review Order page
+  (before retrieval)`, ending in `clicks "Accept" or "Reject"`) ahead of the
+  retrieve/confirm flow, instead of conflating accept/reject with the
+  *Confirm Order* step. Accept leaves `status: requested` unchanged (retrieval
+  still sets `active` at Confirm); reject sets `status: rejected`.
 - The schema already supports a reject outcome: `orders.status` includes
   `'rejected'`, and `rejectedAt` / `rejectedReason` columns already exist in
   `src/db/schema.ts` (added ahead of `docs/schema-legacy-fixes.md` item #9's original

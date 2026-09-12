@@ -51,8 +51,7 @@ const BLOC_API_BASE_URL = 'https://rest.bloc.net/api/';
 const BLOC_CALLBACK_PATH = 'api/auth/callback/bloc';
 
 // bloc (rest.bloc.net) as OAuth2 identity provider. Not one of Auth.js's built-in
-// named providers, so this is a hand-rolled generic OAuthConfig — see
-// docs/auth-work-items.md for the confirmed authorize/token endpoints.
+// named providers, so this is a hand-rolled generic OAuthConfig.
 function Bloc(config: OAuthUserConfig<BlocProfile> & { redirectUri: string }): OAuthConfig<BlocProfile> {
   return {
     id: 'bloc',
@@ -62,7 +61,7 @@ function Bloc(config: OAuthUserConfig<BlocProfile> & { redirectUri: string }): O
     clientSecret: config.clientSecret,
     authorization: {
       url: 'https://rest.bloc.net/OAuth/Authorize',
-      // bloc's authorize endpoint per docs/auth-work-items.md: client_id, response_type,
+      // bloc's authorize endpoint takes client_id, response_type,
       // redirect_uri. redirect_uri is explicit here (built from REDIRECT_URL +
       // BLOC_CALLBACK_PATH below) rather than Auth.js's auto-computed callback
       // URL, since bloc's app registration pins an exact redirect_uri value —

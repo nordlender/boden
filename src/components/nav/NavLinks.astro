@@ -1,15 +1,33 @@
 ---
-const links = [{ href: '/', label: 'Shop' }];
+interface NavLink {
+	href: string;
+	label: string;
+	disabled?: boolean;
+}
+
+interface Props {
+	links: NavLink[];
+}
+
+const { links } = Astro.props;
 ---
 
 <ul class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
 	{
-		links.map((link) => (
-			<li>
-				<a href={link.href} class="text-sm text-text-muted hover:text-text">
-					{link.label}
-				</a>
-			</li>
-		))
+		links.map((link) =>
+			link.disabled ? (
+				<li>
+					<span class="cursor-not-allowed text-sm text-text-muted/50" aria-disabled="true" title="Coming soon">
+						{link.label}
+					</span>
+				</li>
+			) : (
+				<li>
+					<a href={link.href} class="text-sm text-text-muted hover:text-text">
+						{link.label}
+					</a>
+				</li>
+			)
+		)
 	}
 </ul>

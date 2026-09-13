@@ -1,16 +1,10 @@
 ---
 import Logo from './Logo.astro';
-import NavLinks from './NavLinks.astro';
+import NavLinks, { type NavLink } from './NavLinks.astro';
 import UserMenu from './UserMenu.astro';
 import UserMenuLinks from './UserMenuLinks.astro';
 import CartButton from './CartButton.astro';
 import ThemeToggle from './ThemeToggle.astro';
-
-interface NavLink {
-	href: string;
-	label: string;
-	disabled?: boolean;
-}
 
 interface Props {
 	links: NavLink[];

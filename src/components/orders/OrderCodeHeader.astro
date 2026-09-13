@@ -1,0 +1,26 @@
+---
+interface Props {
+	orderCode: string;
+	status: string;
+	fromDate: string;
+	toDate: string;
+}
+
+const { orderCode, status, fromDate, toDate } = Astro.props;
+
+function formatDisplay(value: string) {
+	return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+	});
+}
+---
+
+<div class="flex flex-col gap-1">
+	<h1 class="text-xl font-semibold text-text">Order #{orderCode}</h1>
+	<p class="text-sm text-text-muted">Status: {status}</p>
+	<p class="text-sm text-text-muted">
+		Pick-up {formatDisplay(fromDate)} &middot; Return {formatDisplay(toDate)}
+	</p>
+</div>

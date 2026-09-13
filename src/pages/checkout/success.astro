@@ -48,15 +48,20 @@ const orderedOrders = [...foundOrders].sort((a, b) => a.id - b.id);
 				hand when you come to pick up.
 			</p>
 			{orderedOrders.map((order) => (
-				<UserOrderSummary
-					orderCode={order.orderCode}
-					status={order.status}
-					note={order.note}
-					items={order.orderItems.map((oi) => ({
-						itemName: oi.item.name,
-						requestedQuantity: oi.requestedQuantity,
-					}))}
-				/>
+				<div class="flex flex-col gap-2">
+					<UserOrderSummary
+						orderCode={order.orderCode}
+						status={order.status}
+						fromDate={order.fromDate}
+						toDate={order.toDate}
+						note={order.note}
+						items={order.orderItems.map((oi) => ({
+							itemName: oi.item.name,
+							requestedQuantity: oi.requestedQuantity,
+						}))}
+					/>
+					<a href={`/orders/${order.orderCode}`}>View or manage this order</a>
+				</div>
 			))}
 		</main>
 	</body>

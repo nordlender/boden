@@ -26,6 +26,13 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     return redirect('/reservation?error=invalid_dates');
   }
 
+  // Snapshot of the checkout form's contact fields, persisted on the order
+  // (see schema.ts's orders.contactName doc comment) — independent of the
+  // member's live profile, which can change later.
+  const contactName = form.get('name')?.toString().trim() ?? '';
+  const contactEmail = form.get('email')?.toString().trim() ?? '';
+  const contactMobile = form.get('mobile')?.toString().trim() || null;
+
   // TODO: to be implemented later when API is updated — bloc currently always
   // returns null for both fields (see TASKS.md WIP), so they aren't persisted
   // yet. Read here so wiring them up later is a one-line change.
@@ -42,8 +49,27 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
 
   const result =
     splitItemIds.length > 0
-      ? await createSplitOrders({ userId: locals.user.id, note, cartEntries: cart, fromDate, toDate, splitItemIds })
-      : await createOrder({ userId: locals.user.id, note, cartEntries: cart, fromDate, toDate });
+      ? await createSplitOrders({
+          userId: locals.user.id,
+          note,
+          cartEntries: cart,
+          fromDate,
+          toDate,
+          splitItemIds,
+          contactName,
+          contactEmail,
+          contactMobile,
+        })
+      : await createOrder({
+          userId: locals.user.id,
+          note,
+          cartEntries: cart,
+          fromDate,
+          toDate,
+          contactName,
+          contactEmail,
+          contactMobile,
+        });
   if (!result.ok) {
     // 'unavailable': re-checked at insert time (see orders.ts's insertOrder)
     // and found the member's cart/dates changed since the last availability

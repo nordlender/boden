@@ -3,7 +3,7 @@ import { items, orders, orderItems } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
 import { isUniqueConstraintViolation } from './db-errors';
-import { getReservationAvailability } from './reservation';
+import { getReservationAvailability, isValidDateRange } from './reservation';
 
 // Excludes ambiguous characters (0/O, 1/I) — an order code is read aloud by
 // members to moderators and typed into the retrieve-order form; a checkout
@@ -54,6 +54,11 @@ export type CreateOrderInput = {
   cartEntries: CartEntry[];
   fromDate: string;
   toDate: string;
+  // Snapshot of the checkout form's contact fields — see schema.ts's
+  // orders.contactName/contactEmail/contactMobile doc comment.
+  contactName: string;
+  contactEmail: string;
+  contactMobile: string | null;
 };
 
 export type CreateOrderResult =
@@ -63,7 +68,17 @@ export type CreateOrderResult =
 
 function insertOrder(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  input: { userId: string; note: string | null; fromDate: string; toDate: string; checkoutToken: string; entries: CartEntry[] },
+  input: {
+    userId: string;
+    note: string | null;
+    fromDate: string;
+    toDate: string;
+    checkoutToken: string;
+    entries: CartEntry[];
+    contactName: string;
+    contactEmail: string;
+    contactMobile: string | null;
+  },
 ) {
   // Re-check availability inside the same transaction as the insert below —
   // the live preview at POST /api/reservation/availability is advisory only
@@ -95,6 +110,9 @@ function insertOrder(
           note: input.note,
           fromDate: input.fromDate,
           toDate: input.toDate,
+          contactName: input.contactName,
+          contactEmail: input.contactEmail,
+          contactMobile: input.contactMobile,
         })
         .returning({ id: orders.id, orderCode: orders.orderCode })
         .get();
@@ -158,6 +176,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         toDate: input.toDate,
         checkoutToken,
         entries: entriesToOrder,
+        contactName: input.contactName,
+        contactEmail: input.contactEmail,
+        contactMobile: input.contactMobile,
       }),
     );
     return { ok: true, orderId: result.id, orderCode: result.orderCode, checkoutToken };
@@ -180,6 +201,9 @@ export type CreateSplitOrdersInput = {
   // section on why this isn't offered for a line requesting more than one of
   // the same item.
   splitItemIds: number[];
+  contactName: string;
+  contactEmail: string;
+  contactMobile: string | null;
 };
 
 export type CreateSplitOrdersResult =
@@ -225,6 +249,9 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
           toDate: input.toDate,
           checkoutToken,
           entries,
+          contactName: input.contactName,
+          contactEmail: input.contactEmail,
+          contactMobile: input.contactMobile,
         }),
       ),
     );
@@ -235,4 +262,115 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
     }
     throw err;
   }
+}
+
+export type DeleteOrderInput = { orderCode: string; userId: string };
+
+export type DeleteOrderResult =
+  | { ok: true }
+  | { ok: false; error: 'not_found' }
+  | { ok: false; error: 'not_deletable'; status: string };
+
+// Hard delete — only ever offered to a member while their order is still
+// 'requested' (i.e. before a moderator has acted on it). Ownership and
+// status are filtered directly in the DELETE's WHERE clause rather than
+// checked beforehand, so there's no gap for a moderator action to land
+// between an ownership/status check and the delete itself. orderItems rows
+// cascade automatically (onDelete: 'cascade' on the FK).
+export async function deleteOrder(input: DeleteOrderInput): Promise<DeleteOrderResult> {
+  const result = db
+    .delete(orders)
+    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, 'requested')))
+    .run();
+
+  if (result.changes > 0) {
+    return { ok: true };
+  }
+
+  // Nothing matched — disambiguate not-found/not-owned (404) from
+  // exists-but-wrong-status (409) with one follow-up read.
+  const existing = await db.query.orders.findFirst({
+    where: (t, { eq: eqCol }) => eqCol(t.orderCode, input.orderCode),
+    columns: { userId: true, status: true },
+  });
+  if (!existing || existing.userId !== input.userId) {
+    return { ok: false, error: 'not_found' };
+  }
+  return { ok: false, error: 'not_deletable', status: existing.status };
+}
+
+export type RescheduleOrderInput = { orderCode: string; userId: string; fromDate: string; toDate: string };
+
+export type RescheduleOrderResult =
+  | { ok: true; fromDate: string; toDate: string }
+  | { ok: false; error: 'not_found' }
+  | { ok: false; error: 'not_modifiable'; status: string }
+  | { ok: false; error: 'invalid_dates' }
+  | { ok: false; error: 'unavailable'; unavailableItemIds: number[] };
+
+// Thrown inside the transaction below when the order's status changed to
+// something other than 'requested' between the pre-check and the write
+// (e.g. a moderator action landing mid-request) — caught outside and turned
+// into a 'not_modifiable' result rather than a 500.
+class OrderNotModifiableError extends Error {
+  constructor(public status: string) {
+    super('not_modifiable');
+  }
+}
+
+// Only ever offered to a member while their order is still 'requested',
+// same restriction as deleteOrder. Reuses getReservationAvailability's
+// `excludeOrderId` param so the order's own current reservation doesn't
+// count against itself when checking the new date range.
+export async function rescheduleOrder(input: RescheduleOrderInput): Promise<RescheduleOrderResult> {
+  if (!isValidDateRange({ from: input.fromDate, to: input.toDate })) {
+    return { ok: false, error: 'invalid_dates' };
+  }
+
+  const order = await db.query.orders.findFirst({
+    where: (t, { eq: eqCol }) => eqCol(t.orderCode, input.orderCode),
+    with: { orderItems: true },
+  });
+  if (!order || order.userId !== input.userId) {
+    return { ok: false, error: 'not_found' };
+  }
+  if (order.status !== 'requested') {
+    return { ok: false, error: 'not_modifiable', status: order.status };
+  }
+
+  try {
+    // Re-check status and availability inside the same transaction as the
+    // update, same pattern as insertOrder — the caller-facing check above is
+    // advisory only; this is the actual enforcement point against a
+    // concurrent moderator action or a competing reservation.
+    db.transaction((tx) => {
+      const current = tx.select({ status: orders.status }).from(orders).where(eq(orders.id, order.id)).get();
+      if (!current || current.status !== 'requested') {
+        throw new OrderNotModifiableError(current?.status ?? order.status);
+      }
+
+      const availabilities = getReservationAvailability(
+        { from: input.fromDate, to: input.toDate },
+        order.orderItems.map((oi) => ({ itemId: oi.itemId, quantity: oi.requestedQuantity })),
+        order.id,
+        tx,
+      );
+      const unavailableItemIds = availabilities.filter((a) => !a.available).map((a) => a.itemId);
+      if (unavailableItemIds.length > 0) {
+        throw new UnavailableItemsError(unavailableItemIds);
+      }
+
+      tx.update(orders).set({ fromDate: input.fromDate, toDate: input.toDate }).where(eq(orders.id, order.id)).run();
+    });
+  } catch (err) {
+    if (err instanceof UnavailableItemsError) {
+      return { ok: false, error: 'unavailable', unavailableItemIds: err.itemIds };
+    }
+    if (err instanceof OrderNotModifiableError) {
+      return { ok: false, error: 'not_modifiable', status: err.status };
+    }
+    throw err;
+  }
+
+  return { ok: true, fromDate: input.fromDate, toDate: input.toDate };
 }

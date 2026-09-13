@@ -1,0 +1,12 @@
+---
+import BaseNavbar from './nav/BaseNavbar.astro';
+
+const links = [
+	{ href: '/admin/orders', label: 'Orders', disabled: true },
+	{ href: '/admin/requests', label: 'Requests', disabled: true },
+	{ href: '/admin/items', label: 'Items' },
+	{ href: '/admin/products', label: 'Products', disabled: true },
+];
+---
+
+<BaseNavbar links={links} showCart={false} />

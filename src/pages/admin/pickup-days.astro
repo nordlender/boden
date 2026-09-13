@@ -4,6 +4,7 @@ export const prerender = false;
 // Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
 // reached only when logged in with role === 'admin'.
 import '../../styles/global.css';
+import AdminNavbar from '../../components/AdminNavbar.astro';
 import { listAvailablePickupDates } from '../../lib/pickupDays';
 
 const redirectTo = Astro.url.pathname;
@@ -26,8 +27,9 @@ function formatDisplay(value: string) {
 		<meta name="viewport" content="width=device-width" />
 		<title>Pick-up days</title>
 	</head>
-	<body class="min-h-screen bg-slate-100 p-8">
-		<div class="mx-auto flex max-w-2xl flex-col gap-6">
+	<body class="min-h-screen bg-slate-100">
+		<AdminNavbar />
+		<div class="mx-auto flex max-w-2xl flex-col gap-6 p-8">
 			<div>
 				<h1 class="text-xl font-semibold text-slate-800">Pick-up days</h1>
 				<p class="mt-1 text-sm text-slate-500">

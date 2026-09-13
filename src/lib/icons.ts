@@ -22,7 +22,7 @@ export const icons = {
 	selectMenu: 'tabler:square-chevron-down',
 	selectNone: 'tabler:circle-dashed',
 	selectAll: 'tabler:circle-asterisk',
-	selectInvert: 'tabler:circle-half-2',
+	selectInvert: 'tabler:percentage-50',
 	trash: 'tabler:trash',
 	// {edit_icon} — sits next to an attribute's value in the details box;
 	// clicking it reveals the inline edit form for that field.
@@ -30,6 +30,10 @@ export const icons = {
 	// Not one of the doc's named placeholders — added for the main-section
 	// search bar, which the doc calls for but doesn't assign an icon to.
 	search: 'tabler:search',
+	// {separate_order_icon} — reservation page, per-item action offered when
+	// an order mixes available and unavailable items for the chosen date
+	// range: lets the member split that one item out into its own order.
+	splitOrder: 'tabler:arrows-split-2',
 } as const;
 
 export type IconName = keyof typeof icons;

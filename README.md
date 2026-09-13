@@ -41,6 +41,38 @@ The dev server binds to `localhost:4321` by default. Running inside a
 container and need it reachable from outside? See the Development section
 in [`AGENTS.md`](AGENTS.md).
 
+### Setting up a new worktree
+
+Worktrees don't inherit untracked files, so a fresh worktree has no `.env`
+and no sqlite db under `data/`. Instead of copying `.env` and running
+migrations/seeding by hand, run:
+
+```sh
+npm install   # not run by dev-setup — do this first
+npm run dev-setup
+```
+
+This copies `.env` from the main checkout, creates `data/` and runs pending
+Drizzle migrations, then seeds the example catalog (categories/products/items)
+via `scripts/seed-example-catalog.mjs`. Safe to re-run.
+
+Known gaps:
+
+- **REDIRECT_URL port mismatch.** `.env`'s `REDIRECT_URL` is tied to
+  whichever port the main checkout's dev server runs on, but per
+  [`AGENTS.md`](AGENTS.md) worktrees are meant to run on different ports
+  (4321–4324) concurrently. Copying `.env` verbatim from main carries over
+  main's port, which breaks bloc OAuth login here if this worktree's dev
+  server runs on a different one. Not yet fixed — update `REDIRECT_URL` by
+  hand if login fails after `dev-setup`.
+- **Overwrites local `.env` edits.** The copy from main is unconditional. If
+  you've hand-added your bloc user id to `ADMIN_USER_IDS`/
+  `MODERATOR_USER_IDS` in this worktree's `.env` to test admin/moderator UI,
+  re-running `dev-setup` drops that edit — re-add it after.
+- **Reseeding reverts manual test edits.** The seed step re-runs every time,
+  so hand-edits to a seeded item (stock count via checkout, fields via the
+  admin wizard) get reset to fixture values on the next `dev-setup` run.
+
 ### Environment variables
 
 See [`.env.example`](.env.example) for the full list — bloc OAuth app
@@ -53,6 +85,7 @@ yet).
 | Command | Action |
 |---|---|
 | `npm run dev` | Start the dev server |
+| `npm run dev-setup` | Bootstrap a fresh worktree: copy `.env` from main, migrate, seed |
 | `npm run build` | Build for production |
 | `npm run preview` | Preview a production build locally |
 | `npm test` | Run the test suite once |

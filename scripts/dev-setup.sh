@@ -27,6 +27,7 @@ else
 fi
 
 echo "Running pending migrations..."
+mkdir -p "$root_dir/data"
 npx drizzle-kit migrate
 
 echo "Seeding example catalog..."

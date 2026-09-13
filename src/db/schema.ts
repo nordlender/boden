@@ -200,6 +200,13 @@ export const orders = sqliteTable('orders', {
   fromDate: text('from_date').notNull(),
   toDate: text('to_date').notNull(),
   note: text('note'), // optional note from member at checkout
+  // Snapshot of the checkout form's contact fields at submission time — not
+  // kept in sync with the member's live profile. contactEmail/contactMobile
+  // are intentionally not shown on the member-facing order page (privacy);
+  // they exist for future admin/moderator visibility only.
+  contactName: text('contact_name').notNull().default(''),
+  contactEmail: text('contact_email').notNull().default(''),
+  contactMobile: text('contact_mobile'),
   // Moderator accountability: who confirmed retrieval / processed the return
   confirmedByUserId: text('confirmed_by_user_id').references(() => users.id),
   returnedByUserId: text('returned_by_user_id').references(() => users.id),

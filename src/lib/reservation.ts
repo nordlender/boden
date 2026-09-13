@@ -1,6 +1,7 @@
 import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 import { db } from '../db/client';
 import { items, orderItems, orders } from '../db/schema';
+import { getMaxRentalDays } from './rental-policy';
 
 // Reservation page backend (docs/TASKS.md "Reservation"). Orders carry a
 // date range (src/db/schema.ts's orders.fromDate/toDate, both YYYY-MM-DD,
@@ -31,7 +32,19 @@ export function isValidDateRange(range: Partial<ReservationDateRange>): range is
 	// direct POST bypassing it.
 	const todayIso = new Date().toISOString().slice(0, 10);
 	if (range.from < todayIso) return false;
-	return range.from <= range.to;
+	if (range.from > range.to) return false;
+	// Single gate shared by order creation, split-order creation, the
+	// reservation-availability preview, and reschedule — so the max rental
+	// duration cap (src/lib/rental-policy.ts) applies everywhere at once.
+	return rangeLengthDays(range.from, range.to) <= getMaxRentalDays();
+}
+
+// Inclusive day count between two YYYY-MM-DD dates (e.g. the same day is a
+// 1-day rental, not 0) — UTC-based, same convention as dayAfter() below.
+function rangeLengthDays(from: string, to: string): number {
+	const fromMs = new Date(`${from}T00:00:00Z`).getTime();
+	const toMs = new Date(`${to}T00:00:00Z`).getTime();
+	return Math.round((toMs - fromMs) / 86_400_000) + 1;
 }
 
 // For each requested item, finds the peak quantity of that item already

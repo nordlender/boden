@@ -1,0 +1,33 @@
+---
+// Browses a fixed directory as a collapsible tree — closed by default,
+// contents indented under their parent when a directory is expanded.
+//
+// `root` is a plain component prop, resolved server-side once per render
+// (see buildFileTree in ../lib/fileExplorer.ts). There is no client-facing
+// way to change it — no query param, no form field reaches the filesystem
+// call — so pass an absolute, hardcoded path here rather than anything
+// derived from request input. Only "public" entries (not dotfiles/dotdirs)
+// are listed, and symlinks that resolve outside `root` are dropped.
+import FileExplorerNode from './FileExplorerNode.astro';
+import { buildFileTree } from '../lib/fileExplorer';
+
+interface Props {
+	root: string;
+	label?: string;
+}
+
+const { root, label } = Astro.props;
+const tree = buildFileTree(root);
+---
+<div class="file-explorer text-sm">
+	{label && <p class="mb-1.5 font-medium text-text">{label}</p>}
+	{tree.length > 0 ? (
+		<ul class="file-explorer-tree">
+			{tree.map((node) => (
+				<FileExplorerNode node={node} />
+			))}
+		</ul>
+	) : (
+		<p class="text-text-muted">Empty</p>
+	)}
+</div>

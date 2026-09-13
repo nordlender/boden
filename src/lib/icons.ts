@@ -34,6 +34,11 @@ export const icons = {
 	// an order mixes available and unavailable items for the chosen date
 	// range: lets the member split that one item out into its own order.
 	splitOrder: 'tabler:arrows-split-2',
+	// FileExplorer.astro — a directory row's icon (open state uses
+	// folderOpen, toggled the same way as Dropdown.astro's chevron).
+	folder: 'tabler:folder',
+	folderOpen: 'tabler:folder-open',
+	file: 'tabler:file',
 } as const;
 
 export type IconName = keyof typeof icons;

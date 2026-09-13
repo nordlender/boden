@@ -1,0 +1,42 @@
+---
+// One row of <FileExplorer>'s tree, recursing into its own children.
+// Directories are plain <details>/<summary> — closed by default, no JS
+// needed to expand/collapse or to swap the folder icon (Tailwind's
+// `group-open:` variant handles that from the `open` attribute alone).
+import AppIcon from './icons/AppIcon.astro';
+import FileExplorerNode from './FileExplorerNode.astro';
+import type { FileNode } from '../lib/fileExplorer';
+
+interface Props {
+	node: FileNode;
+}
+
+const { node } = Astro.props;
+---
+{
+	node.type === 'directory' ? (
+		<li>
+			<details class="group">
+				<summary class="flex cursor-pointer list-none items-center gap-1.5 rounded py-1 text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
+					<AppIcon name="folder" size={16} class="shrink-0 text-text-muted group-open:hidden" />
+					<AppIcon name="folderOpen" size={16} class="hidden shrink-0 text-text-muted group-open:block" />
+					<span class="truncate">{node.name}</span>
+				</summary>
+				{node.children && node.children.length > 0 ? (
+					<ul class="ml-2.5 border-l border-border pl-3">
+						{node.children.map((child) => (
+							<FileExplorerNode node={child} />
+						))}
+					</ul>
+				) : (
+					<p class="ml-2.5 border-l border-border py-1 pl-3 text-text-muted">Empty</p>
+				)}
+			</details>
+		</li>
+	) : (
+		<li class="flex items-center gap-1.5 py-1 text-text-muted" data-file-path={node.path}>
+			<AppIcon name="file" size={16} class="shrink-0" />
+			<span class="truncate">{node.name}</span>
+		</li>
+	)
+}

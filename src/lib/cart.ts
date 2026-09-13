@@ -86,6 +86,10 @@ export function removeFromCart(cookies: AstroCookies, itemId: number) {
 	);
 }
 
+export function clearCart(cookies: AstroCookies) {
+	setCart(cookies, []);
+}
+
 // Joins the cookie cart against items/products for display (name, image,
 // current stock) — used by the cart sidebar's GET /api/cart endpoint and the
 // /cart review page. Entries pointing at an item that no longer exists, has

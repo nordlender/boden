@@ -318,6 +318,16 @@ class OrderNotModifiableError extends Error {
   }
 }
 
+// Thrown inside the transaction below when the order was deleted (see
+// deleteOrder) between the pre-check and the write — distinct from
+// OrderNotModifiableError so this doesn't get reported back as a stale
+// 'requested' status for an order that no longer exists.
+class OrderGoneError extends Error {
+  constructor() {
+    super('not_found');
+  }
+}
+
 // Only ever offered to a member while their order is still 'requested',
 // same restriction as deleteOrder. Reuses getReservationAvailability's
 // `excludeOrderId` param so the order's own current reservation doesn't
@@ -345,8 +355,11 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
     // concurrent moderator action or a competing reservation.
     db.transaction((tx) => {
       const current = tx.select({ status: orders.status }).from(orders).where(eq(orders.id, order.id)).get();
-      if (!current || current.status !== 'requested') {
-        throw new OrderNotModifiableError(current?.status ?? order.status);
+      if (!current) {
+        throw new OrderGoneError();
+      }
+      if (current.status !== 'requested') {
+        throw new OrderNotModifiableError(current.status);
       }
 
       const availabilities = getReservationAvailability(
@@ -368,6 +381,9 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
     }
     if (err instanceof OrderNotModifiableError) {
       return { ok: false, error: 'not_modifiable', status: err.status };
+    }
+    if (err instanceof OrderGoneError) {
+      return { ok: false, error: 'not_found' };
     }
     throw err;
   }

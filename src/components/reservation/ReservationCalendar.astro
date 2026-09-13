@@ -156,6 +156,7 @@ const todayIso = new Date().toISOString().slice(0, 10);
 
 <script>
 	import 'cally';
+	import { formatDateDisplay } from '../../lib/dates';
 
 	type RangeCalendar = HTMLElement & {
 		value?: string;
@@ -178,14 +179,6 @@ const todayIso = new Date().toISOString().slice(0, 10);
 		calendar.getDayParts = (date) => (availableDates.has(date.toISOString().slice(0, 10)) ? 'pickup-available' : '');
 	}
 
-	function formatDisplay(value: string) {
-		return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric',
-		});
-	}
-
 	// Adds `days - 1` to `from` (inclusive range: a 1-day cap means from===to).
 	function addDaysIso(date: string, days: number) {
 		const d = new Date(`${date}T00:00:00Z`);
@@ -198,7 +191,7 @@ const todayIso = new Date().toISOString().slice(0, 10);
 	if (calendar?.value) {
 		const [initialFrom, initialTo] = calendar.value.split('/').filter(Boolean);
 		if (summary && initialFrom && initialTo) {
-			summary.textContent = `Pick-up ${formatDisplay(initialFrom)} · Return ${formatDisplay(initialTo)}`;
+			summary.textContent = `Pick-up ${formatDateDisplay(initialFrom)} · Return ${formatDateDisplay(initialTo)}`;
 		}
 	}
 
@@ -225,7 +218,7 @@ const todayIso = new Date().toISOString().slice(0, 10);
 		}
 
 		if (summary) {
-			summary.textContent = from && to ? `Pick-up ${formatDisplay(from)} · Return ${formatDisplay(to)}` : 'Select a pick-up and return date.';
+			summary.textContent = from && to ? `Pick-up ${formatDateDisplay(from)} · Return ${formatDateDisplay(to)}` : 'Select a pick-up and return date.';
 		}
 
 		calendar.dispatchEvent(new CustomEvent('reservation-range-change', { bubbles: true, detail: { from, to } }));

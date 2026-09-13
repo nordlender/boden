@@ -1,9 +1,9 @@
 ---
 // The Set dropdown's items are no longer simple buttons (see Dropdown.astro)
-// — "Set product" and "Set attributes" both need real form controls, and
-// everything here targets the panel's selection form by id (`form={formId}`)
-// rather than nesting, since form elements can't nest and ItemRow.astro's
-// per-attribute edit forms already live inside the row list.
+// — "Set product" needs real form controls, and everything here targets the
+// panel's selection form by id (`form={formId}`) rather than nesting, since
+// form elements can't nest and ItemRow.astro's per-attribute edit forms
+// already live inside the row list.
 //
 // Assign/Unassign are gone — "Set product" now handles both assigning an
 // unassigned item and reassigning an already-assigned one.
@@ -22,10 +22,6 @@ interface Props {
 }
 
 const { variant, formId, products, redirectTo } = Astro.props;
-
-// Fixed count of blank rows for the bulk "Set attributes" popup — no
-// dynamic add-row JS for now, just enough to be useful in one go.
-const bulkAttributeRows = 3;
 ---
 <div class="flex items-center gap-2 border-b border-border bg-bg-subtle px-3 py-2">
 	<details class="set-dropdown relative inline-block">
@@ -41,7 +37,7 @@ const bulkAttributeRows = 3;
 				<p class="text-xs italic text-text-muted">Not wired up yet.</p>
 			</section>
 
-			<section class="border-b border-border py-3">
+			<section class="py-3">
 				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
 					<AppIcon name="product" size={13} /> Set product
 				</p>
@@ -63,29 +59,6 @@ const bulkAttributeRows = 3;
 					</button>
 				</div>
 				<p class="mt-1 text-xs text-text-muted">Also how you reassign an already-assigned item to a <em>different</em> product — clears its old attribute values and stubs in the new product's fields. Re-applying the item's current product leaves its values untouched.</p>
-			</section>
-
-			<section class="pt-3">
-				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
-					<AppIcon name="attribute" size={13} /> Set attributes (selected items)
-				</p>
-				<p class="mb-1.5 text-xs text-text-muted">Only works if every selected item shares one product.</p>
-				<div class="flex flex-col gap-1">
-					{Array.from({ length: bulkAttributeRows }).map(() => (
-						<div class="flex items-center gap-2">
-							<input type="text" name="key" form={formId} placeholder="Key" class="w-24 shrink-0 rounded border border-border-interactive px-2 py-1 text-sm" />
-							<input type="text" name="value" form={formId} placeholder="Value" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm" />
-						</div>
-					))}
-				</div>
-				<button
-					type="submit"
-					form={formId}
-					formaction="/api/wizard/attributes/bulk"
-					class="mt-1.5 rounded border border-border-strong px-2 py-1 text-xs text-text-muted hover:bg-surface"
-				>
-					Apply to selected
-				</button>
 			</section>
 		</div>
 	</details>

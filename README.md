@@ -52,7 +52,6 @@ yet).
 
 | Command | Action |
 |---|---|
-| `npm run dev-setup` | Copy `.env` from the main checkout, run migrations, seed the example catalog |
 | `npm run dev` | Start the dev server |
 | `npm run build` | Build for production |
 | `npm run preview` | Preview a production build locally |

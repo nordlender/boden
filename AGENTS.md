@@ -12,9 +12,10 @@ See `docs/schema.md` for the full schema and design rationale.
 When starting the dev server, use background mode:
 
 ```
-astro dev --background
+astro dev --background --host 0.0.0.0 --port [port]
 ```
 
+The usable ports are 4321, 4322, 4323, 4324.
 Manage the background server with `astro dev stop`, `astro dev status`, and `astro dev logs`.
 
 ## Documentation

@@ -33,4 +33,7 @@ npx drizzle-kit migrate
 echo "Seeding example catalog..."
 node scripts/seed-example-catalog.mjs
 
+echo "Seeding pickup-available days..."
+node scripts/seed-pickup-days.mjs
+
 echo "dev-setup complete."

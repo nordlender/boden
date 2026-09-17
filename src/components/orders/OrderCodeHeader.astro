@@ -9,11 +9,23 @@ interface Props {
 }
 
 const { orderCode, status, fromDate, toDate } = Astro.props;
+
+// src/db/schema.ts's orders.status enum: 'requested' | 'active' | 'returned' | 'rejected'.
+// Written out in full (not built from `status`) so Tailwind's class scanner can see them.
+const badgeClasses: Record<string, string> = {
+	requested: 'bg-warning-subtle border-warning-border text-warning-text',
+	active: 'bg-success-subtle border-success-border text-success-text',
+	returned: 'bg-bg-subtle border-border text-text-muted',
+	rejected: 'bg-error-subtle border-error-border text-error-text',
+};
+const badgeClass = badgeClasses[status] ?? 'bg-bg-subtle border-border text-text-muted';
 ---
 
 <div class="flex flex-col gap-1">
-	<h1 class="text-xl font-semibold text-text">Order #{orderCode}</h1>
-	<p class="text-sm text-text-muted">Status: {status}</p>
+	<div class="flex flex-wrap items-center gap-2">
+		<h1 class="text-xl font-semibold text-text">Order #{orderCode}</h1>
+		<span class:list={['rounded-full border px-2 py-0.5 text-xs font-medium capitalize', badgeClass]}>{status}</span>
+	</div>
 	<p class="text-sm text-text-muted">
 		Pick-up {formatDateDisplay(fromDate)} &middot; Return {formatDateDisplay(toDate)}
 	</p>

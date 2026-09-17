@@ -82,8 +82,19 @@ const todayIso = new Date().toISOString().slice(0, 10);
 	   header — prev/next/heading — above ::part(months), the <slot> the two
 	   <calendar-month> children below land in) and both parts default to a
 	   content-fit width, not a stretched one. Widen everything to fill this
-	   card, and only flip ::part(months) to a row on desktop — the header
-	   always stays above regardless of viewport. */
+	   card, and only flip ::part(months) to a row once there's room — the
+	   header always stays above regardless of layout.
+	   A container query (not a viewport media query) drives that switch:
+	   this card is embedded both in the full-width /reservation page and in
+	   ChangeOrderLink.astro's ~28rem modal, so sizing off the viewport made
+	   the two-month row kick in inside the narrow modal too — squeezing both
+	   months into a card far narrower than the row layout needs and
+	   misaligning the grid. Querying this card's own inline size instead
+	   keeps the modal on the single-column layout it actually has room for. */
+	.reservation-calendar {
+		container-type: inline-size;
+	}
+
 	.reservation-calendar calendar-range::part(container),
 	.reservation-calendar calendar-range::part(header) {
 		width: 100%;
@@ -100,7 +111,10 @@ const todayIso = new Date().toISOString().slice(0, 10);
 		width: 100%;
 	}
 
-	@media (min-width: 48rem) {
+	/* Two months side by side need roughly 30rem+ of card width to stay
+	   legible — narrower than that (e.g. the reschedule modal) stays
+	   single-column, scrolled or stacked, regardless of viewport size. */
+	@container (min-width: 30rem) {
 		.reservation-calendar calendar-range::part(months) {
 			flex-direction: row;
 		}

@@ -1,0 +1,244 @@
+---
+export const prerender = false;
+
+// Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
+// reached only when logged in with role === 'admin'. Deliberately plain
+// server-rendered forms (same style as /admin/pickup-days), not the item
+// wizard's client-driven flow — a minimal v1 CRUD, not a port of the
+// wizard's polish. See GitHub issue #61.
+import '../../styles/global.css';
+import { listSetsForAdmin, getSetForAdmin, listItemOptionsForAdmin } from '../../lib/sets';
+
+const redirectTo = Astro.url.pathname;
+const error = Astro.url.searchParams.get('error');
+const expandedId = Number(Astro.url.searchParams.get('edit'));
+
+const [sets, itemOptions] = await Promise.all([listSetsForAdmin(), listItemOptionsForAdmin()]);
+const expandedSet = Number.isInteger(expandedId) && expandedId > 0 ? await getSetForAdmin(expandedId) : null;
+---
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Sets</title>
+	</head>
+	<body class="min-h-screen bg-slate-100 p-8">
+		<div class="mx-auto flex max-w-3xl flex-col gap-6">
+			<div>
+				<h1 class="text-xl font-semibold text-slate-800">Sets</h1>
+				<p class="mt-1 text-sm text-slate-500">
+					A set bundles specific items together as one rentable kit (e.g. a climbing kit: a harness + a rope + a
+					helmet). Each item keeps its own independent stock — a set is just a curated grouping on top.
+				</p>
+			</div>
+
+			{
+				error && (
+					<p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+						{error === 'missing_title' ? 'A title is required.' : 'That update could not be applied — check the values and try again.'}
+					</p>
+				)
+			}
+
+			<form
+				method="post"
+				action="/api/sets/create"
+				class="flex flex-col gap-3 rounded-lg border border-slate-200 bg-amber-50/60 p-4"
+			>
+				<input type="hidden" name="redirectTo" value={redirectTo} />
+				<h2 class="text-sm font-semibold text-slate-700">New set</h2>
+				<div class="grid gap-3 sm:grid-cols-2">
+					<div>
+						<label class="mb-1 block text-xs text-slate-500" for="new-set-title">Title</label>
+						<input
+							id="new-set-title"
+							name="title"
+							type="text"
+							required
+							placeholder="Climbing Kit"
+							class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+						/>
+					</div>
+					<div>
+						<label class="mb-1 block text-xs text-slate-500" for="new-set-thumbnail">Thumbnail image URL (optional)</label>
+						<input id="new-set-thumbnail" name="thumbnailImageUrl" type="text" class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
+					</div>
+				</div>
+				<div>
+					<label class="mb-1 block text-xs text-slate-500" for="new-set-description">Description (optional)</label>
+					<textarea id="new-set-description" name="description" rows="2" class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
+				</div>
+				<button type="submit" class="self-start rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+					Create set
+				</button>
+			</form>
+
+			<div class="rounded-lg border border-slate-200 bg-white">
+				{
+					sets.length === 0 ? (
+						<p class="p-4 text-sm text-slate-500">No sets yet.</p>
+					) : (
+						<ul class="divide-y divide-slate-100">
+							{sets.map((set) => (
+								<li class="flex flex-col gap-3 p-4">
+									<div class="flex flex-wrap items-center justify-between gap-3">
+										<div class="flex items-center gap-2">
+											<span class="font-medium text-slate-800">{set.title}</span>
+											<span
+												class={`rounded-full px-2 py-0.5 text-xs font-medium ${
+													set.status === 'published' ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'
+												}`}
+											>
+												{set.status}
+											</span>
+											<span class="text-xs text-slate-400">{set.itemCount} item(s)</span>
+											{set.hasArchivedItem && (
+												<span class="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+													Needs attention: an item in this set is archived
+												</span>
+											)}
+										</div>
+										<div class="flex items-center gap-3">
+											<a href={`/admin/sets?edit=${set.id}`} class="text-xs text-slate-600 hover:underline">
+												{expandedSet?.id === set.id ? 'Editing…' : 'Manage'}
+											</a>
+											<form method="post" action="/api/sets/delete">
+												<input type="hidden" name="redirectTo" value="/admin/sets" />
+												<input type="hidden" name="id" value={set.id} />
+												<button type="submit" class="text-xs text-red-600 hover:underline">
+													Delete
+												</button>
+											</form>
+										</div>
+									</div>
+
+									{expandedSet?.id === set.id && (
+										<div class="flex flex-col gap-4 rounded-md border border-slate-200 bg-slate-50 p-4">
+											<form method="post" action="/api/sets/update" class="grid gap-3 sm:grid-cols-2">
+												<input type="hidden" name="redirectTo" value={`/admin/sets?edit=${set.id}`} />
+												<input type="hidden" name="id" value={expandedSet.id} />
+												<div>
+													<label class="mb-1 block text-xs text-slate-500" for={`edit-title-${set.id}`}>Title</label>
+													<input
+														id={`edit-title-${set.id}`}
+														name="title"
+														type="text"
+														required
+														value={expandedSet.title}
+														class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+													/>
+												</div>
+												<div>
+													<label class="mb-1 block text-xs text-slate-500" for={`edit-status-${set.id}`}>Status</label>
+													<select
+														id={`edit-status-${set.id}`}
+														name="status"
+														class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+													>
+														<option value="hidden" selected={expandedSet.status === 'hidden'}>hidden</option>
+														<option value="published" selected={expandedSet.status === 'published'}>published</option>
+													</select>
+												</div>
+												<div class="sm:col-span-2">
+													<label class="mb-1 block text-xs text-slate-500" for={`edit-thumbnail-${set.id}`}>Thumbnail image URL</label>
+													<input
+														id={`edit-thumbnail-${set.id}`}
+														name="thumbnailImageUrl"
+														type="text"
+														value={expandedSet.thumbnailImageUrl ?? ''}
+														class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+													/>
+												</div>
+												<div class="sm:col-span-2">
+													<label class="mb-1 block text-xs text-slate-500" for={`edit-description-${set.id}`}>Description</label>
+													<textarea
+														id={`edit-description-${set.id}`}
+														name="description"
+														rows="2"
+														class="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+													>
+														{expandedSet.description ?? ''}
+													</textarea>
+												</div>
+												<button
+													type="submit"
+													class="self-start rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 sm:col-span-2"
+												>
+													Save changes
+												</button>
+											</form>
+
+											<div>
+												<h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Items in this kit</h3>
+												{expandedSet.items.length === 0 ? (
+													<p class="text-sm text-slate-500">No items yet — add one below.</p>
+												) : (
+													<ul class="mb-3 divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+														{expandedSet.items.map((member) => (
+															<li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+																<span class={member.archived ? 'text-red-600' : 'text-slate-700'}>
+																	{member.itemName}
+																	{member.productTitle && <span class="text-slate-400"> ({member.productTitle})</span>}
+																	{member.archived && ' — archived'}
+																	{' × '}
+																	{member.quantity}
+																</span>
+																<form method="post" action="/api/sets/remove-item">
+																	<input type="hidden" name="redirectTo" value={`/admin/sets?edit=${set.id}`} />
+																	<input type="hidden" name="setId" value={set.id} />
+																	<input type="hidden" name="itemId" value={member.itemId} />
+																	<button type="submit" class="text-xs text-red-600 hover:underline">
+																		Remove
+																	</button>
+																</form>
+															</li>
+														))}
+													</ul>
+												)}
+
+												<form method="post" action="/api/sets/add-item" class="flex flex-wrap items-end gap-3">
+													<input type="hidden" name="redirectTo" value={`/admin/sets?edit=${set.id}`} />
+													<input type="hidden" name="setId" value={set.id} />
+													<div>
+														<label class="mb-1 block text-xs text-slate-500" for={`add-item-${set.id}`}>Item</label>
+														<select
+															id={`add-item-${set.id}`}
+															name="itemId"
+															required
+															class="rounded border border-slate-300 px-2 py-1.5 text-sm"
+														>
+															{itemOptions.map((option) => (
+																<option value={option.id}>
+																	{option.name}
+																	{option.productTitle ? ` (${option.productTitle})` : ''}
+																</option>
+															))}
+														</select>
+													</div>
+													<div>
+														<label class="mb-1 block text-xs text-slate-500" for={`add-item-qty-${set.id}`}>Qty</label>
+														<input
+															id={`add-item-qty-${set.id}`}
+															name="quantity"
+															type="number"
+															min="1"
+															value="1"
+															class="w-16 rounded border border-slate-300 px-2 py-1.5 text-sm"
+														/>
+													</div>
+													<button type="submit" class="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+														Add to kit
+													</button>
+												</form>
+											</div>
+										</div>
+									)}
+								</li>
+							))}
+						</ul>
+					)
+				}
+			</div>
+		</div>
+	</body>
+</html>

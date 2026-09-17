@@ -173,3 +173,136 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 		items,
 	};
 }
+
+// ---------------------------------------------------------------------------
+// Sets (GitHub issue #61) — a bundle of concrete items. Mirrors the shape of
+// getShopItems/getShopProductBySlug above, but a set has no stock of its
+// own: "in stock" here is the date-agnostic figure (today's stockCount
+// minus what's currently reserved, via src/lib/stock.ts — same convention
+// ShopItem.inStock already uses), floor-divided by each constituent item's
+// per-kit quantity, minimum across all of them. The date-aware version of
+// this same computation (against a chosen reservation date range) is
+// src/lib/sets.ts's getSetAvailability, which composes over
+// src/lib/reservation.ts instead of stock.ts.
+// ---------------------------------------------------------------------------
+
+export interface ShopSetItem {
+	itemId: number;
+	name: string;
+	imageUrl: string | null;
+	productSlug: string | null;
+	productTitle: string;
+	// How many of this item one kit needs.
+	quantity: number;
+	archived: boolean;
+}
+
+export interface ShopSet {
+	id: number;
+	slug: string;
+	title: string;
+	description: string | null;
+	thumbnailImageUrl: string | null;
+	// Whole kits available right now — 0 whenever any constituent item is
+	// archived, same "a kit is atomic" rule as getSetAvailability.
+	inStock: number;
+	items: ShopSetItem[];
+}
+
+interface SetLike {
+	id: number;
+	slug: string;
+	title: string;
+	description: string | null;
+	thumbnailImageUrl: string | null;
+	setItems: {
+		quantity: number;
+		item: {
+			id: number;
+			name: string;
+			imageUrl: string | null;
+			stockCount: number;
+			archived: boolean;
+			product: { slug: string; title: string; thumbnailImageUrl: string | null } | null;
+		};
+	}[];
+}
+
+function toShopSet(set: SetLike, reserved: Map<number, number>): ShopSet {
+	const hasArchivedItem = set.setItems.some((si) => si.item.archived);
+	const inStock = hasArchivedItem
+		? 0
+		: Math.max(
+				0,
+				Math.min(
+					...set.setItems.map((si) => Math.floor((si.item.stockCount - (reserved.get(si.item.id) ?? 0)) / si.quantity)),
+				),
+			);
+
+	return {
+		id: set.id,
+		slug: set.slug,
+		title: set.title,
+		description: set.description,
+		thumbnailImageUrl: set.thumbnailImageUrl,
+		inStock,
+		items: set.setItems.map((si) => ({
+			itemId: si.item.id,
+			name: si.item.name,
+			imageUrl: si.item.imageUrl ?? si.item.product?.thumbnailImageUrl ?? null,
+			productSlug: si.item.product?.slug ?? null,
+			productTitle: si.item.product?.title ?? si.item.name,
+			quantity: si.quantity,
+			archived: si.item.archived,
+		})),
+	};
+}
+
+// Every published set's slug — used by /sets/[slug].astro's getStaticPaths
+// (this app prerenders the catalogue, see astro.config.mjs), same pattern
+// as getPublishedProductSlugs above.
+export async function getPublishedSetSlugs(): Promise<string[]> {
+	const rows = await db.query.sets.findMany({
+		where: (t, { eq }) => eq(t.status, 'published'),
+		columns: { slug: true },
+	});
+	return rows.map((row) => row.slug);
+}
+
+// /sets listing page: every published set, regardless of whether it
+// currently has any kits in stock (an out-of-stock kit still shows, same
+// convention as an out-of-stock item on the homepage grid).
+export async function getShopSets(): Promise<ShopSet[]> {
+	const rows = await db.query.sets.findMany({
+		where: (t, { eq }) => eq(t.status, 'published'),
+		orderBy: (t, { asc }) => asc(t.id),
+		with: {
+			setItems: {
+				with: { item: { with: { product: true } } },
+			},
+		},
+	});
+
+	const allItemIds = rows.flatMap((row) => row.setItems.map((si) => si.item.id));
+	const reserved = await reservedQuantitiesByItem(allItemIds);
+
+	return rows.map((row) => toShopSet(row, reserved));
+}
+
+// /sets/[slug] detail page. Returns null for a hidden/missing set so the
+// page can 404, same convention as getShopProductBySlug.
+export async function getShopSetBySlug(slug: string): Promise<ShopSet | null> {
+	const set = await db.query.sets.findFirst({
+		where: (t, { eq }) => eq(t.slug, slug),
+		with: {
+			setItems: {
+				with: { item: { with: { product: true } } },
+			},
+		},
+	});
+
+	if (!set || set.status !== 'published') return null;
+
+	const reserved = await reservedQuantitiesByItem(set.setItems.map((si) => si.item.id));
+	return toShopSet(set, reserved);
+}

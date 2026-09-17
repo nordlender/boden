@@ -15,6 +15,11 @@ describe('ADMIN_ROUTE_PREFIXES', () => {
   it('still includes /admin', () => {
     expect(ADMIN_ROUTE_PREFIXES).toContain('/admin');
   });
+
+  it('includes /api/sets as defense-in-depth for the sets CRUD write routes', () => {
+    expect(ADMIN_ROUTE_PREFIXES).toContain('/api/sets');
+    expect(matchesPrefix('/api/sets/create', ADMIN_ROUTE_PREFIXES)).toBe(true);
+  });
 });
 
 describe('matchesPrefix', () => {

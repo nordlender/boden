@@ -12,9 +12,12 @@ interface Props {
 	mobile: string | null;
 	hasUnpaidFees: boolean | null;
 	userIsMember: boolean | null;
+	// Title lookup for cartItems whose setId is non-null — see
+	// ReservationItemRow's setTitle doc comment.
+	setTitlesById?: Map<number, string>;
 }
 
-const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
+const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, userIsMember, setTitlesById = new Map() } = Astro.props;
 ---
 
 <div data-reservation-form class="flex flex-col gap-8">
@@ -47,6 +50,7 @@ const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, use
 						imageUrl={item.imageUrl}
 						quantity={item.quantity}
 						attributes={item.attributes}
+						setTitle={item.setId !== null ? (setTitlesById.get(item.setId) ?? null) : null}
 					/>
 				))
 			}
@@ -153,8 +157,12 @@ const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, use
 			// enable-submit condition without ever touching the blocked item.
 			// Also not offered when this line requests more than one of the same
 			// item, since a partial per-unit availability shortfall can't be
-			// represented by moving the whole line to a separate order.
-			splitButton.hidden = !form?.dataset.mixed || availability.available || availability.requestedQuantity > 1;
+			// represented by moving the whole line to a separate order. Nor when
+			// the row is part of a bundled set (data-in-set) — splitting one item
+			// out of a kit while leaving the rest behind would create an order
+			// with only part of the kit, which this app never wants to produce.
+			splitButton.hidden =
+				!form?.dataset.mixed || availability.available || availability.requestedQuantity > 1 || Boolean(row.dataset.inSet);
 			splitButton.setAttribute('aria-pressed', String(pressed));
 		}
 		if (splitTag instanceof HTMLElement) {

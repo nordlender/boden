@@ -178,3 +178,172 @@ export async function getSetSummaries(setIds: number[]): Promise<Map<number, Set
 		.where(and(inArray(sets.id, setIds)));
 	return new Map(rows.map((row) => [row.id, row]));
 }
+
+// ---------------------------------------------------------------------------
+// Minimal admin CRUD (src/pages/admin/sets.astro) — deliberately plain
+// POST-form/redirect functions, same style as src/lib/pickupDays.ts, rather
+// than anything wizard-shaped. Not built here: bulk actions, drag-reorder,
+// image upload — this is a v1 pass at "an admin needs to be able to create
+// a set at all," not a port of the item wizard's polish.
+// ---------------------------------------------------------------------------
+
+function slugify(input: string): string {
+	const base = input
+		.toLowerCase()
+		.trim()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	return base || 'set';
+}
+
+async function uniqueSetSlug(title: string): Promise<string> {
+	const base = slugify(title);
+	let candidate = base;
+	let suffix = 2;
+	// Small table — a loop of existence checks is fine, same as
+	// wizard.ts's uniqueItemSlug (not imported from there: that file is
+	// owned by an already-merged, out-of-scope PR — see src/lib/stock.ts's
+	// note on the same convention).
+	while (await db.query.sets.findFirst({ where: (t, { eq: eqCol }) => eqCol(t.slug, candidate) })) {
+		candidate = `${base}-${suffix++}`;
+	}
+	return candidate;
+}
+
+export interface AdminSetListItem {
+	id: number;
+	slug: string;
+	title: string;
+	status: 'hidden' | 'published';
+	itemCount: number;
+	hasArchivedItem: boolean;
+}
+
+// /admin/sets listing — every set regardless of status, with enough to
+// flag the "needs attention" case documented in the design doc: a set with
+// an archived constituent item reports 0 available kits everywhere else in
+// the app, so the admin needs a way to notice and fix it here.
+export async function listSetsForAdmin(): Promise<AdminSetListItem[]> {
+	const rows = await db.query.sets.findMany({
+		orderBy: (t, { asc }) => asc(t.id),
+		with: { setItems: { with: { item: { columns: { archived: true } } } } },
+	});
+	return rows.map((row) => ({
+		id: row.id,
+		slug: row.slug,
+		title: row.title,
+		status: row.status,
+		itemCount: row.setItems.length,
+		hasArchivedItem: row.setItems.some((si) => si.item.archived),
+	}));
+}
+
+export interface AdminSetDetail {
+	id: number;
+	slug: string;
+	title: string;
+	description: string | null;
+	thumbnailImageUrl: string | null;
+	status: 'hidden' | 'published';
+	items: { setItemId: number; itemId: number; itemName: string; productTitle: string | null; quantity: number; archived: boolean }[];
+}
+
+// /admin/sets management panel for one set — its own fields plus its
+// current membership, for editing/removing rows.
+export async function getSetForAdmin(id: number): Promise<AdminSetDetail | null> {
+	const set = await db.query.sets.findFirst({
+		where: (t, { eq: eqCol }) => eqCol(t.id, id),
+		with: { setItems: { with: { item: { with: { product: true } } } } },
+	});
+	if (!set) return null;
+
+	return {
+		id: set.id,
+		slug: set.slug,
+		title: set.title,
+		description: set.description,
+		thumbnailImageUrl: set.thumbnailImageUrl,
+		status: set.status,
+		items: set.setItems.map((si) => ({
+			setItemId: si.id,
+			itemId: si.item.id,
+			itemName: si.item.name,
+			productTitle: si.item.product?.title ?? null,
+			quantity: si.quantity,
+			archived: si.item.archived,
+		})),
+	};
+}
+
+export interface AdminItemOption {
+	id: number;
+	name: string;
+	productTitle: string | null;
+}
+
+// Every non-archived item, for the "add item to set" dropdown — deliberately
+// simple (no search/pagination): mirrors the scale assumption already made
+// throughout this admin surface (e.g. pickupDays.ts's "admins only add a
+// modest number" note).
+export async function listItemOptionsForAdmin(): Promise<AdminItemOption[]> {
+	const rows = await db.query.items.findMany({
+		where: (t, { eq: eqCol }) => eqCol(t.archived, false),
+		orderBy: (t, { asc }) => asc(t.name),
+		with: { product: { columns: { title: true } } },
+	});
+	return rows.map((row) => ({ id: row.id, name: row.name, productTitle: row.product?.title ?? null }));
+}
+
+export async function createSet(input: { title: string; description: string | null; thumbnailImageUrl: string | null }): Promise<number> {
+	const slug = await uniqueSetSlug(input.title);
+	const [row] = await db
+		.insert(sets)
+		.values({ slug, title: input.title, description: input.description, thumbnailImageUrl: input.thumbnailImageUrl })
+		.returning({ id: sets.id });
+	return row.id;
+}
+
+export async function updateSet(input: {
+	id: number;
+	title: string;
+	description: string | null;
+	thumbnailImageUrl: string | null;
+	status: 'hidden' | 'published';
+}): Promise<void> {
+	await db
+		.update(sets)
+		.set({
+			title: input.title,
+			description: input.description,
+			thumbnailImageUrl: input.thumbnailImageUrl,
+			status: input.status,
+			updatedAt: new Date(),
+		})
+		.where(eq(sets.id, input.id));
+}
+
+// Hard delete — a set is never referenced by orderItems the way an item is
+// (orderItems.setId is a nullable, onDelete: 'set null' display tag, not
+// the source of truth for what was rented), so deleting one can never
+// orphan or corrupt order history; it only drops the "part of set X" badge
+// on any past orderItems rows. See docs design note on this.
+export async function deleteSet(id: number): Promise<void> {
+	await db.delete(sets).where(eq(sets.id, id));
+}
+
+// Adds an item to a set, or updates its quantity if it's already a member
+// (upsert on the (setId, itemId) unique index) — avoids a separate
+// "already in this set" error path for what's really just an edit.
+export async function addSetItem(input: { setId: number; itemId: number; quantity: number }): Promise<void> {
+	await db
+		.insert(setItems)
+		.values({ setId: input.setId, itemId: input.itemId, quantity: input.quantity })
+		.onConflictDoUpdate({
+			target: [setItems.setId, setItems.itemId],
+			set: { quantity: input.quantity },
+		});
+}
+
+export async function removeSetItem(input: { setId: number; itemId: number }): Promise<void> {
+	await db.delete(setItems).where(and(eq(setItems.setId, input.setId), eq(setItems.itemId, input.itemId)));
+}

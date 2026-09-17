@@ -1,0 +1,39 @@
+---
+import ImagePlaceholder from './ImagePlaceholder.astro';
+
+interface Props {
+	slug: string;
+	title: string;
+	thumbnailImageUrl: string | null;
+	inStock: number;
+	itemCount: number;
+}
+
+const { slug, title, thumbnailImageUrl, inStock, itemCount } = Astro.props;
+const inStockBool = inStock > 0;
+---
+
+<a
+	href={`/sets/${slug}`}
+	class="group flex flex-col overflow-hidden rounded-lg border border-border bg-surface transition hover:border-border-strong hover:shadow-sm"
+>
+	<div class="aspect-square overflow-hidden bg-bg-subtle">
+		{
+			thumbnailImageUrl ? (
+				<img src={thumbnailImageUrl} alt={title} class="h-full w-full object-cover transition group-hover:scale-105" />
+			) : (
+				<div class="flex h-full w-full items-center justify-center text-disabled-text">
+					<ImagePlaceholder size={32} />
+				</div>
+			)
+		}
+	</div>
+	<div class="flex flex-1 flex-col gap-1 p-3">
+		<h3 class="text-sm font-medium text-text">{title}</h3>
+		<p class="text-xs text-text-muted">{itemCount} item{itemCount === 1 ? '' : 's'} in this kit</p>
+		{/* TODO: Style later, warning? — is "out of stock" an error or a warning state? Same open question as ItemCard.astro. */}
+		<span class={`text-xs ${inStockBool ? 'text-success-text' : 'text-error-text'}`}>
+			{inStockBool ? `${inStock} kit${inStock === 1 ? '' : 's'} in stock` : 'Out of stock'}
+		</span>
+	</div>
+</a>

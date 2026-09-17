@@ -1,0 +1,22 @@
+---
+import SetCard from './SetCard.astro';
+import type { ShopSet } from '../../lib/shop';
+
+interface Props {
+	sets: ShopSet[];
+}
+
+const { sets } = Astro.props;
+---
+
+{
+	sets.length === 0 ? (
+		<p class="text-sm text-text-muted">No sets available.</p>
+	) : (
+		<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+			{sets.map((set) => (
+				<SetCard slug={set.slug} title={set.title} thumbnailImageUrl={set.thumbnailImageUrl} inStock={set.inStock} itemCount={set.items.length} />
+			))}
+		</div>
+	)
+}

@@ -1,9 +1,10 @@
 import { db } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
-import type { CartEntry } from './cart';
+import type { CartEntry, CartSetEntry } from './cart';
 import { isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
+import { resolveCartLines, type MergedCartLine } from './sets';
 
 // Excludes ambiguous characters (0/O, 1/I) — an order code is read aloud by
 // members to moderators and typed into the retrieve-order form; a checkout
@@ -52,6 +53,12 @@ export type CreateOrderInput = {
   userId: string;
   note: string | null;
   cartEntries: CartEntry[];
+  // Bundled-set cart lines (see src/lib/cart.ts's CartSetEntry) — expanded
+  // and merged with cartEntries by resolveCartLines before anything below
+  // this sees them. Optional/defaults to none: no shop/cart UI adds these
+  // yet (see GitHub issue #61's checkpoint plan), so every existing caller
+  // keeps working unchanged.
+  cartSets?: CartSetEntry[];
   fromDate: string;
   toDate: string;
   // Snapshot of the checkout form's contact fields — see schema.ts's
@@ -74,7 +81,7 @@ function insertOrder(
     fromDate: string;
     toDate: string;
     checkoutToken: string;
-    entries: CartEntry[];
+    entries: MergedCartLine[];
     contactName: string;
     contactEmail: string;
     contactMobile: string | null;
@@ -123,6 +130,7 @@ function insertOrder(
             orderId: order.id,
             itemId: e.itemId,
             requestedQuantity: e.quantity,
+            setId: e.setId,
           })),
         )
         .run();
@@ -139,7 +147,13 @@ function insertOrder(
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
-  const itemIds = input.cartEntries.map((e) => e.itemId);
+  // Expand any set entries into their constituent items and merge them with
+  // standalone entries by itemId (see src/lib/sets.ts's resolveCartLines) —
+  // from here down, a set is indistinguishable from the shopper having
+  // added its items by hand, except for the display-only setId tag.
+  const mergedLines = await resolveCartLines(input.cartEntries, input.cartSets ?? []);
+
+  const itemIds = mergedLines.map((e) => e.itemId);
   const validItems = itemIds.length
     ? await db
         .select({ id: items.id })
@@ -161,7 +175,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   // archived/unpublished, and (b) let the moderator hand out only a subset of
   // an order's items, so they can simply decline to hand out that one instead
   // of it being a hard failure. See the moderator-workflow-deferred memory.
-  const entriesToOrder = input.cartEntries.filter((e) => validItemIds.has(e.itemId));
+  const entriesToOrder = mergedLines.filter((e) => validItemIds.has(e.itemId));
   if (entriesToOrder.length === 0) {
     return { ok: false, error: 'empty_cart' };
   }
@@ -194,6 +208,8 @@ export type CreateSplitOrdersInput = {
   userId: string;
   note: string | null;
   cartEntries: CartEntry[];
+  // See CreateOrderInput.cartSets.
+  cartSets?: CartSetEntry[];
   fromDate: string;
   toDate: string;
   // itemIds the member chose to move into their own order via the
@@ -217,7 +233,9 @@ export type CreateSplitOrdersResult =
 // when nothing (or everything) was split — e.g. splitItemIds is empty, or
 // names every item still in the cart.
 export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<CreateSplitOrdersResult> {
-  const itemIds = input.cartEntries.map((e) => e.itemId);
+  const mergedLines = await resolveCartLines(input.cartEntries, input.cartSets ?? []);
+
+  const itemIds = mergedLines.map((e) => e.itemId);
   const validItems = itemIds.length
     ? await db
         .select({ id: items.id })
@@ -225,7 +243,7 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
         .where(and(inArray(items.id, itemIds), eq(items.archived, false)))
     : [];
   const validItemIds = new Set(validItems.map((i) => i.id));
-  const entriesToOrder = input.cartEntries.filter((e) => validItemIds.has(e.itemId));
+  const entriesToOrder = mergedLines.filter((e) => validItemIds.has(e.itemId));
   if (entriesToOrder.length === 0) {
     return { ok: false, error: 'empty_cart' };
   }

@@ -262,6 +262,7 @@ describe('getCartItems', () => {
         stockCount: 5,
         inStock: 5,
         attributes: [{ key: 'Length', value: '60m' }],
+        setId: null,
       },
     ]);
   });

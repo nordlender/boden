@@ -1,7 +1,7 @@
 ---
 export const prerender = false;
 
-import '../../styles/global.css';
+import BaseLayout from '../../layouts/BaseLayout.astro';
 import { db } from '../../db/client';
 import { getMaxRentalDays } from '../../lib/rental-policy';
 import OrderCodeHeader from '../../components/orders/OrderCodeHeader.astro';
@@ -26,15 +26,11 @@ if (!order || order.userId !== Astro.locals.user?.id) {
 }
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Order #{order.orderCode}</title>
-	</head>
-	<body>
-		<main class="mx-auto flex max-w-xl flex-col gap-6 p-6">
+<BaseLayout title={`Order #${order.orderCode}`}>
+	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
+		<a href="/" class="self-start text-sm font-medium text-text-muted hover:text-text">&larr; Back to shop</a>
+
+		<div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">
 			<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
 			<OrderContents
 				items={order.orderItems.map((oi) => ({
@@ -44,10 +40,10 @@ if (!order || order.userId !== Astro.locals.user?.id) {
 				note={order.note}
 			/>
 			<SubmittedContactDetails contactName={order.contactName} />
-			<div class="flex flex-wrap gap-2">
+			<div class="flex flex-wrap gap-2 border-t border-border pt-4">
 				<ChangeOrderLink orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} />
 				<DeleteOrderButton orderCode={order.orderCode} status={order.status} />
 			</div>
-		</main>
-	</body>
-</html>
+		</div>
+	</div>
+</BaseLayout>

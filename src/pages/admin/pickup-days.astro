@@ -5,10 +5,14 @@ export const prerender = false;
 // reached only when logged in with role === 'admin'.
 import '../../styles/global.css';
 import { listAvailablePickupDates } from '../../lib/pickupDays';
+import { todayIsoInOslo } from '../../lib/dates';
 
 const redirectTo = Astro.url.pathname;
 const dates = await listAvailablePickupDates();
-const todayIso = new Date().toISOString().slice(0, 10);
+// Europe/Oslo's today, not the server host's — see src/lib/dates.ts. Same
+// bug class as the reservation calendar/form (#50): this page's `min` and
+// past-date strikethrough were comparing against a UTC-derived "today".
+const todayIso = todayIsoInOslo();
 const error = Astro.url.searchParams.get('error');
 
 function formatDisplay(value: string) {

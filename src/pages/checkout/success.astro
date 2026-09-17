@@ -1,7 +1,7 @@
 ---
 export const prerender = false;
 
-import '../../styles/global.css';
+import ConfirmationLayout from '../../layouts/ConfirmationLayout.astro';
 import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import { db } from '../../db/client';
 
@@ -33,36 +33,41 @@ if (foundOrders.length === 0 || foundOrders.some((o) => o.userId !== Astro.local
 // needing to track it separately.
 const orderedOrders = [...foundOrders].sort((a, b) => a.id - b.id);
 ---
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Order placed</title>
-	</head>
-	<body>
-		<main>
-			{orderedOrders.length > 1 && <p>Your items were split across {orderedOrders.length} separate orders:</p>}
-			<p>
-				Please take a screenshot of this page for your records — it's the easiest way to have your order code(s) on
-				hand when you come to pick up.
-			</p>
-			{orderedOrders.map((order) => (
-				<div class="flex flex-col gap-2">
-					<UserOrderSummary
-						orderCode={order.orderCode}
-						status={order.status}
-						fromDate={order.fromDate}
-						toDate={order.toDate}
-						note={order.note}
-						items={order.orderItems.map((oi) => ({
-							itemName: oi.item.name,
-							requestedQuantity: oi.requestedQuantity,
-						}))}
-					/>
-					<a href={`/orders/${order.orderCode}`}>View or manage this order</a>
-				</div>
-			))}
-		</main>
-	</body>
-</html>
+
+<ConfirmationLayout title="Order placed" heading="Order placed">
+	<Fragment slot="subtitle">
+		{orderedOrders.length > 1 && <p>Your items were split across {orderedOrders.length} separate orders.</p>}
+		<p>
+			Please take a screenshot of this page for your records — it's the easiest way to have your order code(s) on
+			hand when you come to pick up.
+		</p>
+	</Fragment>
+
+	<div class="flex flex-col gap-4">
+		{orderedOrders.map((order) => (
+			<div class="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
+				<UserOrderSummary
+					orderCode={order.orderCode}
+					status={order.status}
+					fromDate={order.fromDate}
+					toDate={order.toDate}
+					note={order.note}
+					items={order.orderItems.map((oi) => ({
+						itemName: oi.item.name,
+						requestedQuantity: oi.requestedQuantity,
+					}))}
+				/>
+				<a
+					href={`/orders/${order.orderCode}`}
+					class="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover"
+				>
+					View or manage this order
+				</a>
+			</div>
+		))}
+	</div>
+
+	<a href="/" class="self-center text-sm font-medium text-accent-text hover:underline">
+		Continue shopping
+	</a>
+</ConfirmationLayout>

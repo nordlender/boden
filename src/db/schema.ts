@@ -251,6 +251,43 @@ export const pickupAvailableDays = sqliteTable('pickup_available_days', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
+// Ad-hoc pick-up availability a moderator offers themselves on short notice
+// ("I'm free this afternoon") — deliberately a separate table from
+// pickupAvailableDays rather than an extension of it: the admin baseline is
+// an ownerless one-row-per-date signal, while this needs an owning
+// moderator, an optional time window, and a retraction history, none of
+// which the baseline rows have any use for. See GitHub issue #56.
+//
+// The member-facing calendar (getUpcomingAvailablePickupDates in
+// src/lib/pickupDays.ts) unions this table's active rows with the admin
+// baseline — a date shows as available if either source has one, at
+// day-granularity only; startTime/endTime are captured for a possible
+// future per-slot display but are not surfaced there today.
+//
+// No uniqueness constraint on (moderatorUserId, date): multiple moderators
+// (or the same one, different time windows) can each offer the same day.
+export const moderatorPickupOffers = sqliteTable('moderator_pickup_offers', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  moderatorUserId: text('moderator_user_id').notNull().references(() => users.id),
+  date: text('date').notNull(), // YYYY-MM-DD
+  startTime: text('start_time'), // HH:MM, optional — unset means "available all day"
+  endTime: text('end_time'), // HH:MM, optional
+  // Soft-delete rather than hard-delete on retraction: keeps a record of
+  // who offered/retracted what, matching this project's existing
+  // soft-delete convention (items.archived, orders' reject/return fields).
+  status: text('status', { enum: ['active', 'retracted'] }).notNull().default('active'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  retractedAt: integer('retracted_at', { mode: 'timestamp' }),
+}, (table) => [
+  index('moderator_pickup_offers_date_idx').on(table.date),
+  index('moderator_pickup_offers_moderator_user_id_idx').on(table.moderatorUserId),
+  index('moderator_pickup_offers_status_idx').on(table.status),
+  check(
+    'moderator_pickup_offers_time_range_valid',
+    sql`${table.endTime} IS NULL OR ${table.startTime} IS NULL OR ${table.endTime} > ${table.startTime}`,
+  ),
+]);
+
 export const categoriesRelations = relations(categories, ({ many }) => ({
   subcategories: many(subcategories),
   products: many(products),
@@ -317,6 +354,14 @@ export const itemAttributeValuesRelations = relations(itemAttributeValues, ({ on
 
 export const usersRelations = relations(users, ({ many }) => ({
   orders: many(orders),
+  moderatorPickupOffers: many(moderatorPickupOffers),
+}));
+
+export const moderatorPickupOffersRelations = relations(moderatorPickupOffers, ({ one }) => ({
+  moderator: one(users, {
+    fields: [moderatorPickupOffers.moderatorUserId],
+    references: [users.id],
+  }),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({

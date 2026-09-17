@@ -1,0 +1,159 @@
+---
+export const prerender = false;
+
+// Gated by src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator) —
+// reached only when logged in with role 'moderator' or 'admin' (members get
+// a 403 there).
+import '../../styles/global.css';
+import { listModeratorPickupOffers, listActiveUpcomingModeratorOffers } from '../../lib/pickupDays';
+
+const redirectTo = Astro.url.pathname;
+const todayIso = new Date().toISOString().slice(0, 10);
+const error = Astro.url.searchParams.get('error');
+
+// Gated by middleware, so locals.user is always set here.
+const moderatorUserId = Astro.locals.user!.id;
+
+const [myOffers, otherOffers] = await Promise.all([
+	listModeratorPickupOffers(moderatorUserId),
+	listActiveUpcomingModeratorOffers(todayIso, moderatorUserId),
+]);
+
+function formatDisplay(value: string) {
+	return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+		weekday: 'short',
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+	});
+}
+
+function formatTimeWindow(startTime: string | null, endTime: string | null) {
+	if (!startTime && !endTime) return 'All day';
+	if (startTime && endTime) return `${startTime}–${endTime}`;
+	return startTime ? `From ${startTime}` : `Until ${endTime}`;
+}
+---
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Pick-up availability</title>
+	</head>
+	<body class="min-h-screen bg-slate-100 p-8">
+		<div class="mx-auto flex max-w-2xl flex-col gap-6">
+			<div>
+				<h1 class="text-xl font-semibold text-slate-800">Offer pick-up availability</h1>
+				<p class="mt-1 text-sm text-slate-500">
+					Free to hand out orders on short notice? Offer a slot here — it shows as "Pick up available" (green) on the
+					member-facing reservation calendar alongside any admin-confirmed dates, day-granular only (a time window is
+					recorded but not shown to members yet). You can retract a slot you offered any time before it happens.
+				</p>
+			</div>
+
+			{
+				error === 'invalid_date' && (
+					<p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+						That doesn't look like a valid date (expected YYYY-MM-DD).
+					</p>
+				)
+			}
+			{
+				error === 'invalid_time' && (
+					<p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+						That doesn't look like a valid time (expected HH:MM).
+					</p>
+				)
+			}
+			{
+				error === 'invalid_time_range' && (
+					<p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+						The end time has to be after the start time.
+					</p>
+				)
+			}
+
+			<form
+				method="post"
+				action="/api/moderator/pickup-days/offer"
+				class="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-amber-50/60 px-3 py-3"
+			>
+				<input type="hidden" name="redirectTo" value={redirectTo} />
+				<div>
+					<label class="mb-1 block text-xs text-slate-500" for="pickup-offer-date">Date</label>
+					<input
+						id="pickup-offer-date"
+						name="date"
+						type="date"
+						min={todayIso}
+						required
+						class="rounded border border-slate-300 px-2 py-1.5 text-sm"
+					/>
+				</div>
+				<div>
+					<label class="mb-1 block text-xs text-slate-500" for="pickup-offer-start">From (optional)</label>
+					<input id="pickup-offer-start" name="startTime" type="time" class="rounded border border-slate-300 px-2 py-1.5 text-sm" />
+				</div>
+				<div>
+					<label class="mb-1 block text-xs text-slate-500" for="pickup-offer-end">Until (optional)</label>
+					<input id="pickup-offer-end" name="endTime" type="time" class="rounded border border-slate-300 px-2 py-1.5 text-sm" />
+				</div>
+				<button type="submit" class="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+					Offer availability
+				</button>
+			</form>
+
+			<div>
+				<h2 class="mb-2 text-sm font-semibold text-slate-700">Your offered slots</h2>
+				<div class="rounded-lg border border-slate-200 bg-white">
+					{
+						myOffers.length === 0 ? (
+							<p class="p-4 text-sm text-slate-500">You haven't offered any pick-up slots yet.</p>
+						) : (
+							<ul class="divide-y divide-slate-100">
+								{myOffers.map((offer) => (
+									<li class="flex items-center justify-between gap-4 px-4 py-2.5 text-sm">
+										<span class={offer.status === 'retracted' || offer.date < todayIso ? 'text-slate-400 line-through' : 'text-slate-700'}>
+											{formatDisplay(offer.date)} · {formatTimeWindow(offer.startTime, offer.endTime)}
+											{offer.status === 'retracted' && ' (retracted)'}
+										</span>
+										{offer.status === 'active' && offer.date >= todayIso && (
+											<form method="post" action="/api/moderator/pickup-days/retract">
+												<input type="hidden" name="redirectTo" value={redirectTo} />
+												<input type="hidden" name="id" value={offer.id} />
+												<button type="submit" class="text-xs text-red-600 hover:underline">
+													Retract
+												</button>
+											</form>
+										)}
+									</li>
+								))}
+							</ul>
+						)
+					}
+				</div>
+			</div>
+
+			<div>
+				<h2 class="mb-2 text-sm font-semibold text-slate-700">Other moderators' upcoming availability</h2>
+				<p class="mb-2 text-xs text-slate-500">Read-only — for avoiding duplicate coverage on the same day.</p>
+				<div class="rounded-lg border border-slate-200 bg-white">
+					{
+						otherOffers.length === 0 ? (
+							<p class="p-4 text-sm text-slate-500">No other moderator has offered an upcoming slot.</p>
+						) : (
+							<ul class="divide-y divide-slate-100">
+								{otherOffers.map((offer) => (
+									<li class="px-4 py-2.5 text-sm text-slate-700">
+										{formatDisplay(offer.date)} · {formatTimeWindow(offer.startTime, offer.endTime)}
+										<span class="text-slate-400"> — {offer.moderatorLabel}</span>
+									</li>
+								))}
+							</ul>
+						)
+					}
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

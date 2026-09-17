@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "74b65e3b-4442-474a-bd77-454e1796b1ca",
-  "prevId": "7f6464ce-cb0a-4511-aa41-b1a17af21aec",
+  "id": "2c1f29de-5611-4dc2-bbd6-6800cf765063",
+  "prevId": "74b65e3b-4442-474a-bd77-454e1796b1ca",
   "tables": {
     "categories": {
       "name": "categories",
@@ -236,6 +236,115 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
+    },
+    "moderator_pickup_offers": {
+      "name": "moderator_pickup_offers",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "moderator_user_id": {
+          "name": "moderator_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "date": {
+          "name": "date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "start_time": {
+          "name": "start_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "retracted_at": {
+          "name": "retracted_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "moderator_pickup_offers_date_idx": {
+          "name": "moderator_pickup_offers_date_idx",
+          "columns": [
+            "date"
+          ],
+          "isUnique": false
+        },
+        "moderator_pickup_offers_moderator_user_id_idx": {
+          "name": "moderator_pickup_offers_moderator_user_id_idx",
+          "columns": [
+            "moderator_user_id"
+          ],
+          "isUnique": false
+        },
+        "moderator_pickup_offers_status_idx": {
+          "name": "moderator_pickup_offers_status_idx",
+          "columns": [
+            "status"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "moderator_pickup_offers_moderator_user_id_users_id_fk": {
+          "name": "moderator_pickup_offers_moderator_user_id_users_id_fk",
+          "tableFrom": "moderator_pickup_offers",
+          "tableTo": "users",
+          "columnsFrom": [
+            "moderator_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "moderator_pickup_offers_time_range_valid": {
+          "name": "moderator_pickup_offers_time_range_valid",
+          "value": "\"moderator_pickup_offers\".\"end_time\" IS NULL OR \"moderator_pickup_offers\".\"start_time\" IS NULL OR \"moderator_pickup_offers\".\"end_time\" > \"moderator_pickup_offers\".\"start_time\""
+        }
+      }
     },
     "order_items": {
       "name": "order_items",

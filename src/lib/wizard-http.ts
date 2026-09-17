@@ -27,6 +27,20 @@ export function requireAdmin(locals: APIContext['locals']): Response | null {
 }
 
 /**
+ * Returns a 403 Response if the current request isn't from a moderator or
+ * admin, or `null` if the caller may proceed. Mirrors the middleware's own
+ * `role === 'member'` check for MOD_ROUTE_PREFIXES (src/middleware/index.ts)
+ * as an inline defense-in-depth check for /api/moderator/* routes — same
+ * pattern as requireAdmin above.
+ */
+export function requireModerator(locals: APIContext['locals']): Response | null {
+	if (locals.user?.role === 'member' || !locals.user) {
+		return new Response('Forbidden', { status: 403 });
+	}
+	return null;
+}
+
+/**
  * Picks a safe post-submit redirect target out of a form's `redirectTo`
  * field, falling back to `fallback` (default `/admin/items`) for anything
  * that isn't a same-origin path.

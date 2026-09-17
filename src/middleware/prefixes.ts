@@ -15,7 +15,13 @@
 // so this is redundant today — but it means a future route in either group
 // that forgets the inline check isn't left with zero protection.
 export const MEMBER_ROUTE_PREFIXES = ['/cart', '/checkout', '/orders', '/reservation', '/api/reservation', '/api/orders'];
-export const MOD_ROUTE_PREFIXES = ['/moderator'];
+// /api/moderator is included here as defense-in-depth, same reasoning as
+// /api/wizard under ADMIN_ROUTE_PREFIXES below: the /api/moderator/*
+// write routes (pickup-days/offer, pickup-days/retract) each already
+// re-implement their own requireModerator() check inline (see those
+// files), so this is redundant today — but it means a future moderator
+// route that forgets the inline check isn't left with zero protection.
+export const MOD_ROUTE_PREFIXES = ['/moderator', '/api/moderator'];
 // /api/wizard is included here as defense-in-depth: the five /api/wizard/*
 // write routes (archive, attributes, attributes/bulk, items, set-product)
 // each already re-implement their own `locals.user?.role !== 'admin'` check

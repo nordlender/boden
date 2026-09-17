@@ -17,6 +17,21 @@ describe('ADMIN_ROUTE_PREFIXES', () => {
   });
 });
 
+describe('MOD_ROUTE_PREFIXES', () => {
+  it('includes /api/moderator as defense-in-depth for the moderator pickup-day offer routes', () => {
+    expect(MOD_ROUTE_PREFIXES).toContain('/api/moderator');
+  });
+
+  it('still includes /moderator', () => {
+    expect(MOD_ROUTE_PREFIXES).toContain('/moderator');
+  });
+
+  it('matches nested routes like /api/moderator/pickup-days/offer', () => {
+    expect(matchesPrefix('/api/moderator/pickup-days/offer', MOD_ROUTE_PREFIXES)).toBe(true);
+    expect(matchesPrefix('/api/moderator/pickup-days/retract', MOD_ROUTE_PREFIXES)).toBe(true);
+  });
+});
+
 describe('matchesPrefix', () => {
   it('matches an exact prefix', () => {
     expect(matchesPrefix('/admin', ADMIN_ROUTE_PREFIXES)).toBe(true);

@@ -29,6 +29,7 @@ const CONTACT = { contactName: 'Test Member', contactEmail: 'member@example.com'
 const ITEM_A_ID = 1;
 const ITEM_B_ID = 2;
 const ITEM_C_ID = 3;
+const KIT_ID = 1;
 
 vi.mock('../../db/client', async () => {
 	const { default: Database } = await import('better-sqlite3');
@@ -61,6 +62,17 @@ vi.mock('../../db/client', async () => {
 		.returning();
 	await db.insert(schema.orderItems).values({ orderId: existingOrder.id, itemId: 1, requestedQuantity: 1 }); // item A
 
+	// A kit bundling item B (id 2) + item C (id 3) — deterministic id: the
+	// only row inserted into `sets` here, so kit.id === 1. Raw ids used here
+	// rather than the ITEM_B_ID/ITEM_C_ID constants below: this factory runs
+	// before those const declarations are initialized (see this file's
+	// existing `itemId: 1` comment above for the same reason).
+	const [kit] = await db.insert(schema.sets).values({ slug: 'test-kit', title: 'Test Kit', status: 'published' }).returning();
+	await db.insert(schema.setItems).values([
+		{ setId: kit.id, itemId: 2, quantity: 1 },
+		{ setId: kit.id, itemId: 3, quantity: 1 },
+	]);
+
 	return { db };
 });
 
@@ -91,6 +103,71 @@ describe('createOrder', () => {
 			// Overlaps the existing order's 2026-01-05..2026-01-10 booking of
 			// item A's only unit.
 			cartEntries,
+			fromDate: '2026-01-06',
+			toDate: '2026-01-08',
+			...CONTACT,
+		});
+
+		expect(result).toEqual({ ok: false, error: 'unavailable', unavailableItemIds: [ITEM_A_ID] });
+	});
+});
+
+describe('createOrder with cartSets', () => {
+	it('expands a set entry into one orderItems row per constituent item, tagged with the set id', async () => {
+		const result = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries: [],
+			cartSets: [{ setId: KIT_ID, quantity: 1 }],
+			fromDate: '2026-07-01',
+			toDate: '2026-07-02',
+			...CONTACT,
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		const { db } = await import('../../db/client');
+		const schema = await import('../../db/schema');
+		const rows = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, result.orderId));
+		expect(rows).toHaveLength(2);
+		expect(rows.every((r) => r.setId === KIT_ID)).toBe(true);
+		expect(rows.map((r) => r.itemId).sort()).toEqual([ITEM_B_ID, ITEM_C_ID]);
+	});
+
+	it('merges a standalone entry with a set entry for the same item into one row, summed, with setId left null (mixed provenance)', async () => {
+		const result = await createOrder({
+			userId: 'member-1',
+			note: null,
+			// Item B both added standalone (1) and pulled in by the kit (1).
+			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
+			cartSets: [{ setId: KIT_ID, quantity: 1 }],
+			fromDate: '2026-07-05',
+			toDate: '2026-07-06',
+			...CONTACT,
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		const { db } = await import('../../db/client');
+		const schema = await import('../../db/schema');
+		const rows = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, result.orderId));
+		const itemBRow = rows.find((r) => r.itemId === ITEM_B_ID);
+		expect(itemBRow).toMatchObject({ requestedQuantity: 2, setId: null });
+		const itemCRow = rows.find((r) => r.itemId === ITEM_C_ID);
+		expect(itemCRow).toMatchObject({ requestedQuantity: 1, setId: KIT_ID });
+	});
+
+	it('rejects with "unavailable" (checking the merged, expanded quantity) when a set item cannot clear the request', async () => {
+		// Item A (kit-unrelated here) has only 1 unit and is already booked
+		// 01-05..01-10 — request 1 more kit's worth of item A directly via
+		// cartEntries alongside the kit to exercise the merge path end to end.
+		const result = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries: [{ itemId: ITEM_A_ID, quantity: 1 }],
+			cartSets: [{ setId: KIT_ID, quantity: 1 }],
 			fromDate: '2026-01-06',
 			toDate: '2026-01-08',
 			...CONTACT,

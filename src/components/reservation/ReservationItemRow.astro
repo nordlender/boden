@@ -8,12 +8,23 @@ interface Props {
 	imageUrl: string | null;
 	quantity: number;
 	attributes: { key: string; value: string }[];
+	// Non-null when this row's entire quantity came from one bundled set
+	// (see src/lib/cart.ts's CartItem.setId doc comment) — shows a badge and
+	// suppresses the split-order button below: splitting a single item out
+	// of a kit while leaving the rest in the main order would create an
+	// order with only part of the kit, which this app never wants to
+	// produce (see GitHub issue #61's "a kit is atomic" design decision).
+	// Not yet built: reducing the *whole kit's* quantity as one unit the way
+	// a single item's quantity can be reduced — for now, an unavailable kit
+	// blocks submission until dates change or the kit is removed from the
+	// cart. Flagged as a v2 follow-up, not silently degraded.
+	setTitle?: string | null;
 }
 
-const { itemId, productSlug, productTitle, imageUrl, quantity, attributes } = Astro.props;
+const { itemId, productSlug, productTitle, imageUrl, quantity, attributes, setTitle = null } = Astro.props;
 ---
 
-<div data-reservation-row data-item-id={itemId} class="flex flex-wrap items-center gap-4 py-4">
+<div data-reservation-row data-item-id={itemId} data-in-set={setTitle ? '1' : undefined} class="flex flex-wrap items-center gap-4 py-4">
 	<div class="h-16 w-16 shrink-0 overflow-hidden rounded bg-gray-100">
 		{imageUrl && <img src={imageUrl} alt={productTitle} class="h-full w-full object-cover" />}
 	</div>
@@ -25,6 +36,10 @@ const { itemId, productSlug, productTitle, imageUrl, quantity, attributes } = As
 		{attributes.length > 0 && <p class="text-sm text-gray-500">{attributes.map((a) => a.value).join(' / ')}</p>}
 		<p class="text-sm text-gray-500">Qty: {quantity}</p>
 	</div>
+
+	{setTitle && (
+		<p class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Part of: {setTitle}</p>
+	)}
 
 	<p data-availability-badge class="hidden rounded-full px-2 py-0.5 text-xs font-medium"></p>
 

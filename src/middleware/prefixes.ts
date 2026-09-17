@@ -22,7 +22,11 @@ export const MOD_ROUTE_PREFIXES = ['/moderator'];
 // inline (see those files), so this is redundant today — but it means a
 // future wizard route that forgets the inline check isn't left with zero
 // protection.
-export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard', '/api/pickup-days'];
+// /api/sets is the admin Sets CRUD (create/update/delete a set, add/remove
+// a set item — src/pages/api/sets/*.ts) — distinct from /api/cart's
+// add-set/update-set/remove-set, which are the public cart-mutation routes
+// and deliberately unauthenticated (see src/pages/api/cart/add.ts's note).
+export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard', '/api/pickup-days', '/api/sets'];
 
 export function matchesPrefix(routePattern: string, prefixes: string[]) {
   return prefixes.some((p) => routePattern === p || routePattern.startsWith(`${p}/`));

@@ -1,7 +1,7 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { getCart, setCart } from '../../../lib/cart';
+import { getCartState, setCartState } from '../../../lib/cart';
 import { createOrder, createSplitOrders } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
 
@@ -13,8 +13,8 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const cart = getCart(cookies);
-  if (cart.length === 0) {
+  const { items: cart, sets: cartSets } = getCartState(cookies);
+  if (cart.length === 0 && cartSets.length === 0) {
     return redirect('/cart?error=empty_cart');
   }
 
@@ -53,6 +53,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           userId: locals.user.id,
           note,
           cartEntries: cart,
+          cartSets,
           fromDate,
           toDate,
           splitItemIds,
@@ -64,6 +65,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           userId: locals.user.id,
           note,
           cartEntries: cart,
+          cartSets,
           fromDate,
           toDate,
           contactName,
@@ -80,6 +82,9 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     return redirect('/cart?error=empty_cart');
   }
 
-  setCart(cookies, []);
+  // Clear both halves of the cart — setCart alone would only replace the
+  // standalone-items half and leave any checked-out kit still sitting in
+  // the cart's `sets` array (see src/lib/cart.ts's setCart doc comment).
+  setCartState(cookies, { items: [], sets: [] });
   return redirect(`/checkout/success?receipt=${result.checkoutToken}`, 303);
 };

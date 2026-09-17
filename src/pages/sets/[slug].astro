@@ -1,0 +1,108 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ImagePlaceholder from '../../components/shop/ImagePlaceholder.astro';
+import { getPublishedSetSlugs, getShopSetBySlug } from '../../lib/shop';
+
+export async function getStaticPaths() {
+	const slugs = await getPublishedSetSlugs();
+	return slugs.map((slug) => ({ params: { slug } }));
+}
+
+const { slug } = Astro.params;
+const set = await getShopSetBySlug(slug!);
+
+if (!set) {
+	return Astro.redirect('/404');
+}
+
+const inStockBool = set.inStock > 0;
+const hasArchivedItem = set.items.some((item) => item.archived);
+---
+
+<BaseLayout title={set.title}>
+	<div class="mx-auto grid max-w-4xl gap-8 px-4 py-12 sm:grid-cols-2">
+		<div class="aspect-square overflow-hidden rounded-lg bg-bg-subtle">
+			{
+				set.thumbnailImageUrl ? (
+					<img src={set.thumbnailImageUrl} alt={set.title} class="h-full w-full object-cover" />
+				) : (
+					<div class="flex h-full w-full items-center justify-center text-disabled-text">
+						<ImagePlaceholder size={48} />
+					</div>
+				)
+			}
+		</div>
+
+		<div class="flex flex-col gap-4">
+			<div>
+				<p class="text-xs uppercase tracking-wide text-text-muted">Set</p>
+				<h1 class="text-2xl font-semibold tracking-tight text-text">{set.title}</h1>
+			</div>
+
+			{set.description && <p class="text-sm text-text-muted">{set.description}</p>}
+
+			<div class="border-t border-border pt-4">
+				<h2 class="mb-2 text-sm font-medium text-text">What's included</h2>
+				<ul class="flex flex-col gap-2">
+					{
+						set.items.map((item) => (
+							<li class="flex items-center gap-3 text-sm">
+								<div class="h-10 w-10 shrink-0 overflow-hidden rounded bg-bg-subtle">
+									{item.imageUrl && <img src={item.imageUrl} alt={item.productTitle} class="h-full w-full object-cover" />}
+								</div>
+								<span class={item.archived ? 'text-error-text' : 'text-text'}>
+									{item.productSlug ? (
+										<a href={`/products/${item.productSlug}`} class="hover:underline">
+											{item.productTitle}
+										</a>
+									) : (
+										item.productTitle
+									)}
+									{item.quantity > 1 && ` × ${item.quantity}`}
+									{item.archived && ' (no longer available)'}
+								</span>
+							</li>
+						))
+					}
+				</ul>
+			</div>
+
+			{
+				hasArchivedItem ? (
+					<p class="border-t border-border pt-4 text-sm text-error-text">
+						This kit is currently unavailable — one of its items is no longer offered.
+					</p>
+				) : (
+					<form action="/api/cart/add-set" method="post" class="flex flex-col gap-4 border-t border-border pt-4">
+						<input type="hidden" name="setId" value={set.id} />
+						<input type="hidden" name="redirect" value={`/sets/${set.slug}`} />
+
+						{/* TODO: Style later, warning? — same open question as products/[slug].astro's stock message. */}
+						<p class={`text-sm font-medium ${inStockBool ? 'text-success-text' : 'text-error-text'}`}>
+							{inStockBool ? `${set.inStock} kit${set.inStock === 1 ? '' : 's'} in stock` : 'Out of stock'}
+						</p>
+
+						<div class="flex items-center gap-3">
+							<input
+								type="number"
+								name="quantity"
+								value="1"
+								min="1"
+								max={Math.max(set.inStock, 1)}
+								required
+								class="w-16 rounded-md border border-border-interactive px-2 py-1.5 text-sm"
+							/>
+							<button
+								type="submit"
+								disabled={!inStockBool}
+								class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-disabled-bg"
+							>
+								Add kit to cart
+							</button>
+						</div>
+					</form>
+				)
+			}
+		</div>
+	</div>
+</BaseLayout>

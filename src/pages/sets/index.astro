@@ -1,0 +1,22 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SetGrid from '../../components/shop/SetGrid.astro';
+import { getShopSets } from '../../lib/shop';
+
+// Prerendered (static output, see astro.config.mjs), same as /index.astro —
+// this query runs once at build time.
+const sets = await getShopSets();
+---
+
+<BaseLayout title="Sets">
+	<div class="mx-auto max-w-6xl px-4 py-8">
+		<div class="mb-6">
+			<h1 class="text-2xl font-semibold tracking-tight text-text">Sets</h1>
+			<p class="mt-1 text-sm text-text-muted">
+				Ready-made kits bundling several items into one rental — each item is also still available on its own from
+				its product page.
+			</p>
+		</div>
+		<SetGrid sets={sets} />
+	</div>
+</BaseLayout>

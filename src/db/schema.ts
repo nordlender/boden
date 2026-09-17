@@ -154,6 +154,64 @@ export const itemAttributeValues = sqliteTable('item_attribute_values', {
   index('item_attribute_values_attribute_id_idx').on(table.attributeId),
 ]);
 
+// ---------------------------------------------------------------------------
+// Sets — a bundle of concrete items rentable as one package (e.g. a full
+// climbing kit: a specific harness + a specific rope + a specific helmet).
+// A set references specific items, not products: it's a curated, pre-chosen
+// bundle ("this exact M/green harness"), not "any harness" — picking which
+// item satisfies a product slot would just be a second product picker
+// bolted onto cart-add, and the items a set bundles are meant to be
+// concrete, admin-chosen gear. Each item keeps belonging to its own product
+// and its own independent stock/availability tracking (see setItems below
+// and src/lib/sets.ts) — a set has no stock of its own, and it never
+// references products directly, same "no reverse lookup column" convention
+// as products->items.
+//
+// Same shop-visibility convention as products (hidden/published). No
+// category/subcategory for v1 — a single flat listing is enough while the
+// kit catalogue is small; revisit if it grows (see GitHub issue #61
+// discussion).
+// ---------------------------------------------------------------------------
+
+export const sets = sqliteTable('sets', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  slug: text('slug').notNull().unique(),
+  title: text('title').notNull(),
+  description: text('description'),
+  thumbnailImageUrl: text('thumbnail_image_url'),
+  status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index('sets_status_idx').on(table.status),
+]);
+
+// ---------------------------------------------------------------------------
+// Set membership: which items make up a set, and how many of each (e.g. 2
+// crampons per kit). itemId is a plain FK with no onDelete clause — items
+// are never hard-deleted (only archived, same assumption as
+// orderItems.itemId below), so there's nothing to cascade or null here.
+// setId cascades: deleting a set deletes its membership rows, never the
+// underlying item. No nesting — a set may only contain items, never
+// another set (not needed, would require cycle detection).
+// ---------------------------------------------------------------------------
+
+export const setItems = sqliteTable('set_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  setId: integer('set_id').notNull().references(() => sets.id, { onDelete: 'cascade' }),
+  itemId: integer('item_id').notNull().references(() => items.id),
+  quantity: integer('quantity').notNull().default(1),
+  sortOrder: integer('sort_order').notNull().default(0),
+}, (table) => [
+  uniqueIndex('set_items_set_item_unique').on(table.setId, table.itemId),
+  index('set_items_set_id_idx').on(table.setId),
+  // Reverse lookup: "which sets include item X" — used to compute set
+  // availability from an item and to warn admins when an item that's part
+  // of a set gets archived.
+  index('set_items_item_id_idx').on(table.itemId),
+  check('set_items_quantity_positive', sql`${table.quantity} > 0`),
+]);
+
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(), // ID from external OAuth provider
   // WARNING: this UNIQUE constraint assumes bloc never reports the same
@@ -232,9 +290,20 @@ export const orderItems = sqliteTable('order_items', {
   requestedQuantity: integer('requested_quantity').notNull().default(1),
   // Set by moderator at confirm step — may differ from requested if stock was short
   retrievedQuantity: integer('retrieved_quantity'),
+  // Display-only tag: which set (if any) this row's full requested quantity
+  // came from — e.g. so the order/confirmation UI can badge "part of:
+  // Climbing Kit". Nullable and 'set null' on delete, same pattern as
+  // items.productId: deleting a set must never delete or corrupt order
+  // history, it only drops the badge. Left null when a row's quantity has
+  // mixed provenance (e.g. partly a standalone add, partly from a kit, or
+  // from two different kits that both include this item) rather than
+  // picking one arbitrarily — inventory correctness never depends on this
+  // column, only display does. See src/lib/orders.ts's cart-merge logic.
+  setId: integer('set_id').references(() => sets.id, { onDelete: 'set null' }),
 }, (table) => [
   uniqueIndex('order_items_order_item_unique').on(table.orderId, table.itemId),
   index('order_items_order_id_idx').on(table.orderId),
+  index('order_items_set_id_idx').on(table.setId),
   check('requested_quantity_positive', sql`${table.requestedQuantity} > 0`),
   check('retrieved_quantity_non_negative', sql`${table.retrievedQuantity} IS NULL OR ${table.retrievedQuantity} >= 0`),
 ]);
@@ -302,6 +371,10 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   }),
   attributeValues: many(itemAttributeValues),
   orderItems: many(orderItems),
+  // Convenience relation only — no real FK column on `items` (same pattern
+  // as productsRelations' `many(items)` above): which sets this item
+  // belongs to, if any.
+  setItems: many(setItems),
 }));
 
 export const itemAttributeValuesRelations = relations(itemAttributeValues, ({ one }) => ({
@@ -312,6 +385,21 @@ export const itemAttributeValuesRelations = relations(itemAttributeValues, ({ on
   attribute: one(productAttributeKeys, {
     fields: [itemAttributeValues.attributeId],
     references: [productAttributeKeys.id],
+  }),
+}));
+
+export const setsRelations = relations(sets, ({ many }) => ({
+  setItems: many(setItems),
+}));
+
+export const setItemsRelations = relations(setItems, ({ one }) => ({
+  set: one(sets, {
+    fields: [setItems.setId],
+    references: [sets.id],
+  }),
+  item: one(items, {
+    fields: [setItems.itemId],
+    references: [items.id],
   }),
 }));
 
@@ -331,6 +419,10 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   order: one(orders, {
     fields: [orderItems.orderId],
     references: [orders.id],
+  }),
+  set: one(sets, {
+    fields: [orderItems.setId],
+    references: [sets.id],
   }),
   item: one(items, {
     fields: [orderItems.itemId],

@@ -34,6 +34,12 @@ export const icons = {
 	// an order mixes available and unavailable items for the chosen date
 	// range: lets the member split that one item out into its own order.
 	splitOrder: 'tabler:arrows-split-2',
+	// Orders table (OrdersTable.astro): the compact row's view-order action
+	// is icon-only, and the layout toggle switches between the compact and
+	// detailed row components.
+	view: 'tabler:eye',
+	layoutCompact: 'tabler:list',
+	layoutDetailed: 'tabler:layout-list',
 } as const;
 
 export type IconName = keyof typeof icons;

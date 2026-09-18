@@ -1,0 +1,94 @@
+---
+import OrdersTableRow from './OrdersTableRow.astro';
+import OrdersTableRowDetailed from './OrdersTableRowDetailed.astro';
+
+interface OrderRowItem {
+	itemName: string;
+	requestedQuantity: number;
+}
+
+export interface OrdersTableRow {
+	orderCode: string;
+	status: string;
+	fromDate: string;
+	toDate: string;
+	customerName: string;
+	items: OrderRowItem[];
+}
+
+interface Props {
+	orders: OrdersTableRow[];
+	viewHref: (orderCode: string) => string;
+	emptyMessage?: string;
+}
+
+const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
+---
+
+<div class="orders-table flex flex-col gap-2" data-orders-table>
+	{
+		orders.length === 0 ? (
+			<p class="text-sm text-text-muted">{emptyMessage}</p>
+		) : (
+			<>
+				<div class="flex flex-col gap-2" data-orders-layout="compact">
+					{orders.map((order: OrdersTableRow) => (
+						<OrdersTableRow
+							orderCode={order.orderCode}
+							status={order.status}
+							fromDate={order.fromDate}
+							toDate={order.toDate}
+							customerName={order.customerName}
+							viewHref={viewHref(order.orderCode)}
+						/>
+					))}
+				</div>
+				<div class="flex flex-col gap-2" data-orders-layout="detailed" hidden>
+					{orders.map((order: OrdersTableRow) => (
+						<OrdersTableRowDetailed
+							orderCode={order.orderCode}
+							status={order.status}
+							fromDate={order.fromDate}
+							toDate={order.toDate}
+							customerName={order.customerName}
+							items={order.items}
+							viewHref={viewHref(order.orderCode)}
+						/>
+					))}
+				</div>
+			</>
+		)
+	}
+</div>
+
+<script>
+	// Layout choice is per-browser only (not synced server-side) — remembered
+	// across visits via localStorage, same pattern as ThemeToggle.astro. The
+	// toggle buttons live in a separate OrdersLayoutToggle component (so a
+	// page can place them anywhere, e.g. inline with a status filter row)
+	// and talk to this table via a document-level "orders-layout-change"
+	// event plus the same storage key, rather than a DOM relationship.
+	const STORAGE_KEY = 'orders-table-layout';
+
+	document.querySelectorAll<HTMLElement>('[data-orders-table]').forEach((table) => {
+		const compact = table.querySelector<HTMLElement>('[data-orders-layout="compact"]');
+		const detailed = table.querySelector<HTMLElement>('[data-orders-layout="detailed"]');
+
+		function applyLayout(layout: string) {
+			compact?.toggleAttribute('hidden', layout !== 'compact');
+			detailed?.toggleAttribute('hidden', layout !== 'detailed');
+		}
+
+		let stored: string | null = null;
+		try {
+			stored = localStorage.getItem(STORAGE_KEY);
+		} catch {
+			stored = null;
+		}
+		applyLayout(stored === 'detailed' ? 'detailed' : 'compact');
+
+		document.addEventListener('orders-layout-change', (event) => {
+			applyLayout((event as CustomEvent<{ layout: string }>).detail.layout);
+		});
+	});
+</script>

@@ -2,7 +2,7 @@
 export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
-import EmptyCartButton from '../components/cart/EmptyCartButton.astro';
+import CartActionsBar from '../components/cart/CartActionsBar.astro';
 import { getCartItems } from '../lib/cart';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
@@ -72,17 +72,11 @@ const cartItems = await getCartItems(Astro.cookies);
 
 		{
 			cartItems.length > 0 && (
-				<div class="flex items-center justify-between gap-4">
-					<form method="post" action="/api/cart/clear">
-						<EmptyCartButton />
-					</form>
-					<a
-						href="/reservation"
-						class="rounded-md bg-accent px-4 py-2 text-center text-sm font-medium text-text-inverted hover:bg-accent-hover"
-					>
-						Continue to reservation dates
-					</a>
-				</div>
+				<CartActionsBar
+					primaryHref="/reservation"
+					primaryLabel="Continue to reservation dates"
+					clearAction="/api/cart/clear"
+				/>
 			)
 		}
 	</div>

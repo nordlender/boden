@@ -5,6 +5,8 @@ import UserMenu from './nav/UserMenu.astro';
 import UserMenuLinks from './nav/UserMenuLinks.astro';
 import CartButton from './nav/CartButton.astro';
 import ThemeToggle from './nav/ThemeToggle.astro';
+import MorphIcon from 'morphicons/astro';
+import { navMenu } from '../lib/icon-nodes';
 ---
 
 <header class="border-b border-border bg-bg">
@@ -24,14 +26,12 @@ import ThemeToggle from './nav/ThemeToggle.astro';
 					<UserMenu />
 				</div>
 
-				<details class="group relative md:hidden">
+				<details class="nav-menu group relative md:hidden">
 					<summary
-						class="flex cursor-pointer list-none items-center justify-center rounded-md border border-border-strong p-2 text-text-muted hover:bg-bg-subtle [&::-webkit-details-marker]:hidden"
+						class="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle [&::-webkit-details-marker]:hidden"
 						aria-label="Open menu"
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
-						</svg>
+						<MorphIcon icon={navMenu.closed} size={20} class="nav-menu-icon" />
 					</summary>
 					<div class="absolute right-0 z-10 mt-2 w-48 rounded-md border border-border bg-surface p-4 shadow-lg">
 						<NavLinks />
@@ -44,3 +44,20 @@ import ThemeToggle from './nav/ThemeToggle.astro';
 		</div>
 	</nav>
 </header>
+
+<script>
+	import type { MorphIconElement } from 'morphicons/element';
+	import { navMenu } from '../lib/icon-nodes';
+
+	document.addEventListener(
+		'toggle',
+		(event) => {
+			const details = event.target;
+			if (!(details instanceof HTMLDetailsElement) || !details.classList.contains('nav-menu')) return;
+			const icon = details.querySelector<MorphIconElement>('.nav-menu-icon');
+			if (!icon) return;
+			icon.icon = details.open ? navMenu.open : navMenu.closed;
+		},
+		true,
+	);
+</script>

@@ -30,6 +30,10 @@ export const icons = {
 	// Not one of the doc's named placeholders — added for the main-section
 	// search bar, which the doc calls for but doesn't assign an icon to.
 	search: 'tabler:search',
+	// Navbar Account button. A plain static icon on purpose — not morphicons
+	// (see icon-nodes.ts) — since a client-rendered custom element there would
+	// interfere with Astro's prefetch of the link it sits on.
+	user: 'tabler:user',
 	// {separate_order_icon} — reservation page, per-item action offered when
 	// an order mixes available and unavailable items for the chosen date
 	// range: lets the member split that one item out into its own order.

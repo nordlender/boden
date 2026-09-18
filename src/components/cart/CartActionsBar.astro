@@ -1,0 +1,37 @@
+---
+import EmptyCartButton from './EmptyCartButton.astro';
+
+interface Props {
+	primaryHref: string;
+	primaryLabel: string;
+	// Static pages (e.g. /cart) post straight to this action; the JS-driven
+	// cart popup omits it and wires up EmptyCartButton's data-cart-clear
+	// listener itself (see CartSidebar.astro's script).
+	clearAction?: string;
+	// Popup only: starts the clear button hidden until CartSidebar's script
+	// confirms the cart has items.
+	clearHidden?: boolean;
+}
+
+const { primaryHref, primaryLabel, clearAction, clearHidden = false } = Astro.props;
+---
+
+<div class="flex items-stretch gap-4">
+	{
+		clearAction ? (
+			<form method="post" action={clearAction}>
+				<EmptyCartButton class="h-10" />
+			</form>
+		) : (
+			<div data-cart-clear-wrapper hidden={clearHidden}>
+				<EmptyCartButton type="button" class="h-10" />
+			</div>
+		)
+	}
+	<a
+		href={primaryHref}
+		class="flex h-10 flex-1 items-center justify-center rounded-md bg-accent px-4 text-center text-sm font-medium text-text-inverted hover:bg-accent-hover"
+	>
+		{primaryLabel}
+	</a>
+</div>

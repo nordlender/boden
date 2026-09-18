@@ -1,0 +1,24 @@
+---
+import AppIcon from '../icons/AppIcon.astro';
+---
+
+<div class="inline-flex rounded-md border border-border p-0.5" role="group" aria-label="Table layout">
+	<button
+		type="button"
+		data-layout-btn="compact"
+		aria-pressed="true"
+		aria-label="Compact layout"
+		class="rounded px-2 py-1 text-text-muted hover:bg-bg-subtle aria-pressed:bg-bg-subtle aria-pressed:text-text"
+	>
+		<AppIcon name="layoutCompact" size={18} />
+	</button>
+	<button
+		type="button"
+		data-layout-btn="detailed"
+		aria-pressed="false"
+		aria-label="Detailed layout"
+		class="rounded px-2 py-1 text-text-muted hover:bg-bg-subtle aria-pressed:bg-bg-subtle aria-pressed:text-text"
+	>
+		<AppIcon name="layoutDetailed" size={18} />
+	</button>
+</div>

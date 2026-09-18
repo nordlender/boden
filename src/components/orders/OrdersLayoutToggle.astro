@@ -2,7 +2,7 @@
 import AppIcon from '../icons/AppIcon.astro';
 ---
 
-<div class="inline-flex rounded-md border border-border p-0.5" role="group" aria-label="Table layout">
+<div class="inline-flex rounded-md border border-border p-0.5" role="group" aria-label="Table layout" data-orders-layout-toggle>
 	<button
 		type="button"
 		data-layout-btn="compact"
@@ -22,3 +22,42 @@ import AppIcon from '../icons/AppIcon.astro';
 		<AppIcon name="layoutDetailed" size={18} />
 	</button>
 </div>
+
+<script>
+	// Standalone so a page can place it anywhere (e.g. inline with the admin
+	// status filters) rather than being pinned inside OrdersTable's own
+	// markup. Talks to any OrdersTable on the page via a "orders-layout-change"
+	// event plus the same localStorage key, instead of a DOM relationship.
+	const STORAGE_KEY = 'orders-table-layout';
+
+	function currentLayout(): 'compact' | 'detailed' {
+		try {
+			return localStorage.getItem(STORAGE_KEY) === 'detailed' ? 'detailed' : 'compact';
+		} catch {
+			return 'compact';
+		}
+	}
+
+	document.querySelectorAll<HTMLElement>('[data-orders-layout-toggle]').forEach((toggle) => {
+		const buttons = toggle.querySelectorAll<HTMLButtonElement>('[data-layout-btn]');
+
+		function reflect(layout: string) {
+			buttons.forEach((btn) => btn.setAttribute('aria-pressed', String(btn.dataset.layoutBtn === layout)));
+		}
+
+		reflect(currentLayout());
+
+		buttons.forEach((btn) => {
+			btn.addEventListener('click', () => {
+				const layout = btn.dataset.layoutBtn ?? 'compact';
+				reflect(layout);
+				try {
+					localStorage.setItem(STORAGE_KEY, layout);
+				} catch {
+					// localStorage unavailable (private mode, etc.) - the event below still switches this view.
+				}
+				document.dispatchEvent(new CustomEvent('orders-layout-change', { detail: { layout } }));
+			});
+		});
+	});
+</script>

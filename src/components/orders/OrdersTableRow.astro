@@ -10,13 +10,9 @@ interface Props {
 	toDate: string;
 	customerName: string;
 	viewHref: string;
-	// Detailed rows (OrdersTableRowDetailed.astro) pass this to render the
-	// view button with its "View order" label; the compact row leaves it
-	// unset for an icon-only button. Either way the eye icon is the same.
-	showViewLabel?: boolean;
 }
 
-const { orderCode, status, fromDate, toDate, customerName, viewHref, showViewLabel = false } = Astro.props;
+const { orderCode, status, fromDate, toDate, customerName, viewHref } = Astro.props;
 ---
 
 <div class="flex flex-col gap-2 rounded-md border border-border px-3 py-2 text-sm">
@@ -28,13 +24,9 @@ const { orderCode, status, fromDate, toDate, customerName, viewHref, showViewLab
 		<a
 			href={viewHref}
 			aria-label={`View order #${orderCode}`}
-			class:list={[
-				'inline-flex items-center rounded-md border border-border text-text-muted hover:bg-bg-subtle hover:text-text',
-				showViewLabel ? 'gap-1.5 px-3 py-1.5 text-sm font-medium text-text' : 'justify-center p-1.5',
-			]}
+			class="inline-flex items-center justify-center rounded-md border border-border p-1.5 text-text-muted hover:bg-bg-subtle hover:text-text"
 		>
-			<AppIcon name="view" size={showViewLabel ? 16 : 18} />
-			{showViewLabel && 'View order'}
+			<AppIcon name="view" size={18} />
 		</a>
 	</div>
 	<slot />

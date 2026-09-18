@@ -19,7 +19,7 @@ interface Props {
 const { items, ...rowProps } = Astro.props;
 ---
 
-<OrdersTableRow {...rowProps} showViewLabel>
+<OrdersTableRow {...rowProps}>
 	<ul class="flex flex-col gap-1 pl-1 text-text-muted">
 		{
 			items.map((item) => (

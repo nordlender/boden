@@ -1,0 +1,38 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { db } from '../../db/client';
+import OrdersTable from '../../components/orders/OrdersTable.astro';
+import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
+
+// Gated by src/middleware/index.ts (MEMBER_ROUTE_PREFIXES via /orders) —
+// reached only when logged in, so Astro.locals.user is non-null here.
+const userId = Astro.locals.user?.id ?? '';
+
+const userOrders = await db.query.orders.findMany({
+	where: (t, { eq }) => eq(t.userId, userId),
+	orderBy: (t, { desc }) => [desc(t.createdAt)],
+	with: { orderItems: { with: { item: true } } },
+});
+
+const rows: OrdersTableRow[] = userOrders.map((order) => ({
+	orderCode: order.orderCode,
+	status: order.status,
+	fromDate: order.fromDate,
+	toDate: order.toDate,
+	customerName: order.contactName,
+	items: order.orderItems.map((oi) => ({
+		itemName: oi.item.name,
+		requestedQuantity: oi.requestedQuantity,
+	})),
+}));
+---
+
+<BaseLayout title="My orders">
+	<div class="mx-auto flex max-w-3xl flex-col gap-6 p-6">
+		<h1 class="text-2xl font-semibold tracking-tight text-text">My orders</h1>
+
+		<OrdersTable orders={rows} viewHref={(code) => `/orders/${code}`} emptyMessage="You haven't placed any orders yet." />
+	</div>
+</BaseLayout>

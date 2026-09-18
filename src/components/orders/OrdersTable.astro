@@ -1,5 +1,5 @@
 ---
-import OrdersTableRowCompact from './OrdersTableRowCompact.astro';
+import OrdersTableRow from './OrdersTableRow.astro';
 import OrdersTableRowDetailed from './OrdersTableRowDetailed.astro';
 import OrdersLayoutToggle from './OrdersLayoutToggle.astro';
 
@@ -38,7 +38,7 @@ const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 			<>
 				<div class="flex flex-col gap-2" data-orders-layout="compact">
 					{orders.map((order) => (
-						<OrdersTableRowCompact
+						<OrdersTableRow
 							orderCode={order.orderCode}
 							status={order.status}
 							fromDate={order.fromDate}

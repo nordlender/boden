@@ -1,0 +1,41 @@
+---
+import { formatDateDisplay } from '../../lib/dates';
+import OrderStatusBadge from './OrderStatusBadge.astro';
+import AppIcon from '../icons/AppIcon.astro';
+
+interface Props {
+	orderCode: string;
+	status: string;
+	fromDate: string;
+	toDate: string;
+	customerName: string;
+	viewHref: string;
+	// Detailed rows (OrdersTableRowDetailed.astro) pass this to render the
+	// view button with its "View order" label; the compact row leaves it
+	// unset for an icon-only button. Either way the eye icon is the same.
+	showViewLabel?: boolean;
+}
+
+const { orderCode, status, fromDate, toDate, customerName, viewHref, showViewLabel = false } = Astro.props;
+---
+
+<div class="flex flex-col gap-2 rounded-md border border-border px-3 py-2 text-sm">
+	<div class="grid grid-cols-[auto_1fr_1fr_auto_auto] items-center gap-3">
+		<OrderStatusBadge status={status} />
+		<span class="text-text-muted">{formatDateDisplay(fromDate)} &ndash; {formatDateDisplay(toDate)}</span>
+		<span class="truncate font-medium text-text">{customerName}</span>
+		<span class="font-mono text-text-muted">#{orderCode}</span>
+		<a
+			href={viewHref}
+			aria-label={`View order #${orderCode}`}
+			class:list={[
+				'inline-flex items-center rounded-md border border-border text-text-muted hover:bg-bg-subtle hover:text-text',
+				showViewLabel ? 'gap-1.5 px-3 py-1.5 text-sm font-medium text-text' : 'justify-center p-1.5',
+			]}
+		>
+			<AppIcon name="view" size={showViewLabel ? 16 : 18} />
+			{showViewLabel && 'View order'}
+		</a>
+	</div>
+	<slot />
+</div>

@@ -1,0 +1,27 @@
+---
+interface OrderItemView {
+	itemName: string;
+	requestedQuantity: number;
+}
+
+interface Props {
+	items: OrderItemView[];
+	note: string | null;
+}
+
+const { items, note } = Astro.props;
+---
+
+<section class="flex flex-col gap-2">
+	<h2 class="text-sm font-semibold tracking-wide text-text-muted uppercase">Items</h2>
+	<ul class="flex flex-col gap-1 text-sm text-text">
+		{
+			items.map((item) => (
+				<li>
+					{item.itemName} &times; {item.requestedQuantity}
+				</li>
+			))
+		}
+	</ul>
+	{note && <p class="text-sm text-text-muted">Note: {note}</p>}
+</section>

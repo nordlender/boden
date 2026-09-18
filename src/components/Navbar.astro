@@ -1,46 +1,7 @@
 ---
-import Logo from './nav/Logo.astro';
-import NavLinks from './nav/NavLinks.astro';
-import UserMenu from './nav/UserMenu.astro';
-import UserMenuLinks from './nav/UserMenuLinks.astro';
-import CartButton from './nav/CartButton.astro';
-import ThemeToggle from './nav/ThemeToggle.astro';
+import BaseNavbar from './nav/BaseNavbar.astro';
+
+const links = [{ href: '/', label: 'Shop' }];
 ---
 
-<header class="border-b border-border bg-bg">
-	<nav class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-		<Logo />
-
-		<div class="flex items-center gap-6">
-			<div class="hidden md:block">
-				<NavLinks />
-			</div>
-
-			<div class="flex items-center gap-2">
-				<CartButton />
-				<ThemeToggle />
-
-				<div class="hidden md:block">
-					<UserMenu />
-				</div>
-
-				<details class="group relative md:hidden">
-					<summary
-						class="flex cursor-pointer list-none items-center justify-center rounded-md border border-border-strong p-2 text-text-muted hover:bg-bg-subtle [&::-webkit-details-marker]:hidden"
-						aria-label="Open menu"
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
-						</svg>
-					</summary>
-					<div class="absolute right-0 z-10 mt-2 w-48 rounded-md border border-border bg-surface p-4 shadow-lg">
-						<NavLinks />
-						<div class="mt-3 border-t border-border pt-3">
-							<UserMenuLinks />
-						</div>
-					</div>
-				</details>
-			</div>
-		</div>
-	</nav>
-</header>
+<BaseNavbar links={links} showCart={true} />

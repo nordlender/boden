@@ -1,4 +1,5 @@
 ---
+import EmptyCartButton from './EmptyCartButton.astro';
 ---
 
 <div data-cart-backdrop class="fixed inset-0 z-40 hidden bg-overlay"></div>
@@ -21,6 +22,9 @@
 	</div>
 
 	<div class="border-t border-border p-4">
+		<div data-cart-clear-wrapper hidden class="mb-2 flex justify-end">
+			<EmptyCartButton type="button" />
+		</div>
 		<a
 			href="/cart"
 			class="block rounded-md bg-accent px-4 py-2 text-center text-sm font-medium text-text-inverted hover:bg-accent-hover"
@@ -49,6 +53,8 @@
 	const backdrop = document.querySelector<HTMLElement>('[data-cart-backdrop]');
 	const list = document.querySelector<HTMLElement>('[data-cart-list]');
 	const emptyMessage = document.querySelector<HTMLElement>('[data-cart-empty]');
+	const clearWrapper = document.querySelector<HTMLElement>('[data-cart-clear-wrapper]');
+	const clearButton = document.querySelector<HTMLButtonElement>('[data-cart-clear]');
 	const toggleButtons = document.querySelectorAll<HTMLElement>('[data-cart-toggle]');
 
 	if (sidebar && backdrop && list && emptyMessage) {
@@ -67,9 +73,11 @@
 
 			if (cartItems.length === 0) {
 				emptyMessage!.hidden = false;
+				if (clearWrapper) clearWrapper.hidden = true;
 				return;
 			}
 			emptyMessage!.hidden = true;
+			if (clearWrapper) clearWrapper.hidden = false;
 
 			for (const item of cartItems) {
 				const row = document.createElement('div');
@@ -134,6 +142,11 @@
 
 		document.querySelectorAll('[data-cart-close]').forEach((button) => {
 			button.addEventListener('click', () => setOpen(false));
+		});
+
+		clearButton?.addEventListener('click', async () => {
+			await fetch('/api/cart/clear', { method: 'POST' });
+			loadCart();
 		});
 
 		backdrop.addEventListener('click', () => setOpen(false));

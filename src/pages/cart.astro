@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
+import EmptyCartButton from '../components/cart/EmptyCartButton.astro';
 import { getCartItems } from '../lib/cart';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
@@ -15,12 +16,7 @@ const cartItems = await getCartItems(Astro.cookies);
 			{
 				cartItems.length > 0 && (
 					<form method="post" action="/api/cart/clear">
-						<button
-							type="submit"
-							class="flex items-center gap-1 rounded border border-error-border px-2.5 py-1.5 text-sm text-error hover:bg-error-subtle"
-						>
-							Empty cart
-						</button>
+						<EmptyCartButton />
 					</form>
 				)
 			}

@@ -1,7 +1,5 @@
 ---
-import { formatDateDisplay } from '../../lib/dates';
-import OrderStatusBadge from './OrderStatusBadge.astro';
-import AppIcon from '../icons/AppIcon.astro';
+import OrdersTableRow from './OrdersTableRow.astro';
 
 interface OrderRowItem {
 	itemName: string;
@@ -18,24 +16,10 @@ interface Props {
 	viewHref: string;
 }
 
-const { orderCode, status, fromDate, toDate, customerName, items, viewHref } = Astro.props;
+const { items, ...rowProps } = Astro.props;
 ---
 
-<div class="flex flex-col gap-2 rounded-md border border-border px-3 py-2 text-sm">
-	<div class="grid grid-cols-[auto_1fr_1fr_auto_auto] items-center gap-3">
-		<OrderStatusBadge status={status} />
-		<span class="text-text-muted">{formatDateDisplay(fromDate)} &ndash; {formatDateDisplay(toDate)}</span>
-		<span class="truncate font-medium text-text">{customerName}</span>
-		<span class="font-mono text-text-muted">#{orderCode}</span>
-		<a
-			href={viewHref}
-			aria-label={`View order #${orderCode}`}
-			class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-text hover:bg-bg-subtle"
-		>
-			<AppIcon name="view" size={16} />
-			View order
-		</a>
-	</div>
+<OrdersTableRow {...rowProps} showViewLabel>
 	<ul class="flex flex-col gap-1 pl-1 text-text-muted">
 		{
 			items.map((item) => (
@@ -45,4 +29,4 @@ const { orderCode, status, fromDate, toDate, customerName, items, viewHref } = A
 			))
 		}
 	</ul>
-</div>
+</OrdersTableRow>

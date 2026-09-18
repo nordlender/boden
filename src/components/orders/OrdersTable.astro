@@ -1,0 +1,105 @@
+---
+import OrdersTableRowCompact from './OrdersTableRowCompact.astro';
+import OrdersTableRowDetailed from './OrdersTableRowDetailed.astro';
+import OrdersLayoutToggle from './OrdersLayoutToggle.astro';
+
+interface OrderRowItem {
+	itemName: string;
+	requestedQuantity: number;
+}
+
+export interface OrdersTableRow {
+	orderCode: string;
+	status: string;
+	fromDate: string;
+	toDate: string;
+	customerName: string;
+	items: OrderRowItem[];
+}
+
+interface Props {
+	orders: OrdersTableRow[];
+	viewHref: (orderCode: string) => string;
+	emptyMessage?: string;
+}
+
+const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
+---
+
+<div class="orders-table flex flex-col gap-2" data-orders-table>
+	<div class="flex justify-end">
+		<OrdersLayoutToggle />
+	</div>
+
+	{
+		orders.length === 0 ? (
+			<p class="text-sm text-text-muted">{emptyMessage}</p>
+		) : (
+			<>
+				<div class="flex flex-col gap-2" data-orders-layout="compact">
+					{orders.map((order) => (
+						<OrdersTableRowCompact
+							orderCode={order.orderCode}
+							status={order.status}
+							fromDate={order.fromDate}
+							toDate={order.toDate}
+							customerName={order.customerName}
+							viewHref={viewHref(order.orderCode)}
+						/>
+					))}
+				</div>
+				<div class="flex flex-col gap-2" data-orders-layout="detailed" hidden>
+					{orders.map((order) => (
+						<OrdersTableRowDetailed
+							orderCode={order.orderCode}
+							status={order.status}
+							fromDate={order.fromDate}
+							toDate={order.toDate}
+							customerName={order.customerName}
+							items={order.items}
+							viewHref={viewHref(order.orderCode)}
+						/>
+					))}
+				</div>
+			</>
+		)
+	}
+</div>
+
+<script>
+	// Layout choice is per-browser only (not synced server-side) — remembered
+	// across visits via localStorage, same pattern as ThemeToggle.astro.
+	const STORAGE_KEY = 'orders-table-layout';
+
+	document.querySelectorAll<HTMLElement>('[data-orders-table]').forEach((table) => {
+		const compact = table.querySelector<HTMLElement>('[data-orders-layout="compact"]');
+		const detailed = table.querySelector<HTMLElement>('[data-orders-layout="detailed"]');
+		const buttons = table.querySelectorAll<HTMLButtonElement>('[data-layout-btn]');
+
+		function applyLayout(layout: string) {
+			compact?.toggleAttribute('hidden', layout !== 'compact');
+			detailed?.toggleAttribute('hidden', layout !== 'detailed');
+			buttons.forEach((btn) => btn.setAttribute('aria-pressed', String(btn.dataset.layoutBtn === layout)));
+		}
+
+		let stored: string | null = null;
+		try {
+			stored = localStorage.getItem(STORAGE_KEY);
+		} catch {
+			stored = null;
+		}
+		applyLayout(stored === 'detailed' ? 'detailed' : 'compact');
+
+		buttons.forEach((btn) => {
+			btn.addEventListener('click', () => {
+				const layout = btn.dataset.layoutBtn ?? 'compact';
+				applyLayout(layout);
+				try {
+					localStorage.setItem(STORAGE_KEY, layout);
+				} catch {
+					// localStorage unavailable (private mode, etc.) - layout still switches for this view.
+				}
+			});
+		});
+	});
+</script>

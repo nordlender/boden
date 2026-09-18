@@ -4,6 +4,7 @@ export const prerender = false;
 // Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
 // reached only when logged in with role === 'admin'.
 import '../../styles/global.css';
+import ThemeInit from '../../components/ThemeInit.astro';
 import AdminNavbar from '../../components/AdminNavbar.astro';
 import { listAvailablePickupDates } from '../../lib/pickupDays';
 
@@ -26,6 +27,7 @@ function formatDisplay(value: string) {
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width" />
 		<title>Pick-up days</title>
+		<ThemeInit />
 	</head>
 	<body class="min-h-screen bg-slate-100">
 		<AdminNavbar />

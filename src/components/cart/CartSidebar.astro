@@ -21,13 +21,13 @@ import EmptyCartButton from './EmptyCartButton.astro';
 		<p data-cart-empty class="py-6 text-sm text-text-muted">Your cart is empty.</p>
 	</div>
 
-	<div class="border-t border-border p-4">
-		<div data-cart-clear-wrapper hidden class="mb-2 flex justify-end">
+	<div class="flex items-center justify-between gap-4 border-t border-border p-4">
+		<div data-cart-clear-wrapper hidden>
 			<EmptyCartButton type="button" />
 		</div>
 		<a
 			href="/cart"
-			class="block rounded-md bg-accent px-4 py-2 text-center text-sm font-medium text-text-inverted hover:bg-accent-hover"
+			class="flex-1 rounded-md bg-accent px-4 py-2 text-center text-sm font-medium text-text-inverted hover:bg-accent-hover"
 		>
 			Review order
 		</a>

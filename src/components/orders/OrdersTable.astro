@@ -1,7 +1,6 @@
 ---
 import OrdersTableRow from './OrdersTableRow.astro';
 import OrdersTableRowDetailed from './OrdersTableRowDetailed.astro';
-import OrdersLayoutToggle from './OrdersLayoutToggle.astro';
 
 interface OrderRowItem {
 	itemName: string;
@@ -27,17 +26,13 @@ const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 ---
 
 <div class="orders-table flex flex-col gap-2" data-orders-table>
-	<div class="flex justify-end">
-		<OrdersLayoutToggle />
-	</div>
-
 	{
 		orders.length === 0 ? (
 			<p class="text-sm text-text-muted">{emptyMessage}</p>
 		) : (
 			<>
 				<div class="flex flex-col gap-2" data-orders-layout="compact">
-					{orders.map((order) => (
+					{orders.map((order: OrdersTableRow) => (
 						<OrdersTableRow
 							orderCode={order.orderCode}
 							status={order.status}
@@ -49,7 +44,7 @@ const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 					))}
 				</div>
 				<div class="flex flex-col gap-2" data-orders-layout="detailed" hidden>
-					{orders.map((order) => (
+					{orders.map((order: OrdersTableRow) => (
 						<OrdersTableRowDetailed
 							orderCode={order.orderCode}
 							status={order.status}
@@ -68,18 +63,20 @@ const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 
 <script>
 	// Layout choice is per-browser only (not synced server-side) — remembered
-	// across visits via localStorage, same pattern as ThemeToggle.astro.
+	// across visits via localStorage, same pattern as ThemeToggle.astro. The
+	// toggle buttons live in a separate OrdersLayoutToggle component (so a
+	// page can place them anywhere, e.g. inline with a status filter row)
+	// and talk to this table via a document-level "orders-layout-change"
+	// event plus the same storage key, rather than a DOM relationship.
 	const STORAGE_KEY = 'orders-table-layout';
 
 	document.querySelectorAll<HTMLElement>('[data-orders-table]').forEach((table) => {
 		const compact = table.querySelector<HTMLElement>('[data-orders-layout="compact"]');
 		const detailed = table.querySelector<HTMLElement>('[data-orders-layout="detailed"]');
-		const buttons = table.querySelectorAll<HTMLButtonElement>('[data-layout-btn]');
 
 		function applyLayout(layout: string) {
 			compact?.toggleAttribute('hidden', layout !== 'compact');
 			detailed?.toggleAttribute('hidden', layout !== 'detailed');
-			buttons.forEach((btn) => btn.setAttribute('aria-pressed', String(btn.dataset.layoutBtn === layout)));
 		}
 
 		let stored: string | null = null;
@@ -90,16 +87,8 @@ const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 		}
 		applyLayout(stored === 'detailed' ? 'detailed' : 'compact');
 
-		buttons.forEach((btn) => {
-			btn.addEventListener('click', () => {
-				const layout = btn.dataset.layoutBtn ?? 'compact';
-				applyLayout(layout);
-				try {
-					localStorage.setItem(STORAGE_KEY, layout);
-				} catch {
-					// localStorage unavailable (private mode, etc.) - layout still switches for this view.
-				}
-			});
+		document.addEventListener('orders-layout-change', (event) => {
+			applyLayout((event as CustomEvent<{ layout: string }>).detail.layout);
 		});
 	});
 </script>

@@ -3,6 +3,11 @@ export interface NavLink {
 	href: string;
 	label: string;
 	disabled?: boolean;
+	// Only shown once the client-side session check (see UserMenuLinks.astro)
+	// confirms the visitor is signed in. Needed because pages using this
+	// component can be prerendered (no per-request Astro.locals.user), so the
+	// gate can't be done server-side here — see Navbar.astro.
+	authOnly?: boolean;
 }
 
 interface Props {
@@ -22,7 +27,7 @@ const { links } = Astro.props;
 					</span>
 				</li>
 			) : (
-				<li>
+				<li {...(link.authOnly ? { 'data-signed-in': true, hidden: true } : {})}>
 					<a href={link.href} class="text-sm text-text-muted hover:text-text">
 						{link.label}
 					</a>

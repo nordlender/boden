@@ -1,7 +1,14 @@
 ---
 import BaseNavbar from './nav/BaseNavbar.astro';
 
-const links = [{ href: '/', label: 'Shop' }];
+// `authOnly` is resolved client-side (see NavLinks.astro / UserMenuLinks.astro)
+// rather than via Astro.locals.user, since this navbar is also rendered on
+// prerendered pages (e.g. the shop homepage) where there's no per-request
+// session to read server-side.
+const links = [
+	{ href: '/', label: 'Shop' },
+	{ href: '/orders', label: 'My orders', authOnly: true },
+];
 ---
 
 <BaseNavbar links={links} showCart={true} />

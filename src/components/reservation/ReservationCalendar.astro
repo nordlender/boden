@@ -1,0 +1,240 @@
+---
+// Date-range picker for the reservation page. Cally
+// (https://github.com/WickyNilliams/cally) ships a <calendar-range> custom
+// element with no imposed styling — the `::part()` rules below are what
+// make it look like the rest of the site (gray-900/gray-200 palette,
+// rounded corners, same font as everything else).
+//
+// `import 'cally'` (which registers the custom elements) lives in the
+// <script> block below, NOT in this frontmatter — Astro's frontmatter runs
+// server-side only and is never shipped to the browser, so a side-effect
+// import up here would leave the client with an inert <calendar-range> that
+// never upgrades. The <script> block is compiled as a real client module,
+// which is where the registration needs to happen.
+interface Props {
+	// Pick-up days (first day of the range — see src/db/schema.ts's
+	// orders.fromDate) with a moderator confirmed available to hand out
+	// orders, per src/lib/pickupDays.ts. Colored green in the calendar;
+	// everything else is left at the default "request pick up" styling.
+	availablePickupDates?: string[];
+	// Preselects an existing range — "YYYY-MM-DD/YYYY-MM-DD", same shape as
+	// this component's own `change` event value. Used by the reschedule flow
+	// (ChangeOrderLink.astro) to open the calendar already showing the
+	// order's current dates; unset for a fresh pick (the /reservation page).
+	value?: string;
+	// Caps how far a second click can land after the first — see the
+	// `change` listener below. Unset (the /reservation page's current
+	// usage) leaves selection unbounded client-side; the server-side cap in
+	// isValidDateRange (src/lib/reservation.ts) always applies regardless.
+	maxRangeDays?: number;
+}
+
+const { availablePickupDates = [], value, maxRangeDays } = Astro.props;
+const todayIso = new Date().toISOString().slice(0, 10);
+---
+
+<div class="reservation-calendar rounded-lg border border-gray-200 bg-white p-3">
+	<ul class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+		<li class="flex items-center gap-1.5">
+			<span class="h-3 w-3 rounded-full bg-green-100 ring-1 ring-inset ring-green-400" aria-hidden="true"></span>
+			Pick up available
+		</li>
+		<li class="flex items-center gap-1.5">
+			<span class="h-3 w-3 rounded-full border border-gray-300" aria-hidden="true"></span>
+			Request pick up
+		</li>
+	</ul>
+
+	<calendar-range
+		data-reservation-calendar
+		months={2}
+		page-by="single"
+		min={todayIso}
+		value={value}
+		data-available-pickup-dates={JSON.stringify(availablePickupDates)}
+		data-max-range-days={maxRangeDays}
+	>
+		<svg slot="previous" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+			<path d="M15 6l-6 6l6 6" />
+		</svg>
+		<svg slot="next" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+			<path d="M9 6l6 6l-6 6" />
+		</svg>
+		<calendar-month></calendar-month>
+		<calendar-month offset={1}></calendar-month>
+	</calendar-range>
+
+	<p class="mt-2 text-sm text-gray-600">
+		<span data-range-summary>Select a pick-up and return date.</span>
+	</p>
+</div>
+
+<style>
+	.reservation-calendar calendar-range {
+		--color-accent: var(--color-gray-900);
+		display: block;
+		width: 100%;
+		font-family: inherit;
+		font-size: 0.875rem;
+	}
+
+	/* Cally's shadow DOM renders ::part(container) (column flex: the
+	   header — prev/next/heading — above ::part(months), the <slot> the two
+	   <calendar-month> children below land in) and both parts default to a
+	   content-fit width, not a stretched one. Widen everything to fill this
+	   card, and only flip ::part(months) to a row once there's room — the
+	   header always stays above regardless of layout.
+	   A container query (not a viewport media query) drives that switch:
+	   this card is embedded both in the full-width /reservation page and in
+	   ChangeOrderLink.astro's ~28rem modal, so sizing off the viewport made
+	   the two-month row kick in inside the narrow modal too — squeezing both
+	   months into a card far narrower than the row layout needs and
+	   misaligning the grid. Querying this card's own inline size instead
+	   keeps the modal on the single-column layout it actually has room for. */
+	.reservation-calendar {
+		container-type: inline-size;
+	}
+
+	.reservation-calendar calendar-range::part(container),
+	.reservation-calendar calendar-range::part(header) {
+		width: 100%;
+	}
+
+	.reservation-calendar calendar-range::part(months) {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		width: 100%;
+	}
+
+	.reservation-calendar calendar-range calendar-month {
+		width: 100%;
+	}
+
+	/* Two months side by side need roughly 30rem+ of card width to stay
+	   legible — narrower than that (e.g. the reschedule modal) stays
+	   single-column, scrolled or stacked, regardless of viewport size. */
+	@container (min-width: 30rem) {
+		.reservation-calendar calendar-range::part(months) {
+			flex-direction: row;
+		}
+
+		.reservation-calendar calendar-range calendar-month {
+			width: auto;
+			min-width: 0;
+			flex: 1 1 0%;
+		}
+	}
+
+	.reservation-calendar calendar-range::part(button) {
+		border-radius: 0.375rem;
+		color: var(--color-gray-600);
+	}
+
+	.reservation-calendar calendar-range::part(button):hover {
+		background-color: var(--color-gray-100);
+	}
+
+	.reservation-calendar calendar-range::part(head) {
+		font-weight: 600;
+		color: var(--color-gray-900);
+	}
+
+	.reservation-calendar calendar-range::part(day) {
+		border-radius: 0.375rem;
+	}
+
+	.reservation-calendar calendar-range::part(today) {
+		font-weight: 700;
+	}
+
+	/* Availability tint — declared before range-start/range-end/range-inner
+	   below so an actual selection always visually wins over it. */
+	.reservation-calendar calendar-range::part(pickup-available) {
+		background-color: var(--color-green-50);
+		box-shadow: inset 0 0 0 1px var(--color-green-300);
+		color: var(--color-green-800);
+	}
+
+	.reservation-calendar calendar-range::part(range-inner) {
+		background-color: var(--color-gray-100);
+		color: var(--color-gray-900);
+	}
+
+	.reservation-calendar calendar-range::part(range-start),
+	.reservation-calendar calendar-range::part(range-end) {
+		background-color: var(--color-gray-900);
+		color: white;
+	}
+</style>
+
+<script>
+	import 'cally';
+	import { formatDateDisplay } from '../../lib/dates';
+
+	type RangeCalendar = HTMLElement & {
+		value?: string;
+		max?: string;
+		getDayParts?: (date: Date) => string;
+	};
+
+	const calendar = document.querySelector<RangeCalendar>('[data-reservation-calendar]');
+	const summary = document.querySelector<HTMLElement>('[data-range-summary]');
+	const maxRangeDays = calendar ? Number(calendar.dataset.maxRangeDays || '') || undefined : undefined;
+
+	if (calendar) {
+		let availableDates: Set<string>;
+		try {
+			availableDates = new Set(JSON.parse(calendar.dataset.availablePickupDates ?? '[]'));
+		} catch {
+			availableDates = new Set();
+		}
+
+		calendar.getDayParts = (date) => (availableDates.has(date.toISOString().slice(0, 10)) ? 'pickup-available' : '');
+	}
+
+	// Adds `days - 1` to `from` (inclusive range: a 1-day cap means from===to).
+	function addDaysIso(date: string, days: number) {
+		const d = new Date(`${date}T00:00:00Z`);
+		d.setUTCDate(d.getUTCDate() + days);
+		return d.toISOString().slice(0, 10);
+	}
+
+	// Fires once the calendar first upgrades even with a preselected `value`
+	// and no user interaction yet — show that preselection in the summary.
+	if (calendar?.value) {
+		const [initialFrom, initialTo] = calendar.value.split('/').filter(Boolean);
+		if (summary && initialFrom && initialTo) {
+			summary.textContent = `Pick-up ${formatDateDisplay(initialFrom)} · Return ${formatDateDisplay(initialTo)}`;
+		}
+	}
+
+	calendar?.addEventListener('change', () => {
+		// Cally's <calendar-range> reports the selection as a single
+		// slash-separated `value` string ("YYYY-MM-DD/YYYY-MM-DD") once both
+		// ends are picked — confirmed against cally's source (the `value`
+		// hook calendar-range uses joins with "/", unlike calendar-multi's
+		// space-separated one). Splitting on whitespace here left `to`
+		// undefined on every real selection, which silently reset the whole
+		// form back to its unselected state instead of ever calling
+		// /api/reservation/availability.
+		const value = calendar.value ?? '';
+		const [from, to] = value.split('/').filter(Boolean);
+
+		// A `from` picked without a `to` yet is the first click of a fresh
+		// selection — cap how far the second click can land. Reset once a
+		// full range lands (or the selection clears) so a later fresh pick
+		// isn't left capped from a stale prior computation.
+		if (maxRangeDays && from && !to) {
+			calendar.max = addDaysIso(from, maxRangeDays - 1);
+		} else if (!from) {
+			calendar.max = '';
+		}
+
+		if (summary) {
+			summary.textContent = from && to ? `Pick-up ${formatDateDisplay(from)} · Return ${formatDateDisplay(to)}` : 'Select a pick-up and return date.';
+		}
+
+		calendar.dispatchEvent(new CustomEvent('reservation-range-change', { bubbles: true, detail: { from, to } }));
+	});
+</script>

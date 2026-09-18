@@ -14,38 +14,52 @@ const { name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
 // not something a member can self-report, hence readonly (not disabled: a
 // disabled field wouldn't submit with the form once order persistence exists).
 const yesNo = (value: boolean | null) => (value === null ? 'Unknown' : value ? 'Yes' : 'No');
+
+const fieldClass = 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none';
+const readonlyFieldClass = `${fieldClass} bg-gray-50 text-gray-500`;
+const labelClass = 'block text-sm font-medium text-gray-700';
 ---
 
-<form class="checkout-form" method="POST" action="/api/orders/create">
+<form class="checkout-form flex flex-col gap-4" method="POST" action="/api/orders/create">
+	<input type="hidden" name="fromDate" data-checkout-from-date />
+	<input type="hidden" name="toDate" data-checkout-to-date />
+	<input type="hidden" name="splitItemIds" data-checkout-split-item-ids />
 	{/* TODO: Style later, warning? — this is advisory ("you can still submit"), not a blocking error. */}
 	{hasUnpaidFees && (
 		<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
 			Note: you have an unpaid fee. You can still submit the form. Please check your payments on osiklatring.no. If you have paid the current semester fee, this could be an error.
 		</p>
 	)}
-	<label>
+	<label class={labelClass}>
 		Name
-		<input type="text" name="name" value={name ?? ''} required />
+		<input type="text" name="name" value={name ?? ''} required class={`${fieldClass} mt-1`} />
 	</label>
-	<label>
+	<label class={labelClass}>
 		Email
-		<input type="email" name="email" value={email ?? ''} required />
+		<input type="email" name="email" value={email ?? ''} required class={`${fieldClass} mt-1`} />
 	</label>
-	<label>
+	<label class={labelClass}>
 		Mobile
-		<input type="tel" name="mobile" value={mobile ?? ''} />
+		<input type="tel" name="mobile" value={mobile ?? ''} class={`${fieldClass} mt-1`} />
 	</label>
-	<label>
-		Unpaid fee?
-		<input type="text" name="hasUnpaidFees" value={yesNo(hasUnpaidFees)} readonly />
-	</label>
-	<label>
-		Member?
-		<input type="text" name="userIsMember" value={yesNo(userIsMember)} readonly />
-	</label>
-	<label>
+	<div class="grid grid-cols-2 gap-4">
+		<label class={labelClass}>
+			Unpaid fee?
+			<input type="text" name="hasUnpaidFees" value={yesNo(hasUnpaidFees)} readonly class={`${readonlyFieldClass} mt-1`} />
+		</label>
+		<label class={labelClass}>
+			Member?
+			<input type="text" name="userIsMember" value={yesNo(userIsMember)} readonly class={`${readonlyFieldClass} mt-1`} />
+		</label>
+	</div>
+	<label class={labelClass}>
 		Note
-		<textarea name="note" placeholder="Optional note for the moderator"></textarea>
+		<textarea name="note" placeholder="Optional note for the moderator" rows={3} class={`${fieldClass} mt-1`}></textarea>
 	</label>
-	<button type="submit">Place order</button>
+	<button
+		type="submit"
+		class="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
+	>
+		Place order
+	</button>
 </form>

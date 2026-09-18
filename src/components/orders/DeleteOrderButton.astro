@@ -1,0 +1,65 @@
+---
+interface Props {
+	orderCode: string;
+	status: string;
+}
+
+const { orderCode, status } = Astro.props;
+---
+
+{
+	status === 'requested' && (
+		<div data-delete-order={orderCode}>
+			<button
+				type="button"
+				data-delete-order-trigger
+				class="rounded-md border border-error-border px-3 py-1.5 text-sm font-medium text-error-text hover:bg-error-subtle"
+			>
+				Delete order
+			</button>
+			<p data-delete-order-error hidden class="mt-2 text-sm text-error-text" />
+		</div>
+	)
+}
+
+<script>
+	// A themed confirmation dialog (reusing the Modal.astro primitive built
+	// for the change-order calendar box) is tracked separately — for now a
+	// native confirm() is the guard against an accidental click.
+	document.querySelectorAll<HTMLElement>('[data-delete-order]').forEach((container) => {
+		const orderCode = container.dataset.deleteOrder;
+		const trigger = container.querySelector<HTMLButtonElement>('[data-delete-order-trigger]');
+		const errorEl = container.querySelector<HTMLElement>('[data-delete-order-error]');
+
+		trigger?.addEventListener('click', async () => {
+			if (!orderCode) return;
+			if (!window.confirm(`Delete order #${orderCode}? This cannot be undone.`)) return;
+
+			trigger.disabled = true;
+			errorEl?.setAttribute('hidden', '');
+
+			try {
+				const res = await fetch(`/api/orders/${orderCode}`, { method: 'DELETE' });
+				if (res.ok) {
+					window.location.href = '/';
+					return;
+				}
+				const body = await res.json().catch(() => ({}));
+				if (errorEl) {
+					errorEl.textContent =
+						body.error === 'not_deletable'
+							? `This order can no longer be deleted (status: ${body.status}).`
+							: 'This order could not be deleted.';
+					errorEl.removeAttribute('hidden');
+				}
+			} catch {
+				if (errorEl) {
+					errorEl.textContent = 'Something went wrong. Please try again.';
+					errorEl.removeAttribute('hidden');
+				}
+			} finally {
+				trigger.disabled = false;
+			}
+		});
+	});
+</script>

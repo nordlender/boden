@@ -1,0 +1,35 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+	title: string;
+	heading: string;
+}
+
+const { title, heading } = Astro.props;
+---
+
+<BaseLayout title={title}>
+	<div class="mx-auto flex max-w-xl flex-col gap-6 p-6">
+		<div class="flex flex-col items-center gap-2 text-center">
+			<span class="flex h-12 w-12 items-center justify-center rounded-full bg-success-subtle text-success">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					class="h-6 w-6"
+					aria-hidden="true"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" />
+				</svg>
+			</span>
+			<h1 class="text-xl font-semibold text-text">{heading}</h1>
+			<div class="flex flex-col gap-1 text-sm text-text-muted">
+				<slot name="subtitle" />
+			</div>
+		</div>
+		<slot />
+	</div>
+</BaseLayout>

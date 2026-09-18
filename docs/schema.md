@@ -1,5 +1,12 @@
 # Schema v3
 
+> Schema block re-synced 2026-09-11 against `src/db/schema.ts`: added
+> `orders.checkoutToken`/`fromDate`/`toDate` (the reservation flow, built
+> after this doc was originally written), `pickupAvailableDays`, and the
+> CHECK constraints real code now has. Dropped `orderItems.reservedFrom`/
+> `reservedTo`, which never existed in real code — reservation dates live on
+> `orders`, one range per order, not per line item.
+
 This supersedes `schema_v2.md` and `schemav2.ts` (both deleted). Schema v2
 was designed around an admin wizard that generated items as systematic
 permutations of product option values (Size × Color, etc.), driven by an
@@ -27,7 +34,7 @@ What's new here relative to that terminology note:
 ```ts
 import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
-import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
 
 // ---------------------------------------------------------------------------
 // Categories (unchanged from v1/v2)
@@ -200,10 +207,19 @@ export const users = sqliteTable('users', {
 export const orders = sqliteTable('orders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   orderCode: text('order_code').notNull().unique(),
+  // Shared by every order created from one checkout submission (split or
+  // not) — /checkout/success looks orders up by this instead of by
+  // (potentially duplicated/tampered) order codes joined in a URL.
+  checkoutToken: text('checkout_token').notNull(),
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', {
     enum: ['requested', 'active', 'returned', 'rejected'],
   }).notNull().default('requested'),
+  // Reservation date range (YYYY-MM-DD, inclusive both ends) chosen on
+  // /reservation — the whole order (all its orderItems) shares one range.
+  // fromDate is the pick-up day, toDate the return day.
+  fromDate: text('from_date').notNull(),
+  toDate: text('to_date').notNull(),
   note: text('note'),
   confirmedByUserId: text('confirmed_by_user_id').references(() => users.id),
   returnedByUserId: text('returned_by_user_id').references(() => users.id),
@@ -215,6 +231,9 @@ export const orders = sqliteTable('orders', {
 }, (table) => [
   index('orders_user_id_idx').on(table.userId),
   index('orders_status_idx').on(table.status),
+  index('orders_date_range_idx').on(table.fromDate, table.toDate),
+  index('orders_checkout_token_idx').on(table.checkoutToken),
+  check('order_date_range_valid', sql`${table.toDate} >= ${table.fromDate}`),
 ]);
 
 export const orderItems = sqliteTable('order_items', {
@@ -223,12 +242,21 @@ export const orderItems = sqliteTable('order_items', {
   itemId: integer('item_id').notNull().references(() => items.id),
   requestedQuantity: integer('requested_quantity').notNull().default(1),
   retrievedQuantity: integer('retrieved_quantity'),
-  reservedFrom: text('reserved_from'),
-  reservedTo: text('reserved_to'),
 }, (table) => [
   uniqueIndex('order_items_order_item_unique').on(table.orderId, table.itemId),
   index('order_items_order_id_idx').on(table.orderId),
+  check('requested_quantity_positive', sql`${table.requestedQuantity} > 0`),
+  check('retrieved_quantity_non_negative', sql`${table.retrievedQuantity} IS NULL OR ${table.retrievedQuantity} >= 0`),
 ]);
+
+// Which pick-up dates (orders.fromDate) have a moderator confirmed
+// available to hand out orders — maintained by an admin (/admin/pickup-days).
+// Existence of a row is the only signal: no row just means nobody's
+// confirmed a moderator for that date yet, not that pick-up is refused.
+export const pickupAvailableDays = sqliteTable('pickup_available_days', {
+  date: text('date').primaryKey(), // YYYY-MM-DD
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+});
 
 // relations() intentionally omitted here for brevity — see the Relations
 // section below for the one/many pattern to follow per FK above.
@@ -262,6 +290,8 @@ don't resurrect this.
 - `itemsRelations`: one `product`, many `itemAttributeValues`, many `orderItems`
 - `itemAttributeValuesRelations`: one `item`, one `attribute` (→ `productAttributeKeys`)
 - `usersRelations`, `ordersRelations`, `orderItemsRelations`: unchanged from v2
+- `pickupAvailableDays`: standalone table, no relations — looked up directly
+  by `orders.fromDate`, not joined
 
 ## Resolved
 

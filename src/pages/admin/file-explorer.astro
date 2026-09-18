@@ -1,0 +1,31 @@
+---
+export const prerender = false;
+
+// Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
+// reached only when logged in with role === 'admin'.
+//
+// Manual test page for <FileExplorer> (#96) — browses the project's
+// `public/` directory (the only thing genuinely "public" to show here).
+// #97 will replace this with the wizard's Set-image picker; this page is
+// just for eyeballing the component in isolation until then.
+import '../../styles/global.css';
+import FileExplorer from '../../components/FileExplorer.astro';
+import path from 'node:path';
+
+const root = path.join(process.cwd(), 'public');
+---
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>File explorer</title>
+	</head>
+	<body class="min-h-screen bg-bg-subtle p-8">
+		<div class="mx-auto flex max-w-md flex-col gap-4">
+			<h1 class="text-xl font-semibold text-text">File explorer</h1>
+			<div class="rounded-lg border border-border bg-surface p-4">
+				<FileExplorer root={root} label="public/" />
+			</div>
+		</div>
+	</body>
+</html>

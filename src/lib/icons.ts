@@ -34,6 +34,9 @@ export const icons = {
 	// an order mixes available and unavailable items for the chosen date
 	// range: lets the member split that one item out into its own order.
 	splitOrder: 'tabler:arrows-split-2',
+	// Large avatar-style icon shown above the sign-in button on the login
+	// page — not tied to the wizard placeholders above.
+	user: 'tabler:user-circle',
 } as const;
 
 export type IconName = keyof typeof icons;

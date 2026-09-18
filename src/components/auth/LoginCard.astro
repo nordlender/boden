@@ -1,0 +1,32 @@
+---
+import AppIcon from '../icons/AppIcon.astro';
+
+interface Props {
+	next?: string;
+}
+
+const { next = '/' } = Astro.props;
+---
+<div class="flex flex-col items-center gap-6">
+	<AppIcon name="user" size={224} class="text-text-muted" />
+	<button
+		id="signin"
+		data-next={next}
+		type="button"
+		class="w-56 rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-text-inverted hover:bg-accent-hover"
+	>
+		Sign in with Bloc
+	</button>
+</div>
+
+<script>
+	import { signIn } from 'auth-astro/client';
+
+	const button = document.getElementById('signin') as HTMLButtonElement;
+	button.addEventListener('click', () => {
+		// auth-astro's SignInOptions type pulls in `next-auth/react`, which
+		// isn't installed as a dependency here — cast to bypass the resulting
+		// type gap rather than pull in the whole next-auth package for types.
+		signIn('bloc', { callbackUrl: button.dataset.next || '/' } as Parameters<typeof signIn>[1]);
+	});
+</script>

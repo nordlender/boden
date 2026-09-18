@@ -67,3 +67,44 @@ changing what "this is selected" looks like.
 5. Before adding a new semantic meaning, check this table first — most UI
    states (success/error/warning/info/selected/help/disabled) already have
    a token family.
+
+## Migration status: components still on raw palette colors
+
+The token system (#67/#68) was introduced after most of the app already
+existed, so adoption is incremental, not yet complete. `Navbar.astro`,
+`ItemCard.astro`, `AdminNavbar.astro`, `admin/items.astro`, and
+`admin/pickup-days.astro` (docs#PR124) are on tokens. As of 2026-09-18 these
+still use raw Tailwind `gray-*`/`green-*`/`red-*`/`amber-*`/`white` classes
+and need converting — pick whichever migration work picks these up first,
+and update this list:
+
+- `src/components/reservation/ReservationCalendar.astro` — fixed on
+  branch `fix/calendar-dark-mode` (PR #110, not yet merged to main); once
+  merged, drop it from this list.
+- `src/components/cart/CheckoutForm.astro`
+- `src/components/reservation/ReservationForm.astro`
+- `src/components/reservation/ReservationItemRow.astro`
+- `src/pages/reservation.astro`
+
+When converting one of these, the raw-to-token mapping is consistent
+throughout the app; use it rather than guessing per file:
+
+| Raw Tailwind class(es) | Token utility |
+|---|---|
+| `bg-white`, `bg-gray-50`/`slate-50` (page bg) | `bg-bg` / `bg-bg-subtle` |
+| `bg-white`, `bg-gray-50` (card/panel) | `bg-surface` |
+| `border-gray-200`/`slate-200` | `border-border` |
+| `border-gray-300`/`slate-300` on a plain divider | `border-border-strong` |
+| `border-gray-300`/`slate-300`/`gray-500` on an input/checkbox | `border-border-interactive` |
+| `text-gray-900`/`slate-900` (headings, primary text) | `text-text` |
+| `text-gray-500`/`slate-500`/`gray-600` (secondary/help text) | `text-text-muted` |
+| `bg-gray-900`/`slate-900` + `text-white` (primary button) | `bg-accent` + `text-text-inverted` |
+| `bg-green-50`/`green-100`, `text-green-700`, `ring-green-400` | `bg-success-subtle`, `text-success-text`, `ring-success-border` |
+| `bg-red-50`, `border-red-200`, `text-red-700` | `bg-error-subtle`, `border-error-border`, `text-error-text` |
+| `bg-amber-50`, `border-amber-200`, `text-amber-800` | `bg-warning-subtle`, `border-warning-border`, `text-warning-text` |
+| `divide-gray-200`/`slate-200`/`gray-100` | `divide-border` |
+
+Don't do a drive-by conversion of one of these files as a side effect of an
+unrelated change — it inflates the diff and risks a visual regression that's
+hard to spot in review. Convert a whole file in its own commit/PR, verify it
+in both themes, and remove it from the list above.

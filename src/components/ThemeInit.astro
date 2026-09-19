@@ -1,0 +1,17 @@
+---
+// Runs before paint so no page (public or admin) flashes the wrong theme.
+// Must be included in the <head> of every top-level layout/page shell.
+---
+
+<script is:inline>
+	(function () {
+		try {
+			const stored = localStorage.getItem('theme');
+			if (stored === 'light' || stored === 'dark') {
+				document.documentElement.setAttribute('data-theme', stored);
+			}
+		} catch {
+			// localStorage may be unavailable (privacy mode); fall back to OS preference.
+		}
+	})();
+</script>

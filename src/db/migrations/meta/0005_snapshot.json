@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "74b65e3b-4442-474a-bd77-454e1796b1ca",
-  "prevId": "7f6464ce-cb0a-4511-aa41-b1a17af21aec",
+  "id": "8f18c51b-2588-4c5a-a4a9-7b674703f36f",
+  "prevId": "74b65e3b-4442-474a-bd77-454e1796b1ca",
   "tables": {
     "categories": {
       "name": "categories",
@@ -414,6 +414,20 @@
         "contact_mobile": {
           "name": "contact_mobile",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "has_unpaid_fees": {
+          "name": "has_unpaid_fees",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "user_is_member": {
+          "name": "user_is_member",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

@@ -14,11 +14,17 @@ afterAll(() => {
 	vi.useRealTimers();
 });
 
-// Contact snapshot fields are required on createOrder/createSplitOrders
-// input (src/db/schema.ts's orders.contactName/contactEmail) — a fixed
-// stand-in for every call below, since none of these tests are about the
-// contact snapshot itself.
-const CONTACT = { contactName: 'Test Member', contactEmail: 'member@example.com', contactMobile: null };
+// Contact/bloc-snapshot fields are required on createOrder/createSplitOrders
+// input (src/db/schema.ts's orders.contactName/contactEmail/hasUnpaidFees/
+// userIsMember) — a fixed stand-in for every call below, since none of these
+// tests are about the checkout form snapshot itself.
+const CONTACT = {
+  contactName: 'Test Member',
+  contactEmail: 'member@example.com',
+  contactMobile: null,
+  hasUnpaidFees: null,
+  userIsMember: null,
+};
 
 // createOrder/createSplitOrders join against the db (src/lib/orders.ts
 // imports ../db/client) — swap it here for a seeded in-memory sqlite db,

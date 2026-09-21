@@ -1,0 +1,66 @@
+---
+export const prerender = false;
+
+// Retrieval checklist — step 1 of 2 in the confirm flow, reached from the
+// hub's "Retrieve items" form. Shows the target quantities visibly (this is
+// "go physically retrieve these"), unlike the blind-count page that follows
+// it. Gated by src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator).
+import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
+import Thumbnail from '../../../components/wizard/Thumbnail.astro';
+import { getOrderDetail } from '../../../lib/moderatorOrders';
+
+const idParam = Number(Astro.params.id);
+const order = Number.isInteger(idParam) ? await getOrderDetail(idParam) : null;
+
+if (!order) {
+	return Astro.redirect('/moderator/retrieve');
+}
+if (order.acceptedAt === null || order.status !== 'requested') {
+	return Astro.redirect(`/moderator/orders/${order.id}`);
+}
+
+// The hub carries a target_<orderItemId> per line (requestedQuantity for an
+// available line, the moderator's explicit reduced number for a
+// flagged-unavailable one) as query params — read them here, falling back
+// to requestedQuantity if one's missing (covers a direct link/reload that
+// skipped the hub).
+const lines = order.items.map((item) => {
+	const raw = Astro.url.searchParams.get(`target_${item.orderItemId}`);
+	const target = raw !== null && Number.isFinite(Number(raw)) ? Number(raw) : item.requestedQuantity;
+	return { ...item, target };
+});
+---
+
+<ModeratorLayout title={`Retrieve order #${order.orderCode} — Moderator`}>
+	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
+		<a href={`/moderator/orders/${order.id}`} class="self-start text-sm font-medium text-text-muted hover:text-text">
+			&larr; Back to order
+		</a>
+
+		<div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">
+			<div>
+				<h1 class="text-xl font-semibold text-text">Retrieve order #{order.orderCode}</h1>
+				<p class="mt-1 text-sm text-text-muted">Go gather these from storage, then confirm once you have them.</p>
+			</div>
+
+			<ul class="flex flex-col divide-y divide-border">
+				{
+					lines.map((line) => (
+						<li class="flex items-center gap-3 py-2">
+							<Thumbnail src={line.itemImageUrl} alt={line.itemName} size={40} />
+							<span class="flex-1 text-sm text-text">{line.itemName}</span>
+							<span class="text-sm font-medium text-text">&times; {line.target}</span>
+						</li>
+					))
+				}
+			</ul>
+
+			<form method="get" action={`/moderator/confirm/${order.id}/count`} class="self-start">
+				{lines.map((line) => <input type="hidden" name={`target_${line.orderItemId}`} value={line.target} />)}
+				<button type="submit" class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover">
+					Confirm
+				</button>
+			</form>
+		</div>
+	</div>
+</ModeratorLayout>

@@ -1,0 +1,78 @@
+---
+export const prerender = false;
+
+// Accept/reject an order still pending moderator review. Gated by
+// src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator) — reached only
+// when logged in with role 'moderator' or 'admin'.
+import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
+import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro';
+import { getOrderDetail } from '../../../lib/moderatorOrders';
+
+const idParam = Number(Astro.params.id);
+const order = Number.isInteger(idParam) ? await getOrderDetail(idParam) : null;
+
+// No review-queue/list page exists (order-code lookup only, per the plan) —
+// an id that doesn't resolve to a real order (bad bookmark, typo, deleted
+// row) has nowhere sensible to land but back at the lookup entry point.
+if (!order) {
+	return Astro.redirect('/moderator/retrieve');
+}
+
+// Defensive against a stale bookmark/back-button after this order has
+// already been accepted or rejected (by this moderator or another one, in
+// another tab).
+const alreadyReviewed = order.acceptedAt !== null || order.rejectedAt !== null;
+const error = Astro.url.searchParams.get('error');
+---
+
+<ModeratorLayout title={`Review order #${order.orderCode} — Moderator`}>
+	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
+		<a href="/moderator/retrieve" class="self-start text-sm font-medium text-text-muted hover:text-text">&larr; Back to retrieve</a>
+
+		<OrderDetailCard order={order} showAvailability={true}>
+			<Fragment slot="actions">
+				{
+					alreadyReviewed ? (
+						<a
+							href={`/moderator/orders/${order.id}`}
+							class="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-text hover:bg-bg-subtle"
+						>
+							View order
+						</a>
+					) : (
+						<>
+							<form method="post" action={`/api/moderator/orders/${order.id}/accept`}>
+								<button type="submit" class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover">
+									Accept
+								</button>
+							</form>
+
+							<form method="post" action={`/api/moderator/orders/${order.id}/reject`} class="flex w-full flex-col gap-2">
+								{
+									error === 'blank_reason' && (
+										<p class="rounded-md border border-error-border bg-error-subtle p-2 text-sm text-error-text">
+											Please provide a reason for rejecting this order.
+										</p>
+									)
+								}
+								<textarea
+									name="reason"
+									required
+									rows={2}
+									placeholder="Reason for rejecting this order"
+									class="w-full rounded-md border border-border-interactive bg-bg px-2 py-1.5 text-sm text-text"
+								></textarea>
+								<button
+									type="submit"
+									class="self-start rounded-md border border-error-border px-3 py-1.5 text-sm font-medium text-error-text hover:bg-error-subtle"
+								>
+									Reject
+								</button>
+							</form>
+						</>
+					)
+				}
+			</Fragment>
+		</OrderDetailCard>
+	</div>
+</ModeratorLayout>

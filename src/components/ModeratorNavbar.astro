@@ -1,0 +1,15 @@
+---
+// Mirrors AdminNavbar.astro: a thin wrapper around BaseNavbar with a fixed
+// link list for the /moderator/* section, rendered server-side (these pages
+// are all SSR and gated by src/middleware/index.ts already, so no
+// client-side role check is needed the way member-facing Navbar.astro needs
+// one for authOnly links). Deliberately just "Retrieve order" — no review
+// queue (moderators reach review via order-code lookup too, same as
+// retrieval — see this PR's plan), no pickup-days link (that's a separate,
+// unrelated moderator feature/PR).
+import BaseNavbar from './nav/BaseNavbar.astro';
+
+const links = [{ href: '/moderator/retrieve', label: 'Retrieve order' }];
+---
+
+<BaseNavbar links={links} showCart={false} />

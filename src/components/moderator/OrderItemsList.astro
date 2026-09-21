@@ -1,0 +1,45 @@
+---
+// Shared item-list display used by both /moderator/review/[id] and the
+// /moderator/orders/[id] hub. Follows the existing
+// OrdersTableRowDetailed.astro/OrderContents.astro <ul>/<li> markup and
+// token-styling convention rather than embedding OrdersTableRow directly
+// (that component is shaped for a multi-order table row, not one order's
+// detail view). Renders each line via OrderItemRow.
+import OrderItemRow from './OrderItemRow.astro';
+
+export interface OrderItemListEntry {
+	orderItemId: number;
+	itemName: string;
+	itemImageUrl: string | null;
+	requestedQuantity: number;
+	archived?: boolean;
+	doubleBooked?: boolean;
+	retrievedQuantity?: number | null;
+}
+
+interface Props {
+	items: OrderItemListEntry[];
+	showAvailability?: boolean;
+	adjustableTargets?: boolean;
+}
+
+const { items, showAvailability = false, adjustableTargets = false } = Astro.props;
+---
+
+<ul class="flex flex-col divide-y divide-border">
+	{
+		items.map((item) => (
+			<OrderItemRow
+				orderItemId={item.orderItemId}
+				itemName={item.itemName}
+				itemImageUrl={item.itemImageUrl}
+				requestedQuantity={item.requestedQuantity}
+				showAvailability={showAvailability}
+				archived={item.archived}
+				doubleBooked={item.doubleBooked}
+				adjustableTargets={adjustableTargets}
+				retrievedQuantity={item.retrievedQuantity}
+			/>
+		))
+	}
+</ul>

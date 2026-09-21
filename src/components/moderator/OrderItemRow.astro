@@ -1,0 +1,85 @@
+---
+// A single order line's display — image, name, requested quantity, and the
+// optional per-line extras OrderItemsList toggles (availability reasons, an
+// editable reduced-target input for a flagged line, a retrieved-quantity
+// readout). Kept separate from OrderItemsList so one line's look (image
+// size, badge placement) can be tuned without touching the list/loop logic
+// around it.
+import Thumbnail from '../wizard/Thumbnail.astro';
+
+interface Props {
+	orderItemId: number;
+	itemName: string;
+	itemImageUrl: string | null;
+	requestedQuantity: number;
+	showAvailability?: boolean;
+	archived?: boolean;
+	doubleBooked?: boolean;
+	// Renders an editable target-quantity <input> in place of a hidden one,
+	// but only for a line that's actually flagged unavailable — see this
+	// PR's plan's "Shortfall handling" decision (the moderator sets an
+	// explicit reduced target before retrieval starts, rather than it
+	// defaulting silently).
+	adjustableTargets?: boolean;
+	retrievedQuantity?: number | null;
+}
+
+const {
+	orderItemId,
+	itemName,
+	itemImageUrl,
+	requestedQuantity,
+	showAvailability = false,
+	archived = false,
+	doubleBooked = false,
+	adjustableTargets = false,
+	retrievedQuantity = null,
+} = Astro.props;
+
+const unavailable = archived || doubleBooked;
+---
+
+<li class="flex items-center gap-3 py-2">
+	<Thumbnail src={itemImageUrl} alt={itemName} size={40} />
+	<div class="flex flex-1 flex-col gap-0.5">
+		<span class="text-sm text-text">
+			{itemName} &times; {requestedQuantity}
+		</span>
+		{
+			showAvailability && unavailable && (
+				<span class="flex flex-wrap gap-2 pt-0.5 text-xs">
+					{archived && (
+						<span class="rounded-full border border-warning-border bg-warning-subtle px-2 py-0.5 font-medium text-warning-text">
+							Archived / unpublished
+						</span>
+					)}
+					{doubleBooked && (
+						<span class="rounded-full border border-warning-border bg-warning-subtle px-2 py-0.5 font-medium text-warning-text">
+							Fully booked elsewhere
+						</span>
+					)}
+				</span>
+			)
+		}
+		{retrievedQuantity !== null && <span class="text-xs text-text-muted">Retrieved: {retrievedQuantity}</span>}
+	</div>
+	{
+		adjustableTargets &&
+			(unavailable ? (
+				<label class="flex flex-col items-end gap-0.5 text-xs text-text-muted">
+					Target qty
+					<input
+						type="number"
+						name={`target_${orderItemId}`}
+						value={requestedQuantity}
+						min="0"
+						max={requestedQuantity}
+						required
+						class="w-16 rounded border border-border-strong px-2 py-1 text-sm text-text"
+					/>
+				</label>
+			) : (
+				<input type="hidden" name={`target_${orderItemId}`} value={requestedQuantity} />
+			))
+	}
+</li>

@@ -1,0 +1,62 @@
+---
+// Composes the shared order-detail display used by the hub and review
+// pages: header, hasUnpaidFees/userIsMember chips, contact name, the
+// following-rental warning (hub only), the item list, and a slot for
+// page-specific actions (Accept/Reject, Retrieve items, Return items).
+import OrderCodeHeader from '../orders/OrderCodeHeader.astro';
+import SubmittedContactDetails from '../orders/SubmittedContactDetails.astro';
+import StatusChip from './StatusChip.astro';
+import OrderItemsList from './OrderItemsList.astro';
+import type { FollowingRentalWarning, OrderDetail } from '../../lib/moderatorOrders';
+
+interface Props {
+	order: OrderDetail;
+	showAvailability?: boolean;
+	adjustableTargets?: boolean;
+	followingRentalWarnings?: FollowingRentalWarning[];
+}
+
+const { order, showAvailability = false, adjustableTargets = false, followingRentalWarnings = [] } = Astro.props;
+---
+
+<div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">
+	<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
+
+	<div class="flex flex-wrap gap-4">
+		<StatusChip label="Unpaid fees" value={order.hasUnpaidFees} goodValue={false} />
+		<StatusChip label="Is member" value={order.userIsMember} goodValue={true} />
+	</div>
+
+	<SubmittedContactDetails contactName={order.contactName} />
+
+	{
+		followingRentalWarnings.length > 0 && (
+			<div class="flex flex-col gap-2 rounded-md border border-warning-border bg-warning-subtle p-3 text-sm text-warning-text">
+				<p class="font-semibold">Order must be returned on the correct day</p>
+				<ul class="flex flex-col gap-1">
+					{followingRentalWarnings.map((warning) => (
+						<li>
+							{warning.itemName} is needed for order #{warning.followingOrderCode}, starting {warning.followingFromDate} — make
+							sure the member knows to return on time.
+						</li>
+					))}
+				</ul>
+			</div>
+		)
+	}
+
+	{order.note && <p class="text-sm text-text-muted">Note: {order.note}</p>}
+
+	{order.status === 'rejected' && order.rejectedReason && (
+		<div class="rounded-md border border-error-border bg-error-subtle p-3 text-sm text-error-text">
+			<p class="font-semibold">Rejected</p>
+			<p>{order.rejectedReason}</p>
+		</div>
+	)}
+
+	<OrderItemsList items={order.items} showAvailability={showAvailability} adjustableTargets={adjustableTargets} />
+
+	<div class="flex flex-wrap gap-2 border-t border-border pt-4">
+		<slot name="actions" />
+	</div>
+</div>

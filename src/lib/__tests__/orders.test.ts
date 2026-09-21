@@ -18,7 +18,13 @@ afterAll(() => {
 // input (src/db/schema.ts's orders.contactName/contactEmail) — a fixed
 // stand-in for every call below, since none of these tests are about the
 // contact snapshot itself.
-const CONTACT = { contactName: 'Test Member', contactEmail: 'member@example.com', contactMobile: null };
+const CONTACT = {
+	contactName: 'Test Member',
+	contactEmail: 'member@example.com',
+	contactMobile: null,
+	hasUnpaidFees: null,
+	userIsMember: null,
+};
 
 // createOrder/createSplitOrders join against the db (src/lib/orders.ts
 // imports ../db/client) — swap it here for a seeded in-memory sqlite db,

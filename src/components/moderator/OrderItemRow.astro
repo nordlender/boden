@@ -22,6 +22,13 @@ interface Props {
 	// defaulting silently).
 	adjustableTargets?: boolean;
 	retrievedQuantity?: number | null;
+	// Id of an out-of-tree <form> (rendered elsewhere, e.g. a page's `actions`
+	// slot) that this row's target_<orderItemId> input should submit with,
+	// via the HTML5 `form="..."` attribute — needed because OrderDetailCard
+	// renders this list as a sibling of its `actions` slot, not nested inside
+	// it, so a literal wrapping <form> isn't possible. Optional/additive: a
+	// caller that doesn't pass it gets today's behavior unchanged.
+	formId?: string;
 }
 
 const {
@@ -34,6 +41,7 @@ const {
 	doubleBooked = false,
 	adjustableTargets = false,
 	retrievedQuantity = null,
+	formId,
 } = Astro.props;
 
 const unavailable = archived || doubleBooked;
@@ -75,11 +83,12 @@ const unavailable = archived || doubleBooked;
 						min="0"
 						max={requestedQuantity}
 						required
+						form={formId}
 						class="w-16 rounded border border-border-strong px-2 py-1 text-sm text-text"
 					/>
 				</label>
 			) : (
-				<input type="hidden" name={`target_${orderItemId}`} value={requestedQuantity} />
+				<input type="hidden" name={`target_${orderItemId}`} value={requestedQuantity} form={formId} />
 			))
 	}
 </li>

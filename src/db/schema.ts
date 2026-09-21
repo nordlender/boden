@@ -207,10 +207,25 @@ export const orders = sqliteTable('orders', {
   contactName: text('contact_name').notNull().default(''),
   contactEmail: text('contact_email').notNull().default(''),
   contactMobile: text('contact_mobile'),
+  // Snapshot of the checkout form's readonly bloc-sourced fields at
+  // submission time (see docs/moderator-review.md) — not re-fetched live
+  // from bloc at review time. Nullable boolean rather than a text tri-state
+  // enum: "Unknown" isn't a real business state, it's the absence of data
+  // (bloc's hasUnpaidFees/userIsMember API defect currently returns null for
+  // every member), so NULL is the correct representation, same as the
+  // underlying value's real type. Mapping from the form's submitted
+  // "Yes"/"No"/"Unknown" string happens in src/pages/api/orders/create.ts.
+  hasUnpaidFees: integer('has_unpaid_fees', { mode: 'boolean' }),
+  userIsMember: integer('user_is_member', { mode: 'boolean' }),
   // Moderator accountability: who confirmed retrieval / processed the return
   confirmedByUserId: text('confirmed_by_user_id').references(() => users.id),
   returnedByUserId: text('returned_by_user_id').references(() => users.id),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  // Set when a moderator accepts the order on the review step, ahead of
+  // retrieval — deliberately not a 5th `status` value: accept leaves
+  // `status: 'requested'` unchanged (see docs/moderator-review.md), it just
+  // gates whether the order is eligible for the retrieve/confirm flow yet.
+  acceptedAt: integer('accepted_at', { mode: 'timestamp' }),
   activatedAt: integer('activated_at', { mode: 'timestamp' }), // set when moderator confirms
   returnedAt: integer('returned_at', { mode: 'timestamp' }), // set when moderator marks returned
   rejectedAt: integer('rejected_at', { mode: 'timestamp' }), // set when moderator rejects

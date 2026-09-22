@@ -19,5 +19,5 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
 		return redirect('/moderator/retrieve?error=not_found', 303);
 	}
 
-	return redirect(`/moderator/orders/${order.id}`, 303);
+	return redirect(`/moderator/retrieve/${order.id}`, 303);
 };

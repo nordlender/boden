@@ -6,7 +6,7 @@ import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
 // Universal entry point for the moderator flow — reached by asking the
 // member to read out their order code, for either the review step or the
 // retrieval step (see src/pages/api/moderator/retrieve.ts, which looks the
-// code up and redirects to the hub at /moderator/orders/[id]).
+// code up and redirects to the hub at /moderator/retrieve/[id]).
 const error = Astro.url.searchParams.get('error');
 ---
 

@@ -5,7 +5,7 @@ import { confirmRetrieval } from '../../../../../lib/moderatorOrders';
 import { requireModerator } from '../../../../../lib/wizard-http';
 
 // order_items ids in a submitted target_<id>/qty_<id> field name — matches
-// the ids threaded through by the checklist/count pages' hidden fields.
+// the ids threaded through by the hub's and the count page's hidden fields.
 const FIELD_ID_RE = /^target_(\d+)$/;
 
 export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
@@ -46,7 +46,7 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 
 	if (!allMatch) {
 		redirectParams.set('mismatch', '1');
-		return redirect(`/moderator/confirm/${orderId}/count?${redirectParams.toString()}`, 303);
+		return redirect(`/moderator/retrieve/${orderId}/count?${redirectParams.toString()}`, 303);
 	}
 
 	const result = await confirmRetrieval(orderId, locals.user!.id, retrieved);
@@ -59,5 +59,5 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 		});
 	}
 
-	return redirect(`/moderator/orders/${orderId}?confirmed=1`, 303);
+	return redirect(`/moderator/retrieve/${orderId}?confirmed=1`, 303);
 };

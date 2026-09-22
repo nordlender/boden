@@ -1,10 +1,10 @@
 ---
 export const prerender = false;
 
-// Blind count — step 2 of 2 in the confirm flow. One numeric input per
-// line, left empty on first load (never pre-filled with the target — the
-// whole point is the moderator reports an unbiased count). Gated by
-// src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator).
+// Blind count — reached from the hub's "Confirm" button. One numeric
+// input per line, left empty on first load (never pre-filled with the
+// target — the whole point is the moderator reports an unbiased count).
+// Gated by src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator).
 import ModeratorLayout from '../../../../layouts/ModeratorLayout.astro';
 import { getOrderDetail } from '../../../../lib/moderatorOrders';
 
@@ -15,7 +15,7 @@ if (!order) {
 	return Astro.redirect('/moderator/retrieve');
 }
 if (order.acceptedAt === null || order.status !== 'requested') {
-	return Astro.redirect(`/moderator/orders/${order.id}`);
+	return Astro.redirect(`/moderator/retrieve/${order.id}`);
 }
 
 const mismatch = Astro.url.searchParams.get('mismatch') === '1';
@@ -40,8 +40,8 @@ const lines = order.items.map((item) => {
 
 <ModeratorLayout title={`Confirm order #${order.orderCode} — Moderator`}>
 	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
-		<a href={`/moderator/confirm/${order.id}`} class="self-start text-sm font-medium text-text-muted hover:text-text">
-			&larr; Back to checklist
+		<a href={`/moderator/retrieve/${order.id}`} class="self-start text-sm font-medium text-text-muted hover:text-text">
+			&larr; Back to order
 		</a>
 
 		<div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">

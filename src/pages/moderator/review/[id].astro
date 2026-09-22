@@ -11,11 +11,10 @@ import { getOrderDetail } from '../../../lib/moderatorOrders';
 const idParam = Number(Astro.params.id);
 const order = Number.isInteger(idParam) ? await getOrderDetail(idParam) : null;
 
-// No review-queue/list page exists (order-code lookup only, per the plan) —
-// an id that doesn't resolve to a real order (bad bookmark, typo, deleted
-// row) has nowhere sensible to land but back at the lookup entry point.
+// An id that doesn't resolve to a real order (bad bookmark, typo, deleted
+// row) has nowhere sensible to land but back at the requests queue.
 if (!order) {
-	return Astro.redirect('/moderator/retrieve');
+	return Astro.redirect('/moderator/requests');
 }
 
 // Defensive against a stale bookmark/back-button after this order has
@@ -34,7 +33,7 @@ const error = Astro.url.searchParams.get('error');
 				{
 					alreadyReviewed ? (
 						<a
-							href={`/moderator/orders/${order.id}`}
+							href={`/moderator/retrieve/${order.id}`}
 							class="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-text hover:bg-bg-subtle"
 						>
 							View order

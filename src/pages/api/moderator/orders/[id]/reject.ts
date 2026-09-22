@@ -31,5 +31,5 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 		return new Response('Order is not pending review', { status: 409 });
 	}
 
-	return redirect(`/moderator/retrieve/${orderId}`, 303);
+	return redirect('/moderator/requests', 303);
 };

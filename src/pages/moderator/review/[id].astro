@@ -26,7 +26,7 @@ const error = Astro.url.searchParams.get('error');
 
 <ModeratorLayout title={`Review order #${order.orderCode} — Moderator`}>
 	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
-		<a href="/moderator/retrieve" class="self-start text-sm font-medium text-text-muted hover:text-text">&larr; Back to retrieve</a>
+		<a href="/moderator/requests" class="self-start text-sm font-medium text-text-muted hover:text-text">&larr; Back to requests</a>
 
 		<OrderDetailCard order={order} showAvailability={true}>
 			<Fragment slot="actions">

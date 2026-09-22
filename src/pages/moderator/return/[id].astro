@@ -18,7 +18,7 @@ if (!order) {
 	return Astro.redirect('/moderator/retrieve');
 }
 if (order.status !== 'active') {
-	return Astro.redirect(`/moderator/orders/${order.id}`);
+	return Astro.redirect(`/moderator/retrieve/${order.id}`);
 }
 
 const mismatch = Astro.url.searchParams.get('mismatch') === '1';
@@ -44,7 +44,7 @@ const lines = order.items.map((item) => {
 
 <ModeratorLayout title={`Return order #${order.orderCode} — Moderator`}>
 	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
-		<a href={`/moderator/orders/${order.id}`} class="self-start text-sm font-medium text-text-muted hover:text-text">
+		<a href={`/moderator/retrieve/${order.id}`} class="self-start text-sm font-medium text-text-muted hover:text-text">
 			&larr; Back to order
 		</a>
 

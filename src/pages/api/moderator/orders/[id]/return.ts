@@ -48,5 +48,5 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 		return new Response('Order is not active', { status: 409 });
 	}
 
-	return redirect(`/moderator/orders/${orderId}?returned=1`, 303);
+	return redirect(`/moderator/retrieve/${orderId}?returned=1`, 303);
 };

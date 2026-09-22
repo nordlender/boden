@@ -31,7 +31,8 @@ const mismatch = Astro.url.searchParams.get('mismatch') === '1';
 const lines = order.items.map((item) => {
 	const target = item.retrievedQuantity ?? 0;
 	const enteredRaw = Astro.url.searchParams.get(`entered_${item.orderItemId}`);
-	const entered = mismatch && enteredRaw !== null ? Number(enteredRaw) : null;
+	const enteredParsed = enteredRaw !== null ? Number(enteredRaw) : NaN;
+	const entered = mismatch && Number.isFinite(enteredParsed) ? enteredParsed : null;
 	const isMismatched = mismatch && entered !== null && entered !== target;
 	return {
 		...item,

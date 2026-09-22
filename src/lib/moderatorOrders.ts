@@ -128,6 +128,18 @@ export async function getOrderDetailByCode(orderCode: string): Promise<OrderDeta
 	return order ? toOrderDetail(order) : null;
 }
 
+// Id-only lookup for the retrieve form (src/pages/api/moderator/retrieve.ts),
+// which only needs the id to redirect to the hub page — that page immediately
+// re-runs getOrderDetail(id) itself, so doing the full joins + availability
+// computation here too would run them twice per lookup for no reason.
+export async function getOrderIdByCode(orderCode: string): Promise<number | null> {
+	const order = await db.query.orders.findFirst({
+		where: (t, { eq: eqCol }) => eqCol(t.orderCode, orderCode),
+		columns: { id: true },
+	});
+	return order?.id ?? null;
+}
+
 export type AcceptOrderResult = { ok: true } | { ok: false; error: 'not_pending_review' };
 
 // Gate shared by acceptOrder/rejectOrder: an order is pending review only

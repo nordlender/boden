@@ -18,7 +18,7 @@ function generateRandomCode(length: number): string {
   return code;
 }
 
-const ORDER_CODE_LENGTH = 6;
+export const ORDER_CODE_LENGTH = 6;
 const MAX_ORDER_CODE_ATTEMPTS = 5;
 
 export function generateOrderCode(): string {

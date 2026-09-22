@@ -2,14 +2,14 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { acceptOrder } from '../../../../../lib/moderatorOrders';
-import { requireModerator } from '../../../../../lib/wizard-http';
+import { isPositiveInteger, requireModerator } from '../../../../../lib/wizard-http';
 
 export const POST: APIRoute = async ({ params, locals, redirect }) => {
 	const forbidden = requireModerator(locals);
 	if (forbidden) return forbidden;
 
 	const orderId = Number(params.id);
-	if (!Number.isInteger(orderId) || orderId <= 0) {
+	if (!isPositiveInteger(orderId)) {
 		return new Response('Invalid order id', { status: 400 });
 	}
 

@@ -2,19 +2,20 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { rejectOrder } from '../../../../../lib/moderatorOrders';
-import { requireModerator } from '../../../../../lib/wizard-http';
+import { isPositiveInteger, requireModerator } from '../../../../../lib/wizard-http';
 
 export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 	const forbidden = requireModerator(locals);
 	if (forbidden) return forbidden;
 
 	const orderId = Number(params.id);
-	if (!Number.isInteger(orderId) || orderId <= 0) {
+	if (!isPositiveInteger(orderId)) {
 		return new Response('Invalid order id', { status: 400 });
 	}
 
 	const form = await request.formData();
-	const reason = String(form.get('reason') ?? '').trim();
+	const reasonField = form.get('reason');
+	const reason = typeof reasonField === 'string' ? reasonField.trim() : '';
 	if (!reason) {
 		// Should be rare — the page's <textarea> is `required` — but redirect
 		// back with the page's own error-display convention rather than a raw
@@ -24,10 +25,9 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 
 	const result = await rejectOrder(orderId, reason);
 	if (!result.ok) {
-		if (result.error === 'blank_reason') {
-			return redirect(`/moderator/review/${orderId}?error=blank_reason`, 303);
-		}
-		// not_pending_review — only reachable via a stale/tampered POST.
+		// not_pending_review — only reachable via a stale/tampered POST. The
+		// reason is already validated non-blank above, so rejectOrder's own
+		// blank_reason result can't occur here.
 		return new Response('Order is not pending review', { status: 409 });
 	}
 

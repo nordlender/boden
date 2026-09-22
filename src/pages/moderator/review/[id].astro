@@ -7,9 +7,10 @@ export const prerender = false;
 import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
 import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro';
 import { getOrderDetail } from '../../../lib/moderatorOrders';
+import { isPositiveInteger } from '../../../lib/wizard-http';
 
 const idParam = Number(Astro.params.id);
-const order = Number.isInteger(idParam) ? await getOrderDetail(idParam) : null;
+const order = isPositiveInteger(idParam) ? await getOrderDetail(idParam) : null;
 
 // An id that doesn't resolve to a real order (bad bookmark, typo, deleted
 // row) has nowhere sensible to land but back at the requests queue.
@@ -32,12 +33,18 @@ const error = Astro.url.searchParams.get('error');
 			<Fragment slot="actions">
 				{
 					alreadyReviewed ? (
-						<a
-							href={`/moderator/retrieve/${order.id}`}
-							class="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-text hover:bg-bg-subtle"
-						>
-							View order
-						</a>
+						// Accepted orders move on to the retrieval stage via order-code
+						// lookup (see requests.astro) — there's no per-id retrieval route
+						// to link to. Rejected orders have nothing further to review, so
+						// no link is shown for them at all.
+						order.acceptedAt !== null && (
+							<a
+								href="/moderator/retrieve"
+								class="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-text hover:bg-bg-subtle"
+							>
+								Retrieve order
+							</a>
+						)
 					) : (
 						<>
 							<form method="post" action={`/api/moderator/orders/${order.id}/accept`}>

@@ -1,12 +1,8 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { confirmRetrieval } from '../../../../../lib/moderatorOrders';
+import { confirmRetrieval, getOrderDetail } from '../../../../../lib/moderatorOrders';
 import { requireModerator } from '../../../../../lib/wizard-http';
-
-// order_items ids in a submitted target_<id>/qty_<id> field name — matches
-// the ids threaded through by the hub's and the count page's hidden fields.
-const FIELD_ID_RE = /^target_(\d+)$/;
 
 export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 	const forbidden = requireModerator(locals);
@@ -19,29 +15,34 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 
 	const form = await request.formData();
 
-	const orderItemIds: number[] = [];
-	for (const key of form.keys()) {
-		const match = FIELD_ID_RE.exec(key);
-		if (match) orderItemIds.push(Number(match[1]));
+	// Target quantities come from the DB, never from the submitted form —
+	// the count page no longer round-trips them, and trusting a client-sent
+	// target would let a POST invent its own pass/fail criteria (or skip a
+	// line's qty_<id> field entirely) and confirm the order regardless of
+	// what was actually counted.
+	const order = await getOrderDetail(orderId);
+	if (!order) {
+		return new Response('Order is not acceptable for retrieval', { status: 409 });
 	}
 
 	// Whether every line's submitted count matches its target is decided
-	// here, from the form's own target_*/qty_* pairs — confirmRetrieval's
-	// own per-line bounds check (0 <= quantity <= requestedQuantity) is
-	// defense-in-depth against a stale/tampered POST, not where matching
-	// itself is normally decided.
+	// here, iterating the order's own full item list (not whatever ids the
+	// form happened to include) — confirmRetrieval's own per-line bounds
+	// check (0 <= quantity <= requestedQuantity) is defense-in-depth against
+	// a stale/tampered POST, not where matching itself is normally decided.
 	let allMatch = true;
 	const redirectParams = new URLSearchParams();
 	const retrieved: { orderItemId: number; quantity: number }[] = [];
-	for (const orderItemId of orderItemIds) {
-		const target = Number(form.get(`target_${orderItemId}`));
-		const qty = Number(form.get(`qty_${orderItemId}`));
+	for (const item of order.items) {
+		const target = item.requestedQuantity;
+		const qtyRaw = form.get(`qty_${item.orderItemId}`);
+		const qty = qtyRaw === null ? NaN : Number(qtyRaw);
 		if (!Number.isFinite(qty) || qty !== target) {
 			allMatch = false;
 		}
-		redirectParams.set(`target_${orderItemId}`, String(Number.isFinite(target) ? target : 0));
-		redirectParams.set(`entered_${orderItemId}`, String(Number.isFinite(qty) ? qty : 0));
-		retrieved.push({ orderItemId, quantity: Number.isFinite(qty) ? qty : 0 });
+		redirectParams.set(`target_${item.orderItemId}`, String(target));
+		redirectParams.set(`entered_${item.orderItemId}`, String(Number.isFinite(qty) ? qty : 0));
+		retrieved.push({ orderItemId: item.orderItemId, quantity: Number.isFinite(qty) ? qty : 0 });
 	}
 
 	if (!allMatch) {

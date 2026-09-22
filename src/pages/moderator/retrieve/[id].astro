@@ -2,9 +2,9 @@
 export const prerender = false;
 
 // The moderator order hub — the most cross-cutting page in the flow:
-// everything else (review, confirm/count, return) links back here, and this
-// is where the moderator lands to see availability/warnings and kick off
-// the next action for whatever state the order is in. Gated by
+// everything else (review, the blind-count page, return) links back here,
+// and this is where the moderator lands to see availability/warnings and
+// kick off the next action for whatever state the order is in. Gated by
 // src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator) — reached
 // only when logged in with role 'moderator' or 'admin'.
 import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
@@ -15,8 +15,7 @@ import { getOrderDetail, getFollowingRentalWorries } from '../../../lib/moderato
 const idParam = Number(Astro.params.id);
 const order = Number.isInteger(idParam) ? await getOrderDetail(idParam) : null;
 
-// No review-queue/list page exists (order-code lookup only, per the plan) —
-// an id that doesn't resolve to a real order (bad bookmark, typo, deleted
+// An id that doesn't resolve to a real order (bad bookmark, typo, deleted
 // row) has nowhere sensible to land but back at the lookup entry point.
 if (!order) {
 	return Astro.redirect('/moderator/retrieve');
@@ -40,7 +39,7 @@ const returned = Astro.url.searchParams.get('returned') === '1';
 // around both isn't possible. The HTML5 `form="..."` attribute lets an
 // <input> outside a <form> element still submit with it; OrderDetailCard's
 // (additive, optional) `formId` prop threads this id down to every target
-// input so they submit as query params with the "Retrieve items" form below.
+// input so they submit as query params with the "Confirm" form below.
 const RETRIEVE_FORM_ID = 'retrieve-items-form';
 ---
 
@@ -83,9 +82,9 @@ const RETRIEVE_FORM_ID = 'retrieve-items-form';
 				}
 				{
 					acceptedNotRetrieved && (
-						<form id={RETRIEVE_FORM_ID} method="get" action={`/moderator/confirm/${order.id}`}>
+						<form id={RETRIEVE_FORM_ID} method="get" action={`/moderator/retrieve/${order.id}/count`}>
 							<button type="submit" class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover">
-								Retrieve items
+								Confirm
 							</button>
 						</form>
 					)

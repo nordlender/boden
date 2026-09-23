@@ -1,0 +1,51 @@
+---
+export const prerender = false;
+
+// Moderator hub — landing page for the /moderator/* section. Gated by
+// src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator). Messages box
+// is a placeholder (see MessagesBox.astro and issue for the /admin
+// authoring side); the requests list reuses the same query/shape as
+// requests.astro via getPendingRequestRows so the two never drift apart.
+import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
+import MessagesBox from '../../components/moderator/MessagesBox.astro';
+import ActionButton from '../../components/moderator/ActionButton.astro';
+import OrdersTable from '../../components/orders/OrdersTable.astro';
+import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
+import { getPendingRequestRows } from '../../lib/moderatorOrders';
+
+const pendingRequests = await getPendingRequestRows();
+const idByCode = new Map(pendingRequests.map((order) => [order.orderCode, order.id]));
+const rows: OrdersTableRow[] = pendingRequests.map((order) => ({
+	orderCode: order.orderCode,
+	status: order.status,
+	fromDate: order.fromDate,
+	toDate: order.toDate,
+	customerName: order.customerName,
+	items: order.items,
+}));
+---
+
+<ModeratorLayout title="Moderator — Boden">
+	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+		<MessagesBox />
+
+		<div class="flex flex-col gap-3">
+			<div class="flex items-baseline justify-between gap-4">
+				<h1 class="text-xl font-semibold text-text">Upcoming requests</h1>
+				<a href="/moderator/requests" class="text-sm font-medium text-text-muted hover:text-text">See all &rarr;</a>
+			</div>
+
+			<OrdersTable
+				orders={rows}
+				viewHref={(code: string) => `/moderator/review/${idByCode.get(code)}`}
+				emptyMessage="No orders are waiting for review."
+			/>
+		</div>
+
+		<div class="flex flex-col gap-3 sm:flex-row">
+			<ActionButton href="/moderator/retrieve" label="Retrieve" description="Look up an order and hand out gear." />
+			<ActionButton href="/moderator/retrieve" label="Return" description="Look up an order and take gear back." />
+			<ActionButton href="/moderator/pickup-days" label="Pickup days" description="Register your availability for pickup." />
+		</div>
+	</div>
+</ModeratorLayout>

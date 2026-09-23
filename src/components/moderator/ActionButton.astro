@@ -1,0 +1,20 @@
+---
+// One of the index page's three large action tiles (Retrieve / Return /
+// Pickup days). A plain link styled as a big tap target rather than a
+// <button> — each one just navigates, nothing to submit.
+interface Props {
+	href: string;
+	label: string;
+	description: string;
+}
+
+const { href, label, description } = Astro.props;
+---
+
+<a
+	href={href}
+	class="flex flex-1 flex-col gap-1 rounded-lg border border-border bg-surface px-5 py-6 text-center transition-colors hover:border-accent hover:bg-bg-subtle sm:text-left"
+>
+	<span class="text-lg font-semibold text-text">{label}</span>
+	<span class="text-sm text-text-muted">{description}</span>
+</a>

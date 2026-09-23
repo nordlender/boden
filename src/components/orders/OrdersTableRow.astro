@@ -16,18 +16,18 @@ const { orderCode, status, fromDate, toDate, customerName, viewHref } = Astro.pr
 ---
 
 <div class="flex flex-col gap-2 rounded-md border border-border px-3 py-2 text-sm">
-	<div class="grid grid-cols-[auto_1fr_1fr_auto_auto] items-center gap-3">
-		<OrderStatusBadge status={status} />
-		<span class="text-text-muted">{formatDateDisplay(fromDate)} &ndash; {formatDateDisplay(toDate)}</span>
-		<span class="truncate font-medium text-text">{customerName}</span>
-		<span class="font-mono text-text-muted">#{orderCode}</span>
+	<div class="grid grid-cols-2 items-center gap-x-3 gap-y-1 sm:grid-cols-[5rem_1fr_1fr_auto_auto] sm:gap-y-0">
+		<OrderStatusBadge status={status} class="order-1 w-20 sm:order-1" />
 		<a
 			href={viewHref}
 			aria-label={`View order #${orderCode}`}
-			class="inline-flex items-center justify-center rounded-md border border-border p-1.5 text-text-muted hover:bg-bg-subtle hover:text-text"
+			class="order-2 inline-flex items-center justify-self-end rounded-md border border-border p-2 text-text-muted hover:bg-bg-subtle hover:text-text sm:order-5 sm:justify-self-auto sm:p-1.5"
 		>
 			<AppIcon name="view" size={18} />
 		</a>
+		<span class="order-3 col-span-2 truncate font-medium text-text sm:order-3 sm:col-span-1">{customerName}</span>
+		<span class="order-4 text-text-muted sm:order-2">{formatDateDisplay(fromDate)} &ndash; {formatDateDisplay(toDate)}</span>
+		<span class="order-5 justify-self-end font-mono text-text-muted sm:order-4 sm:justify-self-auto">#{orderCode}</span>
 	</div>
 	<slot />
 </div>

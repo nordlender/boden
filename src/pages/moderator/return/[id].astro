@@ -1,0 +1,100 @@
+---
+export const prerender = false;
+
+// Blind-count return confirmation — reached from the hub's "Return items"
+// link once an order is active. Single page (unlike the retrieval flow's
+// checklist-then-count split): the member has already brought the items
+// back and set them in front of the moderator, so there's no "go fetch from
+// storage" step to separate out. Gated by src/middleware/index.ts
+// (MOD_ROUTE_PREFIXES via /moderator).
+import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
+import Thumbnail from '../../../components/wizard/Thumbnail.astro';
+import { getOrderDetail } from '../../../lib/moderatorOrders';
+
+const idParam = Number(Astro.params.id);
+const order = Number.isInteger(idParam) ? await getOrderDetail(idParam) : null;
+
+if (!order) {
+	return Astro.redirect('/moderator/retrieve');
+}
+if (order.status !== 'active') {
+	return Astro.redirect(`/moderator/retrieve/${order.id}`);
+}
+
+const mismatch = Astro.url.searchParams.get('mismatch') === '1';
+
+// Target for a return is each line's retrievedQuantity — what was actually
+// handed out at pickup — never requestedQuantity, and there's no
+// unavailable-line/adjusted-target concept on a return the way there is on
+// retrieval, so this reads straight from the order rather than being
+// threaded through query params from a prior page.
+const lines = order.items.map((item) => {
+	const target = item.retrievedQuantity ?? 0;
+	const enteredRaw = Astro.url.searchParams.get(`entered_${item.orderItemId}`);
+	const enteredParsed = enteredRaw !== null ? Number(enteredRaw) : NaN;
+	const entered = mismatch && Number.isFinite(enteredParsed) ? enteredParsed : null;
+	const isMismatched = mismatch && entered !== null && entered !== target;
+	return {
+		...item,
+		target,
+		enteredValue: entered,
+		correction: !isMismatched ? null : entered! < target ? `Collect ${target - entered!} more` : `${entered! - target} too many — double check`,
+	};
+});
+---
+
+<ModeratorLayout title={`Return order #${order.orderCode} — Moderator`}>
+	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
+		<a href={`/moderator/retrieve/${order.id}`} class="self-start text-sm font-medium text-text-muted hover:text-text">
+			&larr; Back to order
+		</a>
+
+		<div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">
+			<div>
+				<h1 class="text-xl font-semibold text-text">Return order #{order.orderCode}</h1>
+				<p class="mt-1 text-sm text-text-muted">
+					Count each item as the member hands it back, then enter what you counted below — not what the order expects.
+				</p>
+			</div>
+
+			{
+				mismatch && (
+					<p class="rounded-md border border-warning-border bg-warning-subtle px-3 py-2 text-sm text-warning-text">
+						Some counts don't match yet — see the notes below and adjust.
+					</p>
+				)
+			}
+
+			<form method="post" action={`/api/moderator/orders/${order.id}/return`} class="flex flex-col gap-4">
+				<ul class="flex flex-col divide-y divide-border">
+					{
+						lines.map((line) => (
+							<li class="flex items-center gap-3 py-2">
+								<Thumbnail src={line.itemImageUrl} alt={line.itemName} size={40} />
+								<div class="flex flex-1 flex-col gap-0.5">
+									<span class="text-sm text-text">{line.itemName}</span>
+									{line.correction && <span class="text-xs font-medium text-warning-text">{line.correction}</span>}
+								</div>
+								<input
+									type="number"
+									name={`qty_${line.orderItemId}`}
+									min="0"
+									value={line.enteredValue ?? undefined}
+									required
+									class="w-20 rounded border border-border-strong px-2 py-1 text-sm text-text"
+								/>
+							</li>
+						))
+					}
+				</ul>
+
+				<button
+					type="submit"
+					class="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover"
+				>
+					Complete
+				</button>
+			</form>
+		</div>
+	</div>
+</ModeratorLayout>

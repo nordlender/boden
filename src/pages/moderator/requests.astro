@@ -1,0 +1,59 @@
+---
+export const prerender = false;
+
+// Review-stage entry point: every order still pending moderator review,
+// soonest pick-up date first — see src/pages/admin/orders.astro for the
+// OrdersTable pattern this mirrors. Gated by src/middleware/index.ts
+// (MOD_ROUTE_PREFIXES via /moderator).
+import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
+import { db } from '../../db/client';
+import OrdersTable from '../../components/orders/OrdersTable.astro';
+import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
+
+// Pending review = still requested, not yet accepted or rejected. Once a
+// moderator accepts/rejects it, it drops off this list (accepted orders
+// move on to the retrieval stage via order-code lookup; rejected orders
+// have nothing further to review).
+const pendingOrders = await db.query.orders.findMany({
+	where: (t, { and, eq, isNull }) => and(eq(t.status, 'requested'), isNull(t.acceptedAt), isNull(t.rejectedAt)),
+	// Soonest pick-up first — that's what needs reviewing soonest, unlike
+	// the admin orders page's createdAt-descending "most recent" ordering.
+	orderBy: (t, { asc }) => [asc(t.fromDate)],
+	with: { user: true, orderItems: { with: { item: true } } },
+});
+
+// OrdersTable's viewHref callback is keyed by orderCode (see OrdersTable.astro),
+// but the review page lives at a numeric id — build a lookup from the same
+// query result rather than a second query.
+const idByCode = new Map(pendingOrders.map((order) => [order.orderCode, order.id]));
+
+const rows: OrdersTableRow[] = pendingOrders.map((order) => ({
+	orderCode: order.orderCode,
+	status: order.status,
+	fromDate: order.fromDate,
+	toDate: order.toDate,
+	// users.name is nullable (set from the external OAuth provider) — fall
+	// back to the checkout-time contact name snapshot rather than showing
+	// a blank customer, same convention as src/pages/admin/orders.astro.
+	customerName: order.user?.name || order.contactName,
+	items: order.orderItems.map((oi) => ({
+		itemName: oi.item.name,
+		requestedQuantity: oi.requestedQuantity,
+	})),
+}));
+---
+
+<ModeratorLayout title="Order requests — Moderator">
+	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+		<div>
+			<h1 class="text-xl font-semibold text-text">Order requests</h1>
+			<p class="mt-1 text-sm text-text-muted">Orders waiting for review, soonest pick-up first.</p>
+		</div>
+
+		<OrdersTable
+			orders={rows}
+			viewHref={(code: string) => `/moderator/review/${idByCode.get(code)}`}
+			emptyMessage="No orders are waiting for review."
+		/>
+	</div>
+</ModeratorLayout>

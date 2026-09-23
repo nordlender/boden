@@ -2,12 +2,13 @@ import { db } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
+import type { Role } from './auth';
 import { isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
 
-// Excludes ambiguous characters (0/O, 1/I) — an order code is read aloud by
-// members to moderators and typed into the retrieve-order form; a checkout
-// token isn't, but shares the alphabet for consistency.
+// Only used for the checkout token, which isn't read aloud but shares the
+// alphabet for consistency. The order code itself has its own fixed-format
+// alphabet — see generateOrderCode below.
 const RANDOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 function generateRandomCode(length: number): string {
@@ -18,11 +19,45 @@ function generateRandomCode(length: number): string {
   return code;
 }
 
-const ORDER_CODE_LENGTH = 6;
 const MAX_ORDER_CODE_ATTEMPTS = 5;
 
-export function generateOrderCode(): string {
-  return generateRandomCode(ORDER_CODE_LENGTH);
+const ORDER_CODE_DIGITS = '0123456789';
+const ORDER_CODE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+// Letters reserved to flag which role created the order — see the last
+// character's role map below. A regular (member) order must never land on
+// one of these, so role-originated orders stay visually distinguishable at a
+// glance.
+const ORDER_CODE_RESERVED_ROLE_LETTERS = 'ABM';
+const ORDER_CODE_REGULAR_LAST_LETTERS = [...ORDER_CODE_LETTERS].filter(
+  (c) => !ORDER_CODE_RESERVED_ROLE_LETTERS.includes(c),
+);
+
+// Maps the role that created the order to its reserved last-character letter
+// (see issue #155). Only roles that exist today are wired up — 'board' isn't
+// a role yet, so its reserved letter ('B') currently can only be produced by
+// wiring a future role in here, not by any live code path.
+const ORDER_CODE_ROLE_LETTERS: Partial<Record<Role, string>> = {
+  admin: 'A',
+  moderator: 'M',
+};
+
+function randomChar(alphabet: string | string[]): string {
+  return alphabet[Math.floor(Math.random() * alphabet.length)];
+}
+
+// Order code format is `NNAX` (see issue #155): two digits, then a free
+// letter, then a role-flag letter. `role` is the role of the member who
+// created the order; a regular member order never uses a reserved letter
+// (A/B/M) as its last character, so role-originated orders are
+// distinguishable at a glance.
+export function generateOrderCode(role: Role = 'member'): string {
+  const lastLetter = ORDER_CODE_ROLE_LETTERS[role] ?? randomChar(ORDER_CODE_REGULAR_LAST_LETTERS);
+  return (
+    randomChar(ORDER_CODE_DIGITS) +
+    randomChar(ORDER_CODE_DIGITS) +
+    randomChar(ORDER_CODE_LETTERS) +
+    lastLetter
+  );
 }
 
 // Shared by every order created from one checkout submission (split or
@@ -50,6 +85,9 @@ class UnavailableItemsError extends Error {
 
 export type CreateOrderInput = {
   userId: string;
+  // Role of the member creating the order, used to pick the order code's
+  // reserved last character — see generateOrderCode.
+  role: Role;
   note: string | null;
   cartEntries: CartEntry[];
   fromDate: string;
@@ -70,6 +108,7 @@ function insertOrder(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   input: {
     userId: string;
+    role: Role;
     note: string | null;
     fromDate: string;
     toDate: string;
@@ -99,7 +138,7 @@ function insertOrder(
   }
 
   for (let attempt = 0; attempt < MAX_ORDER_CODE_ATTEMPTS; attempt++) {
-    const orderCode = generateOrderCode();
+    const orderCode = generateOrderCode(input.role);
     try {
       const order = tx
         .insert(orders)
@@ -171,6 +210,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     const result = db.transaction((tx) =>
       insertOrder(tx, {
         userId: input.userId,
+        role: input.role,
         note: input.note,
         fromDate: input.fromDate,
         toDate: input.toDate,
@@ -192,6 +232,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
 
 export type CreateSplitOrdersInput = {
   userId: string;
+  role: Role;
   note: string | null;
   cartEntries: CartEntry[];
   fromDate: string;
@@ -244,6 +285,7 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
       groups.map((entries) =>
         insertOrder(tx, {
           userId: input.userId,
+          role: input.role,
           note: input.note,
           fromDate: input.fromDate,
           toDate: input.toDate,

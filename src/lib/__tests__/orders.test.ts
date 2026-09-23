@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { createOrder, createSplitOrders, deleteOrder, rescheduleOrder } from '../orders';
+import { createOrder, createSplitOrders, deleteOrder, generateOrderCode, rescheduleOrder } from '../orders';
 import type { CartEntry } from '../cart';
 
 // rescheduleOrder calls isValidDateRange (src/lib/reservation.ts), which
@@ -17,8 +17,15 @@ afterAll(() => {
 // Contact snapshot fields are required on createOrder/createSplitOrders
 // input (src/db/schema.ts's orders.contactName/contactEmail) — a fixed
 // stand-in for every call below, since none of these tests are about the
-// contact snapshot itself.
-const CONTACT = { contactName: 'Test Member', contactEmail: 'member@example.com', contactMobile: null };
+// contact snapshot itself. `role` is likewise a fixed 'member' stand-in
+// (see the "order code role suffix" describe block below for role-specific
+// behavior).
+const CONTACT = {
+	contactName: 'Test Member',
+	contactEmail: 'member@example.com',
+	contactMobile: null,
+	role: 'member' as const,
+};
 
 // createOrder/createSplitOrders join against the db (src/lib/orders.ts
 // imports ../db/client) — swap it here for a seeded in-memory sqlite db,
@@ -78,7 +85,8 @@ describe('createOrder', () => {
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		expect(result.orderCode).toHaveLength(6);
+		// NNAX format (issue #155): two digits, a free letter, a role letter.
+		expect(result.orderCode).toMatch(/^\d{2}[A-Z]{2}$/);
 		expect(result.checkoutToken).toHaveLength(10);
 		expect(result.checkoutToken).not.toBe(result.orderCode);
 	});
@@ -354,5 +362,29 @@ describe('rescheduleOrder', () => {
 	it('rejects rescheduling an order owned by someone else, without revealing whether it exists', async () => {
 		const result = await rescheduleOrder({ orderCode: 'AAAAAA', userId: 'member-1', fromDate: '2026-12-01', toDate: '2026-12-02' });
 		expect(result).toEqual({ ok: false, error: 'not_found' });
+	});
+});
+
+describe('generateOrderCode', () => {
+	it('never gives a member order a reserved role letter (A/B/M) as its last character', () => {
+		for (let i = 0; i < 200; i++) {
+			expect(generateOrderCode('member')).not.toMatch(/[ABM]$/);
+		}
+	});
+
+	it("always ends an admin's order code with A", () => {
+		for (let i = 0; i < 20; i++) {
+			expect(generateOrderCode('admin')).toMatch(/A$/);
+		}
+	});
+
+	it("always ends a moderator's order code with M", () => {
+		for (let i = 0; i < 20; i++) {
+			expect(generateOrderCode('moderator')).toMatch(/M$/);
+		}
+	});
+
+	it('matches the NNAX format', () => {
+		expect(generateOrderCode('member')).toMatch(/^\d{2}[A-Z]{2}$/);
 	});
 });

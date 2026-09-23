@@ -177,8 +177,11 @@ export const users = sqliteTable('users', {
 // One order = one rental request, potentially covering multiple items
 export const orders = sqliteTable('orders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  // Short random alphanumeric code (6 chars, excludes ambiguous 0/O, 1/I) — this is
-  // what members read aloud to moderators and what appears in the retrieve-order URL.
+  // `NNAX` format — two digits, a free letter, then a letter flagging the
+  // creating member's role (A=admin, B=board member, M=moderator; any other
+  // letter means a regular member order) — see src/lib/orders.ts's
+  // generateOrderCode. This is what members read aloud to moderators and
+  // what appears in the retrieve-order URL.
   orderCode: text('order_code').notNull().unique(),
   // Shared by every order created from one checkout submission (split or
   // not) — the confirmation page looks orders up by this instead of by

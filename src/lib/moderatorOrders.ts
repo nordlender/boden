@@ -172,6 +172,16 @@ export async function rejectOrder(orderId: number, reason: string): Promise<Reje
 	return result.changes > 0 ? { ok: true } : { ok: false, error: 'not_pending_review' };
 }
 
+// better-sqlite3 throws a raw SqliteError (code SQLITE_CONSTRAINT_FOREIGNKEY)
+// when confirmedByUserId/returnedByUserId below don't reference a real
+// users row. Not reachable in normal operation — every caller passes
+// locals.user!.id from an already requireModerator()-gated session, and
+// upsertUser guarantees that row exists — but caught here defensively so a
+// bad id surfaces as a clean result instead of an unhandled 500.
+function isForeignKeyViolation(err: unknown): boolean {
+	return err instanceof Error && 'code' in err && (err as { code: unknown }).code === 'SQLITE_CONSTRAINT_FOREIGNKEY';
+}
+
 // Thrown inside confirmRetrieval's transaction when the order isn't (still)
 // eligible — caught outside and turned into a result rather than a 500.
 class NotAcceptableError extends Error {
@@ -190,7 +200,11 @@ class QuantityExceedsRequestedError extends Error {
 	}
 }
 
-export type ConfirmRetrievalResult = { ok: true } | { ok: false; error: 'not_acceptable' } | { ok: false; error: 'quantity_exceeds_requested' };
+export type ConfirmRetrievalResult =
+	| { ok: true }
+	| { ok: false; error: 'not_acceptable' }
+	| { ok: false; error: 'quantity_exceeds_requested' }
+	| { ok: false; error: 'moderator_not_found' };
 
 // Called only once the confirm count page's mismatch loop has already
 // confirmed every line's blind count equals its target (requestedQuantity,
@@ -239,20 +253,26 @@ export async function confirmRetrieval(
 	} catch (err) {
 		if (err instanceof NotAcceptableError) return { ok: false, error: 'not_acceptable' };
 		if (err instanceof QuantityExceedsRequestedError) return { ok: false, error: 'quantity_exceeds_requested' };
+		if (isForeignKeyViolation(err)) return { ok: false, error: 'moderator_not_found' };
 		throw err;
 	}
 	return { ok: true };
 }
 
-export type MarkReturnedResult = { ok: true } | { ok: false; error: 'not_active' };
+export type MarkReturnedResult = { ok: true } | { ok: false; error: 'not_active' } | { ok: false; error: 'moderator_not_found' };
 
 export async function markReturned(orderId: number, moderatorUserId: string): Promise<MarkReturnedResult> {
-	const result = db
-		.update(orders)
-		.set({ status: 'returned', returnedAt: new Date(), returnedByUserId: moderatorUserId })
-		.where(and(eq(orders.id, orderId), eq(orders.status, 'active')))
-		.run();
-	return result.changes > 0 ? { ok: true } : { ok: false, error: 'not_active' };
+	try {
+		const result = db
+			.update(orders)
+			.set({ status: 'returned', returnedAt: new Date(), returnedByUserId: moderatorUserId })
+			.where(and(eq(orders.id, orderId), eq(orders.status, 'active')))
+			.run();
+		return result.changes > 0 ? { ok: true } : { ok: false, error: 'not_active' };
+	} catch (err) {
+		if (isForeignKeyViolation(err)) return { ok: false, error: 'moderator_not_found' };
+		throw err;
+	}
 }
 
 export interface FollowingRentalWarning {

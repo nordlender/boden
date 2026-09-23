@@ -209,6 +209,14 @@ describe('confirmRetrieval', () => {
 			error: 'quantity_exceeds_requested',
 		});
 	});
+
+	it('fails with moderator_not_found (defense-in-depth) instead of throwing when moderatorUserId has no matching users row', async () => {
+		const { orderId, orderItemId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, requestedQuantity: 1, acceptedAt: new Date() });
+		expect(await confirmRetrieval(orderId, 'no-such-user', [{ orderItemId, quantity: 1 }])).toEqual({
+			ok: false,
+			error: 'moderator_not_found',
+		});
+	});
 });
 
 describe('markReturned', () => {
@@ -223,6 +231,11 @@ describe('markReturned', () => {
 	it('fails with not_active for a requested order', async () => {
 		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID });
 		expect(await markReturned(orderId, 'moderator-1')).toEqual({ ok: false, error: 'not_active' });
+	});
+
+	it('fails with moderator_not_found (defense-in-depth) instead of throwing when moderatorUserId has no matching users row', async () => {
+		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, status: 'active', acceptedAt: new Date() });
+		expect(await markReturned(orderId, 'no-such-user')).toEqual({ ok: false, error: 'moderator_not_found' });
 	});
 });
 

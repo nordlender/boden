@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, inArray, isNull, ne } from 'drizzle-orm';
 import { db } from '../db/client';
 import { orderItems, orders } from '../db/schema';
+import { isForeignKeyViolation } from './db-errors';
 import { getReservationAvailability } from './reservation';
 
 // Moderator-side order operations — kept separate from member-side
@@ -172,15 +173,12 @@ export async function rejectOrder(orderId: number, reason: string): Promise<Reje
 	return result.changes > 0 ? { ok: true } : { ok: false, error: 'not_pending_review' };
 }
 
-// better-sqlite3 throws a raw SqliteError (code SQLITE_CONSTRAINT_FOREIGNKEY)
-// when confirmedByUserId/returnedByUserId below don't reference a real
-// users row. Not reachable in normal operation — every caller passes
-// locals.user!.id from an already requireModerator()-gated session, and
-// upsertUser guarantees that row exists — but caught here defensively so a
-// bad id surfaces as a clean result instead of an unhandled 500.
-function isForeignKeyViolation(err: unknown): boolean {
-	return err instanceof Error && 'code' in err && (err as { code: unknown }).code === 'SQLITE_CONSTRAINT_FOREIGNKEY';
-}
+// confirmedByUserId/returnedByUserId below are FK columns sourced from an
+// ambient session id (locals.user!.id) rather than a freshly-looked-up row.
+// Not reachable in normal operation — every caller is already
+// requireModerator()-gated, and upsertUser guarantees that row exists — but
+// isForeignKeyViolation (src/lib/db-errors.ts) is caught defensively below
+// so a bad id surfaces as a clean result instead of an unhandled 500.
 
 // Thrown inside confirmRetrieval's transaction when the order isn't (still)
 // eligible — caught outside and turned into a result rather than a 500.

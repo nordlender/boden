@@ -37,6 +37,15 @@ export const iconOnlyPixelSize: Record<ButtonSize, number> = {
 	lg: 22,
 };
 
+// Icon pixel size for the text+icon buttons (TextIconButton, TextMorphButton)
+// — smaller than iconOnlyPixelSize since these icons sit next to a label
+// rather than carrying the whole button on their own.
+export const textIconPixelSize: Record<ButtonSize, number> = {
+	sm: 14,
+	md: 16,
+	lg: 18,
+};
+
 export const baseClasses =
 	'inline-flex items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed';
 

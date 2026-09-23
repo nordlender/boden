@@ -43,9 +43,11 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 
 	const result = await markReturned(orderId, locals.user!.id);
 	if (!result.ok) {
-		// Only reachable via a stale/tampered POST — the return page already
-		// redirects away from a non-active order.
-		return new Response('Order is not active', { status: 409 });
+		// not_active is only reachable via a stale/tampered POST — the return
+		// page already redirects away from a non-active order.
+		// moderator_not_found means the signed-in moderator's user row vanished
+		// mid-session.
+		return new Response(result.error === 'not_active' ? 'Order is not active' : 'Moderator account not found', { status: 409 });
 	}
 
 	return redirect(`/moderator/retrieve/${orderId}?returned=1`, 303);

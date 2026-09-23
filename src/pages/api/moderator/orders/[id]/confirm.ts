@@ -52,12 +52,18 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 
 	const result = await confirmRetrieval(orderId, locals.user!.id, retrieved);
 	if (!result.ok) {
-		// Only reachable via a stale/tampered POST — the page's own match
-		// check above is what normally prevents these (e.g. someone else
+		// Only reachable via a stale/tampered POST, or (moderator_not_found) a
+		// moderator whose user row vanished mid-session — the page's own match
+		// check above is what normally prevents the others (e.g. someone else
 		// already confirmed this order in another tab).
-		return new Response(result.error === 'not_acceptable' ? 'Order is not acceptable for retrieval' : 'Quantity exceeds requested', {
-			status: result.error === 'not_acceptable' ? 409 : 400,
-		});
+		switch (result.error) {
+			case 'not_acceptable':
+				return new Response('Order is not acceptable for retrieval', { status: 409 });
+			case 'quantity_exceeds_requested':
+				return new Response('Quantity exceeds requested', { status: 400 });
+			case 'moderator_not_found':
+				return new Response('Moderator account not found', { status: 409 });
+		}
 	}
 
 	return redirect(`/moderator/retrieve/${orderId}?confirmed=1`, 303);

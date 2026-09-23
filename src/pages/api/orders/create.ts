@@ -97,6 +97,12 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     if (result.error === 'unavailable') {
       return redirect('/reservation?error=unavailable');
     }
+    // 'user_not_found': defense-in-depth only — orders.userId's FK didn't
+    // resolve for locals.user.id, which upsertUser guarantees exists in
+    // normal operation. See orders.ts's createOrder/createSplitOrders.
+    if (result.error === 'user_not_found') {
+      return redirect('/cart?error=account_not_found');
+    }
     return redirect('/cart?error=empty_cart');
   }
 

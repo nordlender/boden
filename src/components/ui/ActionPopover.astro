@@ -7,13 +7,20 @@
 // - A plain confirm (e.g. delete order): pass `placement="anchor"`
 //   (the default) and no form field, just a message in the default slot.
 // - A confirm with a required field (e.g. reject-with-reason): put a
-//   labeled <textarea>/<input> in the default slot and set `formAction` so
-//   the popup renders a <form> that posts there; `fieldName` names the
-//   field the caller reads server-side.
+//   labeled <textarea>/<input> (with its own `name`) in the default slot
+//   and set `formAction` so the popup renders a <form> that posts there;
+//   the slotted field's `name` attribute is what the caller reads
+//   server-side, same as any other form field.
 //
 // The Cancel button just closes the popover (via popovertarget); the
 // primary button is either a plain submit (form mode) or left to the
 // caller to wire up via `data-action-popover-confirm` (plain confirm mode).
+//
+// `placement="fill-parent"` (see Popover.astro) needs the *caller* to wrap
+// the whole row this trigger sits in — e.g. both Accept and Reject — in an
+// element carrying `data-popover-container`; ActionPopover doesn't add
+// this to its own trigger, since fill-parent's point is to span siblings
+// outside this component's own markup.
 import Popover from './Popover.astro';
 import Button from './Button.astro';
 
@@ -46,7 +53,7 @@ const {
 const titleId = `${id}-title`;
 ---
 
-<Button popovertarget={id} variant={triggerVariant} data-popover-container>
+<Button popovertarget={id} variant={triggerVariant}>
 	{triggerLabel}
 </Button>
 

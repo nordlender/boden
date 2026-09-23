@@ -20,7 +20,11 @@
 //   [data-popover-container], positioned at that container's left edge,
 //   still vertically over the trigger — the moderator accept/reject row
 //   case, where the popup should fill the buttons' containing div rather
-//   than float freely.
+//   than float freely. The caller is responsible for putting
+//   `data-popover-container` on the element that wraps the *whole* row
+//   (e.g. the div wrapping both the Accept and Reject buttons) — not on
+//   the trigger itself, since fill-parent's point is to span siblings the
+//   trigger doesn't contain.
 interface Props {
 	id: string;
 	placement?: 'anchor' | 'fill-parent';
@@ -51,6 +55,11 @@ const { id, placement = 'anchor', side = 'top', labelledBy, class: className } =
 	// One listener set covers every Popover instance, matched by id — same
 	// pattern as Modal.astro's document-level click delegation.
 	const GAP = 8; // px between the popup and the element it's placed against
+	const EDGE_MARGIN = 8; // px kept clear of the viewport edge
+
+	function clamp(value: number, size: number, viewportSize: number) {
+		return Math.min(Math.max(value, EDGE_MARGIN), Math.max(EDGE_MARGIN, viewportSize - size - EDGE_MARGIN));
+	}
 
 	function positionPopover(popover: HTMLElement) {
 		const trigger = document.querySelector<HTMLElement>(`[popovertarget="${popover.id}"]`);
@@ -59,20 +68,24 @@ const { id, placement = 'anchor', side = 'top', labelledBy, class: className } =
 		const placement = popover.dataset.popoverPlacement;
 		const side = popover.dataset.popoverSide ?? 'top';
 		const triggerRect = trigger.getBoundingClientRect();
+		// Only valid once the popover is actually in the top layer (i.e. from
+		// the `toggle` event, not `beforetoggle` — at `beforetoggle` time for
+		// an opening popover it's still hidden and this rect is zero-sized).
+		const popRect = popover.getBoundingClientRect();
 
 		if (placement === 'fill-parent') {
 			const container = trigger.closest<HTMLElement>('[data-popover-container]');
 			const rect = container?.getBoundingClientRect() ?? triggerRect;
-			popover.style.left = `${rect.left}px`;
-			popover.style.width = `${rect.width}px`;
+			const width = Math.min(rect.width, window.innerWidth - 2 * EDGE_MARGIN);
+			popover.style.width = `${width}px`;
 			popover.style.maxWidth = 'none';
-			popover.style.top = `${triggerRect.top}px`;
+			popover.style.left = `${clamp(rect.left, width, window.innerWidth)}px`;
+			popover.style.top = `${clamp(triggerRect.top, popRect.height, window.innerHeight)}px`;
 			return;
 		}
 
 		// "anchor" mode: content-sized, placed beside/over the trigger and
 		// clamped so it never runs off the viewport edge.
-		const popRect = popover.getBoundingClientRect();
 		let top = triggerRect.top;
 		let left = triggerRect.left;
 
@@ -90,20 +103,24 @@ const { id, placement = 'anchor', side = 'top', labelledBy, class: className } =
 			left = triggerRect.right + GAP;
 		}
 
-		const margin = 8;
-		left = Math.min(Math.max(left, margin), window.innerWidth - popRect.width - margin);
-		top = Math.min(Math.max(top, margin), window.innerHeight - popRect.height - margin);
-
-		popover.style.left = `${left}px`;
-		popover.style.top = `${top}px`;
+		popover.style.left = `${clamp(left, popRect.width, window.innerWidth)}px`;
+		popover.style.top = `${clamp(top, popRect.height, window.innerHeight)}px`;
 	}
 
-	document.addEventListener('beforetoggle', (event) => {
-		const popover = event.target;
-		if (!(popover instanceof HTMLElement) || !popover.hasAttribute('data-popover')) return;
-		if (!(event instanceof ToggleEvent) || event.newState !== 'open') return;
-		positionPopover(popover);
-	});
+	// `toggle` (not `beforetoggle`) fires after an opening popover has
+	// already been added to the top layer, so its bounding rect reflects its
+	// real size rather than reading as zero. It doesn't bubble, so this has
+	// to listen on the capture phase to reach it from `document` at all.
+	document.addEventListener(
+		'toggle',
+		(event) => {
+			const popover = event.target;
+			if (!(popover instanceof HTMLElement) || !popover.hasAttribute('data-popover')) return;
+			if (!(event instanceof ToggleEvent) || event.newState !== 'open') return;
+			positionPopover(popover);
+		},
+		true,
+	);
 
 	// The trigger's position can change between open and a subsequent
 	// reposition need (e.g. the buttons row reflowing) — re-measure on

@@ -5,6 +5,7 @@ import {
 	confirmRetrieval,
 	getFollowingRentalWorries,
 	getOrderDetail,
+	getOrderIdByCode,
 	markReturned,
 	rejectOrder,
 } from '../moderatorOrders';
@@ -97,7 +98,7 @@ async function seedOrder(opts: {
 		.insert(schema.orderItems)
 		.values({ orderId: order.id, itemId: opts.itemId, requestedQuantity: opts.requestedQuantity ?? 1 })
 		.returning();
-	return { orderId: order.id, orderItemId: orderItem.id };
+	return { orderId: order.id, orderItemId: orderItem.id, orderCode: order.orderCode };
 }
 
 describe('getOrderDetail — availability flags', () => {
@@ -126,6 +127,17 @@ describe('getOrderDetail — availability flags', () => {
 		const detail = await getOrderDetail(orderId);
 		expect(detail?.items[0].archived).toBe(false);
 		expect(detail?.items[0].doubleBooked).toBe(false);
+	});
+});
+
+describe('getOrderIdByCode', () => {
+	it('returns the order id for an existing code', async () => {
+		const { orderId, orderCode } = await seedOrder({ itemId: ITEM_AVAILABLE_ID });
+		expect(await getOrderIdByCode(orderCode)).toBe(orderId);
+	});
+
+	it('returns null for a code that does not exist', async () => {
+		expect(await getOrderIdByCode('NOSUCH')).toBeNull();
 	});
 });
 

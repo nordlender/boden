@@ -1,0 +1,87 @@
+---
+// Non-intrusive confirm/prompt popup: title + optional body/field slot +
+// Cancel + a primary action button. Built on Popover.astro (no backdrop,
+// positioned over/beside the trigger, closes on outside click for free).
+//
+// Two uses this was built for:
+// - A plain confirm (e.g. delete order): pass `placement="anchor"`
+//   (the default) and no form field, just a message in the default slot.
+// - A confirm with a required field (e.g. reject-with-reason): put a
+//   labeled <textarea>/<input> in the default slot and set `formAction` so
+//   the popup renders a <form> that posts there; `fieldName` names the
+//   field the caller reads server-side.
+//
+// The Cancel button just closes the popover (via popovertarget); the
+// primary button is either a plain submit (form mode) or left to the
+// caller to wire up via `data-action-popover-confirm` (plain confirm mode).
+import Popover from './Popover.astro';
+import Button from './Button.astro';
+
+interface Props {
+	id: string;
+	title: string;
+	confirmLabel: string;
+	triggerLabel: string;
+	triggerVariant?: 'primary' | 'secondary' | 'danger';
+	confirmVariant?: 'primary' | 'secondary' | 'danger';
+	placement?: 'anchor' | 'fill-parent';
+	side?: 'top' | 'bottom' | 'left' | 'right';
+	formAction?: string;
+	class?: string;
+}
+
+const {
+	id,
+	title,
+	confirmLabel,
+	triggerLabel,
+	triggerVariant = 'secondary',
+	confirmVariant = 'danger',
+	placement = 'anchor',
+	side = 'top',
+	formAction,
+	class: className,
+} = Astro.props;
+
+const titleId = `${id}-title`;
+---
+
+<Button popovertarget={id} variant={triggerVariant} data-popover-container>
+	{triggerLabel}
+</Button>
+
+<Popover id={id} placement={placement} side={side} labelledBy={titleId} class={className}>
+	{
+		formAction ? (
+			<form method="post" action={formAction} class="flex flex-col gap-3">
+				<p id={titleId} class="font-medium">
+					{title}
+				</p>
+				<slot />
+				<div class="flex justify-end gap-2">
+					<Button type="button" variant="secondary" popovertarget={id} popovertargetaction="hide">
+						Cancel
+					</Button>
+					<Button type="submit" variant={confirmVariant}>
+						{confirmLabel}
+					</Button>
+				</div>
+			</form>
+		) : (
+			<div class="flex flex-col gap-3">
+				<p id={titleId} class="font-medium">
+					{title}
+				</p>
+				<slot />
+				<div class="flex justify-end gap-2">
+					<Button type="button" variant="secondary" popovertarget={id} popovertargetaction="hide">
+						Cancel
+					</Button>
+					<Button type="button" variant={confirmVariant} data-action-popover-confirm={id}>
+						{confirmLabel}
+					</Button>
+				</div>
+			</div>
+		)
+	}
+</Popover>

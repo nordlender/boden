@@ -1,5 +1,5 @@
 ---
-import Button from '../ui/Button.astro';
+import ActionPopover from '../ui/ActionPopover.astro';
 
 interface Props {
 	orderCode: string;
@@ -7,32 +7,38 @@ interface Props {
 }
 
 const { orderCode, status } = Astro.props;
+const popoverId = `delete-order-${orderCode}-confirm`;
 ---
 
 {
 	status === 'requested' && (
 		<div data-delete-order={orderCode}>
-			<Button variant="danger" data-delete-order-trigger>
-				Delete order
-			</Button>
+			<ActionPopover
+				id={popoverId}
+				title={`Delete order #${orderCode}?`}
+				triggerLabel="Delete order"
+				triggerVariant="danger"
+				confirmLabel="Delete"
+				confirmVariant="danger"
+			>
+				<p class="text-sm text-text-muted">This cannot be undone.</p>
+			</ActionPopover>
 			<p data-delete-order-error hidden class="mt-2 text-sm text-error-text" />
 		</div>
 	)
 }
 
 <script>
-	// A themed confirmation dialog (reusing the Modal.astro primitive built
-	// for the change-order calendar box) is tracked separately — for now a
-	// native confirm() is the guard against an accidental click.
 	document.querySelectorAll<HTMLElement>('[data-delete-order]').forEach((container) => {
 		const orderCode = container.dataset.deleteOrder;
-		const trigger = container.querySelector<HTMLButtonElement>('[data-delete-order-trigger]');
+		const trigger = container.querySelector<HTMLButtonElement>('[data-action-popover-confirm]');
 		const errorEl = container.querySelector<HTMLElement>('[data-delete-order-error]');
 
 		trigger?.addEventListener('click', async () => {
 			if (!orderCode) return;
-			if (!window.confirm(`Delete order #${orderCode}? This cannot be undone.`)) return;
 
+			const popover = trigger.closest('[popover]') as HTMLElement | null;
+			popover?.hidePopover();
 			trigger.disabled = true;
 			errorEl?.setAttribute('hidden', '');
 

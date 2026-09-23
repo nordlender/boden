@@ -1,0 +1,114 @@
+---
+// Non-modal popup primitive, built on the native Popover API
+// (popover="auto"): unlike Modal.astro's <dialog>/showModal(), it has no
+// backdrop and doesn't block the rest of the page — the page underneath
+// stays visible and interactable. Outside-click-to-close ("light dismiss")
+// is native browser behavior, free.
+//
+// Positioning is done in JS off the trigger's/container's bounding rect
+// rather than CSS anchor positioning, since anchor positioning isn't yet
+// supported everywhere Popover API is; this keeps behavior consistent
+// across browsers without adding a dependency (this codebase hand-rolls
+// its overlay primitives — see Modal.astro).
+//
+// Two placement modes:
+// - "anchor" (default): appears over the trigger element itself, on the
+//   `side` given (default "top" — layered on top of the button that opened
+//   it, like an action confirm; use "right"/"left" for a hint that should
+//   sit beside the thing it explains rather than cover it).
+// - "fill-parent": spans the full width of the trigger's closest
+//   [data-popover-container], positioned at that container's left edge,
+//   still vertically over the trigger — the moderator accept/reject row
+//   case, where the popup should fill the buttons' containing div rather
+//   than float freely.
+interface Props {
+	id: string;
+	placement?: 'anchor' | 'fill-parent';
+	side?: 'top' | 'bottom' | 'left' | 'right';
+	labelledBy?: string;
+	class?: string;
+}
+
+const { id, placement = 'anchor', side = 'top', labelledBy, class: className } = Astro.props;
+---
+
+<div
+	id={id}
+	popover="auto"
+	data-popover
+	data-popover-placement={placement}
+	data-popover-side={side}
+	aria-labelledby={labelledBy}
+	class:list={[
+		'fixed m-0 max-w-sm rounded-lg border border-border bg-surface p-4 text-text shadow-lg',
+		className,
+	]}
+>
+	<slot />
+</div>
+
+<script>
+	// One listener set covers every Popover instance, matched by id — same
+	// pattern as Modal.astro's document-level click delegation.
+	const GAP = 8; // px between the popup and the element it's placed against
+
+	function positionPopover(popover: HTMLElement) {
+		const trigger = document.querySelector<HTMLElement>(`[popovertarget="${popover.id}"]`);
+		if (!trigger) return;
+
+		const placement = popover.dataset.popoverPlacement;
+		const side = popover.dataset.popoverSide ?? 'top';
+		const triggerRect = trigger.getBoundingClientRect();
+
+		if (placement === 'fill-parent') {
+			const container = trigger.closest<HTMLElement>('[data-popover-container]');
+			const rect = container?.getBoundingClientRect() ?? triggerRect;
+			popover.style.left = `${rect.left}px`;
+			popover.style.width = `${rect.width}px`;
+			popover.style.maxWidth = 'none';
+			popover.style.top = `${triggerRect.top}px`;
+			return;
+		}
+
+		// "anchor" mode: content-sized, placed beside/over the trigger and
+		// clamped so it never runs off the viewport edge.
+		const popRect = popover.getBoundingClientRect();
+		let top = triggerRect.top;
+		let left = triggerRect.left;
+
+		if (side === 'top') {
+			top = triggerRect.top - popRect.height - GAP;
+			left = triggerRect.left + triggerRect.width / 2 - popRect.width / 2;
+		} else if (side === 'bottom') {
+			top = triggerRect.bottom + GAP;
+			left = triggerRect.left + triggerRect.width / 2 - popRect.width / 2;
+		} else if (side === 'left') {
+			top = triggerRect.top + triggerRect.height / 2 - popRect.height / 2;
+			left = triggerRect.left - popRect.width - GAP;
+		} else if (side === 'right') {
+			top = triggerRect.top + triggerRect.height / 2 - popRect.height / 2;
+			left = triggerRect.right + GAP;
+		}
+
+		const margin = 8;
+		left = Math.min(Math.max(left, margin), window.innerWidth - popRect.width - margin);
+		top = Math.min(Math.max(top, margin), window.innerHeight - popRect.height - margin);
+
+		popover.style.left = `${left}px`;
+		popover.style.top = `${top}px`;
+	}
+
+	document.addEventListener('beforetoggle', (event) => {
+		const popover = event.target;
+		if (!(popover instanceof HTMLElement) || !popover.hasAttribute('data-popover')) return;
+		if (!(event instanceof ToggleEvent) || event.newState !== 'open') return;
+		positionPopover(popover);
+	});
+
+	// The trigger's position can change between open and a subsequent
+	// reposition need (e.g. the buttons row reflowing) — re-measure on
+	// resize while a popover is open rather than only once at open time.
+	window.addEventListener('resize', () => {
+		document.querySelectorAll<HTMLElement>('[data-popover]:popover-open').forEach(positionPopover);
+	});
+</script>

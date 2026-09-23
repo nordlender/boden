@@ -9,10 +9,7 @@ import AdminNavbar from '../../components/AdminNavbar.astro';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
 import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
 import OrdersLayoutToggle from '../../components/orders/OrdersLayoutToggle.astro';
-
-// src/db/schema.ts's orders.status enum.
-const ORDER_STATUSES = ['requested', 'active', 'returned', 'rejected'] as const;
-type OrderStatus = (typeof ORDER_STATUSES)[number];
+import { ORDER_STATUSES, type OrderStatus } from '../../constants/orders';
 
 const statusParam = Astro.url.searchParams.get('status');
 const activeStatus: OrderStatus | null = ORDER_STATUSES.includes(statusParam as OrderStatus)

@@ -1,6 +1,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { orderItems, orders } from '../db/schema';
+import { ACTIVE_HOLD_STATUSES } from '../constants/orders';
 
 // Shared by src/lib/shop.ts and src/lib/cart.ts. Deliberately a standalone
 // duplicate of src/lib/wizard.ts's reservedQuantitiesByItem rather than an
@@ -23,7 +24,7 @@ export async function reservedQuantitiesByItem(itemIds: number[]): Promise<Map<n
 		})
 		.from(orderItems)
 		.innerJoin(orders, eq(orderItems.orderId, orders.id))
-		.where(and(inArray(orderItems.itemId, itemIds), inArray(orders.status, ['requested', 'active'])))
+		.where(and(inArray(orderItems.itemId, itemIds), inArray(orders.status, ACTIVE_HOLD_STATUSES)))
 		.groupBy(orderItems.itemId);
 	return new Map(rows.map((row) => [row.itemId, row.reserved]));
 }

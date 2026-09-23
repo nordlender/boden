@@ -1,6 +1,7 @@
 ---
 import OrderCodeHeader from './OrderCodeHeader.astro';
 import OrderContents from './OrderContents.astro';
+import type { OrderStatus } from '../../constants/orders';
 
 interface OrderItemView {
 	itemName: string;
@@ -9,7 +10,7 @@ interface OrderItemView {
 
 interface Props {
 	orderCode: string;
-	status: string;
+	status: OrderStatus;
 	fromDate: string;
 	toDate: string;
 	note: string | null;

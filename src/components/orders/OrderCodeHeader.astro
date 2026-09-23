@@ -1,10 +1,11 @@
 ---
 import { formatDateDisplay } from '../../lib/dates';
 import OrderStatusBadge from './OrderStatusBadge.astro';
+import type { OrderStatus } from '../../constants/orders';
 
 interface Props {
 	orderCode: string;
-	status: string;
+	status: OrderStatus;
 	fromDate: string;
 	toDate: string;
 }

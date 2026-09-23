@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { requireAdmin, safeRedirectTarget, isPositiveInteger } from '../wizard-http';
+import { requireAdmin, requireModerator, safeRedirectTarget, isPositiveInteger } from '../wizard-http';
 
 const ORIGIN = 'https://shop.example.com';
 
@@ -95,6 +95,30 @@ describe('requireAdmin', () => {
 
   it('returns a 403 Response when the user is not an admin', () => {
     const res = requireAdmin({ user: { id: '1', email: 'a@b.com', name: null, role: 'member' } } as never);
+    expect(res).toBeInstanceOf(Response);
+    expect(res?.status).toBe(403);
+  });
+});
+
+describe('requireModerator', () => {
+  it('returns null when the user is a moderator', () => {
+    expect(
+      requireModerator({ user: { id: '1', email: 'a@b.com', name: null, role: 'moderator' } } as never),
+    ).toBeNull();
+  });
+
+  it('returns null when the user is an admin, since admins always have at least moderator permissions', () => {
+    expect(requireModerator({ user: { id: '1', email: 'a@b.com', name: null, role: 'admin' } } as never)).toBeNull();
+  });
+
+  it('returns a 403 Response when there is no user', () => {
+    const res = requireModerator({ user: null } as never);
+    expect(res).toBeInstanceOf(Response);
+    expect(res?.status).toBe(403);
+  });
+
+  it('returns a 403 Response when the user is a plain member', () => {
+    const res = requireModerator({ user: { id: '1', email: 'a@b.com', name: null, role: 'member' } } as never);
     expect(res).toBeInstanceOf(Response);
     expect(res?.status).toBe(403);
   });

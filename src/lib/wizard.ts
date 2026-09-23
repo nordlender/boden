@@ -1,6 +1,7 @@
 import { db } from '../db/client';
 import { items, productAttributeKeys, itemAttributeValues, orderItems, orders } from '../db/schema';
 import { eq, and, inArray, sql } from 'drizzle-orm';
+import { ACTIVE_HOLD_STATUSES } from '../constants/orders';
 
 export interface WizardAttribute {
 	key: string;
@@ -53,7 +54,7 @@ async function reservedQuantitiesByItem(itemIds: number[]): Promise<Map<number, 
 		})
 		.from(orderItems)
 		.innerJoin(orders, eq(orderItems.orderId, orders.id))
-		.where(and(inArray(orderItems.itemId, itemIds), inArray(orders.status, ['requested', 'active'])))
+		.where(and(inArray(orderItems.itemId, itemIds), inArray(orders.status, ACTIVE_HOLD_STATUSES)))
 		.groupBy(orderItems.itemId);
 	return new Map(rows.map((row) => [row.itemId, row.reserved]));
 }

@@ -1,6 +1,8 @@
 import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
 import { sqliteTable, text, integer, index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
+import { ORDER_STATUSES } from '../constants/orders';
+import { PRODUCT_STATUSES } from '../constants/products';
 
 // ---------------------------------------------------------------------------
 // Categories (unchanged from v1/v2)
@@ -52,7 +54,7 @@ export const products = sqliteTable('products', {
   // in the web shop. It does not imply an incomplete or abandoned product
   // (see docs/schema.md's "Open question" re: the old draft-expiry sweep,
   // deliberately not ported here).
-  status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden'),
+  status: text('status', { enum: PRODUCT_STATUSES }).notNull().default('hidden'),
   thumbnailImageUrl: text('thumbnail_image_url'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -188,7 +190,7 @@ export const orders = sqliteTable('orders', {
   checkoutToken: text('checkout_token').notNull(),
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', {
-    enum: ['requested', 'active', 'returned', 'rejected'],
+    enum: ORDER_STATUSES,
   }).notNull().default('requested'),
   // Reservation date range (YYYY-MM-DD, inclusive on both ends) chosen on the
   // /reservation page — the whole order (all its orderItems) shares one

@@ -1,6 +1,7 @@
 import { db } from '../db/client';
-import { items, productAttributeKeys, itemAttributeValues, orderItems, orders } from '../db/schema';
-import { eq, and, inArray, sql } from 'drizzle-orm';
+import { items, productAttributeKeys, itemAttributeValues } from '../db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
+import { reservedQuantitiesByItem } from './stock';
 
 export interface WizardAttribute {
 	key: string;
@@ -42,20 +43,6 @@ async function uniqueItemSlug(name: string): Promise<string> {
 		candidate = `${base}-${suffix++}`;
 	}
 	return candidate;
-}
-
-async function reservedQuantitiesByItem(itemIds: number[]): Promise<Map<number, number>> {
-	if (itemIds.length === 0) return new Map();
-	const rows = await db
-		.select({
-			itemId: orderItems.itemId,
-			reserved: sql<number>`sum(${orderItems.requestedQuantity})`.as('reserved'),
-		})
-		.from(orderItems)
-		.innerJoin(orders, eq(orderItems.orderId, orders.id))
-		.where(and(inArray(orderItems.itemId, itemIds), inArray(orders.status, ['requested', 'active'])))
-		.groupBy(orderItems.itemId);
-	return new Map(rows.map((row) => [row.itemId, row.reserved]));
 }
 
 export async function getWizardItems(): Promise<{ unassigned: WizardItem[]; assigned: WizardItem[] }> {

@@ -1,7 +1,7 @@
 ---
 import { formatDateDisplay } from '../../lib/dates';
 import OrderStatusBadge from './OrderStatusBadge.astro';
-import AppIcon from '../icons/AppIcon.astro';
+import IconButton from '../ui/IconButton.astro';
 
 interface Props {
 	orderCode: string;
@@ -21,13 +21,7 @@ const { orderCode, status, fromDate, toDate, customerName, viewHref } = Astro.pr
 		<span class="text-text-muted">{formatDateDisplay(fromDate)} &ndash; {formatDateDisplay(toDate)}</span>
 		<span class="truncate font-medium text-text">{customerName}</span>
 		<span class="font-mono text-text-muted">#{orderCode}</span>
-		<a
-			href={viewHref}
-			aria-label={`View order #${orderCode}`}
-			class="inline-flex items-center justify-center rounded-md border border-border p-1.5 text-text-muted hover:bg-bg-subtle hover:text-text"
-		>
-			<AppIcon name="view" size={18} />
-		</a>
+		<IconButton href={viewHref} label={`View order #${orderCode}`} icon="view" />
 	</div>
 	<slot />
 </div>

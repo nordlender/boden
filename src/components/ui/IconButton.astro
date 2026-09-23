@@ -1,0 +1,40 @@
+---
+// Icon-only button/link primitive (cart toggle, "view order", row actions).
+// `label` is required and becomes the accessible name (aria-label) — there's
+// no visible text. Pass an icon name from src/lib/icons.ts, or omit it and
+// provide the icon yourself via the default slot (e.g. a custom inline SVG,
+// or a <MorphIcon>, that AppIcon's fixed icon set can't cover).
+import AppIcon from '../icons/AppIcon.astro';
+import { icons } from '../../lib/icons';
+import { baseClasses, iconOnlyPixelSize, iconOnlySizeClasses, variantClasses, type ButtonSize } from '../../lib/button-styles';
+
+type IconOnlyVariant = 'secondary' | 'danger';
+
+interface Props {
+	label: string;
+	icon?: keyof typeof icons;
+	variant?: IconOnlyVariant;
+	size?: ButtonSize;
+	type?: 'button' | 'submit' | 'reset';
+	href?: string;
+	disabled?: boolean;
+	class?: string;
+	form?: string;
+	formaction?: string;
+}
+
+const { label, icon, variant = 'secondary', size = 'md', type = 'button', href, disabled = false, class: className, ...rest } = Astro.props;
+
+const classes = [baseClasses, iconOnlySizeClasses[size], variantClasses[variant], className].filter(Boolean).join(' ');
+---
+{
+	href ? (
+		<a href={href} aria-label={label} class={classes} aria-disabled={disabled || undefined} {...rest}>
+			{icon ? <AppIcon name={icon} size={iconOnlyPixelSize[size]} /> : <slot />}
+		</a>
+	) : (
+		<button type={type} aria-label={label} disabled={disabled} class={classes} {...rest}>
+			{icon ? <AppIcon name={icon} size={iconOnlyPixelSize[size]} /> : <slot />}
+		</button>
+	)
+}

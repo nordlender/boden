@@ -1,0 +1,39 @@
+---
+// Text+icon button/link primitive — text label on the left, icon on the
+// right (e.g. "Delete 2 item(s)" with a trash icon). For icon-only actions
+// use IconButton.astro; for plain text use Button.astro.
+import AppIcon from '../icons/AppIcon.astro';
+import { icons } from '../../lib/icons';
+import { baseClasses, sizeClasses, variantClasses, type ButtonSize, type ButtonVariant } from '../../lib/button-styles';
+
+const iconPixelSize: Record<ButtonSize, number> = { sm: 14, md: 16, lg: 18 };
+
+interface Props {
+	icon: keyof typeof icons;
+	variant?: ButtonVariant;
+	size?: ButtonSize;
+	type?: 'button' | 'submit' | 'reset';
+	href?: string;
+	disabled?: boolean;
+	class?: string;
+	form?: string;
+	formaction?: string;
+}
+
+const { icon, variant = 'secondary', size = 'md', type = 'button', href, disabled = false, class: className, ...rest } = Astro.props;
+
+const classes = [baseClasses, sizeClasses[size], variantClasses[variant], className].filter(Boolean).join(' ');
+---
+{
+	href ? (
+		<a href={href} class={classes} aria-disabled={disabled || undefined} {...rest}>
+			<slot />
+			<AppIcon name={icon} size={iconPixelSize[size]} />
+		</a>
+	) : (
+		<button type={type} disabled={disabled} class={classes} {...rest}>
+			<slot />
+			<AppIcon name={icon} size={iconPixelSize[size]} />
+		</button>
+	)
+}

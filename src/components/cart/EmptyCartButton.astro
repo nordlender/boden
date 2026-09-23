@@ -1,19 +1,14 @@
 ---
+import Button from '../ui/Button.astro';
+
 interface Props {
 	type?: 'submit' | 'button';
 	class?: string;
 }
 
-const { type = 'submit', class: className = '' } = Astro.props;
+const { type = 'submit', class: className } = Astro.props;
 ---
 
-<button
-	type={type}
-	data-cart-clear
-	class:list={[
-		'flex items-center justify-center gap-1 rounded border border-error-border px-2.5 text-sm text-error hover:bg-error-subtle',
-		className,
-	]}
->
+<Button type={type} variant="danger" data-cart-clear class={className}>
 	Empty cart
-</button>
+</Button>

@@ -3,6 +3,7 @@ import { db } from '../db/client';
 import { items, orderItems, orders } from '../db/schema';
 import { getMaxRentalDays } from './rental-policy';
 import { todayIsoInOslo } from './dates';
+import { ACTIVE_HOLD_STATUSES } from '../constants/orders';
 
 // Reservation page backend (docs/TASKS.md "Reservation"). Orders carry a
 // date range (src/db/schema.ts's orders.fromDate/toDate, both YYYY-MM-DD,
@@ -96,7 +97,7 @@ export function getReservationAvailability(
 		.where(
 			and(
 				inArray(orderItems.itemId, itemIds),
-				inArray(orders.status, ['requested', 'active']),
+				inArray(orders.status, ACTIVE_HOLD_STATUSES),
 				lte(orders.fromDate, range.to),
 				gte(orders.toDate, range.from),
 			),

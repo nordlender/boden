@@ -1,6 +1,7 @@
 ---
 import OrdersTableRow from './OrdersTableRow.astro';
 import OrdersTableRowDetailed from './OrdersTableRowDetailed.astro';
+import type { OrderStatus } from '../../constants/orders';
 
 interface OrderRowItem {
 	itemName: string;
@@ -9,7 +10,7 @@ interface OrderRowItem {
 
 export interface OrdersTableRow {
 	orderCode: string;
-	status: string;
+	status: OrderStatus;
 	fromDate: string;
 	toDate: string;
 	customerName: string;

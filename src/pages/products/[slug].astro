@@ -65,7 +65,6 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 
 			{
 				product.items.length === 0 ? (
-					// TODO: Style later, warning? — no items yet isn't necessarily an error state.
 					<p class="text-sm text-error-text">No items available for this product yet.</p>
 				) : (
 					<form action="/api/cart/add" method="post" class="flex flex-col gap-4 border-t border-border pt-4">
@@ -110,7 +109,6 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 							</dl>
 						)}
 
-						{/* TODO: Style later, warning? — is "out of stock" an error or a warning state? */}
 						<p
 							data-stock-message
 							class={`text-sm font-medium ${(initialItem?.inStock ?? 0) > 0 ? 'text-success-text' : 'text-error-text'}`}
@@ -217,7 +215,6 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 
 		if (stockMessage) {
 			stockMessage.textContent = stock > 0 ? `${stock} in stock` : 'Out of stock';
-			// TODO: Style later, warning? — is "out of stock" an error or a warning state?
 			stockMessage.className = `text-sm font-medium ${stock > 0 ? 'text-success-text' : 'text-error-text'}`;
 		}
 

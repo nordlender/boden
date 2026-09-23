@@ -8,7 +8,6 @@ interface Props {
 
 const { inStock, total } = Astro.props;
 ---
-{/* TODO: Style later, warning? — is "out of stock" an error or a warning state? */}
 <span class:list={["tabular-nums text-sm text-right", inStock === 0 ? 'text-error' : 'text-text']}>
 	<span class="font-medium">{inStock}</span>
 	<span class="text-text-muted"> / {total}</span>

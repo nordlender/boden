@@ -35,7 +35,6 @@ const cartItems = await getCartItems(Astro.cookies);
 									<p class="text-sm text-text-muted">{item.attributes.map((a) => a.value).join(' / ')}</p>
 								)}
 								{item.quantity > item.inStock && (
-									// TODO: Style later, warning? — low-stock notice, not necessarily an error.
 									<p class="text-sm text-error">Only {Math.max(item.inStock, 0)} left in stock</p>
 								)}
 							</div>

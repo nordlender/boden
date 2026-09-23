@@ -68,3 +68,43 @@ export const detailsToggle = {
 		['path', { d: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0' }],
 	] satisfies IconNode,
 };
+
+// General-purpose action icons for MorphButton/TextMorphButton
+// (src/components/ui/) — `default` is the static resting shape, `hover` is
+// what it morphs into on hover, focus, or click. Square frame → circle frame
+// reads as "confirmed"/"settled" for accept/cancel; the others gain a small
+// broken/dashed detail to read as "in motion".
+export const actionIcons = {
+	accept: {
+		default: [
+			['path', { d: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' }],
+			['path', { d: 'm9 12l2 2l4-4' }],
+		] satisfies IconNode,
+		hover: [
+			['path', { d: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0' }],
+			['path', { d: 'm9 12l2 2l4-4' }],
+		] satisfies IconNode,
+	},
+	cancel: {
+		default: [['path', { d: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm6 4l6 6m0-6l-6 6' }]] satisfies IconNode,
+		hover: [['path', { d: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0m7-2l4 4m0-4l-4 4' }]] satisfies IconNode,
+	},
+	delete: {
+		default: [
+			['path', { d: 'M4 7h16m-10 4v6m4-6v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3' }],
+		] satisfies IconNode,
+		hover: [
+			['path', { d: 'M4 7h16M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3m-5 5l4 4m0-4l-4 4' }],
+		] satisfies IconNode,
+	},
+	back: {
+		default: [['path', { d: 'M5 12h14M5 12l6 6m-6-6l6-6' }]] satisfies IconNode,
+		hover: [['path', { d: 'M5 12h6m3 0h1.5m3 0h.5M5 12l6 6m-6-6l6-6' }]] satisfies IconNode,
+	},
+	next: {
+		default: [['path', { d: 'M5 12h14m-6 6l6-6m-6-6l6 6' }]] satisfies IconNode,
+		hover: [['path', { d: 'M5 12h.5m3 0H10m3 0h6m-6 6l6-6m-6-6l6 6' }]] satisfies IconNode,
+	},
+} as const;
+
+export type ActionIconKey = keyof typeof actionIcons;

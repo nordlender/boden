@@ -1,7 +1,9 @@
-// Shared class fragments for the Button / IconButton / TextIconButton
-// primitives (src/components/ui/), so the three stay visually consistent
-// instead of drifting the way the ad-hoc per-feature buttons they replace
-// did. See issue #157 for the audit of prior usages this was built from.
+// Shared class fragments for the Button / IconButton / TextIconButton /
+// MorphButton / TextMorphButton primitives (src/components/ui/), so they
+// stay visually consistent instead of drifting the way the ad-hoc
+// per-feature buttons they replace did. See issue #157 for the audit of
+// prior usages this was built from.
+import type { ActionIconKey } from './icon-nodes';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -37,3 +39,14 @@ export const iconOnlyPixelSize: Record<ButtonSize, number> = {
 
 export const baseClasses =
 	'inline-flex items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed';
+
+// Default aria-label / visible text for MorphButton/TextMorphButton's
+// `action` prop — overridable via `label` (MorphButton) or the default slot
+// (TextMorphButton).
+export const actionLabels: Record<ActionIconKey, string> = {
+	accept: 'Accept',
+	cancel: 'Cancel',
+	delete: 'Delete',
+	back: 'Back',
+	next: 'Next',
+};

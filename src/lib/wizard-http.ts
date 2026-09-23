@@ -3,6 +3,7 @@
 // verbatim in every wizard API route.
 
 import type { APIContext } from 'astro';
+import { isModerator } from './auth';
 
 /**
  * True for a strictly-positive integer. Use this — not bare
@@ -27,14 +28,12 @@ export function requireAdmin(locals: APIContext['locals']): Response | null {
 }
 
 /**
- * Returns a 403 Response if the current request isn't from a moderator or
- * admin, or `null` if the caller may proceed. Mirrors the middleware's own
- * `role === 'member'` check for MOD_ROUTE_PREFIXES (src/middleware/index.ts)
- * as an inline defense-in-depth check for /api/moderator/* routes — same
- * pattern as requireAdmin above.
+ * Returns a 403 Response if the current request isn't from at least a
+ * moderator (admins included — see `isModerator`), or `null` if the caller
+ * may proceed.
  */
 export function requireModerator(locals: APIContext['locals']): Response | null {
-	if (!locals.user || locals.user.role === 'member') {
+	if (!isModerator(locals.user?.role)) {
 		return new Response('Forbidden', { status: 403 });
 	}
 	return null;

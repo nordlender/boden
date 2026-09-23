@@ -5,6 +5,7 @@ export const prerender = false;
 // reached only when logged in with role === 'admin'.
 import '../../styles/global.css';
 import { db } from '../../db/client';
+import AdminNavbar from '../../components/AdminNavbar.astro';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
 import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
 import OrdersLayoutToggle from '../../components/orders/OrdersLayoutToggle.astro';
@@ -49,8 +50,9 @@ const rows: OrdersTableRow[] = allOrders.map((order) => ({
 		<meta name="viewport" content="width=device-width" />
 		<title>Orders</title>
 	</head>
-	<body class="min-h-screen bg-bg-subtle p-8">
-		<div class="mx-auto flex max-w-4xl flex-col gap-6">
+	<body class="min-h-screen bg-bg-subtle">
+		<AdminNavbar />
+		<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
 			<div>
 				<h1 class="text-xl font-semibold text-text">Orders</h1>
 				<p class="mt-1 text-sm text-text-muted">All member rental requests, most recent first.</p>

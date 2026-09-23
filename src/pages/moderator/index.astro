@@ -9,20 +9,18 @@ export const prerender = false;
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
 import MessagesBox from '../../components/moderator/MessagesBox.astro';
 import ActionButton from '../../components/moderator/ActionButton.astro';
-import OrdersTable from '../../components/orders/OrdersTable.astro';
-import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
+import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
 import { getPendingRequestRows } from '../../lib/moderatorOrders';
 
+// This is a preview, not the full queue (see the "See all" link to
+// /moderator/requests below) — capped and compact-only (no item contents),
+// so it doesn't grow the hub page unbounded. Rendered directly via
+// OrdersTableRow rather than the OrdersTable wrapper, since that wrapper
+// also builds a hidden detailed-layout copy (with item contents) for its
+// layout toggle, which we don't want here at all, not even off-screen.
+const MAX_PREVIEW_REQUESTS = 8;
 const pendingRequests = await getPendingRequestRows();
-const idByCode = new Map(pendingRequests.map((order) => [order.orderCode, order.id]));
-const rows: OrdersTableRow[] = pendingRequests.map((order) => ({
-	orderCode: order.orderCode,
-	status: order.status,
-	fromDate: order.fromDate,
-	toDate: order.toDate,
-	customerName: order.customerName,
-	items: order.items,
-}));
+const previewRequests = pendingRequests.slice(0, MAX_PREVIEW_REQUESTS);
 ---
 
 <ModeratorLayout title="Moderator — Boden">
@@ -35,17 +33,45 @@ const rows: OrdersTableRow[] = pendingRequests.map((order) => ({
 				<a href="/moderator/requests" class="text-sm font-medium text-text-muted hover:text-text">See all &rarr;</a>
 			</div>
 
-			<OrdersTable
-				orders={rows}
-				viewHref={(code: string) => `/moderator/review/${idByCode.get(code)}`}
-				emptyMessage="No orders are waiting for review."
-			/>
+			{
+				previewRequests.length === 0 ? (
+					<p class="text-sm text-text-muted">No orders are waiting for review.</p>
+				) : (
+					<div class="flex flex-col gap-2">
+						{previewRequests.map((order) => (
+							<OrdersTableRow
+								orderCode={order.orderCode}
+								status={order.status}
+								fromDate={order.fromDate}
+								toDate={order.toDate}
+								customerName={order.customerName}
+								viewHref={`/moderator/review/${order.id}`}
+							/>
+						))}
+					</div>
+				)
+			}
 		</div>
 
 		<div class="flex flex-col gap-3 sm:flex-row">
-			<ActionButton href="/moderator/retrieve" label="Retrieve" description="Look up an order and hand out gear." />
-			<ActionButton href="/moderator/retrieve" label="Return" description="Look up an order and take gear back." />
-			<ActionButton href="/moderator/pickup-days" label="Pickup days" description="Register your availability for pickup." />
+			<ActionButton
+				href="/moderator/retrieve"
+				iconKey="retrieve"
+				label="Retrieve"
+				description="Look up an order and hand out gear."
+			/>
+			<ActionButton
+				href="/moderator/retrieve"
+				iconKey="return"
+				label="Return"
+				description="Look up an order and take gear back."
+			/>
+			<ActionButton
+				href="/moderator/pickup-days"
+				iconKey="pickupDays"
+				label="Pickup days"
+				description="Register your availability for pickup."
+			/>
 		</div>
 	</div>
 </ModeratorLayout>

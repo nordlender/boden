@@ -21,9 +21,14 @@ interface Props {
 	items: OrderItemListEntry[];
 	showAvailability?: boolean;
 	adjustableTargets?: boolean;
+	// Forwarded straight through to each OrderItemRow — see its own comment
+	// for why this exists (an out-of-tree <form> target for target_* inputs
+	// when this list renders as a sibling of the page's action buttons, not
+	// nested inside them). Optional/additive.
+	formId?: string;
 }
 
-const { items, showAvailability = false, adjustableTargets = false } = Astro.props;
+const { items, showAvailability = false, adjustableTargets = false, formId } = Astro.props;
 ---
 
 <ul class="flex flex-col divide-y divide-border">
@@ -39,6 +44,7 @@ const { items, showAvailability = false, adjustableTargets = false } = Astro.pro
 				doubleBooked={item.doubleBooked}
 				adjustableTargets={adjustableTargets}
 				retrievedQuantity={item.retrievedQuantity}
+				formId={formId}
 			/>
 		))
 	}

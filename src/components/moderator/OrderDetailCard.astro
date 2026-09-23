@@ -14,9 +14,15 @@ interface Props {
 	showAvailability?: boolean;
 	adjustableTargets?: boolean;
 	followingRentalWarnings?: FollowingRentalWarning[];
+	// Forwarded to OrderItemsList/OrderItemRow — the id of an out-of-tree
+	// <form> (rendered by the page in the `actions` slot below, which is a
+	// sibling of the item list, not a wrapper around it) that each line's
+	// target_<orderItemId> input should submit with. Only relevant together
+	// with adjustableTargets. Optional/additive.
+	formId?: string;
 }
 
-const { order, showAvailability = false, adjustableTargets = false, followingRentalWarnings = [] } = Astro.props;
+const { order, showAvailability = false, adjustableTargets = false, followingRentalWarnings = [], formId } = Astro.props;
 ---
 
 <div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">
@@ -54,7 +60,7 @@ const { order, showAvailability = false, adjustableTargets = false, followingRen
 		</div>
 	)}
 
-	<OrderItemsList items={order.items} showAvailability={showAvailability} adjustableTargets={adjustableTargets} />
+	<OrderItemsList items={order.items} showAvailability={showAvailability} adjustableTargets={adjustableTargets} formId={formId} />
 
 	<div class="flex flex-wrap gap-2 border-t border-border pt-4">
 		<slot name="actions" />

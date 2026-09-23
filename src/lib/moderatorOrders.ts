@@ -112,6 +112,46 @@ function toOrderDetail(order: RawOrderDetail): OrderDetail {
 	};
 }
 
+export interface PendingRequestRow {
+	id: number;
+	orderCode: string;
+	status: string;
+	fromDate: string;
+	toDate: string;
+	customerName: string;
+	items: { itemName: string; requestedQuantity: number }[];
+}
+
+// Shared by src/pages/moderator/requests.astro (the full queue) and
+// src/pages/moderator/index.astro (the hub's upcoming-requests preview) —
+// same pending-review query and OrdersTable-row shape, so both stay in
+// sync rather than drifting from two copies of this query.
+export async function getPendingRequestRows(): Promise<PendingRequestRow[]> {
+	const pendingOrders = await db.query.orders.findMany({
+		where: (t, { and: andCol, eq: eqCol, isNull: isNullCol }) =>
+			andCol(eqCol(t.status, 'requested'), isNullCol(t.acceptedAt), isNullCol(t.rejectedAt)),
+		// Soonest pick-up first — that's what needs reviewing soonest.
+		orderBy: (t, { asc: ascCol }) => [ascCol(t.fromDate)],
+		with: { user: true, orderItems: { with: { item: true } } },
+	});
+
+	return pendingOrders.map((order) => ({
+		id: order.id,
+		orderCode: order.orderCode,
+		status: order.status,
+		fromDate: order.fromDate,
+		toDate: order.toDate,
+		// users.name is nullable (set from the external OAuth provider) — fall
+		// back to the checkout-time contact name snapshot rather than showing
+		// a blank customer.
+		customerName: order.user?.name || order.contactName,
+		items: order.orderItems.map((oi) => ({
+			itemName: oi.item.name,
+			requestedQuantity: oi.requestedQuantity,
+		})),
+	}));
+}
+
 export async function getOrderDetail(orderId: number): Promise<OrderDetail | null> {
 	const order = await queryOrderDetailById(orderId);
 	return order ? toOrderDetail(order) : null;

@@ -6,6 +6,8 @@ export const prerender = false;
 // target — the whole point is the moderator reports an unbiased count).
 // Gated by src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator).
 import ModeratorLayout from '../../../../layouts/ModeratorLayout.astro';
+import BackLink from '../../../../components/moderator/BackLink.astro';
+import BlindCountList from '../../../../components/moderator/BlindCountList.astro';
 import { getOrderDetail } from '../../../../lib/moderatorOrders';
 
 const idParam = Number(Astro.params.id);
@@ -42,55 +44,14 @@ const lines = order.items.map((item) => {
 
 <ModeratorLayout title={`Confirm order #${order.orderCode} — Moderator`}>
 	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
-		<a href={`/moderator/retrieve/${order.id}`} class="self-start text-sm font-medium text-text-muted hover:text-text">
-			&larr; Back to order
-		</a>
+		<BackLink href={`/moderator/retrieve/${order.id}`}>Back to order</BackLink>
 
-		<div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">
-			<div>
-				<h1 class="text-xl font-semibold text-text">Confirm order #{order.orderCode}</h1>
-				<p class="mt-1 text-sm text-text-muted">
-					Enter the actual quantity of each item you retrieved — not what the order expects.
-				</p>
-			</div>
-
-			{
-				mismatch && (
-					<p class="rounded-md border border-warning-border bg-warning-subtle px-3 py-2 text-sm text-warning-text">
-						Some counts don't match yet — see the notes below and adjust.
-					</p>
-				)
-			}
-
-			<form method="post" action={`/api/moderator/orders/${order.id}/confirm`} class="flex flex-col gap-4">
-				<ul class="flex flex-col divide-y divide-border">
-					{
-						lines.map((line) => (
-							<li class="flex items-center gap-3 py-2">
-								<div class="flex flex-1 flex-col gap-0.5">
-									<span class="text-sm text-text">{line.itemName}</span>
-									{line.correction && <span class="text-xs font-medium text-warning-text">{line.correction}</span>}
-								</div>
-								<input
-									type="number"
-									name={`qty_${line.orderItemId}`}
-									min="0"
-									value={line.enteredValue ?? undefined}
-									required
-									class="w-20 rounded border border-border-strong px-2 py-1 text-sm text-text"
-								/>
-							</li>
-						))
-					}
-				</ul>
-
-				<button
-					type="submit"
-					class="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover"
-				>
-					Complete
-				</button>
-			</form>
-		</div>
+		<BlindCountList
+			title={`Confirm order #${order.orderCode}`}
+			description="Enter the actual quantity of each item you retrieved — not what the order expects."
+			action={`/api/moderator/orders/${order.id}/confirm`}
+			mismatch={mismatch}
+			lines={lines}
+		/>
 	</div>
 </ModeratorLayout>

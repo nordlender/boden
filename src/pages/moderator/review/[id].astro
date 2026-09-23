@@ -6,6 +6,7 @@ export const prerender = false;
 // when logged in with role 'moderator' or 'admin'.
 import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
 import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro';
+import BackLink from '../../../components/moderator/BackLink.astro';
 import { getOrderDetail } from '../../../lib/moderatorOrders';
 import { isPositiveInteger } from '../../../lib/wizard-http';
 
@@ -27,7 +28,7 @@ const error = Astro.url.searchParams.get('error');
 
 <ModeratorLayout title={`Review order #${order.orderCode} — Moderator`}>
 	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
-		<a href="/moderator/requests" class="self-start text-sm font-medium text-text-muted hover:text-text">&larr; Back to requests</a>
+		<BackLink href="/moderator/requests">Back to requests</BackLink>
 
 		<OrderDetailCard order={order} showAvailability={true}>
 			<Fragment slot="actions">

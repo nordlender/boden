@@ -1,0 +1,72 @@
+---
+// Shared "blind count" checklist — the header card, mismatch banner, and
+// per-line qty_<id> input form were near-identical copies between
+// retrieve/[id]/count.astro (retrieval) and return/[id].astro (return).
+// The moderator's count must always be blind, so `target` is only used
+// here to compute the correction message — it's never echoed into the
+// form as a hidden/pre-filled value.
+import Thumbnail from '../wizard/Thumbnail.astro';
+
+interface Line {
+	orderItemId: number;
+	itemName: string;
+	itemImageUrl?: string | null;
+	target: number;
+	enteredValue: number | null;
+	correction: string | null;
+}
+
+interface Props {
+	title: string;
+	description: string;
+	action: string;
+	mismatch?: boolean;
+	lines: Line[];
+	submitLabel?: string;
+}
+
+const { title, description, action, mismatch = false, lines, submitLabel = 'Complete' } = Astro.props;
+---
+
+<div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">
+	<div>
+		<h1 class="text-xl font-semibold text-text">{title}</h1>
+		<p class="mt-1 text-sm text-text-muted">{description}</p>
+	</div>
+
+	{
+		mismatch && (
+			<p class="rounded-md border border-warning-border bg-warning-subtle px-3 py-2 text-sm text-warning-text">
+				Some counts don't match yet — see the notes below and adjust.
+			</p>
+		)
+	}
+
+	<form method="post" action={action} class="flex flex-col gap-4">
+		<ul class="flex flex-col divide-y divide-border">
+			{
+				lines.map((line) => (
+					<li class="flex items-center gap-3 py-2">
+						<Thumbnail src={line.itemImageUrl} alt={line.itemName} size={40} />
+						<div class="flex flex-1 flex-col gap-0.5">
+							<span class="text-sm text-text">{line.itemName}</span>
+							{line.correction && <span class="text-xs font-medium text-warning-text">{line.correction}</span>}
+						</div>
+						<input
+							type="number"
+							name={`qty_${line.orderItemId}`}
+							min="0"
+							value={line.enteredValue ?? undefined}
+							required
+							class="w-20 rounded border border-border-strong px-2 py-1 text-sm text-text"
+						/>
+					</li>
+				))
+			}
+		</ul>
+
+		<button type="submit" class="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover">
+			{submitLabel}
+		</button>
+	</form>
+</div>

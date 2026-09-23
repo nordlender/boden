@@ -1,0 +1,46 @@
+---
+export const prerender = false;
+
+import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
+import { ORDER_CODE_LENGTH } from '../../lib/orders';
+
+// Universal entry point for the moderator flow — reached by asking the
+// member to read out their order code, for either the review step or the
+// retrieval step (see src/pages/api/moderator/retrieve.ts, which looks the
+// code up and redirects to the hub at /moderator/retrieve/[id]).
+const error = Astro.url.searchParams.get('error');
+---
+
+<ModeratorLayout title="Retrieve order — Boden Moderator">
+	<div class="mx-auto flex max-w-md flex-col gap-4 p-6">
+		<h1 class="text-xl font-semibold text-text">Retrieve order</h1>
+		<p class="text-sm text-text-muted">Ask the member to read out their order code, then enter it below.</p>
+
+		{
+			error === 'not_found' && (
+				<p class="rounded-md border border-error-border bg-error-subtle px-3 py-2 text-sm text-error-text">
+					No order found with that code — check it and try again.
+				</p>
+			)
+		}
+
+		<form method="post" action="/api/moderator/retrieve" class="flex flex-col gap-3 rounded-lg border border-border bg-surface p-6">
+			<label class="flex flex-col gap-1">
+				<span class="text-sm font-medium text-text">Order code</span>
+				<input
+					type="text"
+					name="code"
+					required
+					maxlength={ORDER_CODE_LENGTH}
+					autocomplete="off"
+					autocapitalize="characters"
+					class="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-accent"
+					placeholder="e.g. AB12CD"
+				/>
+			</label>
+			<button type="submit" class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-text-inverted hover:bg-accent-hover">
+				Look up order
+			</button>
+		</form>
+	</div>
+</ModeratorLayout>

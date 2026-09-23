@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "74b65e3b-4442-474a-bd77-454e1796b1ca",
-  "prevId": "7f6464ce-cb0a-4511-aa41-b1a17af21aec",
+  "id": "f2c6f563-7b64-48cc-a292-73ccea20f1eb",
+  "prevId": "74b65e3b-4442-474a-bd77-454e1796b1ca",
   "tables": {
     "categories": {
       "name": "categories",
@@ -418,6 +418,20 @@
           "notNull": false,
           "autoincrement": false
         },
+        "has_unpaid_fees": {
+          "name": "has_unpaid_fees",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "user_is_member": {
+          "name": "user_is_member",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "confirmed_by_user_id": {
           "name": "confirmed_by_user_id",
           "type": "text",
@@ -439,6 +453,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(unixepoch())"
+        },
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "activated_at": {
           "name": "activated_at",

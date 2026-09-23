@@ -68,3 +68,48 @@ export const detailsToggle = {
 		['path', { d: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0' }],
 	] satisfies IconNode,
 };
+
+// The three large tiles on the moderator index page (ActionButton.astro) —
+// pulled from @iconify-json/tabler's icons.json (already a project
+// dependency for astro-icon) rather than tabler-nodes-outline.json above,
+// since that's what's actually installed here; same 24x24 outline style
+// either way. "hover" is also used for keyboard focus and touch-tap, not
+// literally only mouse hover.
+export const moderatorActionIcons = {
+	retrieve: {
+		// package-export
+		default: [
+			['path', { d: 'm12 21l-8-4.5v-9L12 3l8 4.5V12m-8 0l8-4.5M12 12v9m0-9L4 7.5M15 18h7m-3-3l3 3l-3 3' }],
+		] satisfies IconNode,
+		// truck-loading
+		hover: [
+			['path', { d: 'M2 3h1a2 2 0 0 1 2 2v10a2 2 0 0 0 2 2h15' }],
+			['path', { d: 'M9 9a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v2a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3zM7 19a2 2 0 1 0 4 0a2 2 0 1 0-4 0m9 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0' }],
+		] satisfies IconNode,
+	},
+	return: {
+		// package-import
+		default: [
+			['path', { d: 'm12 21l-8-4.5v-9L12 3l8 4.5V12m-8 0l8-4.5M12 12v9m0-9L4 7.5M22 18h-7m3-3l-3 3l3 3' }],
+		] satisfies IconNode,
+		// building-warehouse
+		hover: [
+			['path', { d: 'M3 21V8l9-4l9 4v13' }],
+			['path', { d: 'M13 13h4v8H7v-6h6' }],
+			['path', { d: 'M13 21v-9a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v3' }],
+		] satisfies IconNode,
+	},
+	pickupDays: {
+		// calendar-plus
+		default: [
+			['path', { d: 'M12.5 21H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5m-4-9v4M8 3v4m-4 4h16m-4 8h6m-3-3v6' }],
+		] satisfies IconNode,
+		// robot-face — placeholder personality icon for the still-unbuilt
+		// pickup-days feature; calendar-smile (also tabler) might read
+		// better here once the real page exists, worth revisiting then.
+		hover: [
+			['path', { d: 'M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2' }],
+			['path', { d: 'M9 16q1.5 1 3 1c1.5 0 2-.333 3-1M9 7L8 3m7 4l1-4m-7 9v-1m6 1v-1' }],
+		] satisfies IconNode,
+	},
+} satisfies Record<string, { default: IconNode; hover: IconNode }>;

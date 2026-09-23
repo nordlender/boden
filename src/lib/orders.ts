@@ -18,7 +18,7 @@ function generateRandomCode(length: number): string {
   return code;
 }
 
-const ORDER_CODE_LENGTH = 6;
+export const ORDER_CODE_LENGTH = 6;
 const MAX_ORDER_CODE_ATTEMPTS = 5;
 
 export function generateOrderCode(): string {
@@ -59,6 +59,10 @@ export type CreateOrderInput = {
   contactName: string;
   contactEmail: string;
   contactMobile: string | null;
+  // Snapshot of the checkout form's readonly bloc-sourced fields — see
+  // schema.ts's orders.hasUnpaidFees/userIsMember doc comment.
+  hasUnpaidFees: boolean | null;
+  userIsMember: boolean | null;
 };
 
 export type CreateOrderResult =
@@ -78,6 +82,8 @@ function insertOrder(
     contactName: string;
     contactEmail: string;
     contactMobile: string | null;
+    hasUnpaidFees: boolean | null;
+    userIsMember: boolean | null;
   },
 ) {
   // Re-check availability inside the same transaction as the insert below —
@@ -113,6 +119,8 @@ function insertOrder(
           contactName: input.contactName,
           contactEmail: input.contactEmail,
           contactMobile: input.contactMobile,
+          hasUnpaidFees: input.hasUnpaidFees,
+          userIsMember: input.userIsMember,
         })
         .returning({ id: orders.id, orderCode: orders.orderCode })
         .get();
@@ -179,6 +187,8 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         contactName: input.contactName,
         contactEmail: input.contactEmail,
         contactMobile: input.contactMobile,
+        hasUnpaidFees: input.hasUnpaidFees,
+        userIsMember: input.userIsMember,
       }),
     );
     return { ok: true, orderId: result.id, orderCode: result.orderCode, checkoutToken };
@@ -204,6 +214,8 @@ export type CreateSplitOrdersInput = {
   contactName: string;
   contactEmail: string;
   contactMobile: string | null;
+  hasUnpaidFees: boolean | null;
+  userIsMember: boolean | null;
 };
 
 export type CreateSplitOrdersResult =
@@ -252,6 +264,8 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
           contactName: input.contactName,
           contactEmail: input.contactEmail,
           contactMobile: input.contactMobile,
+          hasUnpaidFees: input.hasUnpaidFees,
+          userIsMember: input.userIsMember,
         }),
       ),
     );

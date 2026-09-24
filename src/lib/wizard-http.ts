@@ -17,6 +17,17 @@ export function isPositiveInteger(value: number): boolean {
 }
 
 /**
+ * Returns a 401 Response if the current request isn't from a signed-in user,
+ * or `null` if the caller may proceed.
+ */
+export function requireUser(locals: APIContext['locals']): Response | null {
+	if (!locals.user) {
+		return new Response('Unauthorized', { status: 401 });
+	}
+	return null;
+}
+
+/**
  * Returns a 403 Response if the current request isn't from an admin, or
  * `null` if the caller may proceed.
  */

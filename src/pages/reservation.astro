@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Callout from '../components/ui/Callout.astro';
 import ReservationForm from '../components/reservation/ReservationForm.astro';
 import { getCartItems } from '../lib/cart';
 import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
@@ -36,7 +37,11 @@ const errorMessage =
 		<h1 class="mb-2 text-2xl font-semibold tracking-tight text-gray-900">Reserve your items</h1>
 		<p class="mb-6 text-sm text-gray-600">Choose your dates, then review your items and submit your request.</p>
 
-		{errorMessage && <p class="mb-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMessage}</p>}
+		{errorMessage && (
+			<Callout variant="error" class="mb-6">
+				{errorMessage}
+			</Callout>
+		)}
 
 		<ReservationForm
 			cartItems={cartItems}

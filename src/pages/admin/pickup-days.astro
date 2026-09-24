@@ -7,6 +7,7 @@ import '../../styles/global.css';
 import ThemeInit from '../../components/ThemeInit.astro';
 import AdminNavbar from '../../components/AdminNavbar.astro';
 import Button from '../../components/ui/Button.astro';
+import Callout from '../../components/ui/Callout.astro';
 import { listAvailablePickupDates } from '../../lib/pickupDays';
 import { todayIsoInOslo, formatDateDisplay } from '../../lib/dates';
 
@@ -38,9 +39,7 @@ const error = Astro.url.searchParams.get('error');
 
 			{
 				error === 'invalid_date' && (
-					<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
-						That doesn't look like a valid date (expected YYYY-MM-DD).
-					</p>
+					<Callout variant="error">That doesn't look like a valid date (expected YYYY-MM-DD).</Callout>
 				)
 			}
 

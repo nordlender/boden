@@ -1,0 +1,44 @@
+---
+// Admin hub's message board — a "Message +" TextMorphButton (opens a modal
+// to post) above the same box the moderator hub renders read-only (see
+// src/components/moderator/MessagesBox.astro, MessageList.astro).
+import Modal from '../ui/Modal.astro';
+import Button from '../ui/Button.astro';
+import TextMorphButton from '../ui/TextMorphButton.astro';
+import MessageList from '../messages/MessageList.astro';
+import { listMessages } from '../../lib/messages';
+
+interface Props {
+	redirectTo: string;
+}
+
+const { redirectTo } = Astro.props;
+const messages = await listMessages();
+const modalId = 'add-message-modal';
+---
+
+<div class="flex flex-col gap-3">
+	<TextMorphButton action="message" class="self-start" data-modal-open data-modal-target={modalId} />
+
+	<MessageList messages={messages} editable redirectTo={redirectTo} />
+</div>
+
+<Modal id={modalId} labelledBy={`${modalId}-title`}>
+	<h2 id={`${modalId}-title`} class="text-sm font-semibold text-text">
+		New message
+	</h2>
+	<form method="post" action="/api/messages/add" class="flex flex-col gap-3">
+		<input type="hidden" name="redirectTo" value={redirectTo} />
+		<textarea
+			name="content"
+			rows="4"
+			required
+			placeholder="Shift notes, stock issues, closures…"
+			class="min-w-0 rounded border border-border-interactive px-2 py-1.5 text-sm"
+		></textarea>
+		<div class="flex justify-end gap-2">
+			<Button type="button" data-modal-close>Cancel</Button>
+			<Button type="submit" variant="primary">Post</Button>
+		</div>
+	</form>
+</Modal>

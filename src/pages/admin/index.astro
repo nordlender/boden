@@ -1,0 +1,31 @@
+---
+export const prerender = false;
+
+// Admin hub — landing page for the /admin/* section, mirroring
+// /moderator/index.astro's role as a landing page. Gated by
+// src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin). The message
+// board here is the authoring side of what /moderator's MessagesBox shows
+// read-only (see issue #151).
+import '../../styles/global.css';
+import ThemeInit from '../../components/ThemeInit.astro';
+import AdminNavbar from '../../components/AdminNavbar.astro';
+import MessagesBox from '../../components/admin/MessagesBox.astro';
+
+const redirectTo = Astro.url.pathname;
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Admin</title>
+		<ThemeInit />
+	</head>
+	<body class="min-h-screen bg-bg-subtle">
+		<AdminNavbar />
+		<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+			<h1 class="text-xl font-semibold text-text">Admin</h1>
+			<MessagesBox redirectTo={redirectTo} />
+		</div>
+	</body>
+</html>

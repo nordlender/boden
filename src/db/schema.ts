@@ -266,6 +266,21 @@ export const pickupAvailableDays = sqliteTable('pickup_available_days', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
+// Admin-authored messages shown on the moderator hub (see
+// src/components/moderator/MessagesBox.astro) — shift notes, stock issues,
+// closures, etc. A plain feed (newest first), no expiry or read-receipts:
+// those were open questions on issue #151, deliberately deferred rather than
+// guessed at. authorName is a snapshot of the posting admin's display name
+// at write time, same reasoning as orders.contactName — there's no local
+// users table to join against (see src/lib/auth.ts), only bloc user ids.
+export const messages = sqliteTable('messages', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  content: text('content').notNull(),
+  authorName: text('author_name').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+});
+
 export const categoriesRelations = relations(categories, ({ many }) => ({
   subcategories: many(subcategories),
   products: many(products),

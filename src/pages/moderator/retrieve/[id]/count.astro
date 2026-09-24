@@ -1,0 +1,57 @@
+---
+export const prerender = false;
+
+// Blind count — reached from the hub's "Confirm" button. One numeric
+// input per line, left empty on first load (never pre-filled with the
+// target — the whole point is the moderator reports an unbiased count).
+// Gated by src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator).
+import ModeratorLayout from '../../../../layouts/ModeratorLayout.astro';
+import BackLink from '../../../../components/moderator/BackLink.astro';
+import BlindCountList from '../../../../components/moderator/BlindCountList.astro';
+import { getOrderDetail } from '../../../../lib/moderatorOrders';
+
+const idParam = Number(Astro.params.id);
+const order = Number.isInteger(idParam) ? await getOrderDetail(idParam) : null;
+
+if (!order) {
+	return Astro.redirect('/moderator/retrieve');
+}
+if (order.acceptedAt === null || order.status !== 'requested') {
+	return Astro.redirect(`/moderator/retrieve/${order.id}`);
+}
+
+const mismatch = Astro.url.searchParams.get('mismatch') === '1';
+
+const lines = order.items.map((item) => {
+	// Target is always the item's own requestedQuantity from the DB — never
+	// taken from the URL. The moderator's count must be blind, so the target
+	// is not shipped to the client at all (no hidden input echoing it back).
+	const target = item.requestedQuantity;
+	const enteredRaw = Astro.url.searchParams.get(`entered_${item.orderItemId}`);
+	const entered = mismatch && enteredRaw !== null ? Number(enteredRaw) : null;
+	const isMismatched = mismatch && entered !== null && entered !== target;
+	return {
+		...item,
+		target,
+		enteredValue: entered,
+		// The count page computes and displays this diff itself, from the
+		// item's own DB target and the entered_* query param the API route
+		// redirects back with — the API route doesn't encode a message.
+		correction: !isMismatched ? null : entered! < target ? `Retrieve ${target - entered!} more` : `Put back ${entered! - target}`,
+	};
+});
+---
+
+<ModeratorLayout title={`Confirm order #${order.orderCode} — Moderator`}>
+	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
+		<BackLink href={`/moderator/retrieve/${order.id}`}>Back to order</BackLink>
+
+		<BlindCountList
+			title={`Confirm order #${order.orderCode}`}
+			description="Enter the actual quantity of each item you retrieved — not what the order expects."
+			action={`/api/moderator/orders/${order.id}/confirm`}
+			mismatch={mismatch}
+			lines={lines}
+		/>
+	</div>
+</ModeratorLayout>

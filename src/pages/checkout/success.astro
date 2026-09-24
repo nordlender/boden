@@ -3,6 +3,7 @@ export const prerender = false;
 
 import ConfirmationLayout from '../../layouts/ConfirmationLayout.astro';
 import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
+import Button from '../../components/ui/Button.astro';
 import { db } from '../../db/client';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTE_PREFIXES via /checkout) —
@@ -57,12 +58,9 @@ const orderedOrders = [...foundOrders].sort((a, b) => a.id - b.id);
 						requestedQuantity: oi.requestedQuantity,
 					}))}
 				/>
-				<a
-					href={`/orders/${order.orderCode}`}
-					class="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover"
-				>
+				<Button variant="primary" size="lg" href={`/orders/${order.orderCode}`} class="self-start">
 					View or manage this order
-				</a>
+				</Button>
 			</div>
 		))}
 	</div>

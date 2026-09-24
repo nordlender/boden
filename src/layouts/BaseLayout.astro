@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Navbar from '../components/Navbar.astro';
 import CartSidebar from '../components/cart/CartSidebar.astro';
+import ThemeInit from '../components/ThemeInit.astro';
 
 interface Props {
 	title?: string;
@@ -18,19 +19,7 @@ const { title = 'Boden' } = Astro.props;
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
-		<script is:inline>
-			// Runs before paint so the page never flashes the wrong theme.
-			(function () {
-				try {
-					const stored = localStorage.getItem('theme');
-					if (stored === 'light' || stored === 'dark') {
-						document.documentElement.setAttribute('data-theme', stored);
-					}
-				} catch {
-					// localStorage may be unavailable (privacy mode); fall back to OS preference.
-				}
-			})();
-		</script>
+		<ThemeInit />
 	</head>
 	<body class="min-h-screen bg-bg text-text">
 		<Navbar />

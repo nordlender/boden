@@ -3,6 +3,7 @@ export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import CartActionsBar from '../components/cart/CartActionsBar.astro';
+import Button from '../components/ui/Button.astro';
 import { getCartItems } from '../lib/cart';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
@@ -52,9 +53,7 @@ const cartItems = await getCartItems(Astro.cookies);
 									min="0"
 									class="w-16 rounded-md border border-border-interactive px-2 py-1 text-sm"
 								/>
-								<button type="submit" class="rounded-md border border-border-strong px-2 py-1 text-sm text-text-muted hover:bg-bg-subtle">
-									Update
-								</button>
+								<Button type="submit" size="sm">Update</Button>
 							</form>
 
 							<form method="post" action="/api/cart/remove">

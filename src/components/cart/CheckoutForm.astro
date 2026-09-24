@@ -1,4 +1,6 @@
 ---
+import Button from '../ui/Button.astro';
+
 interface Props {
   name: string | null;
   email: string | null;
@@ -55,10 +57,5 @@ const labelClass = 'block text-sm font-medium text-gray-700';
 		Note
 		<textarea name="note" placeholder="Optional note for the moderator" rows={3} class={`${fieldClass} mt-1`}></textarea>
 	</label>
-	<button
-		type="submit"
-		class="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
-	>
-		Place order
-	</button>
+	<Button type="submit" variant="primary" size="lg" class="self-start">Place order</Button>
 </form>

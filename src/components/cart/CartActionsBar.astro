@@ -1,5 +1,6 @@
 ---
 import EmptyCartButton from './EmptyCartButton.astro';
+import Button from '../ui/Button.astro';
 
 interface Props {
 	primaryHref: string;
@@ -28,10 +29,7 @@ const { primaryHref, primaryLabel, clearAction, clearHidden = false } = Astro.pr
 			</div>
 		)
 	}
-	<a
-		href={primaryHref}
-		class="flex h-10 flex-1 items-center justify-center rounded-md bg-accent px-4 text-center text-sm font-medium text-text-inverted hover:bg-accent-hover"
-	>
+	<Button variant="primary" href={primaryHref} class="h-10 flex-1">
 		{primaryLabel}
-	</a>
+	</Button>
 </div>

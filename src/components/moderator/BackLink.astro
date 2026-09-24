@@ -1,0 +1,13 @@
+---
+// Shared "&larr; Back to X" link — same markup was duplicated across
+// review/[id].astro, retrieve/[id]/count.astro, and return/[id].astro.
+interface Props {
+	href: string;
+}
+
+const { href } = Astro.props;
+---
+
+<a href={href} class="self-start text-sm font-medium text-text-muted hover:text-text">
+	&larr; <slot />
+</a>

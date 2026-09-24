@@ -11,13 +11,11 @@ interface Props {
 	productSlug: string;
 	productTitle: string;
 	imageUrl: string | null;
-	inStock: number;
 	attributes: Attribute[];
 }
 
-const { itemId, productSlug, productTitle, imageUrl, inStock, attributes } = Astro.props;
+const { itemId, productSlug, productTitle, imageUrl, attributes } = Astro.props;
 const variantLabel = attributes.map((a) => a.value).join(' / ');
-const inStockBool = inStock > 0;
 ---
 
 <a
@@ -38,8 +36,5 @@ const inStockBool = inStock > 0;
 	<div class="flex flex-1 flex-col gap-1 p-3">
 		<h3 class="text-sm font-medium text-text">{productTitle}</h3>
 		{variantLabel && <p class="text-xs text-text-muted">{variantLabel}</p>}
-		<span class={`text-xs ${inStockBool ? 'text-success-text' : 'text-error-text'}`}>
-			{inStockBool ? `${inStock} in stock` : 'Out of stock'}
-		</span>
 	</div>
 </a>

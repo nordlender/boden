@@ -1,85 +1,50 @@
 ---
+import MorphIcon from 'morphicons/astro';
+import { themeToggle } from '../../lib/icon-nodes';
 ---
 
 <button
 	type="button"
 	id="theme-toggle"
-	class="flex cursor-pointer items-center justify-center rounded-md border border-border p-2 text-text-muted hover:bg-bg-subtle"
+	class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle"
 	aria-label="Toggle dark mode"
 >
-	<svg
-		xmlns="http://www.w3.org/2000/svg"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		stroke-width="2"
-		class="h-5 w-5"
-		data-icon="sun"
-	>
-		<circle cx="12" cy="12" r="4" />
-		<path
-			stroke-linecap="round"
-			d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
-		/>
-	</svg>
-	<svg
-		xmlns="http://www.w3.org/2000/svg"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		stroke-width="2"
-		class="h-5 w-5"
-		data-icon="moon"
-	>
-		<path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
-	</svg>
+	<MorphIcon icon={themeToggle.light} size={20} class="theme-toggle-icon" />
 </button>
 
-<style>
-	/*
-	 * Mirrors global.css's theme selectors exactly, so the icon reflects the
-	 * theme that's actually rendered — including the OS-preference case where
-	 * data-theme is never set explicitly (see BaseLayout's init script).
-	 */
-	[data-icon='moon'] {
-		display: none;
+<script>
+	import type { MorphIconElement } from 'morphicons/element';
+	import { themeToggle } from '../../lib/icon-nodes';
+
+	function resolvedTheme(): 'light' | 'dark' {
+		const explicit = document.documentElement.getAttribute('data-theme');
+		if (explicit === 'light' || explicit === 'dark') return explicit;
+		return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 	}
 
-	:global(html[data-theme='dark']) [data-icon='sun'] {
-		display: none;
-	}
-	:global(html[data-theme='dark']) [data-icon='moon'] {
-		display: block;
+	const button = document.getElementById('theme-toggle');
+	const icon = button?.querySelector<MorphIconElement>('.theme-toggle-icon');
+
+	// Corrects the icon rendered above (always "light") for the OS-preference
+	// case (data-theme unset — see BaseLayout's init script). Uses .set()
+	// rather than the animated `.icon =` setter (used below, on click) since
+	// this is a startup correction, not a user-triggered toggle — it should
+	// jump straight to the right shape, not morph into it.
+	if (icon && resolvedTheme() === 'dark') {
+		icon.set(themeToggle.dark);
 	}
 
-	@media (prefers-color-scheme: dark) {
-		:global(html:not([data-theme='light'])) [data-icon='sun'] {
-			display: none;
+	button?.addEventListener('click', () => {
+		const root = document.documentElement;
+		const next = resolvedTheme() === 'dark' ? 'light' : 'dark';
+
+		root.setAttribute('data-theme', next);
+		try {
+			localStorage.setItem('theme', next);
+		} catch {
+			// localStorage may be unavailable (privacy mode); theme just won't persist.
 		}
-		:global(html:not([data-theme='light'])) [data-icon='moon'] {
-			display: block;
-		}
-	}
-</style>
 
-<script is:inline>
-	(function () {
-		const button = document.getElementById('theme-toggle');
-		if (!button) return;
-
-		button.addEventListener('click', function () {
-			const root = document.documentElement;
-			const current =
-				root.getAttribute('data-theme') ||
-				(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-			const next = current === 'dark' ? 'light' : 'dark';
-
-			root.setAttribute('data-theme', next);
-			try {
-				localStorage.setItem('theme', next);
-			} catch {
-				// localStorage may be unavailable (privacy mode); theme just won't persist.
-			}
-		});
-	})();
+		if (icon) icon.icon = themeToggle[next];
+	});
 </script>

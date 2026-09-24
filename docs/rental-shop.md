@@ -40,7 +40,7 @@
 | Role | What they can do |
 |---|---|
 | `member` | Browse catalogue, manage cart, choose reservation dates, place orders, view own order history |
-| `moderator` | Everything a member can do + review/accept-reject, retrieve, confirm handoff, and mark returns **(planned — no moderator pages exist yet, see §10)** |
+| `moderator` | Everything a member can do + review/accept-reject, retrieve, confirm handoff, and mark returns **(in progress — order-code retrieve is built, the rest is still planned, see §10)** |
 | `admin` | Everything a moderator can do + manage products/items via the wizard (`/admin/items`), set pickup-day availability (`/admin/pickup-days`) |
 
 Role assignment itself is **not** an in-app admin feature today: it's a
@@ -69,8 +69,8 @@ moderator reviews order on Review Order page (before retrieval) (planned)
   → status: requested (accept — unchanged, proceeds to retrieval below)
   → status: rejected  (reject — moved to archive, rejectedReason recorded)
 
-moderator enters order number into Retrieve Order form (planned)
-  → sees Moderator Order Summary (items, quantities, user bio)
+moderator enters order number into Retrieve Order form (built, see §10)
+  → sees Moderator Order Summary (items, quantities, user bio) (planned)
   → clicks "Go to confirm"
 
 moderator fetches items from storage (planned)
@@ -128,7 +128,8 @@ boden/
 │   │   ├── admin/
 │   │   │   ├── items.astro                  # Product/item wizard — SSR, admin only
 │   │   │   └── pickup-days.astro            # Set which pick-up dates have moderator coverage — SSR, admin only
-│   │   ├── moderator/                       # (planned — see §10; no pages exist yet)
+│   │   ├── moderator/
+│   │   │   └── retrieve.astro                # Order-code lookup, redirects to the hub — SSR, moderator only (rest of §10 still planned)
 │   │   └── auth/
 │   │       └── login.astro                  # Redirect to bloc
 │   │
@@ -553,27 +554,19 @@ declare namespace App {
 
 ---
 
-## 10. Moderator flow — page by page (planned, not yet built)
+## 10. Moderator flow — page by page (in progress)
 
-No `src/pages/moderator/*` routes exist yet. This documents the intended design — see `docs/moderator-review.md` for the review step's open questions (exact route not named yet, order persistence for `hasUnpaidFees`/`userIsMember` not wired).
+`src/pages/moderator/retrieve.astro` (Step 1 below) is built; the rest of this section documents the intended design for the still-planned steps — see `docs/moderator-review.md` for the review step's open questions (exact route not named yet, order persistence for `hasUnpaidFees`/`userIsMember` not wired).
 
 ### Step 0 — Review order (`/moderator/review/[id]`, route not finalized)
 
 Accept or reject a requested order **before** retrieval — see the lifecycle diagram above and `docs/moderator-review.md`. Accept leaves `status: requested` unchanged; reject sets `status: rejected` and records `rejectedReason`.
 
-### Step 1 — Retrieve order (`/moderator/retrieve`)
+### Step 1 — Retrieve order (`/moderator/retrieve`) — built
 
-The moderator types in an order code. On submit the form POSTs to itself, looks up the order, and redirects to the order summary.
+The moderator types in an order code. The form POSTs to `src/pages/api/moderator/retrieve.ts`, which looks up `orders.orderCode` and redirects to the hub at `/moderator/retrieve/[id]` (or back to the form with `?error=not_found`).
 
-```astro
----
-// src/pages/moderator/retrieve.astro (planned)
-export const prerender = false;
-// ... looks up orders.orderCode, redirects to /moderator/orders/[id]
----
-```
-
-### Step 2 — Order summary (`/moderator/orders/[id]`)
+### Step 2 — Order summary (`/moderator/retrieve/[id]`, planned)
 
 Shows the full order: member details, requested items with quantities. Button links to confirm page.
 

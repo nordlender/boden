@@ -52,6 +52,11 @@ describe('matchesPrefix', () => {
     expect(matchesPrefix('/orders/123', MEMBER_ROUTE_PREFIXES)).toBe(true);
     expect(matchesPrefix('/moderator/orders/[id]', MOD_ROUTE_PREFIXES)).toBe(true);
   });
+
+  it('matches /api/moderator/* routes (defense-in-depth for moderator write routes)', () => {
+    expect(matchesPrefix('/api/moderator/retrieve', MOD_ROUTE_PREFIXES)).toBe(true);
+    expect(matchesPrefix('/api/moderator/orders/[id]/accept', MOD_ROUTE_PREFIXES)).toBe(true);
+  });
 });
 
 describe('isApiRoute', () => {
@@ -75,5 +80,6 @@ describe('isApiRoute', () => {
   // the middleware give API callers a plain 401 instead.
   it('is used to route API auth failures to 401 instead of a login redirect', () => {
     expect(isApiRoute('/api/wizard/archive')).toBe(true);
+    expect(isApiRoute('/api/moderator/retrieve')).toBe(true);
   });
 });

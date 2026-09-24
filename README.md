@@ -41,6 +41,20 @@ The dev server binds to `localhost:4321` by default. Running inside a
 container and need it reachable from outside? See the Development section
 in [`AGENTS.md`](AGENTS.md).
 
+#### Setting up a new worktree
+
+Worktrees don't inherit untracked files like `.env`, and won't have
+migrations run or the database seeded. Instead of the manual steps above,
+run:
+
+```sh
+npm run dev-setup
+```
+
+This copies `.env` from the main checkout, runs pending Drizzle migrations
+(creating `data/` if needed), and seeds the example catalog via
+`scripts/seed-example-catalog.mjs`. See `scripts/dev-setup.sh` for details.
+
 ### Environment variables
 
 See [`.env.example`](.env.example) for the full list — bloc OAuth app

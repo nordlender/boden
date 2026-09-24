@@ -72,7 +72,7 @@ const { variant, formId, products, redirectTo } = Astro.props;
 			Add item
 		</Button>
 	)}
-	<TextIconButton variant="danger" icon="trash" type="submit" form={formId} formaction="/api/wizard/archive">
+	<TextIconButton variant="danger-filled" icon="trash" type="submit" form={formId} formaction="/api/wizard/archive">
 		Delete <span class="selected-count" data-form-id={formId}>0</span> item(s)
 	</TextIconButton>
 </div>

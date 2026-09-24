@@ -12,7 +12,7 @@ const { orderCode, status } = Astro.props;
 {
 	status === 'requested' && (
 		<div data-delete-order={orderCode}>
-			<Button variant="danger" data-delete-order-trigger>
+			<Button variant="danger-filled" data-delete-order-trigger>
 				Delete order
 			</Button>
 			<p data-delete-order-error hidden class="mt-2 text-sm text-error-text" />

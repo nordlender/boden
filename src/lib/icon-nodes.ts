@@ -71,23 +71,20 @@ export const detailsToggle = {
 
 // General-purpose action icons for MorphButton/TextMorphButton
 // (src/components/ui/) — `default` is the static resting shape, `hover` is
-// what it morphs into on hover, focus, or click. Square frame → circle frame
-// reads as "confirmed"/"settled" for accept/cancel; the others gain a small
-// broken/dashed detail to read as "in motion".
+// what it morphs into on hover, focus, or click. Accept/Cancel morph a
+// boxed shape into its bare mark (checkbox → check, boxed X → X); the
+// others gain a small broken/dashed detail to read as "in motion".
 export const actionIcons = {
 	accept: {
 		default: [
-			['path', { d: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' }],
-			['path', { d: 'm9 12l2 2l4-4' }],
+			['path', { d: 'm9 11l3 3l8-8' }],
+			['path', { d: 'M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9' }],
 		] satisfies IconNode,
-		hover: [
-			['path', { d: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0' }],
-			['path', { d: 'm9 12l2 2l4-4' }],
-		] satisfies IconNode,
+		hover: [['path', { d: 'm5 12l5 5L20 7' }]] satisfies IconNode,
 	},
 	cancel: {
 		default: [['path', { d: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm6 4l6 6m0-6l-6 6' }]] satisfies IconNode,
-		hover: [['path', { d: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0m7-2l4 4m0-4l-4 4' }]] satisfies IconNode,
+		hover: [['path', { d: 'M18 6L6 18M6 6l12 12' }]] satisfies IconNode,
 	},
 	delete: {
 		default: [

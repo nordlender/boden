@@ -1,5 +1,6 @@
 ---
 import Modal from '../ui/Modal.astro';
+import Button from '../ui/Button.astro';
 import ReservationCalendar from '../reservation/ReservationCalendar.astro';
 
 interface Props {
@@ -18,14 +19,9 @@ const titleId = `${modalId}-title`;
 {
 	status === 'requested' && (
 		<div data-change-order={orderCode}>
-			<button
-				type="button"
-				data-modal-open
-				data-modal-target={modalId}
-				class="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-text hover:bg-bg-subtle"
-			>
+			<Button type="button" data-modal-open data-modal-target={modalId}>
 				Change order
-			</button>
+			</Button>
 
 			<Modal id={modalId} labelledBy={titleId}>
 				<h2 id={titleId} class="text-base font-semibold text-text">
@@ -34,17 +30,10 @@ const titleId = `${modalId}-title`;
 				<ReservationCalendar value={`${fromDate}/${toDate}`} maxRangeDays={maxRentalDays} />
 				<p data-change-order-error hidden class="text-sm text-error-text" />
 				<div class="flex justify-end gap-2">
-					<button type="button" data-modal-close class="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-text hover:bg-bg-subtle">
-						Cancel
-					</button>
-					<button
-						type="button"
-						data-change-order-confirm
-						disabled
-						class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-text-inverted hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
-					>
+					<Button type="button" data-modal-close>Cancel</Button>
+					<Button type="button" variant="primary" data-change-order-confirm disabled>
 						Confirm new dates
-					</button>
+					</Button>
 				</div>
 			</Modal>
 		</div>

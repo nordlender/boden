@@ -18,7 +18,13 @@ afterAll(() => {
 // input (src/db/schema.ts's orders.contactName/contactEmail) — a fixed
 // stand-in for every call below, since none of these tests are about the
 // contact snapshot itself.
-const CONTACT = { contactName: 'Test Member', contactEmail: 'member@example.com', contactMobile: null };
+const CONTACT = {
+	contactName: 'Test Member',
+	contactEmail: 'member@example.com',
+	contactMobile: null,
+	hasUnpaidFees: null,
+	userIsMember: null,
+};
 
 // createOrder/createSplitOrders join against the db (src/lib/orders.ts
 // imports ../db/client) — swap it here for a seeded in-memory sqlite db,
@@ -97,6 +103,20 @@ describe('createOrder', () => {
 		});
 
 		expect(result).toEqual({ ok: false, error: 'unavailable', unavailableItemIds: [ITEM_A_ID] });
+	});
+
+	it('fails with user_not_found (defense-in-depth) instead of throwing when userId has no matching users row', async () => {
+		const cartEntries: CartEntry[] = [{ itemId: ITEM_B_ID, quantity: 1 }];
+		const result = await createOrder({
+			userId: 'no-such-user',
+			note: null,
+			cartEntries,
+			fromDate: '2026-02-01',
+			toDate: '2026-02-05',
+			...CONTACT,
+		});
+
+		expect(result).toEqual({ ok: false, error: 'user_not_found' });
 	});
 });
 

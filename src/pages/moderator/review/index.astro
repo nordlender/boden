@@ -1,0 +1,9 @@
+---
+export const prerender = false;
+
+// Coexists with review/[id].astro (same pattern as retrieve.astro
+// coexisting with a retrieve/ directory elsewhere in this feature). A
+// bare /moderator/review visit (no id) has nowhere useful to land but the
+// requests queue.
+return Astro.redirect('/moderator/requests');
+---

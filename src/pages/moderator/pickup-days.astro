@@ -1,0 +1,25 @@
+---
+export const prerender = false;
+
+// Placeholder — moderator self-service pick-up availability isn't designed
+// or built yet (see issue #56: table schema, ad-hoc-vs-admin-baseline
+// design, retraction, and how it surfaces on the member calendar are all
+// still open questions). This page exists so the index page's "Pickup
+// days" tile has somewhere to land; replace with the real form once #56 is
+// scoped. Gated by src/middleware/index.ts (MOD_ROUTE_PREFIXES via
+// /moderator).
+import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
+---
+
+<ModeratorLayout title="Pickup days — Moderator">
+	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
+		<div class="rounded-lg border border-border bg-surface p-6 text-center">
+			<h1 class="text-xl font-semibold text-text">Pickup days</h1>
+			<p class="mt-2 text-sm text-text-muted">
+				Registering your own pick-up availability isn't built yet — this is a placeholder. See
+				<a href="https://github.com/nordlender/boden/issues/56" class="underline hover:text-text">issue #56</a>
+				for the plan.
+			</p>
+		</div>
+	</div>
+</ModeratorLayout>

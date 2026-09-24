@@ -2,7 +2,7 @@ import { db } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
-import { isUniqueConstraintViolation } from './db-errors';
+import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
 
 // Excludes ambiguous characters (0/O, 1/I) — an order code is read aloud by
@@ -18,7 +18,7 @@ function generateRandomCode(length: number): string {
   return code;
 }
 
-const ORDER_CODE_LENGTH = 6;
+export const ORDER_CODE_LENGTH = 6;
 const MAX_ORDER_CODE_ATTEMPTS = 5;
 
 export function generateOrderCode(): string {
@@ -59,12 +59,17 @@ export type CreateOrderInput = {
   contactName: string;
   contactEmail: string;
   contactMobile: string | null;
+  // Snapshot of the checkout form's readonly bloc-sourced fields — see
+  // schema.ts's orders.hasUnpaidFees/userIsMember doc comment.
+  hasUnpaidFees: boolean | null;
+  userIsMember: boolean | null;
 };
 
 export type CreateOrderResult =
   | { ok: true; orderId: number; orderCode: string; checkoutToken: string }
   | { ok: false; error: 'empty_cart' }
-  | { ok: false; error: 'unavailable'; unavailableItemIds: number[] };
+  | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
+  | { ok: false; error: 'user_not_found' };
 
 function insertOrder(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
@@ -78,6 +83,8 @@ function insertOrder(
     contactName: string;
     contactEmail: string;
     contactMobile: string | null;
+    hasUnpaidFees: boolean | null;
+    userIsMember: boolean | null;
   },
 ) {
   // Re-check availability inside the same transaction as the insert below —
@@ -113,6 +120,8 @@ function insertOrder(
           contactName: input.contactName,
           contactEmail: input.contactEmail,
           contactMobile: input.contactMobile,
+          hasUnpaidFees: input.hasUnpaidFees,
+          userIsMember: input.userIsMember,
         })
         .returning({ id: orders.id, orderCode: orders.orderCode })
         .get();
@@ -179,12 +188,20 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         contactName: input.contactName,
         contactEmail: input.contactEmail,
         contactMobile: input.contactMobile,
+        hasUnpaidFees: input.hasUnpaidFees,
+        userIsMember: input.userIsMember,
       }),
     );
     return { ok: true, orderId: result.id, orderCode: result.orderCode, checkoutToken };
   } catch (err) {
     if (err instanceof UnavailableItemsError) {
       return { ok: false, error: 'unavailable', unavailableItemIds: err.itemIds };
+    }
+    // orders.userId is a FK sourced from the checkout route's ambient
+    // session id (locals.user!.id) rather than a freshly-looked-up row —
+    // same defensive-only case as moderatorOrders.ts's confirmRetrieval.
+    if (isForeignKeyViolation(err)) {
+      return { ok: false, error: 'user_not_found' };
     }
     throw err;
   }
@@ -204,12 +221,15 @@ export type CreateSplitOrdersInput = {
   contactName: string;
   contactEmail: string;
   contactMobile: string | null;
+  hasUnpaidFees: boolean | null;
+  userIsMember: boolean | null;
 };
 
 export type CreateSplitOrdersResult =
   | { ok: true; orders: { orderId: number; orderCode: string }[]; checkoutToken: string }
   | { ok: false; error: 'empty_cart' }
-  | { ok: false; error: 'unavailable'; unavailableItemIds: number[] };
+  | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
+  | { ok: false; error: 'user_not_found' };
 
 // Same validation/entry-filtering as createOrder, but partitions the
 // resulting entries into up to two orders sharing the same date range: one
@@ -252,6 +272,8 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
           contactName: input.contactName,
           contactEmail: input.contactEmail,
           contactMobile: input.contactMobile,
+          hasUnpaidFees: input.hasUnpaidFees,
+          userIsMember: input.userIsMember,
         }),
       ),
     );
@@ -259,6 +281,9 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
   } catch (err) {
     if (err instanceof UnavailableItemsError) {
       return { ok: false, error: 'unavailable', unavailableItemIds: err.itemIds };
+    }
+    if (isForeignKeyViolation(err)) {
+      return { ok: false, error: 'user_not_found' };
     }
     throw err;
   }

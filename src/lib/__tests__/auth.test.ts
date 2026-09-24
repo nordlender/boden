@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   getRole,
+  isModerator,
   _roleCacheSizeForTests,
   _roleCacheHasForTests,
   _clearRoleCacheForTests,
@@ -58,5 +59,23 @@ describe('auth: roleCache eviction', () => {
 
     expect(_roleCacheHasForTests('user-warm')).toBe(true);
     expect(_roleCacheSizeForTests()).toBe(CACHE_MAX_SIZE);
+  });
+});
+
+describe('isModerator', () => {
+  it('is true for a moderator', () => {
+    expect(isModerator('moderator')).toBe(true);
+  });
+
+  it('is true for an admin, since admins always have at least moderator permissions', () => {
+    expect(isModerator('admin')).toBe(true);
+  });
+
+  it('is false for a member', () => {
+    expect(isModerator('member')).toBe(false);
+  });
+
+  it('is false when there is no role (logged-out user)', () => {
+    expect(isModerator(undefined)).toBe(false);
   });
 });

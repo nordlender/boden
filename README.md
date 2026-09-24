@@ -41,6 +41,20 @@ The dev server binds to `localhost:4321` by default. Running inside a
 container and need it reachable from outside? See the Development section
 in [`AGENTS.md`](AGENTS.md).
 
+#### Setting up a new worktree
+
+Worktrees don't inherit untracked files like `.env`, and won't have
+migrations run or the database seeded. Instead of the manual steps above,
+run:
+
+```sh
+npm run dev-setup
+```
+
+This copies `.env` from the main checkout, runs pending Drizzle migrations
+(creating `data/` if needed), and seeds the example catalog via
+`scripts/seed-example-catalog.mjs`. See `scripts/dev-setup.sh` for details.
+
 ### Environment variables
 
 See [`.env.example`](.env.example) for the full list — bloc OAuth app
@@ -85,12 +99,12 @@ src/
 
 ## Documentation
 
-- [`TASKS.md`](TASKS.md) — the live task tracker: what's done, in progress, and blocked. Check this first.
+- Tasks are tracked as [GitHub issues](https://github.com/nordlender/boden/issues), not a `TASKS.md` file.
 - [`docs/schema.md`](docs/schema.md) — the current database schema and design rationale.
 - [`docs/wizard.md`](docs/wizard.md) — the admin product/item wizard design and implementation notes.
 - [`docs/icons.md`](docs/icons.md) — icon system (astro-icon + morphicons).
 - [`docs/moderator-review.md`](docs/moderator-review.md) — the moderator order-review page (planned).
-- [`docs/auth-handoff.md`](docs/auth-handoff.md), [`docs/auth-testing.md`](docs/auth-testing.md), [`docs/auth-work-items.md`](docs/auth-work-items.md) — bloc OAuth implementation history, manual testing guide, and open items.
+- [`docs/auth-testing.md`](docs/auth-testing.md) — manual bloc-login testing guide and open items.
 - [`docs/bloc-api.md`](docs/bloc-api.md) — notes from exploring bloc's API.
 - [`docs/rental-shop.md`](docs/rental-shop.md) — the original project spec.
 - [`docs/schema-legacy-fixes.md`](docs/schema-legacy-fixes.md) — historical, superseded by `docs/schema.md`; kept because a few decisions in it are still cited by number elsewhere.

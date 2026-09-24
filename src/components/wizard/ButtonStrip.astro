@@ -12,6 +12,8 @@
 import MorphIcon from 'morphicons/astro';
 import { dropdownChevron } from '../../lib/icon-nodes';
 import AppIcon from '../icons/AppIcon.astro';
+import Button from '../ui/Button.astro';
+import TextIconButton from '../ui/TextIconButton.astro';
 import type { PanelVariant } from './grid';
 
 interface Props {
@@ -30,11 +32,17 @@ const { variant, formId, products, redirectTo } = Astro.props;
 			<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
 		</summary>
 		<div class="absolute left-0 z-10 mt-1 w-80 rounded-md border border-border bg-surface p-3 shadow-lg">
+			<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
 			<section class="border-b border-border pb-3">
 				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
 					<AppIcon name="image" size={13} /> Set image
 				</p>
-				<p class="text-xs italic text-text-muted">Not wired up yet.</p>
+				<div class="flex items-center gap-2">
+					<input type="text" name="imageUrl" form={formId} placeholder="https://…" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm" />
+					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/set-image" class="shrink-0">
+						Apply
+					</Button>
+				</div>
 			</section>
 
 			<section class="py-3">
@@ -42,21 +50,15 @@ const { variant, formId, products, redirectTo } = Astro.props;
 					<AppIcon name="product" size={13} /> Set product
 				</p>
 				<div class="flex items-center gap-2">
-					<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
 					<select name="productId" form={formId} class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm">
 						<option value="" disabled selected>Choose a product…</option>
 						{products.map((p) => (
 							<option value={p.id}>{p.title}</option>
 						))}
 					</select>
-					<button
-						type="submit"
-						form={formId}
-						formaction="/api/wizard/set-product"
-						class="shrink-0 rounded border border-border-strong px-2 py-1 text-xs text-text-muted hover:bg-surface"
-					>
+					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/set-product" class="shrink-0">
 						Apply
-					</button>
+					</Button>
 				</div>
 				<p class="mt-1 text-xs text-text-muted">Also how you reassign an already-assigned item to a <em>different</em> product — clears its old attribute values and stubs in the new product's fields. Re-applying the item's current product leaves its values untouched.</p>
 			</section>
@@ -66,22 +68,13 @@ const { variant, formId, products, redirectTo } = Astro.props;
 	<div class="flex-1"></div>
 
 	{variant === 'unassigned' && (
-		<a
-			href="#add-item-name"
-			class="rounded bg-accent px-3 py-1.5 text-sm font-medium text-text-inverted hover:bg-accent-hover"
-		>
+		<Button variant="primary" href="#add-item-name">
 			Add item
-		</a>
+		</Button>
 	)}
-	<button
-		type="submit"
-		form={formId}
-		formaction="/api/wizard/archive"
-		class="flex items-center gap-1 rounded border border-error-border px-2.5 py-1.5 text-sm text-error hover:bg-error-subtle"
-	>
-		<AppIcon name="trash" size={16} />
+	<TextIconButton variant="danger-filled" icon="trash" type="submit" form={formId} formaction="/api/wizard/archive">
 		Delete <span class="selected-count" data-form-id={formId}>0</span> item(s)
-	</button>
+	</TextIconButton>
 </div>
 
 <script>

@@ -1,0 +1,32 @@
+---
+import OrdersTableRow from './OrdersTableRow.astro';
+
+interface OrderRowItem {
+	itemName: string;
+	requestedQuantity: number;
+}
+
+interface Props {
+	orderCode: string;
+	status: string;
+	fromDate: string;
+	toDate: string;
+	customerName: string;
+	items: OrderRowItem[];
+	viewHref: string;
+}
+
+const { items, ...rowProps } = Astro.props;
+---
+
+<OrdersTableRow {...rowProps}>
+	<ul class="flex flex-col gap-1 pl-1 text-text-muted">
+		{
+			items.map((item) => (
+				<li>
+					{item.itemName} &times; {item.requestedQuantity}
+				</li>
+			))
+		}
+	</ul>
+</OrdersTableRow>

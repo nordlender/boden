@@ -1,0 +1,35 @@
+---
+// Tri-state Yes/No/Unknown chip for orders.hasUnpaidFees/userIsMember.
+// `null` is a first-class "Unknown" state, not a loading flicker — bloc's
+// API currently always returns null for both fields (see
+// docs/moderator-review.md), so Unknown is the common case today, not an
+// edge case. `goodValue` lets the same component express opposite polarity
+// for the two call sites: userIsMember (good = true) vs hasUnpaidFees
+// (good = false).
+interface Props {
+	label: string;
+	value: boolean | null;
+	goodValue: boolean;
+}
+
+const { label, value, goodValue } = Astro.props;
+
+const displayValue = value === null ? 'Unknown' : value ? 'Yes' : 'No';
+
+// Written out in full (not built from a ternary expression) so Tailwind's
+// class scanner can see every class — same convention as
+// src/components/orders/OrderStatusBadge.astro.
+const chipClass =
+	value === null
+		? 'bg-bg-subtle border-border text-text-muted'
+		: value === goodValue
+			? 'bg-success-subtle border-success-border text-success-text'
+			: 'bg-error-subtle border-error-border text-error-text';
+---
+
+<span class="inline-flex items-center gap-1.5 text-sm">
+	<span class="text-text-muted">{label}:</span>
+	<span class:list={['rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap', chipClass]}>
+		{displayValue}
+	</span>
+</span>

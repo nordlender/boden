@@ -4,6 +4,9 @@ export const prerender = false;
 // Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
 // reached only when logged in with role === 'admin'.
 import '../../styles/global.css';
+import ThemeInit from '../../components/ThemeInit.astro';
+import AdminNavbar from '../../components/AdminNavbar.astro';
+import Button from '../../components/ui/Button.astro';
 import { listAvailablePickupDates } from '../../lib/pickupDays';
 import { todayIsoInOslo, formatDateDisplay } from '../../lib/dates';
 
@@ -20,12 +23,14 @@ const error = Astro.url.searchParams.get('error');
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width" />
 		<title>Pick-up days</title>
+		<ThemeInit />
 	</head>
-	<body class="min-h-screen bg-slate-100 p-8">
-		<div class="mx-auto flex max-w-2xl flex-col gap-6">
+	<body class="min-h-screen bg-bg-subtle">
+		<AdminNavbar />
+		<div class="mx-auto flex max-w-2xl flex-col gap-6 p-8">
 			<div>
-				<h1 class="text-xl font-semibold text-slate-800">Pick-up days</h1>
-				<p class="mt-1 text-sm text-slate-500">
+				<h1 class="text-xl font-semibold text-text">Pick-up days</h1>
+				<p class="mt-1 text-sm text-text-muted">
 					Dates listed here show as "Pick up available" (green) on the member-facing reservation calendar — add a date
 					once a moderator is confirmed to hand out orders that day.
 				</p>
@@ -33,7 +38,7 @@ const error = Astro.url.searchParams.get('error');
 
 			{
 				error === 'invalid_date' && (
-					<p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+					<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
 						That doesn't look like a valid date (expected YYYY-MM-DD).
 					</p>
 				)
@@ -42,38 +47,36 @@ const error = Astro.url.searchParams.get('error');
 			<form
 				method="post"
 				action="/api/pickup-days/add"
-				class="flex items-end gap-3 rounded-lg border border-slate-200 bg-amber-50/60 px-3 py-3"
+				class="flex items-end gap-3 rounded-lg border border-border bg-warning-subtle px-3 py-3"
 			>
 				<input type="hidden" name="redirectTo" value={redirectTo} />
 				<div>
-					<label class="mb-1 block text-xs text-slate-500" for="pickup-day-date">Date</label>
+					<label class="mb-1 block text-xs text-text-muted" for="pickup-day-date">Date</label>
 					<input
 						id="pickup-day-date"
 						name="date"
 						type="date"
 						min={todayIso}
 						required
-						class="rounded border border-slate-300 px-2 py-1.5 text-sm"
+						class="rounded border border-border-interactive px-2 py-1.5 text-sm"
 					/>
 				</div>
-				<button type="submit" class="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
-					Mark available
-				</button>
+				<Button type="submit" variant="primary">Mark available</Button>
 			</form>
 
-			<div class="rounded-lg border border-slate-200 bg-white">
+			<div class="rounded-lg border border-border bg-surface">
 				{
 					dates.length === 0 ? (
-						<p class="p-4 text-sm text-slate-500">No pick-up days marked available yet.</p>
+						<p class="p-4 text-sm text-text-muted">No pick-up days marked available yet.</p>
 					) : (
-						<ul class="divide-y divide-slate-100">
+						<ul class="divide-y divide-border">
 							{dates.map((date) => (
 								<li class="flex items-center justify-between gap-4 px-4 py-2.5 text-sm">
 									<span class={date < todayIso ? 'text-slate-400 line-through' : 'text-slate-700'}>{formatDateDisplay(date, { weekday: true })}</span>
 									<form method="post" action="/api/pickup-days/remove">
 										<input type="hidden" name="redirectTo" value={redirectTo} />
 										<input type="hidden" name="date" value={date} />
-										<button type="submit" class="text-xs text-red-600 hover:underline">
+										<button type="submit" class="text-xs text-error-text hover:underline">
 											Remove
 										</button>
 									</form>

@@ -1,13 +1,12 @@
 ---
+import IconButton from '../ui/IconButton.astro';
 ---
 
-<button
-	type="button"
+<IconButton
+	label="Toggle cart"
 	data-cart-toggle
-	aria-label="Toggle cart"
 	aria-expanded="false"
 	aria-controls="cart-sidebar"
-	class="flex h-9 w-9 items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle"
 >
 	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
 		<path
@@ -18,4 +17,4 @@
 		<circle cx="9" cy="20.25" r="1" fill="currentColor" stroke="none" />
 		<circle cx="18" cy="20.25" r="1" fill="currentColor" stroke="none" />
 	</svg>
-</button>
+</IconButton>

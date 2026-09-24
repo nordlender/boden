@@ -4,6 +4,8 @@ export const prerender = false;
 // Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
 // reached only when logged in with role === 'admin'.
 import '../../styles/global.css';
+import ThemeInit from '../../components/ThemeInit.astro';
+import AdminNavbar from '../../components/AdminNavbar.astro';
 import WizardHeader from '../../components/wizard/WizardHeader.astro';
 import ItemPanel from '../../components/wizard/ItemPanel.astro';
 import AddItemPanel from '../../components/wizard/AddItemPanel.astro';
@@ -30,9 +32,11 @@ const toItemView = (item: Awaited<ReturnType<typeof getWizardItems>>['unassigned
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width" />
 		<title>Items</title>
+		<ThemeInit />
 	</head>
-	<body class="min-h-screen bg-bg-subtle p-8">
-		<div class="mx-auto flex max-w-4xl flex-col gap-6">
+	<body class="min-h-screen bg-bg-subtle">
+		<AdminNavbar />
+		<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
 			<WizardHeader title="Items" />
 
 			<AddItemPanel redirectTo={redirectTo} />

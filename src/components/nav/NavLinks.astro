@@ -1,15 +1,38 @@
 ---
-const links = [{ href: '/', label: 'Shop' }];
+export interface NavLink {
+	href: string;
+	label: string;
+	disabled?: boolean;
+	// Only shown once the client-side session check (see UserMenuLinks.astro)
+	// confirms the visitor is signed in. Needed because pages using this
+	// component can be prerendered (no per-request Astro.locals.user), so the
+	// gate can't be done server-side here — see Navbar.astro.
+	authOnly?: boolean;
+}
+
+interface Props {
+	links: NavLink[];
+}
+
+const { links } = Astro.props;
 ---
 
 <ul class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
 	{
-		links.map((link) => (
-			<li>
-				<a href={link.href} class="text-sm text-text-muted hover:text-text">
-					{link.label}
-				</a>
-			</li>
-		))
+		links.map((link) =>
+			link.disabled ? (
+				<li>
+					<span class="cursor-not-allowed text-sm text-text-muted/50" aria-disabled="true" title="Coming soon">
+						{link.label}
+					</span>
+				</li>
+			) : (
+				<li {...(link.authOnly ? { 'data-signed-in': true, hidden: true } : {})}>
+					<a href={link.href} class="text-sm text-text-muted hover:text-text">
+						{link.label}
+					</a>
+				</li>
+			)
+		)
 	}
 </ul>

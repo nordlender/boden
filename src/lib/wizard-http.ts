@@ -3,6 +3,7 @@
 // verbatim in every wizard API route.
 
 import type { APIContext } from 'astro';
+import { isModerator } from './auth';
 
 /**
  * True for a strictly-positive integer. Use this — not bare
@@ -16,11 +17,34 @@ export function isPositiveInteger(value: number): boolean {
 }
 
 /**
+ * Returns a 401 Response if the current request isn't from a signed-in user,
+ * or `null` if the caller may proceed.
+ */
+export function requireUser(locals: APIContext['locals']): Response | null {
+	if (!locals.user) {
+		return new Response('Unauthorized', { status: 401 });
+	}
+	return null;
+}
+
+/**
  * Returns a 403 Response if the current request isn't from an admin, or
  * `null` if the caller may proceed.
  */
 export function requireAdmin(locals: APIContext['locals']): Response | null {
 	if (locals.user?.role !== 'admin') {
+		return new Response('Forbidden', { status: 403 });
+	}
+	return null;
+}
+
+/**
+ * Returns a 403 Response if the current request isn't from at least a
+ * moderator (admins included — see `isModerator`), or `null` if the caller
+ * may proceed.
+ */
+export function requireModerator(locals: APIContext['locals']): Response | null {
+	if (!isModerator(locals.user?.role)) {
 		return new Response('Forbidden', { status: 403 });
 	}
 	return null;

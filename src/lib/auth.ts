@@ -2,6 +2,14 @@ import { getToken } from '@auth/core/jwt';
 
 export type Role = 'admin' | 'board' | 'moderator' | 'member';
 
+// Role hierarchy is member < moderator < admin. Any check for "is this user
+// at least a moderator" must go through this helper rather than comparing
+// `role === 'moderator'` directly, so admins (who should always have every
+// permission a moderator has) aren't accidentally excluded.
+export function isModerator(role: Role | undefined): boolean {
+  return role === 'moderator' || role === 'admin';
+}
+
 // TEMPORARY: bloc doesn't expose a role endpoint yet (see
 // docs/bloc-api.md), so admin/board/moderator status is a hardcoded allowlist
 // of bloc user ids (ADMIN_USER_IDS / BOARD_USER_IDS / MODERATOR_USER_IDS in

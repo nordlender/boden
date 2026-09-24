@@ -6,21 +6,17 @@ export const prerender = false;
 import '../../styles/global.css';
 import ThemeInit from '../../components/ThemeInit.astro';
 import AdminNavbar from '../../components/AdminNavbar.astro';
+import Button from '../../components/ui/Button.astro';
 import { listAvailablePickupDates } from '../../lib/pickupDays';
+import { todayIsoInOslo, formatDateDisplay } from '../../lib/dates';
 
 const redirectTo = Astro.url.pathname;
 const dates = await listAvailablePickupDates();
-const todayIso = new Date().toISOString().slice(0, 10);
+// Europe/Oslo's today, not the server host's — see src/lib/dates.ts. Same
+// bug class as the reservation calendar/form (#50): this page's `min` and
+// past-date strikethrough were comparing against a UTC-derived "today".
+const todayIso = todayIsoInOslo();
 const error = Astro.url.searchParams.get('error');
-
-function formatDisplay(value: string) {
-	return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
-		weekday: 'short',
-		month: 'short',
-		day: 'numeric',
-		year: 'numeric',
-	});
-}
 ---
 <html lang="en">
 	<head>
@@ -65,9 +61,7 @@ function formatDisplay(value: string) {
 						class="rounded border border-border-interactive px-2 py-1.5 text-sm"
 					/>
 				</div>
-				<button type="submit" class="rounded bg-accent px-3 py-1.5 text-sm font-medium text-text-inverted hover:bg-accent-hover">
-					Mark available
-				</button>
+				<Button type="submit" variant="primary">Mark available</Button>
 			</form>
 
 			<div class="rounded-lg border border-border bg-surface">
@@ -78,7 +72,7 @@ function formatDisplay(value: string) {
 						<ul class="divide-y divide-border">
 							{dates.map((date) => (
 								<li class="flex items-center justify-between gap-4 px-4 py-2.5 text-sm">
-									<span class={date < todayIso ? 'text-disabled-text line-through' : 'text-text'}>{formatDisplay(date)}</span>
+									<span class={date < todayIso ? 'text-slate-400 line-through' : 'text-slate-700'}>{formatDateDisplay(date, { weekday: true })}</span>
 									<form method="post" action="/api/pickup-days/remove">
 										<input type="hidden" name="redirectTo" value={redirectTo} />
 										<input type="hidden" name="date" value={date} />

@@ -1,4 +1,6 @@
 ---
+import Button from '../ui/Button.astro';
+
 interface Props {
 	orderCode: string;
 	status: string;
@@ -10,13 +12,9 @@ const { orderCode, status } = Astro.props;
 {
 	status === 'requested' && (
 		<div data-delete-order={orderCode}>
-			<button
-				type="button"
-				data-delete-order-trigger
-				class="rounded-md border border-error-border px-3 py-1.5 text-sm font-medium text-error-text hover:bg-error-subtle"
-			>
+			<Button variant="danger-filled" data-delete-order-trigger>
 				Delete order
-			</button>
+			</Button>
 			<p data-delete-order-error hidden class="mt-2 text-sm text-error-text" />
 		</div>
 	)

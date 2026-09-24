@@ -11,3 +11,15 @@ export function isUniqueConstraintViolation(err: unknown, column?: string): bool
   const message = err instanceof Error ? err.message : String(err);
   return message.includes(column);
 }
+
+// Same rationale as isUniqueConstraintViolation above — thrown when a write
+// sets a FK column (e.g. orders.userId, confirmedByUserId) to an id that
+// doesn't exist in the referenced table. Callers that write an FK column
+// sourced from an ambient session id (locals.user!.id) rather than a
+// freshly-looked-up row should catch this and return a clean result instead
+// of letting it escape as an unhandled 500 — see moderatorOrders.ts's
+// confirmRetrieval/markReturned and orders.ts's createOrder.
+export function isForeignKeyViolation(err: unknown): boolean {
+  const code = err instanceof Error ? (err as Error & { code?: string }).code : undefined;
+  return code === 'SQLITE_CONSTRAINT_FOREIGNKEY';
+}

@@ -1,5 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
-import { validateSession } from '../lib/auth';
+import { validateSession, isModerator } from '../lib/auth';
 import { MEMBER_ROUTE_PREFIXES, MOD_ROUTE_PREFIXES, ADMIN_ROUTE_PREFIXES, matchesPrefix, isApiRoute } from './prefixes';
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
@@ -33,7 +33,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     return ctx.redirect(`/auth/login?next=${encodeURIComponent(ctx.url.pathname)}`);
   }
 
-  if (matchesPrefix(routePattern, MOD_ROUTE_PREFIXES) && user?.role === 'member') {
+  if (matchesPrefix(routePattern, MOD_ROUTE_PREFIXES) && !isModerator(user?.role)) {
     return new Response('Forbidden', { status: 403 });
   }
 

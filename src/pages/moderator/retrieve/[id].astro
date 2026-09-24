@@ -1,0 +1,100 @@
+---
+export const prerender = false;
+
+// The moderator order hub — the most cross-cutting page in the flow:
+// everything else (review, the blind-count page, return) links back here,
+// and this is where the moderator lands to see availability/warnings and
+// kick off the next action for whatever state the order is in. Gated by
+// src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator) — reached
+// only when logged in with role 'moderator' or 'admin'.
+import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
+import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro';
+import Callout from '../../../components/ui/Callout.astro';
+import Button from '../../../components/ui/Button.astro';
+import { getOrderDetail, getFollowingRentalWorries } from '../../../lib/moderatorOrders';
+
+const idParam = Number(Astro.params.id);
+const order = Number.isInteger(idParam) ? await getOrderDetail(idParam) : null;
+
+// An id that doesn't resolve to a real order (bad bookmark, typo, deleted
+// row) has nowhere sensible to land but back at the lookup entry point.
+if (!order) {
+	return Astro.redirect('/moderator/retrieve');
+}
+
+const notYetReviewed = order.acceptedAt === null && order.rejectedAt === null;
+const acceptedNotRetrieved = order.acceptedAt !== null && order.status === 'requested';
+
+// getFollowingRentalWorries does its own DB round-trips per item — only
+// worth calling in the one state where the warning is actionable (the
+// moderator is about to hand items out, so a late return breaking the next
+// rental is worth flagging now).
+const followingRentalWarnings = acceptedNotRetrieved ? await getFollowingRentalWorries(order.id) : [];
+
+const confirmed = Astro.url.searchParams.get('confirmed') === '1';
+const returned = Astro.url.searchParams.get('returned') === '1';
+
+// OrderDetailCard renders the item list (and, when adjustableTargets is
+// true, each line's target_<orderItemId> input) as a sibling of the
+// `actions` slot below, not nested inside it — so a literal wrapping <form>
+// around both isn't possible. The HTML5 `form="..."` attribute lets an
+// <input> outside a <form> element still submit with it; OrderDetailCard's
+// (additive, optional) `formId` prop threads this id down to every target
+// input so they submit as query params with the "Confirm" form below.
+const RETRIEVE_FORM_ID = 'retrieve-items-form';
+---
+
+<ModeratorLayout title={`Order #${order.orderCode} — Moderator`}>
+	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
+		{
+			confirmed && (
+				<Callout variant="success">
+					<p>
+						Order #{order.orderCode} confirmed — you can now hand over the gear to the member.
+					</p>
+				</Callout>
+			)
+		}
+		{
+			returned && (
+				<Callout variant="success">
+					<p>Order #{order.orderCode} marked returned.</p>
+				</Callout>
+			)
+		}
+
+		<OrderDetailCard
+			order={order}
+			showAvailability={acceptedNotRetrieved}
+			adjustableTargets={acceptedNotRetrieved}
+			followingRentalWarnings={followingRentalWarnings}
+			formId={acceptedNotRetrieved ? RETRIEVE_FORM_ID : undefined}
+		>
+			<Fragment slot="actions">
+				{
+					notYetReviewed && (
+						<Button href={`/moderator/review/${order.id}`} variant="primary" size="lg">
+							Review order
+						</Button>
+					)
+				}
+				{
+					acceptedNotRetrieved && (
+						<form id={RETRIEVE_FORM_ID} method="get" action={`/moderator/retrieve/${order.id}/count`}>
+							<Button type="submit" variant="primary" size="lg">
+								Confirm
+							</Button>
+						</form>
+					)
+				}
+				{
+					order.status === 'active' && (
+						<Button href={`/moderator/return/${order.id}`} variant="primary" size="lg">
+							Return items
+						</Button>
+					)
+				}
+			</Fragment>
+		</OrderDetailCard>
+	</div>
+</ModeratorLayout>

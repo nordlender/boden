@@ -6,6 +6,7 @@ import ReservationForm from '../components/reservation/ReservationForm.astro';
 import { getCartItems } from '../lib/cart';
 import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
 import { getMaxRentalDays } from '../lib/rental-policy';
+import { todayIsoInOslo } from '../lib/dates';
 import { getSession } from 'auth-astro/server';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
@@ -16,7 +17,8 @@ if (cartItems.length === 0) {
 	return Astro.redirect('/cart');
 }
 
-const todayIso = new Date().toISOString().slice(0, 10);
+// Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
+const todayIso = todayIsoInOslo();
 const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
 
 // Surfaces the two error redirects /api/orders/create can send back here

@@ -25,6 +25,8 @@ const CONTACT = {
 	contactEmail: 'member@example.com',
 	contactMobile: null,
 	role: 'member' as const,
+	hasUnpaidFees: null,
+	userIsMember: null,
 };
 
 // createOrder/createSplitOrders join against the db (src/lib/orders.ts
@@ -105,6 +107,20 @@ describe('createOrder', () => {
 		});
 
 		expect(result).toEqual({ ok: false, error: 'unavailable', unavailableItemIds: [ITEM_A_ID] });
+	});
+
+	it('fails with user_not_found (defense-in-depth) instead of throwing when userId has no matching users row', async () => {
+		const cartEntries: CartEntry[] = [{ itemId: ITEM_B_ID, quantity: 1 }];
+		const result = await createOrder({
+			userId: 'no-such-user',
+			note: null,
+			cartEntries,
+			fromDate: '2026-02-01',
+			toDate: '2026-02-05',
+			...CONTACT,
+		});
+
+		expect(result).toEqual({ ok: false, error: 'user_not_found' });
 	});
 });
 

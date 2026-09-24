@@ -22,40 +22,44 @@ function generateRandomCode(length: number): string {
 const MAX_ORDER_CODE_ATTEMPTS = 5;
 
 const ORDER_CODE_DIGITS = '0123456789';
-const ORDER_CODE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-// Letters reserved to flag which role created the order — see the last
-// character's role map below. A regular (member) order must never land on
-// one of these, so role-originated orders stay visually distinguishable at a
-// glance.
-const ORDER_CODE_RESERVED_ROLE_LETTERS = 'ABM';
-const ORDER_CODE_REGULAR_LAST_LETTERS = [...ORDER_CODE_LETTERS].filter(
-  (c) => !ORDER_CODE_RESERVED_ROLE_LETTERS.includes(c),
-);
+const ORDER_CODE_FREE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-// Maps the role that created the order to its reserved last-character letter
-// (see issue #155). Only roles that exist today are wired up — 'board' isn't
-// a role yet, so its reserved letter ('B') currently can only be produced by
-// wiring a future role in here, not by any live code path.
-const ORDER_CODE_ROLE_LETTERS: Partial<Record<Role, string>> = {
+// Maps the role that created the order to its fixed last-character letter —
+// every order code's last letter is always one of these four, so the
+// creating role is legible at a glance rather than merely "privileged vs.
+// not". Ranked highest-privilege first: admin > board member > instructor
+// (moderator) > member. A user can hold more than one of these at once (an
+// admin is implicitly also a board member/instructor, etc.), but getRole()
+// (src/lib/auth.ts) already resolves that down to a single highest-ranked
+// Role before it ever reaches here, so this map is a direct one-to-one
+// lookup.
+//
+// 'board' isn't a role yet (src/lib/auth.ts's Role type has no 'board'
+// member) — see issue #173. Its letter ('B') is reserved here and simply
+// unreachable until that role is wired up.
+const ORDER_CODE_ROLE_LETTERS: Record<Role | 'board', string> = {
   admin: 'A',
-  moderator: 'M',
+  board: 'B',
+  moderator: 'I', // instructor
+  member: 'M',
 };
 
-function randomChar(alphabet: string | string[]): string {
+function randomChar(alphabet: string): string {
   return alphabet[Math.floor(Math.random() * alphabet.length)];
 }
 
-// Order code format is `NNAX` (see issue #155): two digits, then a free
-// letter, then a role-flag letter. `role` is the role of the member who
-// created the order; a regular member order never uses a reserved letter
-// (A/B/M) as its last character, so role-originated orders are
-// distinguishable at a glance.
+// Order code format is `NNAAX` (see issue #155, revised): two digits, two
+// free letters, then a role-flag letter always drawn from
+// ORDER_CODE_ROLE_LETTERS — A/B/I/M for admin/board member/instructor
+// (moderator)/member, so the creating role is legible at a glance. `role` is
+// the role of the member who created the order.
 export function generateOrderCode(role: Role = 'member'): string {
-  const lastLetter = ORDER_CODE_ROLE_LETTERS[role] ?? randomChar(ORDER_CODE_REGULAR_LAST_LETTERS);
+  const lastLetter = ORDER_CODE_ROLE_LETTERS[role];
   return (
     randomChar(ORDER_CODE_DIGITS) +
     randomChar(ORDER_CODE_DIGITS) +
-    randomChar(ORDER_CODE_LETTERS) +
+    randomChar(ORDER_CODE_FREE_LETTERS) +
+    randomChar(ORDER_CODE_FREE_LETTERS) +
     lastLetter
   );
 }

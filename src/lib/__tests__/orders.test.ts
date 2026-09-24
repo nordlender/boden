@@ -85,8 +85,8 @@ describe('createOrder', () => {
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		// NNAX format (issue #155): two digits, a free letter, a role letter.
-		expect(result.orderCode).toMatch(/^\d{2}[A-Z]{2}$/);
+		// NNAAX format (issue #155): two digits, two free letters, a role letter.
+		expect(result.orderCode).toMatch(/^\d{2}[A-Z]{2}[ABIM]$/);
 		expect(result.checkoutToken).toHaveLength(10);
 		expect(result.checkoutToken).not.toBe(result.orderCode);
 	});
@@ -366,9 +366,9 @@ describe('rescheduleOrder', () => {
 });
 
 describe('generateOrderCode', () => {
-	it('never gives a member order a reserved role letter (A/B/M) as its last character', () => {
-		for (let i = 0; i < 200; i++) {
-			expect(generateOrderCode('member')).not.toMatch(/[ABM]$/);
+	it("always ends a member order with M", () => {
+		for (let i = 0; i < 20; i++) {
+			expect(generateOrderCode('member')).toMatch(/M$/);
 		}
 	});
 
@@ -378,13 +378,13 @@ describe('generateOrderCode', () => {
 		}
 	});
 
-	it("always ends a moderator's order code with M", () => {
+	it("always ends a moderator's (instructor's) order code with I", () => {
 		for (let i = 0; i < 20; i++) {
-			expect(generateOrderCode('moderator')).toMatch(/M$/);
+			expect(generateOrderCode('moderator')).toMatch(/I$/);
 		}
 	});
 
-	it('matches the NNAX format', () => {
-		expect(generateOrderCode('member')).toMatch(/^\d{2}[A-Z]{2}$/);
+	it('matches the NNAAX format', () => {
+		expect(generateOrderCode('member')).toMatch(/^\d{2}[A-Z]{2}[ABIM]$/);
 	});
 });

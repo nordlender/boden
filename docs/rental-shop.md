@@ -59,7 +59,7 @@ member goes to /reservation, picks pick-up/return dates
   → may split off a mixed-availability item into its own order
   → submits → POST /api/orders/create
   → status: requested
-  → order code (NNAX format, read aloud at pick-up) + checkout token
+  → order code (NNAAX format, read aloud at pick-up) + checkout token
     (groups every order from one checkout, split or not) generated
   → redirected to /checkout/success?receipt=<checkoutToken>
 
@@ -315,7 +315,7 @@ export const users = sqliteTable('users', {
 // order rows sharing one checkoutToken.
 export const orders = sqliteTable('orders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  orderCode: text('order_code').notNull().unique(),      // NNAX format, read aloud at pick-up
+  orderCode: text('order_code').notNull().unique(),      // NNAAX format, read aloud at pick-up
   checkoutToken: text('checkout_token').notNull(),        // groups every order from one checkout submission
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', { enum: ['requested', 'active', 'returned', 'rejected'] }).notNull().default('requested'),
@@ -414,7 +414,7 @@ Placing an order is a three-step flow, not a single "place order" action:
 
 1. **`/cart`** — review cart lines, adjust quantity, remove. Links to `/reservation`.
 2. **`/reservation`** — pick a pick-up (`fromDate`) and return (`toDate`) date. A live `POST /api/reservation/availability` preview flags any cart line that's unavailable for the chosen range; the member may split an unavailable item into its own order (`splitItemIds`) rather than changing dates. The form also displays (read-only, from the bloc session) name/email/mobile and the `hasUnpaidFees`/`userIsMember` flags.
-3. **`POST /api/orders/create`** — re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently). Generates an `NNAX`-format `orderCode` per order (last letter flags the creating member's role — A/B/M for admin/board/moderator, any other letter for a regular member) and one shared `checkoutToken` per submission, then redirects to `/checkout/success?receipt=<checkoutToken>`.
+3. **`POST /api/orders/create`** — re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently). Generates an `NNAAX`-format `orderCode` per order (last letter always flags the creating member's role — A/B/I/M for admin/board member/instructor(moderator)/member) and one shared `checkoutToken` per submission, then redirects to `/checkout/success?receipt=<checkoutToken>`.
 
 ```ts
 // src/lib/orders.ts (signatures)

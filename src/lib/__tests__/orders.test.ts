@@ -378,6 +378,12 @@ describe('generateOrderCode', () => {
 		}
 	});
 
+	it("always ends a board member's order code with B", () => {
+		for (let i = 0; i < 20; i++) {
+			expect(generateOrderCode('board')).toMatch(/B$/);
+		}
+	});
+
 	it("always ends a moderator's (instructor's) order code with I", () => {
 		for (let i = 0; i < 20; i++) {
 			expect(generateOrderCode('moderator')).toMatch(/I$/);

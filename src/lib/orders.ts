@@ -33,11 +33,7 @@ const ORDER_CODE_FREE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 // (src/lib/auth.ts) already resolves that down to a single highest-ranked
 // Role before it ever reaches here, so this map is a direct one-to-one
 // lookup.
-//
-// 'board' isn't a role yet (src/lib/auth.ts's Role type has no 'board'
-// member) — see issue #173. Its letter ('B') is reserved here and simply
-// unreachable until that role is wired up.
-const ORDER_CODE_ROLE_LETTERS: Record<Role | 'board', string> = {
+const ORDER_CODE_ROLE_LETTERS: Record<Role, string> = {
   admin: 'A',
   board: 'B',
   moderator: 'I', // instructor

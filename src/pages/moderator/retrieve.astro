@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
+import Button from '../../components/ui/Button.astro';
 import { ORDER_CODE_LENGTH } from '../../lib/orders';
 
 // Universal entry point for the moderator flow — reached by asking the
@@ -38,9 +39,9 @@ const error = Astro.url.searchParams.get('error');
 					placeholder="e.g. AB12CD"
 				/>
 			</label>
-			<button type="submit" class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-text-inverted hover:bg-accent-hover">
+			<Button type="submit" variant="primary">
 				Look up order
-			</button>
+			</Button>
 		</form>
 	</div>
 </ModeratorLayout>

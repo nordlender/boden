@@ -60,6 +60,7 @@ export const baseClasses =
 export const actionLabels: Record<ActionIconKey, string> = {
 	accept: 'Accept',
 	cancel: 'Cancel',
+	reject: 'Reject',
 	delete: 'Delete',
 	back: 'Back',
 	next: 'Next',

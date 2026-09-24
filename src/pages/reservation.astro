@@ -7,6 +7,7 @@ import { getCartItems } from '../lib/cart';
 import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
 import { getMaxRentalDays } from '../lib/rental-policy';
 import { getSession } from 'auth-astro/server';
+import { isModerator } from '../lib/auth';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
 const cartItems = await getCartItems(Astro.cookies);
@@ -28,7 +29,13 @@ const errorMessage =
 		? `Your selected dates were invalid, the pick-up date has already passed, or the range was longer than the maximum ${getMaxRentalDays()} days — please choose your dates again.`
 		: error === 'unavailable'
 			? "One or more items in your cart are no longer available for the selected dates — check the availability badges below and adjust your dates, or split off the unavailable item(s), before submitting again."
-			: null;
+			: error === 'disclaimer_required'
+				? 'You must accept the disclaimer before submitting the order.'
+				: null;
+
+// Only moderators/admins see the disclaimer checkbox for now (see #134) —
+// mirrored server-side in src/pages/api/orders/create.ts.
+const showDisclaimer = isModerator(Astro.locals.user?.role);
 ---
 
 <BaseLayout title="Reservation dates">
@@ -46,6 +53,7 @@ const errorMessage =
 			mobile={session?.bloc?.mobile ?? null}
 			hasUnpaidFees={session?.bloc?.hasUnpaidFees ?? null}
 			userIsMember={session?.bloc?.userIsMember ?? null}
+			showDisclaimer={showDisclaimer}
 		/>
 	</div>
 </BaseLayout>

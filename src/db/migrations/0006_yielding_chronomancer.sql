@@ -1,0 +1,1 @@
+ALTER TABLE `orders` ADD `disclaimer_accepted_at` integer;

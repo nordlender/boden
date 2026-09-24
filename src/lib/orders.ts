@@ -63,6 +63,11 @@ export type CreateOrderInput = {
   // schema.ts's orders.hasUnpaidFees/userIsMember doc comment.
   hasUnpaidFees: boolean | null;
   userIsMember: boolean | null;
+  // Whether the checkout submitter checked the liability disclaimer box —
+  // see schema.ts's orders.disclaimerAcceptedAt doc comment. Only ever true
+  // today since the checkbox is only rendered for moderators/admins and is
+  // required when shown; a plain member submission always passes false.
+  disclaimerAccepted: boolean;
 };
 
 export type CreateOrderResult =
@@ -85,6 +90,7 @@ function insertOrder(
     contactMobile: string | null;
     hasUnpaidFees: boolean | null;
     userIsMember: boolean | null;
+    disclaimerAccepted: boolean;
   },
 ) {
   // Re-check availability inside the same transaction as the insert below —
@@ -122,6 +128,7 @@ function insertOrder(
           contactMobile: input.contactMobile,
           hasUnpaidFees: input.hasUnpaidFees,
           userIsMember: input.userIsMember,
+          disclaimerAcceptedAt: input.disclaimerAccepted ? new Date() : null,
         })
         .returning({ id: orders.id, orderCode: orders.orderCode })
         .get();
@@ -190,6 +197,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         contactMobile: input.contactMobile,
         hasUnpaidFees: input.hasUnpaidFees,
         userIsMember: input.userIsMember,
+        disclaimerAccepted: input.disclaimerAccepted,
       }),
     );
     return { ok: true, orderId: result.id, orderCode: result.orderCode, checkoutToken };
@@ -223,6 +231,9 @@ export type CreateSplitOrdersInput = {
   contactMobile: string | null;
   hasUnpaidFees: boolean | null;
   userIsMember: boolean | null;
+  // See CreateOrderInput.disclaimerAccepted — applied to every order created
+  // from this split submission.
+  disclaimerAccepted: boolean;
 };
 
 export type CreateSplitOrdersResult =
@@ -274,6 +285,7 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
           contactMobile: input.contactMobile,
           hasUnpaidFees: input.hasUnpaidFees,
           userIsMember: input.userIsMember,
+          disclaimerAccepted: input.disclaimerAccepted,
         }),
       ),
     );

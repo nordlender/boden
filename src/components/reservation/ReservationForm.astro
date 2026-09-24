@@ -12,9 +12,10 @@ interface Props {
 	mobile: string | null;
 	hasUnpaidFees: boolean | null;
 	userIsMember: boolean | null;
+	showDisclaimer: boolean;
 }
 
-const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
+const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, userIsMember, showDisclaimer } = Astro.props;
 ---
 
 <div data-reservation-form class="flex flex-col gap-8">
@@ -55,7 +56,14 @@ const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, use
 
 	<section>
 		<h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase">3. Your details</h2>
-		<CheckoutForm name={name} email={email} mobile={mobile} hasUnpaidFees={hasUnpaidFees} userIsMember={userIsMember} />
+		<CheckoutForm
+			name={name}
+			email={email}
+			mobile={mobile}
+			hasUnpaidFees={hasUnpaidFees}
+			userIsMember={userIsMember}
+			showDisclaimer={showDisclaimer}
+		/>
 		<p data-submit-hint class="mt-2 text-sm text-gray-500">Select your pick-up and return dates above to continue.</p>
 	</section>
 </div>

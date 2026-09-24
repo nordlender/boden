@@ -24,6 +24,7 @@ const CONTACT = {
 	contactMobile: null,
 	hasUnpaidFees: null,
 	userIsMember: null,
+	disclaimerAccepted: false,
 };
 
 // createOrder/createSplitOrders join against the db (src/lib/orders.ts

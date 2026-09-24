@@ -64,4 +64,5 @@ export const actionLabels: Record<ActionIconKey, string> = {
 	back: 'Back',
 	next: 'Next',
 	view: 'View',
+	message: 'Message',
 };

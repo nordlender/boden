@@ -28,7 +28,10 @@ export const MOD_ROUTE_PREFIXES = ['/moderator', '/api/moderator'];
 // inline (see those files), so this is redundant today — but it means a
 // future wizard route that forgets the inline check isn't left with zero
 // protection.
-export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard', '/api/pickup-days'];
+// /api/messages is included here as defense-in-depth, same reasoning as
+// /api/wizard above: each /api/messages/* write route already re-implements
+// its own `locals.user?.role !== 'admin'` check inline (see those files).
+export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard', '/api/pickup-days', '/api/messages'];
 
 export function matchesPrefix(routePattern: string, prefixes: string[]) {
   return prefixes.some((p) => routePattern === p || routePattern.startsWith(`${p}/`));

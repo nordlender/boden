@@ -1,11 +1,12 @@
 ---
-// Placeholder — admins can't post moderator messages yet (tracked in a
-// follow-up issue: the /admin authoring UI and storage don't exist). This
-// renders a static empty-state box so the index page has the right layout
-// and slot ready; swap the body for the real message list once that ships.
+// Read-only view of the admin-authored message board (see issue #151 for
+// the authoring side, src/components/admin/MessagesBox.astro). Shares its
+// box/list markup with the admin hub via MessageList.astro so the two
+// never drift into different layouts.
+import MessageList from '../messages/MessageList.astro';
+import { listMessages } from '../../lib/messages';
+
+const messages = await listMessages();
 ---
 
-<div class="rounded-lg border border-border bg-surface p-4">
-	<h2 class="text-sm font-semibold text-text">Messages</h2>
-	<p class="mt-1 text-sm text-text-muted">No messages from admins right now.</p>
-</div>
+<MessageList messages={messages} />

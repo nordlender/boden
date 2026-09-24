@@ -1,7 +1,10 @@
 ---
+// Mirrors ModeratorNavbar.astro: "Home" (the hub — see /admin/index.astro,
+// issue #151) first, then the existing section links.
 import BaseNavbar from './nav/BaseNavbar.astro';
 
 const links = [
+	{ href: '/admin', label: 'Home' },
 	{ href: '/admin/orders', label: 'Orders' },
 	{ href: '/admin/requests', label: 'Requests', disabled: true },
 	{ href: '/admin/items', label: 'Items' },

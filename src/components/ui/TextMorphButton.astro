@@ -53,7 +53,12 @@ const classes = [baseClasses, sizeClasses[size], variantClasses[variant], 'morph
 		if (icon) icon.icon = icons[state];
 	}
 
-	document.querySelectorAll<HTMLElement>('.morph-action').forEach((el) => {
+	// MorphButton and TextMorphButton both use the `.morph-action` class and
+	// this identical script — Astro doesn't dedupe scripts across different
+	// component files, so a page rendering both would otherwise run this
+	// wiring twice per element. The `data-morph-wired` guard keeps that safe.
+	document.querySelectorAll<HTMLElement>('.morph-action:not([data-morph-wired])').forEach((el) => {
+		el.dataset.morphWired = 'true';
 		el.addEventListener('pointerenter', () => setState(el, 'hover'));
 		el.addEventListener('pointerleave', () => setState(el, 'default'));
 		el.addEventListener('focus', () => setState(el, 'hover'));

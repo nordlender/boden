@@ -1,0 +1,67 @@
+---
+// Text+icon button/link for the general-purpose actions in
+// src/lib/icon-nodes.ts's `actionIcons` (accept/cancel/delete/back/next).
+// Text sits on the left, icon on the right — same layout as
+// TextIconButton.astro — and the icon morphs to its `hover` shape on
+// pointer hover, keyboard focus, or tap (see MorphButton.astro's icon-only
+// counterpart). Falls back to the action's default label (e.g. "Delete")
+// when no slot content is given.
+import MorphIcon from 'morphicons/astro';
+import { actionIcons, type ActionIconKey } from '../../lib/icon-nodes';
+import { actionLabels, baseClasses, sizeClasses, textIconPixelSize, variantClasses, type ButtonSize, type ButtonVariant } from '../../lib/button-styles';
+
+interface Props {
+	action: ActionIconKey;
+	variant?: ButtonVariant;
+	size?: ButtonSize;
+	type?: 'button' | 'submit' | 'reset';
+	href?: string;
+	disabled?: boolean;
+	class?: string;
+	form?: string;
+	formaction?: string;
+}
+
+const { action, variant = 'secondary', size = 'md', type = 'button', href, disabled = false, class: className, ...rest } = Astro.props;
+
+const icons = actionIcons[action];
+const classes = [baseClasses, sizeClasses[size], variantClasses[variant], 'morph-action', className].filter(Boolean).join(' ');
+---
+{
+	href ? (
+		<a href={href} class={classes} data-morph-action={action} aria-disabled={disabled || undefined} {...rest}>
+			<slot>{actionLabels[action]}</slot>
+			<MorphIcon icon={icons.default} size={textIconPixelSize[size]} class="morph-action-icon" />
+		</a>
+	) : (
+		<button type={type} disabled={disabled} class={classes} data-morph-action={action} {...rest}>
+			<slot>{actionLabels[action]}</slot>
+			<MorphIcon icon={icons.default} size={textIconPixelSize[size]} class="morph-action-icon" />
+		</button>
+	)
+}
+
+<script>
+	import type { MorphIconElement } from 'morphicons/element';
+	import { actionIcons, type ActionIconKey } from '../../lib/icon-nodes';
+
+	function setState(el: Element, state: 'default' | 'hover') {
+		const key = el.getAttribute('data-morph-action') as ActionIconKey | null;
+		const icons = key && actionIcons[key];
+		if (!icons) return;
+		const icon = el.querySelector<MorphIconElement>('.morph-action-icon');
+		if (icon) icon.icon = icons[state];
+	}
+
+	// MorphButton and TextMorphButton both use the `.morph-action` class and
+	// this identical script — Astro doesn't dedupe scripts across different
+	// component files, so a page rendering both would otherwise run this
+	// wiring twice per element. The `data-morph-wired` guard keeps that safe.
+	document.querySelectorAll<HTMLElement>('.morph-action:not([data-morph-wired])').forEach((el) => {
+		el.dataset.morphWired = 'true';
+		el.addEventListener('pointerenter', () => setState(el, 'hover'));
+		el.addEventListener('pointerleave', () => setState(el, 'default'));
+		el.addEventListener('focus', () => setState(el, 'hover'));
+		el.addEventListener('blur', () => setState(el, 'default'));
+	});
+</script>

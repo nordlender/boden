@@ -69,6 +69,50 @@ export const detailsToggle = {
 	] satisfies IconNode,
 };
 
+// General-purpose action icons for MorphButton/TextMorphButton
+// (src/components/ui/) — `default` is the static resting shape, `hover` is
+// what it morphs into on hover, focus, or click. Accept/Cancel morph a
+// boxed shape into its bare mark (checkbox → check, boxed X → X); the
+// others gain a small broken/dashed detail to read as "in motion".
+export const actionIcons = {
+	accept: {
+		default: [
+			['path', { d: 'm9 11l3 3l8-8' }],
+			['path', { d: 'M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9' }],
+		] satisfies IconNode,
+		hover: [['path', { d: 'm5 12l5 5L20 7' }]] satisfies IconNode,
+	},
+	cancel: {
+		default: [['path', { d: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm6 4l6 6m0-6l-6 6' }]] satisfies IconNode,
+		hover: [['path', { d: 'M18 6L6 18M6 6l12 12' }]] satisfies IconNode,
+	},
+	delete: {
+		default: [
+			['path', { d: 'M4 7h16m-10 4v6m4-6v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3' }],
+		] satisfies IconNode,
+		hover: [
+			['path', { d: 'm3 3l18 18M4 7h3m4 0h9m-10 4v6m4-3v3M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l.077-.923m.307-3.704L19 7M9 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3' }],
+		] satisfies IconNode,
+	},
+	back: {
+		default: [['path', { d: 'M5 12h14M5 12l6 6m-6-6l6-6' }]] satisfies IconNode,
+		hover: [['path', { d: 'M5 12h6m3 0h1.5m3 0h.5M5 12l6 6m-6-6l6-6' }]] satisfies IconNode,
+	},
+	next: {
+		default: [['path', { d: 'M5 12h14m-6 6l6-6m-6-6l6 6' }]] satisfies IconNode,
+		hover: [['path', { d: 'M5 12h.5m3 0H10m3 0h6m-6 6l6-6m-6-6l6 6' }]] satisfies IconNode,
+	},
+	view: {
+		default: [
+			['path', { d: 'M10 12a2 2 0 1 0 4 0a2 2 0 0 0-4 0' }],
+			['path', { d: 'M21 12q-3.6 6-9 6t-9-6q3.6-6 9-6t9 6' }],
+		] satisfies IconNode,
+		hover: [['path', { d: 'M21 9q-3.6 4-9 4T3 9m0 6l2.5-3.8M21 14.976L18.508 11.2M9 17l.5-4m5.5 4l-.5-4' }]] satisfies IconNode,
+	},
+} as const;
+
+export type ActionIconKey = keyof typeof actionIcons;
+
 // The three large tiles on the moderator index page (ActionButton.astro) —
 // pulled from @iconify-json/tabler's icons.json (already a project
 // dependency for astro-icon) rather than tabler-nodes-outline.json above,

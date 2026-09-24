@@ -6,6 +6,7 @@
 // "/items/..." would be the wrong noun here. See this PR's description.
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ImagePlaceholder from '../../components/shop/ImagePlaceholder.astro';
+import Button from '../../components/ui/Button.astro';
 import { getPublishedProductSlugs, getShopProductBySlug } from '../../lib/shop';
 
 export async function getStaticPaths() {
@@ -129,14 +130,15 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 								data-quantity-input
 								class="w-16 rounded-md border border-border-interactive px-2 py-1.5 text-sm"
 							/>
-							<button
+							<Button
 								type="submit"
+								variant="primary"
+								size="lg"
 								data-add-to-cart
 								disabled={(initialItem?.inStock ?? 0) <= 0}
-								class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-disabled-bg"
 							>
 								Add to cart
-							</button>
+							</Button>
 						</div>
 					</form>
 				)

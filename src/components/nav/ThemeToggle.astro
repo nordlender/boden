@@ -47,4 +47,19 @@ import { themeToggle } from '../../lib/icon-nodes';
 
 		if (icon) icon.icon = themeToggle[next];
 	});
+
+	// Hint at the click action with tabler's "sun-moon" icon on
+	// hover/focus, then morph back to the current theme's icon.
+	button?.addEventListener('mouseenter', () => {
+		if (icon) icon.icon = themeToggle.hover;
+	});
+	button?.addEventListener('mouseleave', () => {
+		if (icon) icon.icon = themeToggle[resolvedTheme()];
+	});
+	button?.addEventListener('focus', () => {
+		if (icon) icon.icon = themeToggle.hover;
+	});
+	button?.addEventListener('blur', () => {
+		if (icon) icon.icon = themeToggle[resolvedTheme()];
+	});
 </script>

@@ -4,6 +4,7 @@ import type { APIRoute } from 'astro';
 import { getCart, setCart } from '../../../lib/cart';
 import { createOrder, createSplitOrders } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
+import { isModerator } from '../../../lib/auth';
 
 // Maps the checkout form's readonly hasUnpaidFees/userIsMember text inputs
 // (literally "Yes" | "No" | "Unknown", see CheckoutForm.astro's yesNo()) back
@@ -55,6 +56,18 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const hasUnpaidFees = parseYesNo(form.get('hasUnpaidFees'));
   const userIsMember = parseYesNo(form.get('userIsMember'));
 
+  // The disclaimer checkbox is only rendered on the checkout form for
+  // moderators/admins (see CheckoutForm.astro) — see #134, more will roll
+  // out later. For any other role there's nothing to accept/validate, so
+  // disclaimerAccepted stays false. Re-derived from the session here rather
+  // than trusted from the form, same reasoning as every other
+  // server-enforced check in this route.
+  const disclaimerRequired = isModerator(locals.user.role);
+  const disclaimerAccepted = form.get('disclaimerAccepted') === 'on';
+  if (disclaimerRequired && !disclaimerAccepted) {
+    return redirect('/reservation?error=disclaimer_required');
+  }
+
   // Populated by the reservation page's split-order action when the member
   // moves one or more mixed-availability items into their own order — see
   // ReservationForm.astro and src/lib/orders.ts's createSplitOrders.
@@ -77,6 +90,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           contactMobile,
           hasUnpaidFees,
           userIsMember,
+          disclaimerAccepted,
         })
       : await createOrder({
           userId: locals.user.id,
@@ -89,6 +103,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           contactMobile,
           hasUnpaidFees,
           userIsMember,
+          disclaimerAccepted,
         });
   if (!result.ok) {
     // 'unavailable': re-checked at insert time (see orders.ts's insertOrder)

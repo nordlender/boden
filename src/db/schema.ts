@@ -230,6 +230,13 @@ export const orders = sqliteTable('orders', {
   returnedAt: integer('returned_at', { mode: 'timestamp' }), // set when moderator marks returned
   rejectedAt: integer('rejected_at', { mode: 'timestamp' }), // set when moderator rejects
   rejectedReason: text('rejected_reason'), // set when moderator rejects
+  // Set when the checkout submitter accepted the liability disclaimer (OSI
+  // is not liable for injury, etc — see #134). Currently only surfaced on
+  // the checkout form for moderators/admins, so this is null for
+  // member-submitted orders today; kept as a timestamp (not a plain
+  // boolean) so there's a record of *when* it was accepted, same pattern as
+  // acceptedAt above.
+  disclaimerAcceptedAt: integer('disclaimer_accepted_at', { mode: 'timestamp' }),
   // TODO: dueAt (rental due date) — not yet confirmed, see docs/schema-legacy-fixes.md #9
 }, (table) => [
   index('orders_user_id_idx').on(table.userId),

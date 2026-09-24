@@ -74,6 +74,13 @@ export const detailsToggle = {
 // what it morphs into on hover, focus, or click. Accept/Cancel morph a
 // boxed shape into its bare mark (checkbox → check, boxed X → X); the
 // others gain a small broken/dashed detail to read as "in motion".
+// Boxed-X mark shared by cancel and reject — a reject is a cancel of the
+// request, so it reuses cancel's icon pair rather than defining its own.
+const cancelIcon = {
+	default: [['path', { d: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm6 4l6 6m0-6l-6 6' }]] satisfies IconNode,
+	hover: [['path', { d: 'M18 6L6 18M6 6l12 12' }]] satisfies IconNode,
+};
+
 export const actionIcons = {
 	accept: {
 		default: [
@@ -82,10 +89,8 @@ export const actionIcons = {
 		] satisfies IconNode,
 		hover: [['path', { d: 'm5 12l5 5L20 7' }]] satisfies IconNode,
 	},
-	cancel: {
-		default: [['path', { d: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm6 4l6 6m0-6l-6 6' }]] satisfies IconNode,
-		hover: [['path', { d: 'M18 6L6 18M6 6l12 12' }]] satisfies IconNode,
-	},
+	cancel: cancelIcon,
+	reject: cancelIcon,
 	delete: {
 		default: [
 			['path', { d: 'M4 7h16m-10 4v6m4-6v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3' }],

@@ -6,6 +6,7 @@
 // here to compute the correction message — it's never echoed into the
 // form as a hidden/pre-filled value.
 import Thumbnail from '../wizard/Thumbnail.astro';
+import Button from '../ui/Button.astro';
 
 interface Line {
 	orderItemId: number;
@@ -65,8 +66,8 @@ const { title, description, action, mismatch = false, lines, submitLabel = 'Comp
 			}
 		</ul>
 
-		<button type="submit" class="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover">
+		<Button type="submit" variant="primary" size="lg" class="self-start">
 			{submitLabel}
-		</button>
+		</Button>
 	</form>
 </div>

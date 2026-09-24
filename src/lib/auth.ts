@@ -44,13 +44,16 @@ export async function getRole(userId: string): Promise<Role> {
     return cached.role;
   }
 
-  const role: Role = ADMIN_USER_IDS.has(userId)
-    ? 'admin'
-    : BOARD_USER_IDS.has(userId)
-      ? 'board'
-      : MODERATOR_USER_IDS.has(userId)
-        ? 'moderator'
-        : 'member';
+  let role: Role;
+  if (ADMIN_USER_IDS.has(userId)) {
+    role = 'admin';
+  } else if (BOARD_USER_IDS.has(userId)) {
+    role = 'board';
+  } else if (MODERATOR_USER_IDS.has(userId)) {
+    role = 'moderator';
+  } else {
+    role = 'member';
+  }
 
   roleCache.delete(userId);
   if (roleCache.size >= CACHE_MAX_SIZE) {

@@ -63,4 +63,5 @@ export const actionLabels: Record<ActionIconKey, string> = {
 	delete: 'Delete',
 	back: 'Back',
 	next: 'Next',
+	view: 'View',
 };

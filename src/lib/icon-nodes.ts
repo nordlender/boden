@@ -102,6 +102,13 @@ export const actionIcons = {
 		default: [['path', { d: 'M5 12h14m-6 6l6-6m-6-6l6 6' }]] satisfies IconNode,
 		hover: [['path', { d: 'M5 12h.5m3 0H10m3 0h6m-6 6l6-6m-6-6l6 6' }]] satisfies IconNode,
 	},
+	view: {
+		default: [
+			['path', { d: 'M10 12a2 2 0 1 0 4 0a2 2 0 0 0-4 0' }],
+			['path', { d: 'M21 12q-3.6 6-9 6t-9-6q3.6-6 9-6t9 6' }],
+		] satisfies IconNode,
+		hover: [['path', { d: 'M21 9q-3.6 4-9 4T3 9m0 6l2.5-3.8M21 14.976L18.508 11.2M9 17l.5-4m5.5 4l-.5-4' }]] satisfies IconNode,
+	},
 } as const;
 
 export type ActionIconKey = keyof typeof actionIcons;

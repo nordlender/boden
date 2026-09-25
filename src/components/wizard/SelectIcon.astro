@@ -7,6 +7,7 @@
 // it isn't a DOM descendant of that form — see ItemPanel.astro.
 import MorphIcon from 'morphicons/astro';
 import { selectCheckbox } from '../../lib/icon-nodes';
+import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 
 interface Props {
 	itemId: number;
@@ -17,7 +18,7 @@ interface Props {
 
 const { itemId, formId, checked = false, label } = Astro.props;
 ---
-<label class="grid h-6 w-6 cursor-pointer place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text">
+<label class:list={['grid cursor-pointer place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]}>
 	<input
 		type="checkbox"
 		name="itemIds"
@@ -29,7 +30,7 @@ const { itemId, formId, checked = false, label } = Astro.props;
 	/>
 	<MorphIcon
 		icon={checked ? selectCheckbox.checked : selectCheckbox.unchecked}
-		size={18}
+		size={triggerIconPixelSize.sm}
 		class:list={['select-icon', checked && 'text-selected']}
 	/>
 </label>

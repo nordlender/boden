@@ -1,5 +1,12 @@
 ---
 import IconButton from '../ui/IconButton.astro';
+import { iconOnlyPixelSize } from '../../lib/button-styles';
+
+// IconButton defaults to size="md" — this inline svg (the escape-hatch slot
+// IconButton offers when AppIcon's fixed icon set doesn't cover a shape,
+// see IconButton.astro) has to size itself to match, since it renders
+// outside IconButton's own AppIcon-driven sizing.
+const size = iconOnlyPixelSize.md;
 ---
 
 <IconButton
@@ -8,7 +15,7 @@ import IconButton from '../ui/IconButton.astro';
 	aria-expanded="false"
 	aria-controls="cart-sidebar"
 >
-	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width={size} height={size}>
 		<path
 			stroke-linecap="round"
 			stroke-linejoin="round"

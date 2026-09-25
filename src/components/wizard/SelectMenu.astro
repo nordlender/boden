@@ -7,6 +7,7 @@
 // a `change` event so SelectIcon's own listener keeps each icon in sync,
 // rather than duplicating that logic here.
 import AppIcon from '../icons/AppIcon.astro';
+import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 
 interface Props {
 	formId: string;
@@ -21,8 +22,8 @@ const options = [
 ];
 ---
 <details class="relative">
-	<summary class="grid h-6 w-6 cursor-pointer list-none place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text [&::-webkit-details-marker]:hidden" aria-label="Select items">
-		<AppIcon name="selectMenu" size={18} />
+	<summary class:list={['grid cursor-pointer list-none place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text [&::-webkit-details-marker]:hidden', triggerBoxClasses.sm]} aria-label="Select items">
+		<AppIcon name="selectMenu" size={triggerIconPixelSize.sm} />
 	</summary>
 	<div class="select-menu absolute left-0 z-10 mt-1 min-w-[8rem] rounded-md border border-border bg-surface py-1 shadow-lg" data-form-id={formId}>
 		{options.map((option) => (

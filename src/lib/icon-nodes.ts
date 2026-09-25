@@ -126,6 +126,23 @@ const viewIcon = {
 	hover: [['path', { d: 'M21 9q-3.6 4-9 4T3 9m0 6l2.5-3.8M21 14.976L18.508 11.2M9 17l.5-4m5.5 4l-.5-4' }]] satisfies IconNode,
 };
 
+const saveIcon = {
+	default: [
+		['path', { d: 'M6 4h10l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2' }],
+		['path', { d: 'M10 14a2 2 0 1 0 4 0a2 2 0 1 0-4 0' }],
+		['path', { d: 'M14 4l0 4l-6 0l0-4' }],
+	] satisfies IconNode,
+	hover: [['path', { d: 'M5 12l5 5l10-10' }]] satisfies IconNode,
+};
+
+const addIcon = {
+	default: [
+		['path', { d: 'M12 5l0 14' }],
+		['path', { d: 'M5 12l14 0' }],
+	] satisfies IconNode,
+	hover: [['path', { d: 'M5 12l5 5l10-10' }]] satisfies IconNode,
+};
+
 export const actionIcons = {
 	accept: acceptIcon,
 	cancel: cancelIcon,
@@ -134,6 +151,8 @@ export const actionIcons = {
 	back: backIcon,
 	next: nextIcon,
 	view: viewIcon,
+	save: saveIcon,
+	add: addIcon,
 } as const;
 
 export type ActionIconKey = keyof typeof actionIcons;

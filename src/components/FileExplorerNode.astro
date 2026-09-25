@@ -1,10 +1,13 @@
 ---
 // One row of <FileExplorer>'s tree, recursing into its own children.
-// Directories are plain <details>/<summary> — closed by default, no JS
-// needed to expand/collapse or to swap the folder icon (Tailwind's
-// `group-open:` variant handles that from the `open` attribute alone).
+// Directories are plain <details>/<summary> — closed by default. The folder
+// icon is an animated morphicons pair (see folderToggle in icon-nodes.ts),
+// swapped by the delegated `toggle` listener below the same way
+// Dropdown.astro animates its chevron.
 import AppIcon from './icons/AppIcon.astro';
+import MorphIcon from 'morphicons/astro';
 import FileExplorerNode from './FileExplorerNode.astro';
+import { folderToggle } from '../lib/icon-nodes';
 import type { FileNode } from '../lib/fileExplorer';
 
 interface Props {
@@ -18,8 +21,7 @@ const { node } = Astro.props;
 		<li>
 			<details class="group">
 				<summary class="flex cursor-pointer list-none items-center gap-1.5 rounded py-1 text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
-					<AppIcon name="folder" size={16} class="shrink-0 text-text-muted group-open:hidden" />
-					<AppIcon name="folderOpen" size={16} class="hidden shrink-0 text-text-muted group-open:block" />
+					<MorphIcon icon={folderToggle.closed} size={16} class="folder-icon shrink-0 text-text-muted" />
 					<span class="truncate">{node.name}</span>
 				</summary>
 				{node.children && node.children.length > 0 ? (
@@ -40,3 +42,24 @@ const { node } = Astro.props;
 		</li>
 	)
 }
+
+<script>
+	// Delegated (Astro dedupes identical inline scripts across the many
+	// FileExplorerNode instances on a page, so this runs once) — same
+	// pattern as Dropdown.astro's chevron. `toggle` doesn't bubble, so the
+	// listener has to sit on the capture phase to see it at all.
+	import type { MorphIconElement } from 'morphicons/element';
+	import { folderToggle } from '../lib/icon-nodes';
+
+	document.addEventListener(
+		'toggle',
+		(event) => {
+			const details = event.target;
+			if (!(details instanceof HTMLDetailsElement)) return;
+			const icon = details.querySelector<MorphIconElement>(':scope > summary > .folder-icon');
+			if (!icon) return;
+			icon.icon = details.open ? folderToggle.open : folderToggle.closed;
+		},
+		true,
+	);
+</script>

@@ -34,6 +34,20 @@ import { themeToggle } from '../../lib/icon-nodes';
 		icon.set(themeToggle.dark);
 	}
 
+	// Hint at the click action with tabler's "sun-moon" icon while
+	// hovered or focused, then morph back to the current theme's icon.
+	// Tracked as one combined state rather than two independent on/off
+	// pairs, since hover and focus can overlap (e.g. tabbing to the
+	// button while the mouse already rests over it) and either one
+	// ending shouldn't clear the hint while the other still holds.
+	let hovered = false;
+	let focused = false;
+
+	function syncIcon() {
+		if (!icon) return;
+		icon.icon = hovered || focused ? themeToggle.hover : themeToggle[resolvedTheme()];
+	}
+
 	button?.addEventListener('click', () => {
 		const root = document.documentElement;
 		const next = resolvedTheme() === 'dark' ? 'light' : 'dark';
@@ -45,21 +59,27 @@ import { themeToggle } from '../../lib/icon-nodes';
 			// localStorage may be unavailable (privacy mode); theme just won't persist.
 		}
 
-		if (icon) icon.icon = themeToggle[next];
+		// Only morph to the theme icon if not currently hinting via
+		// hover/focus — syncIcon is the source of truth for that, so this
+		// avoids fighting it if hover/focus is still active when the
+		// click lands.
+		if (icon && !hovered && !focused) icon.icon = themeToggle[next];
 	});
 
-	// Hint at the click action with tabler's "sun-moon" icon on
-	// hover/focus, then morph back to the current theme's icon.
 	button?.addEventListener('mouseenter', () => {
-		if (icon) icon.icon = themeToggle.hover;
+		hovered = true;
+		syncIcon();
 	});
 	button?.addEventListener('mouseleave', () => {
-		if (icon) icon.icon = themeToggle[resolvedTheme()];
+		hovered = false;
+		syncIcon();
 	});
 	button?.addEventListener('focus', () => {
-		if (icon) icon.icon = themeToggle.hover;
+		focused = true;
+		syncIcon();
 	});
 	button?.addEventListener('blur', () => {
-		if (icon) icon.icon = themeToggle[resolvedTheme()];
+		focused = false;
+		syncIcon();
 	});
 </script>

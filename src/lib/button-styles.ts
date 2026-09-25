@@ -23,23 +23,22 @@ export const variantClasses: Record<ButtonVariant, string> = {
 };
 
 // Padding/text-size for the two-sided (text, or text+icon) buttons. Heights
-// (~32/40/48px) are chosen to line up with iconOnlySizeClasses's box sizes
-// below and with the 32-40-48px sm/md/lg range docs/sizing.md documents as
-// the common design-system convention.
+// (~28/36/44px) are chosen to line up with iconOnlySizeClasses's box sizes
+// below.
 export const sizeClasses: Record<ButtonSize, string> = {
-	sm: 'px-3 py-1.5 text-sm gap-1.5',
-	md: 'px-4 py-2.5 text-sm gap-2',
-	lg: 'px-5 py-3 text-base gap-2.5',
+	sm: 'px-2.5 py-1 text-sm gap-1.5',
+	md: 'px-3.5 py-2 text-sm gap-2',
+	lg: 'px-[18px] py-2.5 text-base gap-2.5',
 };
 
 // Square padding + icon pixel size for icon-only buttons. Padding keeps the
-// icon at ~50% of the box per docs/sizing.md's icon-to-container ratio
-// guidance: sm 32px box/16px icon, md 40px box/20px icon, lg 48px box/24px
+// icon at roughly half the box per docs/sizing.md's icon-to-container ratio
+// guidance: sm 28px box/16px icon, md 36px box/20px icon, lg 44px box/24px
 // icon.
 export const iconOnlySizeClasses: Record<ButtonSize, string> = {
-	sm: 'p-2',
-	md: 'p-2.5',
-	lg: 'p-3',
+	sm: 'p-1.5',
+	md: 'p-2',
+	lg: 'p-2.5',
 };
 
 export const iconOnlyPixelSize: Record<ButtonSize, number> = {

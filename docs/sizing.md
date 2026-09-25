@@ -36,10 +36,9 @@ Two scales exist today, for two different kinds of element:
    `sizeClasses`/`iconOnlySizeClasses` (Tailwind padding classes) and
    `iconOnlyPixelSize`/`textIconPixelSize` (the icon's pixel size) per
    `ButtonSize` (`sm`/`md`/`lg`). As of the issue #198 sizing pass, icon-only
-   boxes are 32px (`sm`)/40px (`md`)/48px (`lg`) with icons at ~50% of the
-   box (16/20/24px), and text buttons land at the same ~32/40/48px heights
-   via padding + text size — chosen to match the common 32-40-48px sm/md/lg
-   convention cited above, not just bumped arbitrarily.
+   boxes are 28px (`sm`)/36px (`md`)/44px (`lg`) with icons at roughly half
+   the box (16/20/24px), and text buttons land at the same ~28/36/44px
+   heights via padding + text size.
 2. **`src/lib/icon-sizes.ts`** — for icon-only *triggers* that aren't a real
    `<button>`/`<a>` and so can't use the primitives above: `<details>`/
    `<summary>` dropdowns (`SelectMenu`, nav triggers) and checkbox-style

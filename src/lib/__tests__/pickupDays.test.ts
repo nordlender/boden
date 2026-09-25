@@ -1,17 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../db/client', async () => {
-	const { default: Database } = await import('better-sqlite3');
-	const { drizzle } = await import('drizzle-orm/better-sqlite3');
-	const { migrate } = await import('drizzle-orm/better-sqlite3/migrator');
-	const schema = await import('../../db/schema');
-
-	const sqlite = new Database(':memory:');
-	sqlite.pragma('foreign_keys = ON');
-	const db = drizzle(sqlite, { schema });
-	migrate(db, { migrationsFolder: './src/db/migrations' });
-
-	return { db };
+	const { createTestDb } = await import('../../db/testDb');
+	return { db: createTestDb() };
 });
 
 const {

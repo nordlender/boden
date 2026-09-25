@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import ThemeInit from '../components/ThemeInit.astro';
+import AdminNavbar from '../components/AdminNavbar.astro';
 
 interface Props {
 	title: string;
@@ -20,6 +21,7 @@ const { title } = Astro.props;
 		<ThemeInit />
 	</head>
 	<body class="min-h-screen bg-bg-subtle">
+		<AdminNavbar />
 		<slot />
 	</body>
 </html>

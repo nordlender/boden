@@ -4,7 +4,6 @@ export const prerender = false;
 // Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
 // reached only when logged in with role === 'admin'.
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import AdminNavbar from '../../components/AdminNavbar.astro';
 import Button from '../../components/ui/Button.astro';
 import TextMorphButton from '../../components/ui/TextMorphButton.astro';
 import { listAvailablePickupDates } from '../../lib/pickupDays';
@@ -19,7 +18,6 @@ const todayIso = todayIsoInOslo();
 const error = Astro.url.searchParams.get('error');
 ---
 <AdminLayout title="Pick-up days">
-	<AdminNavbar />
 	<div class="mx-auto flex max-w-2xl flex-col gap-6 p-8">
 		<div>
 			<h1 class="text-xl font-semibold text-text">Pick-up days</h1>

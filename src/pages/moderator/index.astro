@@ -9,6 +9,7 @@ export const prerender = false;
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
 import MessagesBox from '../../components/moderator/MessagesBox.astro';
 import ActionButton from '../../components/moderator/ActionButton.astro';
+import TextMorphButton from '../../components/ui/TextMorphButton.astro';
 import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
 import { getPendingRequestRows } from '../../lib/moderatorOrders';
 
@@ -30,7 +31,7 @@ const previewRequests = pendingRequests.slice(0, MAX_PREVIEW_REQUESTS);
 		<div class="flex flex-col gap-3">
 			<div class="flex items-baseline justify-between gap-4">
 				<h1 class="text-xl font-semibold text-text">Upcoming requests</h1>
-				<a href="/moderator/requests" class="text-sm font-medium text-text-muted hover:text-text">See all &rarr;</a>
+				<TextMorphButton action="next" href="/moderator/requests" variant="secondary" size="sm">See all</TextMorphButton>
 			</div>
 
 			{

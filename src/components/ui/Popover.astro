@@ -44,7 +44,7 @@ const { id, placement = 'anchor', side = 'top', labelledBy, class: className } =
 	data-popover-side={side}
 	aria-labelledby={labelledBy}
 	class:list={[
-		'fixed m-0 max-w-sm rounded-lg border border-border bg-surface p-4 text-text shadow-lg',
+		'fixed inset-auto m-0 max-w-sm rounded-lg border border-border bg-surface p-4 text-text shadow-lg',
 		className,
 	]}
 >
@@ -54,6 +54,15 @@ const { id, placement = 'anchor', side = 'top', labelledBy, class: className } =
 <script>
 	// One listener set covers every Popover instance, matched by id — same
 	// pattern as Modal.astro's document-level click delegation.
+	//
+	// A popover is promoted to the top layer (and becomes visible/UA-styled,
+	// with no positioning of ours applied yet) as part of showPopover()'s
+	// synchronous work, but the `toggle` event that lets us measure and then
+	// position it is dispatched as a separate, later task — so there's a
+	// real gap where an opening popover would otherwise paint at its
+	// unpositioned default spot (~top-left of the viewport) before jumping
+	// to the right place. `beforetoggle` (sync, fires first) hides it;
+	// `toggle` positions it and reveals it, so nothing paints in between.
 	const GAP = 8; // px between the popup and the element it's placed against
 	const EDGE_MARGIN = 8; // px kept clear of the viewport edge
 
@@ -107,10 +116,22 @@ const { id, placement = 'anchor', side = 'top', labelledBy, class: className } =
 		popover.style.top = `${clamp(top, popRect.height, window.innerHeight)}px`;
 	}
 
-	// `toggle` (not `beforetoggle`) fires after an opening popover has
-	// already been added to the top layer, so its bounding rect reflects its
-	// real size rather than reading as zero. It doesn't bubble, so this has
-	// to listen on the capture phase to reach it from `document` at all.
+	// Neither event bubbles, so both need the capture phase to reach a
+	// document-level listener at all.
+	document.addEventListener(
+		'beforetoggle',
+		(event) => {
+			const popover = event.target;
+			if (!(popover instanceof HTMLElement) || !popover.hasAttribute('data-popover')) return;
+			if (!(event instanceof ToggleEvent) || event.newState !== 'open') return;
+			popover.style.visibility = 'hidden';
+		},
+		true,
+	);
+
+	// `toggle` fires after an opening popover has already been added to the
+	// top layer, so its bounding rect reflects its real size rather than
+	// reading as zero (unlike at `beforetoggle` time).
 	document.addEventListener(
 		'toggle',
 		(event) => {
@@ -118,6 +139,7 @@ const { id, placement = 'anchor', side = 'top', labelledBy, class: className } =
 			if (!(popover instanceof HTMLElement) || !popover.hasAttribute('data-popover')) return;
 			if (!(event instanceof ToggleEvent) || event.newState !== 'open') return;
 			positionPopover(popover);
+			popover.style.visibility = '';
 		},
 		true,
 	);

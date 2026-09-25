@@ -51,7 +51,7 @@ export const iconOnlyPixelSize: Record<ButtonSize, number> = {
 // — smaller than iconOnlyPixelSize since these icons sit next to a label
 // rather than carrying the whole button on their own.
 export const textIconPixelSize: Record<ButtonSize, number> = {
-	sm: 16,
+	sm: 14,
 	md: 18,
 	lg: 20,
 };

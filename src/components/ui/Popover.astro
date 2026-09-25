@@ -77,6 +77,20 @@ const { id, placement = 'anchor', side = 'top', labelledBy, class: className } =
 		const placement = popover.dataset.popoverPlacement;
 		const side = popover.dataset.popoverSide ?? 'top';
 		const triggerRect = trigger.getBoundingClientRect();
+
+		if (placement !== 'fill-parent') {
+			// Cap size to the viewport before measuring, so a popover that's
+			// too big to fit shrinks instead of just having its position
+			// clamped — which would otherwise still push it past the
+			// opposite edge. min() with the existing computed max-width/height
+			// (e.g. Tailwind's max-w-sm) so this only ever shrinks it further,
+			// never grows it past what the class already caps it to.
+			const computedMaxWidth = parseFloat(getComputedStyle(popover).maxWidth) || Infinity;
+			const computedMaxHeight = parseFloat(getComputedStyle(popover).maxHeight) || Infinity;
+			popover.style.maxWidth = `${Math.min(computedMaxWidth, window.innerWidth - 2 * EDGE_MARGIN)}px`;
+			popover.style.maxHeight = `${Math.min(computedMaxHeight, window.innerHeight - 2 * EDGE_MARGIN)}px`;
+		}
+
 		// Only valid once the popover is actually in the top layer (i.e. from
 		// the `toggle` event, not `beforetoggle` — at `beforetoggle` time for
 		// an opening popover it's still hidden and this rect is zero-sized).
@@ -84,6 +98,11 @@ const { id, placement = 'anchor', side = 'top', labelledBy, class: className } =
 
 		if (placement === 'fill-parent') {
 			const container = trigger.closest<HTMLElement>('[data-popover-container]');
+			if (!container) {
+				console.warn(
+					`Popover #${popover.id}: placement="fill-parent" but no ancestor has data-popover-container — falling back to the trigger's own width.`,
+				);
+			}
 			const rect = container?.getBoundingClientRect() ?? triggerRect;
 			const width = Math.min(rect.width, window.innerWidth - 2 * EDGE_MARGIN);
 			popover.style.width = `${width}px`;

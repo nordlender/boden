@@ -13,7 +13,7 @@ import MorphIcon from 'morphicons/astro';
 import { dropdownChevron } from '../../lib/icon-nodes';
 import AppIcon from '../icons/AppIcon.astro';
 import Button from '../ui/Button.astro';
-import TextIconButton from '../ui/TextIconButton.astro';
+import TextMorphButton from '../ui/TextMorphButton.astro';
 import type { PanelVariant } from './grid';
 
 interface Props {
@@ -68,13 +68,13 @@ const { variant, formId, products, redirectTo } = Astro.props;
 	<div class="flex-1"></div>
 
 	{variant === 'unassigned' && (
-		<Button variant="primary" href="#add-item-name">
+		<TextMorphButton variant="primary" action="add" href="#add-item-name">
 			Add item
-		</Button>
+		</TextMorphButton>
 	)}
-	<TextIconButton variant="danger-filled" icon="trash" type="submit" form={formId} formaction="/api/wizard/archive">
+	<TextMorphButton variant="danger-filled" action="delete" type="submit" form={formId} formaction="/api/wizard/archive">
 		Delete <span class="selected-count" data-form-id={formId}>0</span> item(s)
-	</TextIconButton>
+	</TextMorphButton>
 </div>
 
 <script>

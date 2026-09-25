@@ -21,19 +21,30 @@ export async function listMessages(): Promise<MessageRow[]> {
 	return db.select().from(messages).orderBy(desc(messages.createdAt), desc(messages.id));
 }
 
-export async function createMessage(content: string, authorName: string): Promise<void> {
+// Returns the trimmed content, or null for blank/whitespace-only input — the
+// `required` attribute on the textarea doesn't stop a spaces-only submission,
+// so callers must check this rather than assume a non-void return means the
+// write happened.
+function normalizeContent(content: string): string | null {
 	const trimmed = content.trim();
-	if (!trimmed) return;
-	await db.insert(messages).values({ content: trimmed, authorName });
+	return trimmed || null;
 }
 
-export async function updateMessage(id: number, content: string): Promise<void> {
-	const trimmed = content.trim();
-	if (!trimmed) return;
+export async function createMessage(content: string, authorName: string): Promise<boolean> {
+	const trimmed = normalizeContent(content);
+	if (!trimmed) return false;
+	await db.insert(messages).values({ content: trimmed, authorName });
+	return true;
+}
+
+export async function updateMessage(id: number, content: string): Promise<boolean> {
+	const trimmed = normalizeContent(content);
+	if (!trimmed) return false;
 	await db
 		.update(messages)
 		.set({ content: trimmed, updatedAt: new Date() })
 		.where(eq(messages.id, id));
+	return true;
 }
 
 export async function deleteMessage(id: number): Promise<void> {

@@ -31,11 +31,19 @@ describe('messages', () => {
 		expect(rows[0].authorName).toBe('Admin Two');
 	});
 
-	it('trims content and silently ignores a blank message', async () => {
-		await createMessage('  padded  ', 'Admin');
-		await createMessage('   ', 'Admin');
+	it('trims content, and reports a blank message as not written', async () => {
+		expect(await createMessage('  padded  ', 'Admin')).toBe(true);
+		expect(await createMessage('   ', 'Admin')).toBe(false);
 		const rows = await listMessages();
 		expect(rows.map((r) => r.content)).toEqual(['padded']);
+	});
+
+	it('updateMessage reports a blank message as not written, leaving the original content', async () => {
+		await createMessage('Original', 'Admin');
+		const [message] = await listMessages();
+		expect(await updateMessage(message.id, '   ')).toBe(false);
+		const [unchanged] = await listMessages();
+		expect(unchanged.content).toBe('Original');
 	});
 
 	it('updating changes the content and updatedAt', async () => {

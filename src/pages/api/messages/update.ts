@@ -10,12 +10,17 @@ export const POST: APIRoute = async ({ request, locals, redirect, url }) => {
 	}
 
 	const form = await request.formData();
-	const id = Number(form.get('id'));
+	const idRaw = form.get('id');
+	// A missing/non-string field must fail this check rather than coerce to
+	// 0 (Number(null) === 0), which would otherwise pass Number.isInteger
+	// and silently act on message id 0.
+	const id = typeof idRaw === 'string' ? Number(idRaw) : NaN;
 	const content = form.get('content')?.toString() ?? '';
 	const redirectTo = safeRedirectTarget(form, url.origin, '/admin');
 
-	if (Number.isInteger(id)) {
-		await updateMessage(id, content);
-	}
+	if (!Number.isInteger(id)) return redirect(redirectTo);
+
+	const updated = await updateMessage(id, content);
+	if (!updated) return redirect(`${redirectTo}?error=empty_message`);
 	return redirect(redirectTo);
 };

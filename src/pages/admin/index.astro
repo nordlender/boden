@@ -12,6 +12,7 @@ import AdminNavbar from '../../components/AdminNavbar.astro';
 import MessagesBox from '../../components/admin/MessagesBox.astro';
 
 const redirectTo = Astro.url.pathname;
+const error = Astro.url.searchParams.get('error');
 ---
 
 <html lang="en">
@@ -25,6 +26,13 @@ const redirectTo = Astro.url.pathname;
 		<AdminNavbar />
 		<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
 			<h1 class="text-xl font-semibold text-text">Admin</h1>
+			{
+				error === 'empty_message' && (
+					<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
+						Message can't be blank.
+					</p>
+				)
+			}
 			<MessagesBox redirectTo={redirectTo} />
 		</div>
 	</body>

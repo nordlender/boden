@@ -5,8 +5,8 @@ import { safeRedirectTarget } from '../../../lib/wizard-http';
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request, locals, redirect, url }) => {
-	// Not covered by src/middleware/index.ts's route-prefix gate for the
-	// /api/... half (only /admin gates the page) — inline check, same
+	// Defense-in-depth: /api/messages is also in src/middleware/prefixes.ts's
+	// ADMIN_ROUTE_PREFIXES, but this inline check stays regardless, same
 	// pattern as the /api/wizard/* and /api/pickup-days/* routes.
 	if (locals.user?.role !== 'admin') {
 		return new Response('Forbidden', { status: 403 });
@@ -16,6 +16,7 @@ export const POST: APIRoute = async ({ request, locals, redirect, url }) => {
 	const content = form.get('content')?.toString() ?? '';
 	const redirectTo = safeRedirectTarget(form, url.origin, '/admin');
 
-	await createMessage(content, locals.user.name ?? locals.user.email);
+	const posted = await createMessage(content, locals.user.name ?? locals.user.email);
+	if (!posted) return redirect(`${redirectTo}?error=empty_message`);
 	return redirect(redirectTo);
 };

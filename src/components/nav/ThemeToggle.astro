@@ -1,15 +1,16 @@
 ---
 import MorphIcon from 'morphicons/astro';
 import { themeToggle } from '../../lib/icon-nodes';
+import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 ---
 
 <button
 	type="button"
 	id="theme-toggle"
-	class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle"
+	class:list={['flex cursor-pointer items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle', triggerBoxClasses.md]}
 	aria-label="Toggle dark mode"
 >
-	<MorphIcon icon={themeToggle.light} size={20} class="theme-toggle-icon" />
+	<MorphIcon icon={themeToggle.light} size={triggerIconPixelSize.md} class="theme-toggle-icon" />
 </button>
 
 <script>

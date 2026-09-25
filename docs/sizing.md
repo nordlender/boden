@@ -35,7 +35,11 @@ Two scales exist today, for two different kinds of element:
    `TextMorphButton`), which render a real `<button>`/`<a>`. Exports
    `sizeClasses`/`iconOnlySizeClasses` (Tailwind padding classes) and
    `iconOnlyPixelSize`/`textIconPixelSize` (the icon's pixel size) per
-   `ButtonSize` (`sm`/`md`/`lg`).
+   `ButtonSize` (`sm`/`md`/`lg`). As of the issue #198 sizing pass, icon-only
+   boxes are 32px (`sm`)/40px (`md`)/48px (`lg`) with icons at ~50% of the
+   box (16/20/24px), and text buttons land at the same ~32/40/48px heights
+   via padding + text size — chosen to match the common 32-40-48px sm/md/lg
+   convention cited above, not just bumped arbitrarily.
 2. **`src/lib/icon-sizes.ts`** — for icon-only *triggers* that aren't a real
    `<button>`/`<a>` and so can't use the primitives above: `<details>`/
    `<summary>` dropdowns (`SelectMenu`, nav triggers) and checkbox-style
@@ -85,11 +89,6 @@ color-token migration).
 - `src/components/orders/OrdersLayoutToggle.astro`,
   `src/components/reservation/ReservationItemRow.astro` — hand-rolled
   buttons with their own numeric icon sizes, not using `ui/IconButton`.
-- `src/components/cart/CartActionsBar.astro` — overrides `Button`'s/
-  `EmptyCartButton`'s height with an ad-hoc `class="h-10"` instead of
-  relying on `sizeClasses`; left as-is here since removing the override
-  without a way to visually verify the resulting height risked a visible
-  regression — worth revisiting with visual verification.
 - `src/components/ui/Callout.astro`, `src/layouts/ConfirmationLayout.astro` —
   standalone status-icon inline `<svg>`s at a fixed 20px, independent of
   either scale. Whether these become `AppIcon` calls (and thus pick up a

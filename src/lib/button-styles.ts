@@ -22,33 +22,39 @@ export const variantClasses: Record<ButtonVariant, string> = {
 		'bg-error font-medium text-text-inverted hover:bg-error/90 disabled:bg-disabled-bg disabled:text-disabled-text',
 };
 
-// Padding/text-size for the two-sided (text, or text+icon) buttons.
+// Padding/text-size for the two-sided (text, or text+icon) buttons. Heights
+// (~32/40/48px) are chosen to line up with iconOnlySizeClasses's box sizes
+// below and with the 32-40-48px sm/md/lg range docs/sizing.md documents as
+// the common design-system convention.
 export const sizeClasses: Record<ButtonSize, string> = {
-	sm: 'px-2 py-1 text-xs gap-1',
-	md: 'px-3 py-1.5 text-sm gap-1.5',
-	lg: 'px-4 py-2 text-sm gap-2',
+	sm: 'px-3 py-1.5 text-sm gap-1.5',
+	md: 'px-4 py-2.5 text-sm gap-2',
+	lg: 'px-5 py-3 text-base gap-2.5',
 };
 
-// Square padding + icon pixel size for icon-only buttons.
+// Square padding + icon pixel size for icon-only buttons. Padding keeps the
+// icon at ~50% of the box per docs/sizing.md's icon-to-container ratio
+// guidance: sm 32px box/16px icon, md 40px box/20px icon, lg 48px box/24px
+// icon.
 export const iconOnlySizeClasses: Record<ButtonSize, string> = {
-	sm: 'p-1',
-	md: 'p-1.5',
-	lg: 'p-2',
+	sm: 'p-2',
+	md: 'p-2.5',
+	lg: 'p-3',
 };
 
 export const iconOnlyPixelSize: Record<ButtonSize, number> = {
-	sm: 14,
-	md: 18,
-	lg: 22,
+	sm: 16,
+	md: 20,
+	lg: 24,
 };
 
 // Icon pixel size for the text+icon buttons (TextIconButton, TextMorphButton)
 // — smaller than iconOnlyPixelSize since these icons sit next to a label
 // rather than carrying the whole button on their own.
 export const textIconPixelSize: Record<ButtonSize, number> = {
-	sm: 14,
-	md: 16,
-	lg: 18,
+	sm: 16,
+	md: 18,
+	lg: 20,
 };
 
 export const baseClasses =

@@ -88,8 +88,12 @@ const { id, placement = 'anchor', side = 'top', labelledBy, class: className } =
 			const width = Math.min(rect.width, window.innerWidth - 2 * EDGE_MARGIN);
 			popover.style.width = `${width}px`;
 			popover.style.maxWidth = 'none';
+			// Re-measure after the width change: content commonly wraps
+			// differently at the container's width than at popRect's
+			// (pre-resize) width, so popRect.height would be stale here.
+			const height = popover.getBoundingClientRect().height;
 			popover.style.left = `${clamp(rect.left, width, window.innerWidth)}px`;
-			popover.style.top = `${clamp(triggerRect.top, popRect.height, window.innerHeight)}px`;
+			popover.style.top = `${clamp(triggerRect.top, height, window.innerHeight)}px`;
 			return;
 		}
 

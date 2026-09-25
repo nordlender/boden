@@ -22,14 +22,15 @@ interface Props {
 }
 
 const { id, variant, title, triggerLabel, side = 'right' } = Astro.props;
+const titleId = title ? `${id}-title` : undefined;
 ---
 
 <button type="button" popovertarget={id} class="text-sm font-medium text-accent-text underline underline-offset-2 hover:text-accent">
 	{triggerLabel}
 </button>
 
-<Popover id={id} placement="anchor" side={side} class="p-0 shadow-lg">
-	<Callout variant={variant} title={title}>
+<Popover id={id} placement="anchor" side={side} labelledBy={titleId} class="p-0 shadow-lg">
+	<Callout variant={variant} title={title} titleId={titleId}>
 		<slot />
 	</Callout>
 </Popover>

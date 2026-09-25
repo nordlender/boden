@@ -65,7 +65,7 @@ const error = Astro.url.searchParams.get('error');
 					<ul class="divide-y divide-border">
 						{dates.map((date) => (
 							<li class="flex items-center justify-between gap-4 px-4 py-2.5 text-sm">
-								<span class={date < todayIso ? 'text-disabled-text line-through' : 'text-text'}>{formatDisplay(date)}</span>
+								<span class={date < todayIso ? 'text-disabled-text line-through' : 'text-text'}>{formatDateDisplay(date, { weekday: true })}</span>
 								<form method="post" action="/api/pickup-days/remove">
 									<input type="hidden" name="redirectTo" value={redirectTo} />
 									<input type="hidden" name="date" value={date} />

@@ -2,7 +2,7 @@
 dist/
 
 # development files
-/dev/
+dev/
 
 # sqlite database (drizzle.config.ts)
 data/

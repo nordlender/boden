@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { users } from '../db/schema';
 
@@ -13,14 +13,25 @@ export function isBarred(user: { barredAt: Date | null }): boolean {
 // STRIKE_LIMIT, sets barredAt. Callers decide *when* a strike is warranted
 // (late return, no-show, etc.) — that policy isn't implemented yet, this is
 // just the counting/flagging mechanism itself.
+//
+// Done as a single atomic UPDATE (increment + conditional barredAt in SQL,
+// not a read-modify-write in JS) so two concurrent strikes on the same user
+// can't race and lose an increment or skip setting barredAt.
 export async function addStrike(userId: string): Promise<{ strikes: number; barred: boolean }> {
-	const [before] = await db.select({ strikes: users.strikes, barredAt: users.barredAt }).from(users).where(eq(users.id, userId));
-	if (!before) throw new Error(`addStrike: no user with id ${userId}`);
+	const [updated] = await db
+		.update(users)
+		.set({
+			strikes: sql`${users.strikes} + 1`,
+			barredAt: sql`CASE
+				WHEN ${users.barredAt} IS NOT NULL THEN ${users.barredAt}
+				WHEN ${users.strikes} + 1 >= ${STRIKE_LIMIT} THEN (unixepoch())
+				ELSE NULL
+			END`,
+		})
+		.where(eq(users.id, userId))
+		.returning({ strikes: users.strikes, barredAt: users.barredAt });
 
-	const strikes = before.strikes + 1;
-	const barredAt = before.barredAt ?? (strikes >= STRIKE_LIMIT ? new Date() : null);
+	if (!updated) throw new Error(`addStrike: no user with id ${userId}`);
 
-	await db.update(users).set({ strikes, barredAt }).where(eq(users.id, userId));
-
-	return { strikes, barred: barredAt !== null };
+	return { strikes: updated.strikes, barred: updated.barredAt !== null };
 }

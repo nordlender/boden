@@ -24,14 +24,19 @@ const { node } = Astro.props;
 					<MorphIcon icon={folderToggle.closed} size={16} class="folder-icon shrink-0 text-text-muted" />
 					<span class="truncate">{node.name}</span>
 				</summary>
+				{/* ml-[8.33px]: the guide line sits under the center of the parent
+				    row's open-folder icon (visible only while expanded, i.e. while
+				    this line shows) — that glyph's path bbox center is x=12.5 of the
+				    24-unit viewBox, not the viewBox's own x=12, so it lands at
+				    12.5/24 * 16px ≈ 8.33px, not the icon box's round 8px. */}
 				{node.children && node.children.length > 0 ? (
-					<ul class="ml-2 border-l border-border pl-3">
+					<ul class="ml-[8.33px] border-l border-border pl-3">
 						{node.children.map((child) => (
 							<FileExplorerNode node={child} />
 						))}
 					</ul>
 				) : (
-					<p class="ml-2 border-l border-border py-1 pl-3 text-text-muted">Empty</p>
+					<p class="ml-[8.33px] border-l border-border py-1 pl-3 text-text-muted">Empty</p>
 				)}
 			</details>
 		</li>

@@ -1,0 +1,64 @@
+---
+// Lists pickupRecurringRules rows themselves (one row per rule, e.g. "21/09
+// - 10/12 | Monday | 18:00 - 20:00") rather than every individual date a
+// rule generated — those live in `pickupDays` (kind: 'recurring') and show
+// up instead in the "All pickup days" PickupDaysTable. Used both on
+// /admin/pickup-days (deletable — admin manages rules there) and, in a
+// read-only capacity, as moderators' "Recurring pickup days" section.
+import { formatDateShort } from '../../lib/dates';
+import { WEEKDAY_NAMES } from '../../lib/pickupDays';
+import PickupDayBubble from './PickupDayBubble.astro';
+import PickupDayDeleteButton from './PickupDayDeleteButton.astro';
+import type { PickupRecurringRuleRow } from '../../lib/pickupDays';
+
+interface Props {
+	rules: PickupRecurringRuleRow[];
+	deletable?: boolean;
+	emptyMessage?: string;
+}
+
+const { rules, deletable = false, emptyMessage = 'No recurring pickup days yet.' } = Astro.props;
+
+const GRID = '1.25rem 9rem 7rem 7.5rem 5.5rem';
+---
+
+{
+	rules.length === 0 ? (
+		<p class="text-sm text-text-muted">{emptyMessage}</p>
+	) : (
+		<div class="overflow-hidden rounded-lg border border-border">
+			<div
+				class="grid items-center gap-3 border-b border-border bg-bg-subtle px-3 py-1.5 text-xs font-medium tracking-wide text-text-muted uppercase"
+				style={`grid-template-columns: ${GRID}`}
+			>
+				<span />
+				<span>Date</span>
+				<span>Weekday</span>
+				<span>Time</span>
+				<span />
+			</div>
+			<div class="divide-y divide-border">
+				{rules.map((rule) => (
+					<div data-pickup-day-row class="grid items-center gap-3 px-3 py-2 text-sm" style={`grid-template-columns: ${GRID}`}>
+						<PickupDayBubble kind="recurring" />
+						<span class="text-text">
+							{formatDateShort(rule.startDate)} - {formatDateShort(rule.endDate)}
+						</span>
+						<span class="text-text-muted">{WEEKDAY_NAMES[rule.weekday]}</span>
+						<span class="text-text-muted">{`${rule.startTime} – ${rule.endTime}`}</span>
+						{deletable ? (
+							<PickupDayDeleteButton
+								id={String(rule.id)}
+								endpoint={`/api/admin/pickup-days/recurring/${rule.id}`}
+								title={`Delete this recurring rule?`}
+								body="Every date it generated will be removed from the pickup calendar too. This cannot be undone."
+							/>
+						) : (
+							<span />
+						)}
+					</div>
+				))}
+			</div>
+		</div>
+	)
+}

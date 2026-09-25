@@ -14,13 +14,34 @@ vi.mock('../../db/client', async () => {
 	return { db };
 });
 
+const { db } = await import('../../db/client');
+const { users } = await import('../../db/schema');
 const {
 	isValidDateString,
-	addAvailablePickupDate,
-	removeAvailablePickupDate,
-	listAvailablePickupDates,
+	isValidTimeString,
 	getUpcomingAvailablePickupDates,
+	listUpcomingPickupDays,
+	createSingleDays,
+	deleteSingleDay,
+	listRecurringRules,
+	createRecurringRule,
+	deleteRecurringRule,
 } = await import('../pickupDays');
+
+const MODERATOR_A = 'moderator-a';
+const MODERATOR_B = 'moderator-b';
+const ADMIN = 'admin-a';
+
+beforeEach(async () => {
+	await db.delete((await import('../../db/schema')).pickupDays);
+	await db.delete((await import('../../db/schema')).pickupRecurringRules);
+	for (const id of [MODERATOR_A, MODERATOR_B, ADMIN]) {
+		await db
+			.insert(users)
+			.values({ id, email: `${id}@example.com`, name: id })
+			.onConflictDoNothing();
+	}
+});
 
 describe('isValidDateString', () => {
 	it('accepts YYYY-MM-DD and rejects everything else', () => {
@@ -31,39 +52,129 @@ describe('isValidDateString', () => {
 	});
 });
 
-describe('pickup available days', () => {
-	beforeEach(async () => {
-		for (const date of await listAvailablePickupDates()) {
-			await removeAvailablePickupDate(date);
-		}
+describe('isValidTimeString', () => {
+	it('accepts HH:MM 24h and rejects everything else', () => {
+		expect(isValidTimeString('18:00')).toBe(true);
+		expect(isValidTimeString('00:00')).toBe(true);
+		expect(isValidTimeString('23:59')).toBe(true);
+		expect(isValidTimeString('24:00')).toBe(false);
+		expect(isValidTimeString('9:00')).toBe(false);
+		expect(isValidTimeString('')).toBe(false);
+	});
+});
+
+describe('single pickup days', () => {
+	it('creating then listing round-trips, sorted ascending by date', async () => {
+		await createSingleDays(MODERATOR_A, [
+			{ date: '2026-09-20', startTime: '10:00', endTime: '12:00', where: 'At Vulkan' },
+			{ date: '2026-09-10', startTime: null, endTime: null, where: null },
+		]);
+		const dates = await getUpcomingAvailablePickupDates('2026-01-01');
+		expect(dates).toEqual(['2026-09-10', '2026-09-20']);
 	});
 
-	it('adding then listing round-trips, sorted ascending', async () => {
-		await addAvailablePickupDate('2026-09-20');
-		await addAvailablePickupDate('2026-09-10');
-		expect(await listAvailablePickupDates()).toEqual(['2026-09-10', '2026-09-20']);
+	it('silently drops a malformed date rather than throwing', async () => {
+		await expect(createSingleDays(MODERATOR_A, [{ date: 'not-a-date', startTime: null, endTime: null, where: null }])).resolves.toBeUndefined();
+		expect(await getUpcomingAvailablePickupDates('2026-01-01')).toEqual([]);
 	});
 
-	it('silently ignores a malformed date rather than throwing', async () => {
-		await expect(addAvailablePickupDate('not-a-date')).resolves.toBeUndefined();
-		expect(await listAvailablePickupDates()).toEqual([]);
+	it('re-submitting the same date for the same moderator does not duplicate', async () => {
+		await createSingleDays(MODERATOR_A, [{ date: '2026-09-10', startTime: '10:00', endTime: '12:00', where: 'At Vulkan' }]);
+		await createSingleDays(MODERATOR_A, [{ date: '2026-09-10', startTime: '14:00', endTime: '16:00', where: 'Elsewhere' }]);
+		const rows = await listUpcomingPickupDays('2026-01-01');
+		expect(rows).toHaveLength(1);
 	});
 
-	it('adding the same date twice does not throw or duplicate', async () => {
-		await addAvailablePickupDate('2026-09-10');
-		await addAvailablePickupDate('2026-09-10');
-		expect(await listAvailablePickupDates()).toEqual(['2026-09-10']);
+	it('two different moderators can each offer the same date', async () => {
+		await createSingleDays(MODERATOR_A, [{ date: '2026-09-10', startTime: null, endTime: null, where: null }]);
+		await createSingleDays(MODERATOR_B, [{ date: '2026-09-10', startTime: null, endTime: null, where: null }]);
+		const rows = await listUpcomingPickupDays('2026-01-01');
+		expect(rows).toHaveLength(2);
 	});
 
 	it('getUpcomingAvailablePickupDates excludes dates before the given floor', async () => {
-		await addAvailablePickupDate('2026-09-01');
-		await addAvailablePickupDate('2026-09-15');
+		await createSingleDays(MODERATOR_A, [
+			{ date: '2026-09-01', startTime: null, endTime: null, where: null },
+			{ date: '2026-09-15', startTime: null, endTime: null, where: null },
+		]);
 		expect(await getUpcomingAvailablePickupDates('2026-09-10')).toEqual(['2026-09-15']);
 	});
 
-	it('removing a date drops it from the list', async () => {
-		await addAvailablePickupDate('2026-09-10');
-		await removeAvailablePickupDate('2026-09-10');
-		expect(await listAvailablePickupDates()).toEqual([]);
+	it('a moderator can only delete their own single day', async () => {
+		await createSingleDays(MODERATOR_A, [{ date: '2026-09-10', startTime: null, endTime: null, where: null }]);
+		const [row] = await listUpcomingPickupDays('2026-01-01');
+
+		expect(await deleteSingleDay(row.id, MODERATOR_B)).toBe(false);
+		expect(await listUpcomingPickupDays('2026-01-01')).toHaveLength(1);
+
+		expect(await deleteSingleDay(row.id, MODERATOR_A)).toBe(true);
+		expect(await listUpcomingPickupDays('2026-01-01')).toHaveLength(0);
+	});
+});
+
+describe('recurring pickup days', () => {
+	it('generates one pickup_days row per matching weekday in range, kind "recurring"', async () => {
+		// 2026-09-07 is a Monday; the range covers exactly 3 Mondays (7, 14, 21).
+		await createRecurringRule({
+			createdByUserId: ADMIN,
+			weekday: 1,
+			startTime: '18:00',
+			endTime: '20:00',
+			startDate: '2026-09-07',
+			endDate: '2026-09-25',
+		});
+		const rows = await listUpcomingPickupDays('2026-01-01');
+		expect(rows.map((r) => r.date)).toEqual(['2026-09-07', '2026-09-14', '2026-09-21']);
+		expect(rows.every((r) => r.kind === 'recurring')).toBe(true);
+		expect(rows.every((r) => r.startTime === '18:00' && r.endTime === '20:00')).toBe(true);
+	});
+
+	it('a range with no matching weekday still creates the rule with zero generated days', async () => {
+		const rule = await createRecurringRule({
+			createdByUserId: ADMIN,
+			weekday: 1, // Monday
+			startTime: '18:00',
+			endTime: '20:00',
+			startDate: '2026-09-08', // Tuesday
+			endDate: '2026-09-12', // Saturday, no Monday in between
+		});
+		expect(rule.id).toBeGreaterThan(0);
+		expect(await listUpcomingPickupDays('2026-01-01')).toHaveLength(0);
+		expect(await listRecurringRules()).toHaveLength(1);
+	});
+
+	it('deleting a rule cascades to its generated days', async () => {
+		const rule = await createRecurringRule({
+			createdByUserId: ADMIN,
+			weekday: 1,
+			startTime: '18:00',
+			endTime: '20:00',
+			startDate: '2026-09-07',
+			endDate: '2026-09-21',
+		});
+		expect(await listUpcomingPickupDays('2026-01-01')).not.toHaveLength(0);
+
+		expect(await deleteRecurringRule(rule.id)).toBe(true);
+		expect(await listUpcomingPickupDays('2026-01-01')).toHaveLength(0);
+		expect(await listRecurringRules()).toHaveLength(0);
+	});
+
+	it('deleting an unknown rule id returns false', async () => {
+		expect(await deleteRecurringRule(999999)).toBe(false);
+	});
+});
+
+describe('single and recurring days union for the reservation calendar', () => {
+	it('getUpcomingAvailablePickupDates includes both kinds, deduplicated', async () => {
+		await createSingleDays(MODERATOR_A, [{ date: '2026-09-07', startTime: null, endTime: null, where: null }]);
+		await createRecurringRule({
+			createdByUserId: ADMIN,
+			weekday: 1,
+			startTime: '18:00',
+			endTime: '20:00',
+			startDate: '2026-09-07',
+			endDate: '2026-09-07',
+		});
+		expect(await getUpcomingAvailablePickupDates('2026-01-01')).toEqual(['2026-09-07']);
 	});
 });

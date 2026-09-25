@@ -1,0 +1,211 @@
+---
+// Hidden "Selected days" table underneath PickupDaysCalendar.astro: shows
+// once at least one day is selected, one row per date with a start/end
+// time and a "Where" field to fill in before submitting. Not shown at all
+// while the selection is empty. Rows are built client-side by cloning the
+// <template> below (so the real PickupDayBubble/MorphButton markup is used
+// rather than hand-built HTML strings) and kept in sync with the calendar
+// purely by listening to/driving its native `change` event and `.value` —
+// no server round-trip happens until Submit.
+import PickupDayBubble from './PickupDayBubble.astro';
+import MorphButton from '../ui/MorphButton.astro';
+import Button from '../ui/Button.astro';
+
+const GRID = '1.25rem 4.5rem 7rem 6rem 6rem 1fr 3rem';
+---
+
+<div data-selected-pickup-days hidden class="flex flex-col gap-2">
+	<h2 class="text-sm font-semibold text-text">Selected days</h2>
+
+	<div class="overflow-hidden rounded-lg border border-border">
+		<div
+			class="grid items-center gap-3 border-b border-border bg-bg-subtle px-3 py-1.5 text-xs font-medium tracking-wide text-text-muted uppercase"
+			style={`grid-template-columns: ${GRID}`}
+		>
+			<span />
+			<span>Date</span>
+			<span>Weekday</span>
+			<span style="grid-column: span 2;">Time</span>
+			<span>Where</span>
+			<span />
+		</div>
+		<div data-selected-pickup-days-rows class="divide-y divide-border" />
+	</div>
+
+	<p data-selected-pickup-days-error hidden class="text-sm text-error-text" />
+
+	<div>
+		<Button type="button" variant="primary" data-selected-pickup-days-submit>
+			Submit
+		</Button>
+	</div>
+</div>
+
+<template data-selected-pickup-day-row-template>
+	<div data-pickup-day-row class="grid items-center gap-3 px-3 py-2 text-sm" style={`grid-template-columns: ${GRID}`}>
+		<PickupDayBubble kind="mine" />
+		<span data-field="date-display" class="text-text"></span>
+		<span data-field="weekday-display" class="text-text-muted"></span>
+		<input
+			type="time"
+			required
+			data-field="startTime"
+			class="w-full rounded border border-border-interactive px-1.5 py-1 text-xs"
+		/>
+		<input
+			type="time"
+			required
+			data-field="endTime"
+			class="w-full rounded border border-border-interactive px-1.5 py-1 text-xs"
+		/>
+		<input
+			type="text"
+			required
+			placeholder='Ex. "In the reception at SiO Athletica Blindern" or "At Vulkan"'
+			data-field="where"
+			class="w-full rounded border border-border-interactive px-1.5 py-1 text-xs"
+		/>
+		<MorphButton action="delete" size="sm" label="Remove this day from the selection" data-remove-selected-day />
+	</div>
+</template>
+
+<script>
+	import { formatDateShort, formatWeekdayName } from '../../lib/dates';
+	import { actionIcons } from '../../lib/icon-nodes';
+	import type { MorphIconElement } from 'morphicons/element';
+
+	type MultiCalendar = HTMLElement & { value?: string };
+
+	// MorphButton.astro's own <script> only wires `.morph-action` elements
+	// present in the DOM at initial page load (see its
+	// `:not([data-morph-wired])` sweep) — rows cloned from the <template>
+	// below are added long after that, and a <template>'s inert content is
+	// never part of a `document.querySelectorAll` match anyway. Re-running
+	// the exact same hover/focus -> icon-swap wiring here per clone keeps the
+	// delete icon's morph animation working for every dynamically added row.
+	function wireMorphAction(el: Element | null) {
+		if (!el) return;
+		const setState = (state: 'default' | 'hover') => {
+			const icon = el.querySelector<MorphIconElement>('.morph-action-icon');
+			if (icon) icon.icon = actionIcons.delete[state];
+		};
+		el.addEventListener('pointerenter', () => setState('hover'));
+		el.addEventListener('pointerleave', () => setState('default'));
+		el.addEventListener('focus', () => setState('hover'));
+		el.addEventListener('blur', () => setState('default'));
+	}
+
+	const calendar = document.querySelector<MultiCalendar>('[data-pickup-days-calendar]');
+	const container = document.querySelector<HTMLElement>('[data-selected-pickup-days]');
+	const rowsEl = document.querySelector<HTMLElement>('[data-selected-pickup-days-rows]');
+	const template = document.querySelector<HTMLTemplateElement>('[data-selected-pickup-day-row-template]');
+	const submitButton = document.querySelector<HTMLButtonElement>('[data-selected-pickup-days-submit]');
+	const errorEl = document.querySelector<HTMLElement>('[data-selected-pickup-days-error]');
+
+	if (calendar && container && rowsEl && template && submitButton) {
+		// date (YYYY-MM-DD) -> in-progress field values. The calendar is the
+		// source of truth for *which* dates are selected; this map only holds
+		// the per-date form values layered on top, and is pruned to match the
+		// calendar's selection on every `change`.
+		const rowState = new Map<string, { startTime: string; endTime: string; where: string }>();
+
+		function selectionFromCalendar(): string[] {
+			return (calendar!.value ?? '').split(/\s+/).filter(Boolean).sort();
+		}
+
+		function readRowFromDom(date: string) {
+			const row = rowsEl!.querySelector<HTMLElement>(`[data-date="${date}"]`);
+			if (!row) return;
+			rowState.set(date, {
+				startTime: row.querySelector<HTMLInputElement>('[data-field="startTime"]')?.value ?? '',
+				endTime: row.querySelector<HTMLInputElement>('[data-field="endTime"]')?.value ?? '',
+				where: row.querySelector<HTMLInputElement>('[data-field="where"]')?.value ?? '',
+			});
+		}
+
+		function render() {
+			// Preserve whatever's currently typed before wiping the DOM and
+			// rebuilding it — render() runs on every selection change, not just
+			// additions, so a mid-edit value for a date that's staying selected
+			// must survive the rebuild.
+			rowsEl!.querySelectorAll<HTMLElement>('[data-date]').forEach((row) => readRowFromDom(row.dataset.date!));
+
+			const dates = selectionFromCalendar();
+			for (const date of [...rowState.keys()]) {
+				if (!dates.includes(date)) rowState.delete(date);
+			}
+
+			rowsEl!.innerHTML = '';
+			for (const date of dates) {
+				const state = rowState.get(date) ?? { startTime: '', endTime: '', where: '' };
+				rowState.set(date, state);
+
+				const fragment = template!.content.cloneNode(true) as DocumentFragment;
+				const row = fragment.querySelector<HTMLElement>('[data-pickup-day-row]')!;
+				row.dataset.date = date;
+				row.querySelector('[data-field="date-display"]')!.textContent = formatDateShort(date);
+				row.querySelector('[data-field="weekday-display"]')!.textContent = formatWeekdayName(date);
+				(row.querySelector('[data-field="startTime"]') as HTMLInputElement).value = state.startTime;
+				(row.querySelector('[data-field="endTime"]') as HTMLInputElement).value = state.endTime;
+				(row.querySelector('[data-field="where"]') as HTMLInputElement).value = state.where;
+
+				const removeButton = row.querySelector('[data-remove-selected-day]');
+				removeButton?.addEventListener('click', () => removeDate(date));
+				wireMorphAction(removeButton);
+
+				rowsEl!.appendChild(row);
+			}
+
+			container!.toggleAttribute('hidden', dates.length === 0);
+			errorEl?.setAttribute('hidden', '');
+		}
+
+		function removeDate(date: string) {
+			rowState.delete(date);
+			calendar!.value = [...rowState.keys()].sort().join(' ');
+			render();
+		}
+
+		calendar.addEventListener('change', render);
+
+		submitButton.addEventListener('click', async () => {
+			rowsEl!.querySelectorAll<HTMLElement>('[data-date]').forEach((row) => readRowFromDom(row.dataset.date!));
+
+			const days = [...rowState.entries()].map(([date, fields]) => ({ date, ...fields }));
+			const invalid = days.some((day) => !day.startTime || !day.endTime || !day.where.trim() || day.endTime <= day.startTime);
+			if (invalid) {
+				if (errorEl) {
+					errorEl.textContent = 'Fill in a valid time range (end after start) and a "Where" for every selected day.';
+					errorEl.removeAttribute('hidden');
+				}
+				return;
+			}
+
+			submitButton.disabled = true;
+			errorEl?.setAttribute('hidden', '');
+
+			try {
+				const res = await fetch('/api/moderator/pickup-days', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ days }),
+				});
+				if (res.ok) {
+					window.location.reload();
+					return;
+				}
+				if (errorEl) {
+					errorEl.textContent = 'Something went wrong submitting your pickup days. Please try again.';
+					errorEl.removeAttribute('hidden');
+				}
+			} catch {
+				if (errorEl) {
+					errorEl.textContent = 'Something went wrong submitting your pickup days. Please try again.';
+					errorEl.removeAttribute('hidden');
+				}
+			} finally {
+				submitButton.disabled = false;
+			}
+		});
+	}
+</script>

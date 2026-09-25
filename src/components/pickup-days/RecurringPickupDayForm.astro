@@ -1,0 +1,100 @@
+---
+// Admin-only form for creating a recurring rule ("every Monday, 18:00-20:00,
+// between these two dates") — deliberately not calendar-based, unlike the
+// single-day flow above it on the page (PickupDaysCalendar.astro +
+// SelectedPickupDaysForm.astro), since picking dozens of individual dates by
+// hand on a calendar would defeat the point of "recurring". Submitting
+// posts straight to the API (no client-side date generation) — the server
+// computes every matching date and inserts them, see
+// src/lib/pickupDays.ts's createRecurringRule/datesForWeekday.
+import Button from '../ui/Button.astro';
+import { WEEKDAY_NAMES } from '../../lib/pickupDays';
+
+const fieldClasses = 'rounded border border-border-interactive bg-surface px-2 py-1.5 text-sm text-text';
+const labelClasses = 'mb-1 block text-xs text-text-muted';
+---
+
+<form data-recurring-pickup-day-form class="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-3 text-sm">
+	<div>
+		<label class={labelClasses} for="recurring-weekday">Every</label>
+		<select id="recurring-weekday" name="weekday" required class={fieldClasses}>
+			{WEEKDAY_NAMES.map((name, index) => <option value={index}>{name}</option>)}
+		</select>
+	</div>
+	<div>
+		<label class={labelClasses} for="recurring-start-time">From</label>
+		<input id="recurring-start-time" name="startTime" type="time" required class={fieldClasses} />
+	</div>
+	<div>
+		<label class={labelClasses} for="recurring-end-time">To</label>
+		<input id="recurring-end-time" name="endTime" type="time" required class={fieldClasses} />
+	</div>
+	<div>
+		<label class={labelClasses} for="recurring-start-date">Between</label>
+		<input id="recurring-start-date" name="startDate" type="date" required class={fieldClasses} />
+	</div>
+	<div>
+		<label class={labelClasses} for="recurring-end-date">and</label>
+		<input id="recurring-end-date" name="endDate" type="date" required class={fieldClasses} />
+	</div>
+	<Button type="submit" variant="primary">Add recurring day</Button>
+	<p data-recurring-pickup-day-error hidden class="w-full text-sm text-error-text"></p>
+</form>
+
+<script>
+	const form = document.querySelector<HTMLFormElement>('[data-recurring-pickup-day-form]');
+	const errorEl = document.querySelector<HTMLElement>('[data-recurring-pickup-day-error]');
+
+	form?.addEventListener('submit', async (event) => {
+		event.preventDefault();
+		const data = new FormData(form);
+		const weekday = Number(data.get('weekday'));
+		const startTime = String(data.get('startTime') ?? '');
+		const endTime = String(data.get('endTime') ?? '');
+		const startDate = String(data.get('startDate') ?? '');
+		const endDate = String(data.get('endDate') ?? '');
+
+		errorEl?.setAttribute('hidden', '');
+
+		if (!startTime || !endTime || endTime <= startTime) {
+			if (errorEl) {
+				errorEl.textContent = 'End time must be after start time.';
+				errorEl.removeAttribute('hidden');
+			}
+			return;
+		}
+		if (!startDate || !endDate || endDate < startDate) {
+			if (errorEl) {
+				errorEl.textContent = 'End date must be on or after the start date.';
+				errorEl.removeAttribute('hidden');
+			}
+			return;
+		}
+
+		const submitButton = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+		if (submitButton) submitButton.disabled = true;
+
+		try {
+			const res = await fetch('/api/admin/pickup-days/recurring', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ weekday, startTime, endTime, startDate, endDate }),
+			});
+			if (res.ok) {
+				window.location.reload();
+				return;
+			}
+			if (errorEl) {
+				errorEl.textContent = 'Something went wrong creating this recurring rule. Please try again.';
+				errorEl.removeAttribute('hidden');
+			}
+		} catch {
+			if (errorEl) {
+				errorEl.textContent = 'Something went wrong creating this recurring rule. Please try again.';
+				errorEl.removeAttribute('hidden');
+			}
+		} finally {
+			if (submitButton) submitButton.disabled = false;
+		}
+	});
+</script>

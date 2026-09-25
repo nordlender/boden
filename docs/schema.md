@@ -1,11 +1,14 @@
 # Schema v3
 
-> Schema block re-synced 2026-09-11 against `src/db/schema.ts`: added
+> Schema block re-synced 2026-09-25 against `src/db/schema.ts`: replaced
+> `pickupAvailableDays` (a bare date-PK table, admin-only, no time or "who")
+> with `pickupDays`/`pickupRecurringRules` — see that section below for why.
+> Everything else in this re-sync note is unchanged from the 2026-09-11 pass:
 > `orders.checkoutToken`/`fromDate`/`toDate` (the reservation flow, built
-> after this doc was originally written), `pickupAvailableDays`, and the
-> CHECK constraints real code now has. Dropped `orderItems.reservedFrom`/
-> `reservedTo`, which never existed in real code — reservation dates live on
-> `orders`, one range per order, not per line item.
+> after this doc was originally written) and the CHECK constraints real code
+> now has; `orderItems.reservedFrom`/`reservedTo`, which never existed in
+> real code, stay dropped — reservation dates live on `orders`, one range per
+> order, not per line item.
 
 This supersedes `schema_v2.md` and `schemav2.ts` (both deleted). Schema v2
 was designed around an admin wizard that generated items as systematic
@@ -249,14 +252,58 @@ export const orderItems = sqliteTable('order_items', {
   check('retrieved_quantity_non_negative', sql`${table.retrievedQuantity} IS NULL OR ${table.retrievedQuantity} >= 0`),
 ]);
 
-// Which pick-up dates (orders.fromDate) have a moderator confirmed
-// available to hand out orders — maintained by an admin (/admin/pickup-days).
-// Existence of a row is the only signal: no row just means nobody's
-// confirmed a moderator for that date yet, not that pick-up is refused.
-export const pickupAvailableDays = sqliteTable('pickup_available_days', {
-  date: text('date').primaryKey(), // YYYY-MM-DD
+// A recurring rule an admin sets up (/admin/pickup-days): "every Monday,
+// 18:00-20:00, between these two dates". Exists purely for display — the
+// admin UI collapses every date it generated back into one line ("21/09 -
+// 10/12 | Monday | 18:00 - 20:00") rather than listing each date. The rule
+// is never re-evaluated at read time; its dates are generated once, up
+// front, as ordinary rows in `pickupDays` (kind: 'recurring').
+export const pickupRecurringRules = sqliteTable('pickup_recurring_rules', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
+  weekday: integer('weekday').notNull(), // 0 (Sunday) - 6 (Saturday), matches JS Date#getDay()
+  startTime: text('start_time').notNull(), // HH:MM, 24h
+  endTime: text('end_time').notNull(), // HH:MM, 24h
+  startDate: text('start_date').notNull(), // YYYY-MM-DD, inclusive
+  endDate: text('end_date').notNull(), // YYYY-MM-DD, inclusive
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
+}, (table) => [
+  index('pickup_recurring_rules_created_by_user_id_idx').on(table.createdByUserId),
+  check('pickup_recurring_rules_weekday_valid', sql`${table.weekday} BETWEEN 0 AND 6`),
+  check('pickup_recurring_rules_date_range_valid', sql`${table.endDate} >= ${table.startDate}`),
+]);
+
+// One row per individual pick-up day — replaces `pickupAvailableDays`
+// (bare date PK, admin-only, no time or "who"). Two origins share this one
+// table rather than living in separate ones (the abandoned PR #112's
+// approach): 'single' rows are a moderator's (or admin's) own ad-hoc
+// availability, submitted via the calendar on /moderator/pickup-days or
+// /admin/pickup-days — userId is whoever submitted it. 'recurring' rows are
+// one of the dates generated from a `pickupRecurringRules` row — userId is
+// that rule's creator, recurringRuleId points back to it. Existence of a
+// row (of either kind) is still the only "available" signal /reservation's
+// calendar reads — see getUpcomingAvailablePickupDates in
+// src/lib/pickupDays.ts, which unions both kinds unchanged from the old
+// single-table contract.
+export const pickupDays = sqliteTable('pickup_days', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull(), // YYYY-MM-DD
+  startTime: text('start_time'), // HH:MM, 24h — nullable
+  endTime: text('end_time'), // HH:MM, 24h
+  where: text('where'), // free-text meeting point — moderator single-day submissions only
+  userId: text('user_id').notNull().references(() => users.id),
+  kind: text('kind', { enum: ['single', 'recurring'] }).notNull().default('single'),
+  recurringRuleId: integer('recurring_rule_id').references(() => pickupRecurringRules.id, { onDelete: 'cascade' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index('pickup_days_date_idx').on(table.date),
+  index('pickup_days_user_id_idx').on(table.userId),
+  index('pickup_days_recurring_rule_id_idx').on(table.recurringRuleId),
+  // Scoped to kind = 'single' only: two different recurring rules may
+  // legitimately generate the same date for the same admin.
+  uniqueIndex('pickup_days_single_user_date_unique').on(table.userId, table.date).where(sql`${table.kind} = 'single'`),
+  check('pickup_days_kind_recurring_rule_consistent', sql`(${table.kind} = 'recurring') = (${table.recurringRuleId} IS NOT NULL)`),
+]);
 
 // relations() intentionally omitted here for brevity — see the Relations
 // section below for the one/many pattern to follow per FK above.
@@ -290,8 +337,8 @@ don't resurrect this.
 - `itemsRelations`: one `product`, many `itemAttributeValues`, many `orderItems`
 - `itemAttributeValuesRelations`: one `item`, one `attribute` (→ `productAttributeKeys`)
 - `usersRelations`, `ordersRelations`, `orderItemsRelations`: unchanged from v2
-- `pickupAvailableDays`: standalone table, no relations — looked up directly
-  by `orders.fromDate`, not joined
+- `pickupRecurringRulesRelations`: one `createdBy` (→ `users`), many `generatedDays` (→ `pickupDays`)
+- `pickupDaysRelations`: one `user`, one `recurringRule` (→ `pickupRecurringRules`, nullable)
 
 ## Resolved
 

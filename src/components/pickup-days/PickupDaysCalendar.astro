@@ -1,0 +1,190 @@
+---
+// Multi-select pickup-days calendar — cally's <calendar-multi> (see
+// ReservationCalendar.astro's own use of cally for the member-facing
+// single-range picker; this is the moderator/admin-facing multi-day
+// sibling). Colors every upcoming pickup day red (recurring/training),
+// green (the viewer's own single day), or yellow (another moderator's
+// single day) per the legend below, and lets the viewer click any day that
+// isn't already their own to add it to the selection — SelectedPickupDaysForm.astro
+// picks up the resulting `change` events and renders the hidden "Selected
+// days" table underneath.
+import { todayIsoInOslo } from '../../lib/dates';
+
+export interface PickupDaysCalendarEntry {
+	date: string;
+	kind: 'single' | 'recurring';
+	userId: string;
+}
+
+interface Props {
+	rows: PickupDaysCalendarEntry[];
+	currentUserId: string;
+}
+
+const { rows, currentUserId } = Astro.props;
+const todayIso = todayIsoInOslo();
+
+// One kind per date, highest-precedence wins when more than one row lands
+// on the same date (e.g. a recurring training day a moderator also offered
+// themselves) — recurring (red) reads as the more load-bearing fact of the
+// two, then "is this mine".
+const PRECEDENCE = { recurring: 2, mine: 1, other: 0 } as const;
+const kindByDate = new Map<string, keyof typeof PRECEDENCE>();
+for (const row of rows) {
+	const kind = row.kind === 'recurring' ? 'recurring' : row.userId === currentUserId ? 'mine' : 'other';
+	const existing = kindByDate.get(row.date);
+	if (!existing || PRECEDENCE[kind] > PRECEDENCE[existing]) {
+		kindByDate.set(row.date, kind);
+	}
+}
+const dayKinds = Object.fromEntries(kindByDate);
+---
+
+<div class="pickup-days-calendar rounded-lg border border-border bg-surface p-3">
+	<ul class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
+		<li class="flex items-center gap-1.5">
+			<span class="h-3 w-3 rounded-full border border-error-border bg-error-subtle" aria-hidden="true"></span>
+			Training
+		</li>
+		<li class="flex items-center gap-1.5">
+			<span class="h-3 w-3 rounded-full border border-success-border bg-success-subtle" aria-hidden="true"></span>
+			Me
+		</li>
+		<li class="flex items-center gap-1.5">
+			<span class="h-3 w-3 rounded-full border border-warning-border bg-warning-subtle" aria-hidden="true"></span>
+			Other
+		</li>
+	</ul>
+
+	<calendar-multi data-pickup-days-calendar months={2} page-by="single" min={todayIso} data-day-kinds={JSON.stringify(dayKinds)}>
+		<svg slot="previous" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+			<path d="M15 6l-6 6l6 6" />
+		</svg>
+		<svg slot="next" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+			<path d="M9 6l6 6l-6 6" />
+		</svg>
+		<calendar-month></calendar-month>
+		<calendar-month offset={1}></calendar-month>
+	</calendar-multi>
+
+	<p class="mt-2 text-sm text-text-muted">Click a day to offer yourself as available — you can select more than one.</p>
+</div>
+
+<style>
+	.pickup-days-calendar calendar-multi {
+		--color-accent: var(--ui-accent);
+		--color-text-on-accent: var(--color-text-inverted);
+		display: block;
+		width: 100%;
+		font-family: inherit;
+		font-size: 0.875rem;
+	}
+
+	.pickup-days-calendar {
+		container-type: inline-size;
+	}
+
+	.pickup-days-calendar calendar-multi::part(container),
+	.pickup-days-calendar calendar-multi::part(header) {
+		width: 100%;
+	}
+
+	.pickup-days-calendar calendar-multi::part(months) {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		width: 100%;
+	}
+
+	.pickup-days-calendar calendar-multi calendar-month {
+		width: 100%;
+	}
+
+	@container (min-width: 30rem) {
+		.pickup-days-calendar calendar-multi::part(months) {
+			flex-direction: row;
+		}
+
+		.pickup-days-calendar calendar-multi calendar-month {
+			width: auto;
+			min-width: 0;
+			flex: 1 1 0%;
+		}
+	}
+
+	.pickup-days-calendar calendar-multi::part(button) {
+		border-radius: 0.375rem;
+		color: var(--color-text-muted);
+	}
+
+	.pickup-days-calendar calendar-multi::part(button):hover {
+		background-color: var(--color-bg-subtle);
+	}
+
+	.pickup-days-calendar calendar-multi::part(head) {
+		font-weight: 600;
+		color: var(--color-text);
+	}
+
+	.pickup-days-calendar calendar-multi::part(day) {
+		border-radius: 0.375rem;
+	}
+
+	.pickup-days-calendar calendar-multi::part(today) {
+		font-weight: 700;
+	}
+
+	/* Declared before ::part(selected) so an actual selection always visually
+	   wins over the origin-kind tint underneath it. */
+	.pickup-days-calendar calendar-multi::part(recurring) {
+		background-color: var(--color-error-subtle);
+		box-shadow: inset 0 0 0 1px var(--color-error-border);
+		color: var(--color-error-text);
+	}
+
+	.pickup-days-calendar calendar-multi::part(mine) {
+		background-color: var(--color-success-subtle);
+		box-shadow: inset 0 0 0 1px var(--color-success-border);
+		color: var(--color-success-text);
+	}
+
+	.pickup-days-calendar calendar-multi::part(other) {
+		background-color: var(--color-warning-subtle);
+		box-shadow: inset 0 0 0 1px var(--color-warning-border);
+		color: var(--color-warning-text);
+	}
+
+	.pickup-days-calendar calendar-multi::part(selected) {
+		background-color: var(--color-selected);
+		color: var(--color-text-inverted);
+	}
+</style>
+
+<script>
+	import 'cally';
+	import { dateToIsoInOslo } from '../../lib/dates';
+
+	type MultiCalendar = HTMLElement & {
+		value?: string;
+		getDayParts?: (date: Date) => string;
+		isDateDisallowed?: (date: Date) => boolean;
+	};
+
+	const calendar = document.querySelector<MultiCalendar>('[data-pickup-days-calendar]');
+	if (calendar) {
+		let dayKinds: Record<string, 'mine' | 'other' | 'recurring'>;
+		try {
+			dayKinds = JSON.parse(calendar.dataset.dayKinds ?? '{}');
+		} catch {
+			dayKinds = {};
+		}
+
+		calendar.getDayParts = (date) => dayKinds[dateToIsoInOslo(date)] ?? '';
+		// A moderator can't re-offer a date they've already personally offered
+		// (the schema only allows one single-day row per user per date) — but
+		// another moderator's day, or a recurring/training day, stays pickable
+		// (see the spec: "it will still allow the moderator to set it
+		// themselves").
+		calendar.isDateDisallowed = (date) => dayKinds[dateToIsoInOslo(date)] === 'mine';
+	}
+</script>

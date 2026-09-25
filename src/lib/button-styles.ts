@@ -5,7 +5,7 @@
 // prior usages this was built from.
 import type { ActionIconKey } from './icon-nodes';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'danger-filled';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export const variantClasses: Record<ButtonVariant, string> = {
@@ -15,6 +15,11 @@ export const variantClasses: Record<ButtonVariant, string> = {
 		'border border-border-strong text-text-muted hover:bg-bg-subtle hover:text-text disabled:text-disabled-text disabled:hover:bg-transparent',
 	danger:
 		'border border-error-border font-medium text-error-text hover:bg-error-subtle disabled:border-disabled-bg disabled:text-disabled-text disabled:hover:bg-transparent',
+	// Solid fill instead of `danger`'s outline — for actions that actually
+	// commit a deletion (not just open a confirm dialog), so the weight of
+	// the button matches the weight of the action.
+	'danger-filled':
+		'bg-error font-medium text-text-inverted hover:bg-error/90 disabled:bg-disabled-bg disabled:text-disabled-text',
 };
 
 // Padding/text-size for the two-sided (text, or text+icon) buttons.
@@ -37,6 +42,15 @@ export const iconOnlyPixelSize: Record<ButtonSize, number> = {
 	lg: 22,
 };
 
+// Icon pixel size for the text+icon buttons (TextIconButton, TextMorphButton)
+// — smaller than iconOnlyPixelSize since these icons sit next to a label
+// rather than carrying the whole button on their own.
+export const textIconPixelSize: Record<ButtonSize, number> = {
+	sm: 14,
+	md: 16,
+	lg: 18,
+};
+
 export const baseClasses =
 	'inline-flex items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed';
 
@@ -46,7 +60,9 @@ export const baseClasses =
 export const actionLabels: Record<ActionIconKey, string> = {
 	accept: 'Accept',
 	cancel: 'Cancel',
+	reject: 'Reject',
 	delete: 'Delete',
 	back: 'Back',
 	next: 'Next',
+	view: 'View',
 };

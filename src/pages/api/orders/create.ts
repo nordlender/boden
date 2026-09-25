@@ -4,14 +4,26 @@ import type { APIRoute } from 'astro';
 import { getCart, setCart } from '../../../lib/cart';
 import { createOrder, createSplitOrders } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
+import { requireUser } from '../../../lib/wizard-http';
+
+// Maps the checkout form's readonly hasUnpaidFees/userIsMember text inputs
+// (literally "Yes" | "No" | "Unknown", see CheckoutForm.astro's yesNo()) back
+// to the nullable boolean stored on orders — anything other than an exact
+// "Yes"/"No" (including "Unknown", missing, or a tampered value) is treated
+// as unknown/null rather than guessed at.
+function parseYesNo(value: FormDataEntryValue | null): boolean | null {
+  const s = value?.toString();
+  if (s === 'Yes') return true;
+  if (s === 'No') return false;
+  return null;
+}
 
 export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => {
   // Not covered by src/middleware/index.ts's route-prefix gate (that only
   // matches /cart, /checkout, /orders — not /api/...), so check auth here,
   // same as docs/rental-shop.md §9's confirm.ts/return.ts examples.
-  if (!locals.user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  const authError = requireUser(locals);
+  if (authError) return authError;
 
   const cart = getCart(cookies);
   if (cart.length === 0) {
@@ -33,11 +45,15 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const contactEmail = form.get('email')?.toString().trim() ?? '';
   const contactMobile = form.get('mobile')?.toString().trim() || null;
 
-  // TODO: to be implemented later when API is updated — bloc currently always
-  // returns null for both fields (see TASKS.md WIP), so they aren't persisted
-  // yet. Read here so wiring them up later is a one-line change.
-  const hasUnpaidFees = form.get('hasUnpaidFees');
-  const userIsMember = form.get('userIsMember');
+  // Snapshot of the checkout form's readonly bloc-sourced fields (see
+  // schema.ts's orders.hasUnpaidFees/userIsMember doc comment). The form
+  // submits the literal string the readonly input displayed
+  // ("Yes"/"No"/"Unknown" — see CheckoutForm.astro's yesNo()); still blocked
+  // on bloc's hasUnpaidFees/userIsMember API defect for real Yes/No data
+  // (see docs/moderator-review.md), so this reads back as null for every
+  // member today, but the columns/wiring aren't blocked on that fix.
+  const hasUnpaidFees = parseYesNo(form.get('hasUnpaidFees'));
+  const userIsMember = parseYesNo(form.get('userIsMember'));
 
   // Populated by the reservation page's split-order action when the member
   // moves one or more mixed-availability items into their own order — see
@@ -50,7 +66,8 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const result =
     splitItemIds.length > 0
       ? await createSplitOrders({
-          userId: locals.user.id,
+          userId: locals.user!.id,
+          role: locals.user!.role,
           note,
           cartEntries: cart,
           fromDate,
@@ -59,9 +76,12 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           contactName,
           contactEmail,
           contactMobile,
+          hasUnpaidFees,
+          userIsMember,
         })
       : await createOrder({
-          userId: locals.user.id,
+          userId: locals.user!.id,
+          role: locals.user!.role,
           note,
           cartEntries: cart,
           fromDate,
@@ -69,6 +89,8 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           contactName,
           contactEmail,
           contactMobile,
+          hasUnpaidFees,
+          userIsMember,
         });
   if (!result.ok) {
     // 'unavailable': re-checked at insert time (see orders.ts's insertOrder)
@@ -76,6 +98,12 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     // preview — same query-param error pattern as 'invalid_dates' below.
     if (result.error === 'unavailable') {
       return redirect('/reservation?error=unavailable');
+    }
+    // 'user_not_found': defense-in-depth only — orders.userId's FK didn't
+    // resolve for locals.user.id, which upsertUser guarantees exists in
+    // normal operation. See orders.ts's createOrder/createSplitOrders.
+    if (result.error === 'user_not_found') {
+      return redirect('/cart?error=account_not_found');
     }
     return redirect('/cart?error=empty_cart');
   }

@@ -2,12 +2,13 @@ import { db } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
-import { isUniqueConstraintViolation } from './db-errors';
+import type { Role } from './auth';
+import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
 
-// Excludes ambiguous characters (0/O, 1/I) — an order code is read aloud by
-// members to moderators and typed into the retrieve-order form; a checkout
-// token isn't, but shares the alphabet for consistency.
+// Only used for the checkout token, which isn't read aloud but shares the
+// alphabet for consistency. The order code itself has its own fixed-format
+// alphabet — see generateOrderCode below.
 const RANDOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 function generateRandomCode(length: number): string {
@@ -18,11 +19,47 @@ function generateRandomCode(length: number): string {
   return code;
 }
 
-const ORDER_CODE_LENGTH = 6;
+// NNAAX: two digits, two free letters, one role letter.
+export const ORDER_CODE_LENGTH = 5;
 const MAX_ORDER_CODE_ATTEMPTS = 5;
 
-export function generateOrderCode(): string {
-  return generateRandomCode(ORDER_CODE_LENGTH);
+const ORDER_CODE_DIGITS = '0123456789';
+const ORDER_CODE_FREE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+// Maps the role that created the order to its fixed last-character letter —
+// every order code's last letter is always one of these four, so the
+// creating role is legible at a glance rather than merely "privileged vs.
+// not". Ranked highest-privilege first: admin > board member > instructor
+// (moderator) > member. A user can hold more than one of these at once (an
+// admin is implicitly also a board member/instructor, etc.), but getRole()
+// (src/lib/auth.ts) already resolves that down to a single highest-ranked
+// Role before it ever reaches here, so this map is a direct one-to-one
+// lookup.
+const ORDER_CODE_ROLE_LETTERS: Record<Role, string> = {
+  admin: 'A',
+  board: 'B',
+  moderator: 'I', // instructor
+  member: 'M',
+};
+
+function randomChar(alphabet: string): string {
+  return alphabet[Math.floor(Math.random() * alphabet.length)];
+}
+
+// Order code format is `NNAAX` (see issue #155, revised): two digits, two
+// free letters, then a role-flag letter always drawn from
+// ORDER_CODE_ROLE_LETTERS — A/B/I/M for admin/board member/instructor
+// (moderator)/member, so the creating role is legible at a glance. `role` is
+// the role of the member who created the order.
+export function generateOrderCode(role: Role = 'member'): string {
+  const lastLetter = ORDER_CODE_ROLE_LETTERS[role];
+  return (
+    randomChar(ORDER_CODE_DIGITS) +
+    randomChar(ORDER_CODE_DIGITS) +
+    randomChar(ORDER_CODE_FREE_LETTERS) +
+    randomChar(ORDER_CODE_FREE_LETTERS) +
+    lastLetter
+  );
 }
 
 // Shared by every order created from one checkout submission (split or
@@ -50,6 +87,9 @@ class UnavailableItemsError extends Error {
 
 export type CreateOrderInput = {
   userId: string;
+  // Role of the member creating the order, used to pick the order code's
+  // reserved last character — see generateOrderCode.
+  role: Role;
   note: string | null;
   cartEntries: CartEntry[];
   fromDate: string;
@@ -59,17 +99,23 @@ export type CreateOrderInput = {
   contactName: string;
   contactEmail: string;
   contactMobile: string | null;
+  // Snapshot of the checkout form's readonly bloc-sourced fields — see
+  // schema.ts's orders.hasUnpaidFees/userIsMember doc comment.
+  hasUnpaidFees: boolean | null;
+  userIsMember: boolean | null;
 };
 
 export type CreateOrderResult =
   | { ok: true; orderId: number; orderCode: string; checkoutToken: string }
   | { ok: false; error: 'empty_cart' }
-  | { ok: false; error: 'unavailable'; unavailableItemIds: number[] };
+  | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
+  | { ok: false; error: 'user_not_found' };
 
 function insertOrder(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   input: {
     userId: string;
+    role: Role;
     note: string | null;
     fromDate: string;
     toDate: string;
@@ -78,6 +124,8 @@ function insertOrder(
     contactName: string;
     contactEmail: string;
     contactMobile: string | null;
+    hasUnpaidFees: boolean | null;
+    userIsMember: boolean | null;
   },
 ) {
   // Re-check availability inside the same transaction as the insert below —
@@ -99,7 +147,7 @@ function insertOrder(
   }
 
   for (let attempt = 0; attempt < MAX_ORDER_CODE_ATTEMPTS; attempt++) {
-    const orderCode = generateOrderCode();
+    const orderCode = generateOrderCode(input.role);
     try {
       const order = tx
         .insert(orders)
@@ -113,6 +161,8 @@ function insertOrder(
           contactName: input.contactName,
           contactEmail: input.contactEmail,
           contactMobile: input.contactMobile,
+          hasUnpaidFees: input.hasUnpaidFees,
+          userIsMember: input.userIsMember,
         })
         .returning({ id: orders.id, orderCode: orders.orderCode })
         .get();
@@ -171,6 +221,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     const result = db.transaction((tx) =>
       insertOrder(tx, {
         userId: input.userId,
+        role: input.role,
         note: input.note,
         fromDate: input.fromDate,
         toDate: input.toDate,
@@ -179,6 +230,8 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         contactName: input.contactName,
         contactEmail: input.contactEmail,
         contactMobile: input.contactMobile,
+        hasUnpaidFees: input.hasUnpaidFees,
+        userIsMember: input.userIsMember,
       }),
     );
     return { ok: true, orderId: result.id, orderCode: result.orderCode, checkoutToken };
@@ -186,12 +239,19 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     if (err instanceof UnavailableItemsError) {
       return { ok: false, error: 'unavailable', unavailableItemIds: err.itemIds };
     }
+    // orders.userId is a FK sourced from the checkout route's ambient
+    // session id (locals.user!.id) rather than a freshly-looked-up row —
+    // same defensive-only case as moderatorOrders.ts's confirmRetrieval.
+    if (isForeignKeyViolation(err)) {
+      return { ok: false, error: 'user_not_found' };
+    }
     throw err;
   }
 }
 
 export type CreateSplitOrdersInput = {
   userId: string;
+  role: Role;
   note: string | null;
   cartEntries: CartEntry[];
   fromDate: string;
@@ -204,12 +264,15 @@ export type CreateSplitOrdersInput = {
   contactName: string;
   contactEmail: string;
   contactMobile: string | null;
+  hasUnpaidFees: boolean | null;
+  userIsMember: boolean | null;
 };
 
 export type CreateSplitOrdersResult =
   | { ok: true; orders: { orderId: number; orderCode: string }[]; checkoutToken: string }
   | { ok: false; error: 'empty_cart' }
-  | { ok: false; error: 'unavailable'; unavailableItemIds: number[] };
+  | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
+  | { ok: false; error: 'user_not_found' };
 
 // Same validation/entry-filtering as createOrder, but partitions the
 // resulting entries into up to two orders sharing the same date range: one
@@ -244,6 +307,7 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
       groups.map((entries) =>
         insertOrder(tx, {
           userId: input.userId,
+          role: input.role,
           note: input.note,
           fromDate: input.fromDate,
           toDate: input.toDate,
@@ -252,6 +316,8 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
           contactName: input.contactName,
           contactEmail: input.contactEmail,
           contactMobile: input.contactMobile,
+          hasUnpaidFees: input.hasUnpaidFees,
+          userIsMember: input.userIsMember,
         }),
       ),
     );
@@ -259,6 +325,9 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
   } catch (err) {
     if (err instanceof UnavailableItemsError) {
       return { ok: false, error: 'unavailable', unavailableItemIds: err.itemIds };
+    }
+    if (isForeignKeyViolation(err)) {
+      return { ok: false, error: 'user_not_found' };
     }
     throw err;
   }

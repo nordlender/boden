@@ -3,7 +3,8 @@ export const prerender = false;
 
 // Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
 // reached only when logged in with role === 'admin'.
-import '../../styles/global.css';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import AdminNavbar from '../../components/AdminNavbar.astro';
 import { db } from '../../db/client';
 import AdminNavbar from '../../components/AdminNavbar.astro';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
@@ -44,51 +45,44 @@ const rows: OrdersTableRow[] = allOrders.map((order) => ({
 	})),
 }));
 ---
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<title>Orders</title>
-	</head>
-	<body class="min-h-screen bg-bg-subtle">
-		<AdminNavbar />
-		<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-			<div>
-				<h1 class="text-xl font-semibold text-text">Orders</h1>
-				<p class="mt-1 text-sm text-text-muted">All member rental requests, most recent first.</p>
-			</div>
-
-			<div class="flex flex-wrap items-center justify-between gap-2">
-				<div class="flex flex-wrap gap-2">
-					<a
-						href={statusHref(null)}
-						class:list={[
-							'rounded-full border px-3 py-1 text-xs font-medium capitalize',
-							activeStatus === null ? 'border-border-strong bg-bg text-text' : 'border-border text-text-muted hover:text-text',
-						]}
-					>
-						All
-					</a>
-					{
-						ORDER_STATUSES.map((status) => (
-							<a
-								href={statusHref(status)}
-								class:list={[
-									'rounded-full border px-3 py-1 text-xs font-medium capitalize',
-									activeStatus === status
-										? 'border-border-strong bg-bg text-text'
-										: 'border-border text-text-muted hover:text-text',
-								]}
-							>
-								{status}
-							</a>
-						))
-					}
-				</div>
-				<OrdersLayoutToggle />
-			</div>
-
-			<OrdersTable orders={rows} viewHref={(code: string) => `/admin/orders/${code}`} emptyMessage="No orders match this filter." />
+<AdminLayout title="Orders">
+	<AdminNavbar />
+	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+		<div>
+			<h1 class="text-xl font-semibold text-text">Orders</h1>
+			<p class="mt-1 text-sm text-text-muted">All member rental requests, most recent first.</p>
 		</div>
-	</body>
-</html>
+
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<div class="flex flex-wrap gap-2">
+				<a
+					href={statusHref(null)}
+					class:list={[
+						'rounded-full border px-3 py-1 text-xs font-medium capitalize',
+						activeStatus === null ? 'border-border-strong bg-bg text-text' : 'border-border text-text-muted hover:text-text',
+					]}
+				>
+					All
+				</a>
+				{
+					ORDER_STATUSES.map((status) => (
+						<a
+							href={statusHref(status)}
+							class:list={[
+								'rounded-full border px-3 py-1 text-xs font-medium capitalize',
+								activeStatus === status
+									? 'border-border-strong bg-bg text-text'
+									: 'border-border text-text-muted hover:text-text',
+							]}
+						>
+							{status}
+						</a>
+					))
+				}
+			</div>
+			<OrdersLayoutToggle />
+		</div>
+
+		<OrdersTable orders={rows} viewHref={(code: string) => `/admin/orders/${code}`} emptyMessage="No orders match this filter." />
+	</div>
+</AdminLayout>

@@ -7,6 +7,7 @@ import '../../styles/global.css';
 import ThemeInit from '../../components/ThemeInit.astro';
 import AdminNavbar from '../../components/AdminNavbar.astro';
 import Button from '../../components/ui/Button.astro';
+import TextMorphButton from '../../components/ui/TextMorphButton.astro';
 import { listAvailablePickupDates } from '../../lib/pickupDays';
 import { todayIsoInOslo, formatDateDisplay } from '../../lib/dates';
 
@@ -76,9 +77,9 @@ const error = Astro.url.searchParams.get('error');
 									<form method="post" action="/api/pickup-days/remove">
 										<input type="hidden" name="redirectTo" value={redirectTo} />
 										<input type="hidden" name="date" value={date} />
-										<button type="submit" class="text-xs text-error-text hover:underline">
+										<TextMorphButton type="submit" action="delete" variant="danger" size="sm">
 											Remove
-										</button>
+										</TextMorphButton>
 									</form>
 								</li>
 							))}

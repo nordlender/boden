@@ -1,7 +1,7 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { rejectOrder } from '../../../../../lib/moderatorOrders';
+import { getOrderCodeById, rejectOrder } from '../../../../../lib/moderatorOrders';
 import { isPositiveInteger, requireModerator } from '../../../../../lib/wizard-http';
 
 export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
@@ -19,8 +19,10 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 	if (!reason) {
 		// Should be rare — the page's <textarea> is `required` — but redirect
 		// back with the page's own error-display convention rather than a raw
-		// 400, matching the page's ?error=blank_reason handling.
-		return redirect(`/moderator/review/${orderId}?error=blank_reason`, 303);
+		// 400, matching the page's ?error=blank_reason handling. The review
+		// page is keyed by order code, not id, so look the code up first.
+		const orderCode = await getOrderCodeById(orderId);
+		return redirect(orderCode ? `/moderator/review/${orderCode}?error=blank_reason` : '/moderator/requests', 303);
 	}
 
 	const result = await rejectOrder(orderId, reason);

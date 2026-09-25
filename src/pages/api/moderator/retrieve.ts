@@ -12,7 +12,15 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
 	if (forbidden) return forbidden;
 
 	const form = await request.formData();
-	const code = form.get('code')?.toString().trim().toUpperCase();
+	// The input allows an optional leading "#" (e.g. "#AB12CD") as a nod to
+	// how order codes are displayed elsewhere — strip it (and any other stray
+	// "#") before normalizing, so "#AB12CD" and "AB12CD" both resolve.
+	const code = form
+		.get('code')
+		?.toString()
+		.replace(/#/g, '')
+		.trim()
+		.toUpperCase();
 
 	const orderId = code ? await getOrderIdByCode(code) : null;
 	if (!orderId) {

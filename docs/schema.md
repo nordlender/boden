@@ -6,6 +6,12 @@
 > CHECK constraints real code now has. Dropped `orderItems.reservedFrom`/
 > `reservedTo`, which never existed in real code — reservation dates live on
 > `orders`, one range per order, not per line item.
+>
+> 2026-09-25: added `users.strikes`/`barredAt` — the counting/flagging
+> mechanism for GitHub issue #133's terms-of-service strike system
+> (`src/lib/strikes.ts`). Nothing calls it yet: what earns a strike, the
+> order-submission check, the acceptance button, the moderator warning, and
+> the per-order strikes snapshot are all still unimplemented.
 
 This supersedes `schema_v2.md` and `schemav2.ts` (both deleted). Schema v2
 was designed around an admin wizard that generated items as systematic
@@ -202,7 +208,13 @@ export const users = sqliteTable('users', {
   email: text('email').notNull().unique(),
   name: text('name'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
+  // Terms-of-service strike count (issue #133) and the "out" flag, set the
+  // moment strikes first reaches 3. See src/lib/strikes.ts.
+  strikes: integer('strikes').notNull().default(0),
+  barredAt: integer('barred_at', { mode: 'timestamp' }),
+}, (table) => [
+  check('user_strikes_non_negative', sql`${table.strikes} >= 0`),
+]);
 
 export const orders = sqliteTable('orders', {
   id: integer('id').primaryKey({ autoIncrement: true }),

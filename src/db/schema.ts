@@ -169,7 +169,20 @@ export const users = sqliteTable('users', {
   name: text('name'),
   // Role is NOT stored here — it is fetched live from the external API on every request
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
+  // Terms-of-service strike count (see docs/schema.md and GitHub issue #133).
+  // How strikes get added (moderator action on a late/no-return, etc.) is
+  // not implemented yet — this column and barredAt just carry the count and
+  // the "out" flag once something starts calling src/lib/strikes.ts.
+  strikes: integer('strikes').notNull().default(0),
+  // Set the moment `strikes` first reaches 3 — the "out" flag. A nullable
+  // timestamp rather than a boolean, matching orders' activatedAt/
+  // returnedAt/rejectedAt pattern: it doubles as an audit record of when the
+  // user was barred, not just whether. Never cleared automatically; only
+  // meant to move forward.
+  barredAt: integer('barred_at', { mode: 'timestamp' }),
+}, (table) => [
+  check('user_strikes_non_negative', sql`${table.strikes} >= 0`),
+]);
 
 // No `sessions` table: Auth.js (src/auth.ts) manages its own signed JWT
 // session cookie and does not use a database-backed session.

@@ -67,6 +67,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     splitItemIds.length > 0
       ? await createSplitOrders({
           userId: locals.user!.id,
+          role: locals.user!.role,
           note,
           cartEntries: cart,
           fromDate,
@@ -80,6 +81,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
         })
       : await createOrder({
           userId: locals.user!.id,
+          role: locals.user!.role,
           note,
           cartEntries: cart,
           fromDate,

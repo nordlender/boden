@@ -10,6 +10,7 @@ export const prerender = false;
 import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
 import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro';
 import Callout from '../../../components/ui/Callout.astro';
+import Button from '../../../components/ui/Button.astro';
 import { getOrderDetail, getFollowingRentalWorries } from '../../../lib/moderatorOrders';
 
 const idParam = Number(Astro.params.id);
@@ -72,31 +73,25 @@ const RETRIEVE_FORM_ID = 'retrieve-items-form';
 			<Fragment slot="actions">
 				{
 					notYetReviewed && (
-						<a
-							href={`/moderator/review/${order.id}`}
-							class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover"
-						>
+						<Button href={`/moderator/review/${order.id}`} variant="primary" size="lg">
 							Review order
-						</a>
+						</Button>
 					)
 				}
 				{
 					acceptedNotRetrieved && (
 						<form id={RETRIEVE_FORM_ID} method="get" action={`/moderator/retrieve/${order.id}/count`}>
-							<button type="submit" class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover">
+							<Button type="submit" variant="primary" size="lg">
 								Confirm
-							</button>
+							</Button>
 						</form>
 					)
 				}
 				{
 					order.status === 'active' && (
-						<a
-							href={`/moderator/return/${order.id}`}
-							class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover"
-						>
+						<Button href={`/moderator/return/${order.id}`} variant="primary" size="lg">
 							Return items
-						</a>
+						</Button>
 					)
 				}
 			</Fragment>

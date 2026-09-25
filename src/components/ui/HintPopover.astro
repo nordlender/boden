@@ -1,0 +1,36 @@
+---
+// Text-only info/hint popup — no buttons, purely informational. Appears
+// beside the thing it explains (not over it, unlike ActionPopover) and
+// never blocks interaction with the page. Built on Popover.astro, so
+// outside-click-to-close is free.
+//
+// A hint shouldn't linger after it's no longer relevant: callers that show
+// a hint in response to a transient condition (e.g. a validation error)
+// should call `document.getElementById(id)?.hidePopover()` once that
+// condition is resolved, rather than leaving the hint open indefinitely.
+import Popover from './Popover.astro';
+import Callout from './Callout.astro';
+
+type Variant = 'info' | 'warning' | 'error' | 'success' | 'help';
+
+interface Props {
+	id: string;
+	variant: Variant;
+	title?: string;
+	triggerLabel: string;
+	side?: 'top' | 'bottom' | 'left' | 'right';
+}
+
+const { id, variant, title, triggerLabel, side = 'right' } = Astro.props;
+const titleId = title ? `${id}-title` : undefined;
+---
+
+<button type="button" popovertarget={id} class="text-sm font-medium text-accent-text underline underline-offset-2 hover:text-accent">
+	{triggerLabel}
+</button>
+
+<Popover id={id} placement="anchor" side={side} labelledBy={titleId} class="p-0 shadow-lg">
+	<Callout variant={variant} title={title} titleId={titleId}>
+		<slot />
+	</Callout>
+</Popover>

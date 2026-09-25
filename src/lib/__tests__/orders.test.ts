@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { createOrder, createSplitOrders, deleteOrder, rescheduleOrder } from '../orders';
+import { createOrder, createSplitOrders, deleteOrder, generateOrderCode, rescheduleOrder } from '../orders';
 import type { CartEntry } from '../cart';
 
 // rescheduleOrder calls isValidDateRange (src/lib/reservation.ts), which
@@ -17,11 +17,14 @@ afterAll(() => {
 // Contact snapshot fields are required on createOrder/createSplitOrders
 // input (src/db/schema.ts's orders.contactName/contactEmail) — a fixed
 // stand-in for every call below, since none of these tests are about the
-// contact snapshot itself.
+// contact snapshot itself. `role` is likewise a fixed 'member' stand-in
+// (see the "order code role suffix" describe block below for role-specific
+// behavior).
 const CONTACT = {
 	contactName: 'Test Member',
 	contactEmail: 'member@example.com',
 	contactMobile: null,
+	role: 'member' as const,
 	hasUnpaidFees: null,
 	userIsMember: null,
 };
@@ -84,7 +87,8 @@ describe('createOrder', () => {
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		expect(result.orderCode).toHaveLength(6);
+		// NNAAX format (issue #155): two digits, two free letters, a role letter.
+		expect(result.orderCode).toMatch(/^\d{2}[A-Z]{2}[ABIM]$/);
 		expect(result.checkoutToken).toHaveLength(10);
 		expect(result.checkoutToken).not.toBe(result.orderCode);
 	});
@@ -374,5 +378,35 @@ describe('rescheduleOrder', () => {
 	it('rejects rescheduling an order owned by someone else, without revealing whether it exists', async () => {
 		const result = await rescheduleOrder({ orderCode: 'AAAAAA', userId: 'member-1', fromDate: '2026-12-01', toDate: '2026-12-02' });
 		expect(result).toEqual({ ok: false, error: 'not_found' });
+	});
+});
+
+describe('generateOrderCode', () => {
+	it("always ends a member order with M", () => {
+		for (let i = 0; i < 20; i++) {
+			expect(generateOrderCode('member')).toMatch(/M$/);
+		}
+	});
+
+	it("always ends an admin's order code with A", () => {
+		for (let i = 0; i < 20; i++) {
+			expect(generateOrderCode('admin')).toMatch(/A$/);
+		}
+	});
+
+	it("always ends a board member's order code with B", () => {
+		for (let i = 0; i < 20; i++) {
+			expect(generateOrderCode('board')).toMatch(/B$/);
+		}
+	});
+
+	it("always ends a moderator's (instructor's) order code with I", () => {
+		for (let i = 0; i < 20; i++) {
+			expect(generateOrderCode('moderator')).toMatch(/I$/);
+		}
+	});
+
+	it('matches the NNAAX format', () => {
+		expect(generateOrderCode('member')).toMatch(/^\d{2}[A-Z]{2}[ABIM]$/);
 	});
 });

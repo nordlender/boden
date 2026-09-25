@@ -2,6 +2,7 @@ import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 import { db } from '../db/client';
 import { items, orderItems, orders } from '../db/schema';
 import { getMaxRentalDays } from './rental-policy';
+import { todayIsoInOslo } from './dates';
 
 // Reservation page backend (docs/TASKS.md "Reservation"). Orders carry a
 // date range (src/db/schema.ts's orders.fromDate/toDate, both YYYY-MM-DD,
@@ -29,8 +30,10 @@ export function isValidDateRange(range: Partial<ReservationDateRange>): range is
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(range.from) || !/^\d{4}-\d{2}-\d{2}$/.test(range.to)) return false;
 	// The calendar's `min` attribute (ReservationCalendar.astro) only stops a
 	// past date client-side — this is the server-side backstop against a
-	// direct POST bypassing it.
-	const todayIso = new Date().toISOString().slice(0, 10);
+	// direct POST bypassing it. "Today" is always Europe/Oslo's today (the
+	// shop's timezone), not the server host's or a UTC-shifted one — see
+	// src/lib/dates.ts.
+	const todayIso = todayIsoInOslo();
 	if (range.from < todayIso) return false;
 	if (range.from > range.to) return false;
 	// Single gate shared by order creation, split-order creation, the
@@ -155,6 +158,13 @@ function peakConcurrentQuantity(intervals: { start: string; end: string; quantit
 	return peak;
 }
 
+// UTC-based day arithmetic on an already-normalized YYYY-MM-DD string, not a
+// "what day is it right now" read — there's no viewer/server timezone to get
+// wrong here, so this intentionally does NOT go through dates.ts's
+// Oslo-anchored helpers (todayIsoInOslo/dateToIsoInOslo). Constructing with a
+// literal "T00:00:00Z" and stepping with setUTCDate keeps every date in this
+// function on the UTC calendar consistently, which is all that's needed to
+// add one calendar day to a date string.
 function dayAfter(date: string): string {
 	const d = new Date(`${date}T00:00:00Z`);
 	d.setUTCDate(d.getUTCDate() + 1);

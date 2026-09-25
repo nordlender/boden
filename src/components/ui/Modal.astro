@@ -1,8 +1,10 @@
 ---
-// Native <dialog>-based modal primitive — nothing else in the app fills
-// this role today (CalloutPopover.astro is a small `popover`-attribute
-// tooltip, not a real dialog). showModal()/close() give focus-trapping and
-// Escape-to-close for free; only open/close wiring is done by hand here.
+// Native <dialog>-based blocking modal primitive — for genuine
+// full-attention actions (e.g. the reschedule calendar). Non-blocking
+// popups that shouldn't cover the page belong in Popover.astro /
+// ActionPopover.astro / HintPopover.astro instead. showModal()/close() give
+// focus-trapping and Escape-to-close for free; only open/close wiring is
+// done by hand here.
 interface Props {
 	id: string;
 	labelledBy?: string;

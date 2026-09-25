@@ -42,6 +42,16 @@ export const themeToggle = {
 			},
 		],
 	] satisfies IconNode,
+	// tabler's "sun-moon" — shown on hover/focus as a hint of what the click will do.
+	hover: [
+		['path', { d: 'M9.173 14.83a4 4 0 1 1 5.657-5.657' }],
+		[
+			'path',
+			{
+				d: 'm11.294 12.707l.174.247a7.5 7.5 0 0 0 8.845 2.492A9 9 0 0 1 5.642 18.36M3 12h1m8-9v1M5.6 5.6l.7.7M3 21L21 3',
+			},
+		],
+	] satisfies IconNode,
 };
 
 // The navbar's mobile menu trigger: hamburger closed, X open.
@@ -74,41 +84,75 @@ export const detailsToggle = {
 // what it morphs into on hover, focus, or click. Accept/Cancel morph a
 // boxed shape into its bare mark (checkbox → check, boxed X → X); the
 // others gain a small broken/dashed detail to read as "in motion".
+const acceptIcon = {
+	default: [
+		['path', { d: 'm9 11l3 3l8-8' }],
+		['path', { d: 'M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9' }],
+	] satisfies IconNode,
+	hover: [['path', { d: 'm5 12l5 5L20 7' }]] satisfies IconNode,
+};
+
+// Boxed-X mark shared by cancel and reject — a reject is a cancel of the
+// request, so it reuses cancel's icon pair rather than defining its own.
+const cancelIcon = {
+	default: [['path', { d: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm6 4l6 6m0-6l-6 6' }]] satisfies IconNode,
+	hover: [['path', { d: 'M18 6L6 18M6 6l12 12' }]] satisfies IconNode,
+};
+
+const deleteIcon = {
+	default: [
+		['path', { d: 'M4 7h16m-10 4v6m4-6v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3' }],
+	] satisfies IconNode,
+	hover: [
+		['path', { d: 'm3 3l18 18M4 7h3m4 0h9m-10 4v6m4-3v3M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l.077-.923m.307-3.704L19 7M9 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3' }],
+	] satisfies IconNode,
+};
+
+const backIcon = {
+	default: [['path', { d: 'M5 12h14M5 12l6 6m-6-6l6-6' }]] satisfies IconNode,
+	hover: [['path', { d: 'M5 12h6m3 0h1.5m3 0h.5M5 12l6 6m-6-6l6-6' }]] satisfies IconNode,
+};
+
+const nextIcon = {
+	default: [['path', { d: 'M5 12h14m-6 6l6-6m-6-6l6 6' }]] satisfies IconNode,
+	hover: [['path', { d: 'M5 12h.5m3 0H10m3 0h6m-6 6l6-6m-6-6l6 6' }]] satisfies IconNode,
+};
+
+const viewIcon = {
+	default: [
+		['path', { d: 'M10 12a2 2 0 1 0 4 0a2 2 0 0 0-4 0' }],
+		['path', { d: 'M21 12q-3.6 6-9 6t-9-6q3.6-6 9-6t9 6' }],
+	] satisfies IconNode,
+	hover: [['path', { d: 'M21 9q-3.6 4-9 4T3 9m0 6l2.5-3.8M21 14.976L18.508 11.2M9 17l.5-4m5.5 4l-.5-4' }]] satisfies IconNode,
+};
+
+const saveIcon = {
+	default: [
+		['path', { d: 'M6 4h10l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2' }],
+		['path', { d: 'M10 14a2 2 0 1 0 4 0a2 2 0 1 0-4 0' }],
+		['path', { d: 'M14 4l0 4l-6 0l0-4' }],
+	] satisfies IconNode,
+	hover: [['path', { d: 'M5 12l5 5l10-10' }]] satisfies IconNode,
+};
+
+const addIcon = {
+	default: [
+		['path', { d: 'M12 5l0 14' }],
+		['path', { d: 'M5 12l14 0' }],
+	] satisfies IconNode,
+	hover: [['path', { d: 'M5 12l5 5l10-10' }]] satisfies IconNode,
+};
+
 export const actionIcons = {
-	accept: {
-		default: [
-			['path', { d: 'm9 11l3 3l8-8' }],
-			['path', { d: 'M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9' }],
-		] satisfies IconNode,
-		hover: [['path', { d: 'm5 12l5 5L20 7' }]] satisfies IconNode,
-	},
-	cancel: {
-		default: [['path', { d: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm6 4l6 6m0-6l-6 6' }]] satisfies IconNode,
-		hover: [['path', { d: 'M18 6L6 18M6 6l12 12' }]] satisfies IconNode,
-	},
-	delete: {
-		default: [
-			['path', { d: 'M4 7h16m-10 4v6m4-6v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3' }],
-		] satisfies IconNode,
-		hover: [
-			['path', { d: 'm3 3l18 18M4 7h3m4 0h9m-10 4v6m4-3v3M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l.077-.923m.307-3.704L19 7M9 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3' }],
-		] satisfies IconNode,
-	},
-	back: {
-		default: [['path', { d: 'M5 12h14M5 12l6 6m-6-6l6-6' }]] satisfies IconNode,
-		hover: [['path', { d: 'M5 12h6m3 0h1.5m3 0h.5M5 12l6 6m-6-6l6-6' }]] satisfies IconNode,
-	},
-	next: {
-		default: [['path', { d: 'M5 12h14m-6 6l6-6m-6-6l6 6' }]] satisfies IconNode,
-		hover: [['path', { d: 'M5 12h.5m3 0H10m3 0h6m-6 6l6-6m-6-6l6 6' }]] satisfies IconNode,
-	},
-	view: {
-		default: [
-			['path', { d: 'M10 12a2 2 0 1 0 4 0a2 2 0 0 0-4 0' }],
-			['path', { d: 'M21 12q-3.6 6-9 6t-9-6q3.6-6 9-6t9 6' }],
-		] satisfies IconNode,
-		hover: [['path', { d: 'M21 9q-3.6 4-9 4T3 9m0 6l2.5-3.8M21 14.976L18.508 11.2M9 17l.5-4m5.5 4l-.5-4' }]] satisfies IconNode,
-	},
+	accept: acceptIcon,
+	cancel: cancelIcon,
+	reject: cancelIcon,
+	delete: deleteIcon,
+	back: backIcon,
+	next: nextIcon,
+	view: viewIcon,
+	save: saveIcon,
+	add: addIcon,
 } as const;
 
 export type ActionIconKey = keyof typeof actionIcons;

@@ -6,21 +6,17 @@ export const prerender = false;
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import AdminNavbar from '../../components/AdminNavbar.astro';
 import Button from '../../components/ui/Button.astro';
+import TextMorphButton from '../../components/ui/TextMorphButton.astro';
 import { listAvailablePickupDates } from '../../lib/pickupDays';
+import { todayIsoInOslo, formatDateDisplay } from '../../lib/dates';
 
 const redirectTo = Astro.url.pathname;
 const dates = await listAvailablePickupDates();
-const todayIso = new Date().toISOString().slice(0, 10);
+// Europe/Oslo's today, not the server host's — see src/lib/dates.ts. Same
+// bug class as the reservation calendar/form (#50): this page's `min` and
+// past-date strikethrough were comparing against a UTC-derived "today".
+const todayIso = todayIsoInOslo();
 const error = Astro.url.searchParams.get('error');
-
-function formatDisplay(value: string) {
-	return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
-		weekday: 'short',
-		month: 'short',
-		day: 'numeric',
-		year: 'numeric',
-	});
-}
 ---
 <AdminLayout title="Pick-up days">
 	<AdminNavbar />

@@ -138,21 +138,62 @@ const {
 				<p class="mt-0.5 text-xs text-text-muted">
 					Quantity pulled out for repair or inspection — excluded from stock everywhere until an admin sets this back to 0. Doesn't affect past orders.
 				</p>
-				<form method="post" action="/api/wizard/service" class="mt-1.5 flex items-center gap-2">
+				<form
+					method="post"
+					action="/api/wizard/service"
+					class="service-quantity-form mt-1.5 flex flex-col gap-1"
+					data-in-stock={inStock}
+					data-service-quantity={serviceQuantity}
+				>
 					<input type="hidden" name="itemId" value={itemId} />
 					<input type="hidden" name="redirectTo" value={Astro.url.pathname} />
-					<input
-						type="number"
-						name="quantity"
-						min="0"
-						max={totalStock}
-						value={serviceQuantity}
-						class="w-20 shrink-0 rounded border border-border-interactive px-2 py-1 text-sm"
-					/>
-					<span class="text-xs text-text-muted">of {totalStock} total</span>
-					<button type="submit" class="rounded border border-border-strong px-2 py-1 text-xs text-text-muted hover:bg-surface">Save</button>
+					<div class="flex items-center gap-2">
+						<input
+							type="number"
+							name="quantity"
+							min="0"
+							max={totalStock}
+							value={serviceQuantity}
+							class="service-quantity-input w-20 shrink-0 rounded border border-border-interactive px-2 py-1 text-sm"
+						/>
+						<span class="text-xs text-text-muted">of {totalStock} total</span>
+						<button type="submit" class="rounded border border-border-strong px-2 py-1 text-xs text-text-muted hover:bg-surface">Save</button>
+					</div>
+					<p class="service-quantity-warning hidden text-xs text-warning-text" role="alert"></p>
 				</form>
 			</div>
 		</div>
 	</div>
 </div>
+
+<script>
+	// Real-time client-side warning (issue #88): as the admin edits the
+	// service-quantity input, project what inStock would become and flag it
+	// if that's negative — reserved units already committed beyond what's
+	// left after pulling this many out for service. Doesn't block submit;
+	// the server-side setItemServiceQuantity check (stockCount bounds only)
+	// still applies separately.
+	document.addEventListener('input', (event) => {
+		const input = (event.target as Element).closest<HTMLInputElement>('.service-quantity-input');
+		if (!input) return;
+		const form = input.closest<HTMLFormElement>('.service-quantity-form');
+		const warning = form?.querySelector<HTMLElement>('.service-quantity-warning');
+		if (!form || !warning) return;
+
+		const inStock = Number(form.dataset.inStock);
+		const serviceQuantity = Number(form.dataset.serviceQuantity);
+		const newQuantity = Number(input.value);
+		if (!Number.isFinite(newQuantity)) {
+			warning.classList.add('hidden');
+			return;
+		}
+
+		// inStock already has the current serviceQuantity subtracted out, so
+		// re-add it and subtract the value the admin is about to submit.
+		const projectedInStock = inStock + serviceQuantity - newQuantity;
+		if (projectedInStock < 0) {
+			warning.textContent = `This would leave stock at ${projectedInStock} — more is already reserved than would be left.`;
+		}
+		warning.classList.toggle('hidden', projectedInStock >= 0);
+	});
+</script>

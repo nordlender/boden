@@ -25,13 +25,13 @@ const { node } = Astro.props;
 					<span class="truncate">{node.name}</span>
 				</summary>
 				{node.children && node.children.length > 0 ? (
-					<ul class="ml-2.5 border-l border-border pl-3">
+					<ul class="ml-2 border-l border-border pl-3">
 						{node.children.map((child) => (
 							<FileExplorerNode node={child} />
 						))}
 					</ul>
 				) : (
-					<p class="ml-2.5 border-l border-border py-1 pl-3 text-text-muted">Empty</p>
+					<p class="ml-2 border-l border-border py-1 pl-3 text-text-muted">Empty</p>
 				)}
 			</details>
 		</li>

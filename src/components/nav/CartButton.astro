@@ -2,15 +2,17 @@
 import IconButton from '../ui/IconButton.astro';
 import { iconOnlyPixelSize } from '../../lib/button-styles';
 
-// IconButton defaults to size="md" — this inline svg (the escape-hatch slot
-// IconButton offers when AppIcon's fixed icon set doesn't cover a shape,
-// see IconButton.astro) has to size itself to match, since it renders
-// outside IconButton's own AppIcon-driven sizing.
+// This inline svg (the escape-hatch slot IconButton offers when AppIcon's
+// fixed icon set doesn't cover a shape, see IconButton.astro) renders
+// outside IconButton's own AppIcon-driven sizing, so it has to size itself
+// to match explicitly rather than relying on IconButton's default staying
+// in sync with `size` below.
 const size = iconOnlyPixelSize.md;
 ---
 
 <IconButton
 	label="Toggle cart"
+	size="md"
 	data-cart-toggle
 	aria-expanded="false"
 	aria-controls="cart-sidebar"

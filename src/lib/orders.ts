@@ -188,8 +188,22 @@ function insertOrder(
   throw new Error('Failed to generate a unique order code');
 }
 
-export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
-  const itemIds = input.cartEntries.map((e) => e.itemId);
+// Shared by createOrder/createSplitOrders: drops cart entries pointing at
+// items that no longer exist or were archived — stock shortfall itself is
+// resolved later by the moderator at the confirm step (see
+// orderItems.retrievedQuantity), not here.
+//
+// Deliberately not checked here: item.product.status. Unlike getCartItems
+// (src/lib/cart.ts), this doesn't drop an entry whose product was
+// unpublished after it was added to the cart — so a stale/tampered cart can
+// still produce an orderItems row for it. Accepted for now rather than fixed
+// here: the not-yet-built moderator hand-out flow is expected to (a) warn
+// when an order contains an item that's since become archived/unpublished,
+// and (b) let the moderator hand out only a subset of an order's items, so
+// they can simply decline to hand out that one instead of it being a hard
+// failure. See the moderator-workflow-deferred memory.
+async function resolveOrderableEntries(cartEntries: CartEntry[]): Promise<CartEntry[]> {
+  const itemIds = cartEntries.map((e) => e.itemId);
   const validItems = itemIds.length
     ? await db
         .select({ id: items.id })
@@ -197,21 +211,11 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         .where(and(inArray(items.id, itemIds), eq(items.archived, false)))
     : [];
   const validItemIds = new Set(validItems.map((i) => i.id));
+  return cartEntries.filter((e) => validItemIds.has(e.itemId));
+}
 
-  // Drop entries pointing at items that no longer exist or were archived —
-  // stock shortfall itself is resolved later by the moderator at the confirm
-  // step (see orderItems.retrievedQuantity), not here.
-  //
-  // Deliberately not checked here: item.product.status. Unlike
-  // getCartItems (src/lib/cart.ts), this doesn't drop an entry whose product
-  // was unpublished after it was added to the cart — so a stale/tampered
-  // cart can still produce an orderItems row for it. Accepted for now rather
-  // than fixed here: the not-yet-built moderator hand-out flow is expected to
-  // (a) warn when an order contains an item that's since become
-  // archived/unpublished, and (b) let the moderator hand out only a subset of
-  // an order's items, so they can simply decline to hand out that one instead
-  // of it being a hard failure. See the moderator-workflow-deferred memory.
-  const entriesToOrder = input.cartEntries.filter((e) => validItemIds.has(e.itemId));
+export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
+  const entriesToOrder = await resolveOrderableEntries(input.cartEntries);
   if (entriesToOrder.length === 0) {
     return { ok: false, error: 'empty_cart' };
   }
@@ -280,15 +284,7 @@ export type CreateSplitOrdersResult =
 // when nothing (or everything) was split — e.g. splitItemIds is empty, or
 // names every item still in the cart.
 export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<CreateSplitOrdersResult> {
-  const itemIds = input.cartEntries.map((e) => e.itemId);
-  const validItems = itemIds.length
-    ? await db
-        .select({ id: items.id })
-        .from(items)
-        .where(and(inArray(items.id, itemIds), eq(items.archived, false)))
-    : [];
-  const validItemIds = new Set(validItems.map((i) => i.id));
-  const entriesToOrder = input.cartEntries.filter((e) => validItemIds.has(e.itemId));
+  const entriesToOrder = await resolveOrderableEntries(input.cartEntries);
   if (entriesToOrder.length === 0) {
     return { ok: false, error: 'empty_cart' };
   }

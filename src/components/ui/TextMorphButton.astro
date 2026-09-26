@@ -20,6 +20,8 @@ interface Props {
 	class?: string;
 	form?: string;
 	formaction?: string;
+	popovertarget?: string;
+	popovertargetaction?: 'show' | 'hide' | 'toggle';
 }
 
 const { action, variant = 'secondary', size = 'md', type = 'button', href, disabled = false, class: className, ...rest } = Astro.props;

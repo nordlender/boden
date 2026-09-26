@@ -46,15 +46,18 @@ const GRID = '1.25rem 4.5rem 7rem 6rem 6rem 1fr 3rem';
 		<PickupDayBubble kind="mine" />
 		<span data-field="date-display" class="text-text"></span>
 		<span data-field="weekday-display" class="text-text-muted"></span>
+		{/* lang="en-GB" forces the native time picker to 24h — a bare type="time" instead follows the browser/OS locale, which shows AM/PM on a US-locale Chrome. */}
 		<input
 			type="time"
 			required
+			lang="en-GB"
 			data-field="startTime"
 			class="w-full rounded border border-border-interactive px-1.5 py-1 text-xs"
 		/>
 		<input
 			type="time"
 			required
+			lang="en-GB"
 			data-field="endTime"
 			class="w-full rounded border border-border-interactive px-1.5 py-1 text-xs"
 		/>

@@ -23,11 +23,12 @@ const labelClasses = 'mb-1 block text-xs text-text-muted';
 	</div>
 	<div>
 		<label class={labelClasses} for="recurring-start-time">From</label>
-		<input id="recurring-start-time" name="startTime" type="time" required class={fieldClasses} />
+		{/* lang="en-GB" forces the native time picker to 24h — a bare type="time" instead follows the browser/OS locale, which shows AM/PM on a US-locale Chrome. */}
+		<input id="recurring-start-time" name="startTime" type="time" lang="en-GB" required class={fieldClasses} />
 	</div>
 	<div>
 		<label class={labelClasses} for="recurring-end-time">To</label>
-		<input id="recurring-end-time" name="endTime" type="time" required class={fieldClasses} />
+		<input id="recurring-end-time" name="endTime" type="time" lang="en-GB" required class={fieldClasses} />
 	</div>
 	<div>
 		<label class={labelClasses} for="recurring-start-date">Between</label>

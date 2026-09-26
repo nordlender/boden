@@ -29,8 +29,8 @@ const titleId = title ? `${id}-title` : undefined;
 	{triggerLabel}
 </button>
 
-<Popover id={id} placement="anchor" side={side} labelledBy={titleId} class="p-0 shadow-lg">
-	<Callout variant={variant} title={title} titleId={titleId}>
+<Popover id={id} placement="anchor" side={side} labelledBy={titleId} chrome={false}>
+	<Callout variant={variant} title={title} titleId={titleId} class="shadow-lg">
 		<slot />
 	</Callout>
 </Popover>

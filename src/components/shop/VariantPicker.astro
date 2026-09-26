@@ -1,11 +1,12 @@
 ---
 // Owns the "choose a variant, add to cart" form on the product page: the
 // variant select (when the product has more than one), the resulting
-// attribute list, a set's "Includes" breakdown, stock message, quantity
-// cap, and add-to-cart button — plus the client-side script that keeps all
-// of those (and the product image rendered by the page above this form) in
-// sync as the selected variant changes, including a `?item=<id>`/`?set=<id>`
-// preselect from an ItemCard link.
+// attribute list (items only), a set's automatically-derived "Includes"
+// breakdown, stock message, quantity cap, and add-to-cart button — plus the
+// client-side script that keeps all of those (and the product image
+// rendered by the page above this form) in sync as the selected variant
+// changes, including a `?item=<id>`/`?set=<id>` preselect from an ItemCard
+// link.
 //
 // A product's variant slot is an item OR a set (src/db/schema.ts's `sets`
 // comment), and the two are assumed mutually exclusive per product — a
@@ -14,11 +15,18 @@
 // it: it picks exactly one kind (items, unless there are none) and never
 // shows a set as an option alongside an item, or vice versa.
 //
+// A set has no attribute template of its own — a set's "Includes" content
+// is derived automatically from its components' own real attribute values
+// (src/lib/sets.ts's getSetComponentDisplayBulk), and its picker option
+// text is the admin's own manually-typed `label` (e.g. "S"), not anything
+// joined from attributes.
+//
 // The product image lives in the page, not here (it's rendered above this
 // form in a separate grid column) — the script below reaches it via the
 // same `[data-product-image]`/`[data-product-image-placeholder]` selectors
 // the page renders, rather than this component owning that markup too.
 import type { ShopItem, ShopSet } from '../../lib/shop';
+import type { SetComponentDisplay } from '../../lib/sets';
 import Button from '../ui/Button.astro';
 
 interface Props {
@@ -31,21 +39,21 @@ interface Props {
 
 const { items, sets, productSlug, thumbnailImageUrl, attributeKeyOrder } = Astro.props;
 
-interface Variant {
-	kind: 'item' | 'set';
-	id: number;
-	imageUrl: string | null;
-	inStock: number;
-	attributes: { key: string; value: string }[];
-	children: { name: string; quantity: number }[];
-}
+type Variant =
+	| { kind: 'item'; id: number; imageUrl: string | null; inStock: number; attributes: { key: string; value: string }[] }
+	| { kind: 'set'; id: number; imageUrl: string | null; inStock: number; label: string | null; componentDisplay: SetComponentDisplay[] };
 
 const variantKind: 'item' | 'set' = items.length > 0 ? 'item' : 'set';
 const variants: Variant[] =
 	variantKind === 'item'
-		? items.map((item): Variant => ({ kind: 'item', id: item.id, imageUrl: item.imageUrl, inStock: item.inStock, attributes: item.attributes, children: [] }))
-		: sets.map((set): Variant => ({ kind: 'set', id: set.id, imageUrl: set.imageUrl, inStock: set.inStock, attributes: set.attributes, children: set.children }));
+		? items.map((item): Variant => ({ kind: 'item', id: item.id, imageUrl: item.imageUrl, inStock: item.inStock, attributes: item.attributes }))
+		: sets.map((set): Variant => ({ kind: 'set', id: set.id, imageUrl: set.imageUrl, inStock: set.inStock, label: set.label, componentDisplay: set.componentDisplay }));
 const initialVariant = variants[0] ?? null;
+
+function optionLabel(variant: Variant): string {
+	const text = variant.kind === 'item' ? variant.attributes.map((a) => a.value).join(' / ') : variant.label;
+	return text || `Option ${variant.id}`;
+}
 ---
 
 <form action="/api/cart/add" method="post" class="flex flex-col gap-4 border-t border-border pt-4">
@@ -79,7 +87,7 @@ const initialVariant = variants[0] ?? null;
 				</label>
 				<select id="variant" data-variant-select class="w-full rounded-md border border-border-interactive px-3 py-2 text-sm">
 					{variants.map((variant) => {
-						const label = variant.attributes.map((a) => a.value).join(' / ') || `Option ${variant.id}`;
+						const label = optionLabel(variant);
 						return (
 							<option
 								value={`${variant.kind}:${variant.id}`}
@@ -89,8 +97,8 @@ const initialVariant = variants[0] ?? null;
 								data-id={variant.id}
 								data-image={variant.imageUrl ?? thumbnailImageUrl ?? ''}
 								data-stock={variant.inStock}
-								data-attributes={JSON.stringify(variant.attributes)}
-								data-children={JSON.stringify(variant.children)}
+								data-attributes={variant.kind === 'item' ? JSON.stringify(variant.attributes) : '[]'}
+								data-component-display={variant.kind === 'set' ? JSON.stringify(variant.componentDisplay) : '[]'}
 							>
 								{variant.kind === 'set' ? `Set — ${label}` : label}
 								{variant.inStock <= 0 ? ' (out of stock)' : ''}
@@ -102,9 +110,9 @@ const initialVariant = variants[0] ?? null;
 		)
 	}
 
-	{attributeKeyOrder.length > 0 && (
+	{variantKind === 'item' && attributeKeyOrder.length > 0 && (
 		<dl data-item-attributes class="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-sm">
-			{(initialVariant?.attributes ?? []).map((attribute) => (
+			{(initialVariant?.kind === 'item' ? initialVariant.attributes : []).map((attribute) => (
 				<div class="contents">
 					<dt class="text-text-muted">{attribute.key}</dt>
 					<dd class="text-text">{attribute.value}</dd>
@@ -113,16 +121,43 @@ const initialVariant = variants[0] ?? null;
 		</dl>
 	)}
 
-	<div data-set-includes hidden={initialVariant?.kind !== 'set'} class="border-t border-border pt-4 text-sm">
-		<p class="mb-1 font-medium text-text">Includes</p>
-		<ul data-set-includes-list class="flex flex-col gap-0.5 text-text-muted">
-			{(initialVariant?.kind === 'set' ? initialVariant.children : []).map((child) => (
-				<li>
-					{child.quantity > 1 ? `${child.quantity}× ` : ''}
-					{child.name}
-				</li>
-			))}
-		</ul>
+	<div data-set-includes hidden={variantKind !== 'set'} class="border-t border-border pt-4 text-sm">
+		<p class="mb-2 font-medium text-text">Includes</p>
+		<div data-set-includes-content class="flex flex-col gap-3">
+			{(initialVariant?.kind === 'set' ? initialVariant.componentDisplay : []).map((group) =>
+				group.kind === 'table' ? (
+					<table class="w-full border-collapse text-xs">
+						<thead>
+							<tr class="border-b border-border text-left text-text-muted">
+								<th class="py-1 pr-3 font-medium">Component</th>
+								{group.keys.map((key) => (
+									<th class="py-1 pr-3 font-medium">{key}</th>
+								))}
+							</tr>
+						</thead>
+						<tbody>
+							{group.rows.map((row) => (
+								<tr class="border-b border-border last:border-0">
+									<td class="py-1 pr-3 text-text">
+										{row.productTitle}
+										{row.quantity > 1 && ` (×${row.quantity})`}
+									</td>
+									{row.values.map((value) => (
+										<td class="py-1 pr-3 text-text-muted">{value ?? '—'}</td>
+									))}
+								</tr>
+							))}
+						</tbody>
+					</table>
+				) : (
+					<p class="text-text-muted">
+						{group.quantity > 1 ? `${group.quantity}× ` : ''}
+						<span class="text-text">{group.productTitle}</span>
+						{group.attributes.length > 0 && ` — ${group.attributes.map((a) => `${a.key}: ${a.value}`).join(', ')}`}
+					</p>
+				),
+			)}
+		</div>
 	</div>
 
 	{/* TODO: Style later, warning? — is "out of stock" an error or a warning state? */}
@@ -156,6 +191,24 @@ const initialVariant = variants[0] ?? null;
 	// including a `?item=<id>`/`?set=<id>` preselect from an ItemCard link,
 	// applied here rather than server-side since the product page is
 	// prerendered.
+	interface SetComponentTableRow {
+		productTitle: string;
+		quantity: number;
+		values: (string | null)[];
+	}
+	interface SetComponentTable {
+		kind: 'table';
+		keys: string[];
+		rows: SetComponentTableRow[];
+	}
+	interface SetComponentLine {
+		kind: 'line';
+		productTitle: string;
+		quantity: number;
+		attributes: { key: string; value: string }[];
+	}
+	type SetComponentDisplay = SetComponentTable | SetComponentLine;
+
 	const select = document.querySelector<HTMLSelectElement>('[data-variant-select]');
 	const image = document.querySelector<HTMLImageElement>('[data-product-image]');
 	const imagePlaceholder = document.querySelector<HTMLElement>('[data-product-image-placeholder]');
@@ -166,7 +219,7 @@ const initialVariant = variants[0] ?? null;
 	const itemIdInput = document.querySelector<HTMLInputElement>('[data-variant-item-id]');
 	const setIdInput = document.querySelector<HTMLInputElement>('[data-variant-set-id]');
 	const setIncludes = document.querySelector<HTMLElement>('[data-set-includes]');
-	const setIncludesList = document.querySelector<HTMLElement>('[data-set-includes-list]');
+	const setIncludesContent = document.querySelector<HTMLElement>('[data-set-includes-content]');
 
 	function renderAttributes(json: string | undefined) {
 		if (!attributesList || !json) return;
@@ -195,24 +248,81 @@ const initialVariant = variants[0] ?? null;
 		}
 	}
 
+	function renderComponentTable(group: SetComponentTable): HTMLTableElement {
+		const table = document.createElement('table');
+		table.className = 'w-full border-collapse text-xs';
+
+		const thead = document.createElement('thead');
+		const headRow = document.createElement('tr');
+		headRow.className = 'border-b border-border text-left text-text-muted';
+		const componentHeader = document.createElement('th');
+		componentHeader.className = 'py-1 pr-3 font-medium';
+		componentHeader.textContent = 'Component';
+		headRow.appendChild(componentHeader);
+		for (const key of group.keys) {
+			const th = document.createElement('th');
+			th.className = 'py-1 pr-3 font-medium';
+			th.textContent = key;
+			headRow.appendChild(th);
+		}
+		thead.appendChild(headRow);
+		table.appendChild(thead);
+
+		const tbody = document.createElement('tbody');
+		for (const row of group.rows) {
+			const tr = document.createElement('tr');
+			tr.className = 'border-b border-border last:border-0';
+
+			const nameCell = document.createElement('td');
+			nameCell.className = 'py-1 pr-3 text-text';
+			nameCell.textContent = row.quantity > 1 ? `${row.productTitle} (×${row.quantity})` : row.productTitle;
+			tr.appendChild(nameCell);
+
+			for (const value of row.values) {
+				const td = document.createElement('td');
+				td.className = 'py-1 pr-3 text-text-muted';
+				td.textContent = value ?? '—';
+				tr.appendChild(td);
+			}
+			tbody.appendChild(tr);
+		}
+		table.appendChild(tbody);
+
+		return table;
+	}
+
+	function renderComponentLine(group: SetComponentLine): HTMLParagraphElement {
+		const p = document.createElement('p');
+		p.className = 'text-text-muted';
+
+		const prefix = group.quantity > 1 ? `${group.quantity}× ` : '';
+		const nameSpan = document.createElement('span');
+		nameSpan.className = 'text-text';
+		nameSpan.textContent = group.productTitle;
+
+		const attributeText =
+			group.attributes.length > 0 ? ` — ${group.attributes.map((a) => `${a.key}: ${a.value}`).join(', ')}` : '';
+
+		p.append(prefix, nameSpan, attributeText);
+		return p;
+	}
+
 	function renderSetIncludes(kind: string | undefined, json: string | undefined) {
-		if (!setIncludes || !setIncludesList) return;
+		if (!setIncludes || !setIncludesContent) return;
 		const isSet = kind === 'set';
 		setIncludes.hidden = !isSet;
 		if (!isSet) return;
 
-		let children: { name: string; quantity: number }[];
+		let groups: SetComponentDisplay[];
 		try {
-			children = json ? JSON.parse(json) : [];
+			groups = json ? JSON.parse(json) : [];
 		} catch {
-			children = [];
+			groups = [];
 		}
 
-		setIncludesList.replaceChildren();
-		for (const { name, quantity } of children) {
-			const li = document.createElement('li');
-			li.textContent = quantity > 1 ? `${quantity}× ${name}` : name;
-			setIncludesList.appendChild(li);
+		setIncludesContent.replaceChildren();
+		for (const group of groups) {
+			setIncludesContent.appendChild(group.kind === 'table' ? renderComponentTable(group) : renderComponentLine(group));
 		}
 	}
 
@@ -253,7 +363,7 @@ const initialVariant = variants[0] ?? null;
 		}
 
 		renderAttributes(option.dataset.attributes);
-		renderSetIncludes(kind, option.dataset.children);
+		renderSetIncludes(kind, option.dataset.componentDisplay);
 	}
 
 	if (select) {

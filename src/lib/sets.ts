@@ -14,7 +14,13 @@ export interface SetChild {
 }
 
 export interface SetChildDetail extends SetChild {
-	name: string;
+	// Customer-facing — the component's own product title, never its
+	// items.name (that field is internal/admin-only everywhere else in this
+	// codebase, see schema.ts's comment on it, and a set's children are
+	// shown to customers). Falls back to the item's internal name only in
+	// the degenerate case of an unassigned component item, same fallback
+	// cart.ts already uses for a plain item line's own productTitle.
+	productTitle: string;
 	imageUrl: string | null;
 	archived: boolean;
 	stockCount: number;
@@ -46,7 +52,7 @@ export async function getSetChildrenDetailedBulk(setIds: number[]): Promise<Map<
 	if (setIds.length === 0) return new Map();
 	const rows = await db.query.setItems.findMany({
 		where: (t, { inArray: inArrayCol }) => inArrayCol(t.setId, setIds),
-		with: { item: true },
+		with: { item: { with: { product: true } } },
 	});
 
 	const bySet = new Map<number, SetChildDetail[]>();
@@ -55,7 +61,7 @@ export async function getSetChildrenDetailedBulk(setIds: number[]): Promise<Map<
 		list.push({
 			itemId: row.itemId,
 			quantity: row.quantity,
-			name: row.item.name,
+			productTitle: row.item.product?.title ?? row.item.name,
 			imageUrl: row.item.imageUrl,
 			archived: row.item.archived,
 			stockCount: row.item.stockCount,
@@ -127,4 +133,150 @@ export function computeSetAvailability(
 		inStock = Math.min(inStock, Math.floor((child.stockCount - reserved) / child.quantity));
 	}
 	return { stockCount, inStock: Math.max(inStock, 0) };
+}
+
+// ---------------------------------------------------------------------------
+// Set contents display — a set has no attribute template of its own (see
+// schema.ts's `sets.label` comment): what it "includes" is derived
+// automatically from its components' own, already-existing attribute
+// values, never entered separately by an admin. Components that share the
+// exact same attribute-key signature (same product template) are rendered
+// as one table with a shared header, e.g. a rack of cams at different
+// sizes; anything else — a component with no siblings sharing its
+// signature, or none with attributes at all — is just a line.
+// ---------------------------------------------------------------------------
+
+export interface SetComponentTableRow {
+	productTitle: string;
+	quantity: number;
+	// Aligned to the table's own `keys` — null where this row's own item has
+	// no value for that key (shouldn't normally happen once a column has
+	// been kept at all, see buildComponentDisplay's blank-column trim, but
+	// kept nullable rather than assumed non-empty).
+	values: (string | null)[];
+}
+
+export interface SetComponentTable {
+	kind: 'table';
+	keys: string[];
+	rows: SetComponentTableRow[];
+}
+
+export interface SetComponentLine {
+	kind: 'line';
+	productTitle: string;
+	quantity: number;
+	attributes: { key: string; value: string }[];
+}
+
+export type SetComponentDisplay = SetComponentTable | SetComponentLine;
+
+interface ComponentRow {
+	quantity: number;
+	item: {
+		name: string;
+		product: { title: string; attributeKeys: { name: string }[] } | null;
+		attributeValues: { value: string; attribute: { name: string } }[];
+	};
+}
+
+interface ComponentInfo {
+	productTitle: string;
+	quantity: number;
+	keys: string[]; // this component's own product's attribute-key names, in template order
+	valueByKey: Map<string, string>;
+}
+
+// Groups a set's components by whether they share the exact same
+// attribute-key signature (same set of key names, in the same order — keys
+// come from a per-product template, so this really means "do these
+// components' products define an identical attribute schema"). A group of
+// 2+ components sharing a non-empty signature becomes one table, since the
+// same columns then mean the same thing across every row; a lone component,
+// or one whose product has no attribute keys at all, is just a line.
+function buildComponentDisplay(rows: ComponentRow[]): SetComponentDisplay[] {
+	const components: ComponentInfo[] = rows.map((row) => ({
+		productTitle: row.item.product?.title ?? row.item.name,
+		quantity: row.quantity,
+		keys: row.item.product?.attributeKeys.map((key) => key.name) ?? [],
+		valueByKey: new Map(row.item.attributeValues.map((value) => [value.attribute.name, value.value])),
+	}));
+
+	const groups = new Map<string, ComponentInfo[]>();
+	for (const component of components) {
+		// \0 can't appear in a real attribute-key name, so joining on it is a
+		// safe way to turn an ordered key list into one comparable string.
+		const signature = component.keys.join('\u0000');
+		const group = groups.get(signature) ?? [];
+		group.push(component);
+		groups.set(signature, group);
+	}
+
+	const display: SetComponentDisplay[] = [];
+	for (const [signature, group] of groups) {
+		const keys = signature ? signature.split('\u0000') : [];
+		// Drop a column entirely if every row in the group left it blank — a
+		// stub itemAttributeValues row (schema.ts's Work notes on fanning out
+		// new template fields to existing items) shouldn't show up as an
+		// empty column. Reused as-is for the single-component line case
+		// below: there, this is just "that component's own non-blank
+		// attributes".
+		const usedKeys = keys.filter((key) => group.some((component) => (component.valueByKey.get(key) ?? '') !== ''));
+
+		if (group.length > 1 && usedKeys.length > 0) {
+			display.push({
+				kind: 'table',
+				keys: usedKeys,
+				rows: group.map((component) => ({
+					productTitle: component.productTitle,
+					quantity: component.quantity,
+					values: usedKeys.map((key) => component.valueByKey.get(key) ?? null),
+				})),
+			});
+		} else {
+			for (const component of group) {
+				display.push({
+					kind: 'line',
+					productTitle: component.productTitle,
+					quantity: component.quantity,
+					attributes: usedKeys
+						.map((key) => ({ key, value: component.valueByKey.get(key) ?? '' }))
+						.filter((attribute) => attribute.value !== ''),
+				});
+			}
+		}
+	}
+	return display;
+}
+
+export async function getSetComponentDisplayBulk(setIds: number[]): Promise<Map<number, SetComponentDisplay[]>> {
+	if (setIds.length === 0) return new Map();
+	const rows = await db.query.setItems.findMany({
+		where: (t, { inArray: inArrayCol }) => inArrayCol(t.setId, setIds),
+		with: {
+			item: {
+				with: {
+					product: { with: { attributeKeys: { orderBy: (t, { asc }) => asc(t.sortOrder) } } },
+					attributeValues: { with: { attribute: true } },
+				},
+			},
+		},
+	});
+
+	const rowsBySet = new Map<number, ComponentRow[]>();
+	for (const row of rows) {
+		const list = rowsBySet.get(row.setId) ?? [];
+		list.push(row);
+		rowsBySet.set(row.setId, list);
+	}
+
+	const result = new Map<number, SetComponentDisplay[]>();
+	for (const setId of setIds) {
+		result.set(setId, buildComponentDisplay(rowsBySet.get(setId) ?? []));
+	}
+	return result;
+}
+
+export async function getSetComponentDisplay(setId: number): Promise<SetComponentDisplay[]> {
+	return (await getSetComponentDisplayBulk([setId])).get(setId) ?? [];
 }

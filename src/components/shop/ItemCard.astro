@@ -1,11 +1,6 @@
 ---
 import ImagePlaceholder from './ImagePlaceholder.astro';
 
-interface Attribute {
-	key: string;
-	value: string;
-}
-
 interface Props {
 	// Which product-page query param this tile preselects — see
 	// src/pages/products/[slug].astro's `?item=`/`?set=` handling.
@@ -14,11 +9,13 @@ interface Props {
 	productSlug: string;
 	productTitle: string;
 	imageUrl: string | null;
-	attributes: Attribute[];
+	// Already-formatted per-kind subtitle — an item's joined attribute
+	// values, or a set's own manually-typed label — computed by the caller
+	// (ItemGrid) since an item and a set derive it differently.
+	variantLabel: string | null;
 }
 
-const { kind, variantId, productSlug, productTitle, imageUrl, attributes } = Astro.props;
-const variantLabel = attributes.map((a) => a.value).join(' / ');
+const { kind, variantId, productSlug, productTitle, imageUrl, variantLabel } = Astro.props;
 const href = `/products/${productSlug}?${kind}=${variantId}`;
 ---
 

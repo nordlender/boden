@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "afe2ab3c-02dd-4bdf-a31c-98623b197146",
+  "id": "bfe1917d-c6f4-478a-8716-b3537c05bcca",
   "prevId": "f2c6f563-7b64-48cc-a292-73ccea20f1eb",
   "tables": {
     "categories": {
@@ -871,95 +871,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "set_attribute_values": {
-      "name": "set_attribute_values",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "set_id": {
-          "name": "set_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "attribute_id": {
-          "name": "attribute_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "value": {
-          "name": "value",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "''"
-        }
-      },
-      "indexes": {
-        "set_attribute_values_set_attribute_unique": {
-          "name": "set_attribute_values_set_attribute_unique",
-          "columns": [
-            "set_id",
-            "attribute_id"
-          ],
-          "isUnique": true
-        },
-        "set_attribute_values_set_id_idx": {
-          "name": "set_attribute_values_set_id_idx",
-          "columns": [
-            "set_id"
-          ],
-          "isUnique": false
-        },
-        "set_attribute_values_attribute_id_idx": {
-          "name": "set_attribute_values_attribute_id_idx",
-          "columns": [
-            "attribute_id"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "set_attribute_values_set_id_sets_id_fk": {
-          "name": "set_attribute_values_set_id_sets_id_fk",
-          "tableFrom": "set_attribute_values",
-          "tableTo": "sets",
-          "columnsFrom": [
-            "set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "set_attribute_values_attribute_id_product_attribute_keys_id_fk": {
-          "name": "set_attribute_values_attribute_id_product_attribute_keys_id_fk",
-          "tableFrom": "set_attribute_values",
-          "tableTo": "product_attribute_keys",
-          "columnsFrom": [
-            "attribute_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "set_items": {
       "name": "set_items",
       "columns": {
@@ -1083,6 +994,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "image_url": {

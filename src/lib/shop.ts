@@ -8,7 +8,7 @@
 // to what a shopper should see rather than the admin wizard's full set.
 import { db } from '../db/client';
 import { reservedQuantitiesByItem } from './stock';
-import { computeSetAvailability, getSetChildrenDetailedBulk, type SetChildDetail } from './sets';
+import { computeSetAvailability, getSetChildrenDetailedBulk, getSetComponentDisplayBulk, type SetChildDetail, type SetComponentDisplay } from './sets';
 
 export interface ShopAttribute {
 	key: string;
@@ -37,16 +37,17 @@ export interface ShopItem {
 // — see src/db/schema.ts's `sets` comment. `inStock`/`stockCount` are the
 // most sets orderable right now/ever, capped by whichever component has the
 // least room (src/lib/sets.ts's computeSetAvailability) — a set has no
-// stock of its own. `children` is purely for display (the shop page's "this
-// set includes: ..." breakdown), already resolved to real item quantities.
-export interface ShopSetChild {
-	name: string;
-	quantity: number;
-}
-
+// stock of its own. Unlike ShopItem, there's no `attributes` here — a set
+// has no attribute template of its own (see schema.ts's `sets.label`
+// comment): `label` is the admin's own short, manually-typed text
+// distinguishing this set from its siblings, and `componentDisplay` is the
+// automatically-derived "what this set includes" breakdown, sourced from
+// the components' own real attribute values (src/lib/sets.ts's
+// getSetComponentDisplayBulk).
 export interface ShopSet {
 	id: number;
 	name: string;
+	label: string | null;
 	imageUrl: string | null;
 	inStock: number;
 	stockCount: number;
@@ -55,8 +56,7 @@ export interface ShopSet {
 	productTitle: string;
 	categoryName: string | null;
 	subcategoryName: string | null;
-	attributes: ShopAttribute[];
-	children: ShopSetChild[];
+	componentDisplay: SetComponentDisplay[];
 }
 
 // A product's variant slot resolves to either an item or a set — see
@@ -135,20 +135,17 @@ function toShopItem(item: ItemLike, product: ProductLike, reserved: Map<number, 
 // Shared by getShopSets (product nested per-row) and getShopProductBySlug
 // (one product, many sibling sets) — mirrors toShopItem above.
 function toShopSet(
-	set: {
-		id: number;
-		name: string;
-		imageUrl: string | null;
-		attributeValues: { value: string; attribute: { name: string; sortOrder: number } }[];
-	},
+	set: { id: number; name: string; label: string | null; imageUrl: string | null },
 	product: ProductLike,
 	children: SetChildDetail[],
+	componentDisplay: SetComponentDisplay[],
 	reserved: Map<number, number>,
 ): ShopSet {
 	const { stockCount, inStock } = computeSetAvailability(children, reserved);
 	return {
 		id: set.id,
 		name: set.name,
+		label: set.label,
 		imageUrl: set.imageUrl ?? product.thumbnailImageUrl,
 		inStock,
 		stockCount,
@@ -157,8 +154,7 @@ function toShopSet(
 		productTitle: product.title,
 		categoryName: product.category?.name ?? null,
 		subcategoryName: product.subcategory?.name ?? null,
-		attributes: sortAttributes(set.attributeValues),
-		children: children.map((child) => ({ name: child.name, quantity: child.quantity })),
+		componentDisplay,
 	};
 }
 
@@ -197,7 +193,6 @@ export async function getShopSets(): Promise<ShopSet[]> {
 			product: {
 				with: { category: true, subcategory: true },
 			},
-			attributeValues: { with: { attribute: true } },
 		},
 	});
 
@@ -205,11 +200,17 @@ export async function getShopSets(): Promise<ShopSet[]> {
 		(row): row is typeof row & { product: NonNullable<typeof row.product> } => row.product?.status === 'published',
 	);
 
-	const childrenBySet = await getSetChildrenDetailedBulk(published.map((row) => row.id));
+	const setIds = published.map((row) => row.id);
+	const [childrenBySet, componentDisplayBySet] = await Promise.all([
+		getSetChildrenDetailedBulk(setIds),
+		getSetComponentDisplayBulk(setIds),
+	]);
 	const allChildItemIds = [...new Set([...childrenBySet.values()].flat().map((child) => child.itemId))];
 	const reserved = await reservedQuantitiesByItem(allChildItemIds);
 
-	return published.map((row) => toShopSet(row, row.product, childrenBySet.get(row.id) ?? [], reserved));
+	return published.map((row) =>
+		toShopSet(row, row.product, childrenBySet.get(row.id) ?? [], componentDisplayBySet.get(row.id) ?? [], reserved),
+	);
 }
 
 // The shop grid's data source: every item and set variant across every
@@ -247,9 +248,7 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 			items: {
 				with: { attributeValues: { with: { attribute: true } } },
 			},
-			sets: {
-				with: { attributeValues: { with: { attribute: true } } },
-			},
+			sets: true,
 		},
 	});
 
@@ -260,10 +259,16 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 	const items: ShopItem[] = visibleItems.map((item) => toShopItem(item, product, reserved));
 
 	const visibleSets = product.sets.filter((set) => !set.archived);
-	const childrenBySet = await getSetChildrenDetailedBulk(visibleSets.map((set) => set.id));
+	const setIds = visibleSets.map((set) => set.id);
+	const [childrenBySet, componentDisplayBySet] = await Promise.all([
+		getSetChildrenDetailedBulk(setIds),
+		getSetComponentDisplayBulk(setIds),
+	]);
 	const allChildItemIds = [...new Set([...childrenBySet.values()].flat().map((child) => child.itemId))];
 	const reservedForSets = await reservedQuantitiesByItem(allChildItemIds);
-	const sets: ShopSet[] = visibleSets.map((set) => toShopSet(set, product, childrenBySet.get(set.id) ?? [], reservedForSets));
+	const sets: ShopSet[] = visibleSets.map((set) =>
+		toShopSet(set, product, childrenBySet.get(set.id) ?? [], componentDisplayBySet.get(set.id) ?? [], reservedForSets),
+	);
 
 	return {
 		id: product.id,

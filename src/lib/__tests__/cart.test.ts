@@ -81,7 +81,7 @@ vi.mock('../../db/client', async () => {
   // testSet.id === 1, archivedSet.id === 2, hiddenProductSet.id === 3.
   const [testSet] = await db
     .insert(schema.sets)
-    .values({ productId: product.id, slug: 'test-set', name: 'Test Set (internal)' })
+    .values({ productId: product.id, slug: 'test-set', name: 'Test Set (internal)', label: 'M' })
     .returning();
   await db.insert(schema.setItems).values([
     { setId: testSet.id, itemId: 1, quantity: 1 },
@@ -368,10 +368,10 @@ describe('getCartLines', () => {
         quantity: 1,
         stockCount: 1,
         inStock: 1,
-        attributes: [],
+        label: 'M',
         children: [
-          { itemId: 1, name: 'Test Rope 60m (internal)', quantityPerSet: 1 },
-          { itemId: 2, name: 'Test Rope 70m (internal)', quantityPerSet: 2 },
+          { itemId: 1, productTitle: 'Test Rope', quantityPerSet: 1 },
+          { itemId: 2, productTitle: 'Test Rope', quantityPerSet: 2 },
         ],
       },
     ]);

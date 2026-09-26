@@ -23,6 +23,10 @@ const cartLines = await getCartLines(Astro.cookies);
 						const isSet = 'setId' in line;
 						const lineIdField = isSet ? 'setId' : 'itemId';
 						const lineId = isSet ? line.setId : line.itemId;
+						// A set has no attribute template of its own — its subtitle is
+						// the admin's manually-typed label (e.g. "S"), not a joined
+						// attribute list (see cart.ts's CartSetLine comment).
+						const subtitle = isSet ? line.label : line.attributes.map((a) => a.value).join(' / ');
 						return (
 							<div class="py-4">
 								<div class="flex flex-wrap items-center gap-4">
@@ -37,9 +41,7 @@ const cartLines = await getCartLines(Astro.cookies);
 										{isSet && (
 											<span class="ml-2 rounded-full bg-bg-subtle px-2 py-0.5 text-[10px] font-medium text-text-muted">Set</span>
 										)}
-										{line.attributes.length > 0 && (
-											<p class="text-sm text-text-muted">{line.attributes.map((a) => a.value).join(' / ')}</p>
-										)}
+										{subtitle && <p class="text-sm text-text-muted">{subtitle}</p>}
 										{line.quantity > line.inStock && (
 											// TODO: Style later, warning? — low-stock notice, not necessarily an error.
 											<p class="text-sm text-error">Only {Math.max(line.inStock, 0)} left in stock</p>
@@ -82,7 +84,7 @@ const cartLines = await getCartLines(Astro.cookies);
 											return (
 												<li>
 													{totalQuantity > 1 ? `${totalQuantity}× ` : ''}
-													{child.name}
+													{child.productTitle}
 												</li>
 											);
 										})}

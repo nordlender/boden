@@ -175,6 +175,15 @@ export const sets = sqliteTable('sets', {
   slug: text('slug').notNull().unique(),
   // Internal/admin-only label, same as items.name — never shown to customers.
   name: text('name').notNull(),
+  // Short customer-facing text distinguishing this set from its siblings
+  // under the same product (e.g. "S"/"M"/"L") — typed directly by the admin
+  // when creating the set, same as any other manually-entered field. There
+  // is deliberately no attribute-key/value template for sets (unlike items'
+  // productAttributeKeys/itemAttributeValues split): a set's *contents* are
+  // shown automatically, derived from its components' own attribute values
+  // (see src/lib/sets.ts's getSetComponentDisplayBulk), but a set's own
+  // identity/label is not derived — the admin creates each variant by hand.
+  label: text('label'),
   imageUrl: text('image_url'),
   // Soft delete: a set that's ever been ordered has its resolved items
   // living on in orderItems, independent of this row — same rationale as
@@ -207,24 +216,6 @@ export const setItems = sqliteTable('set_items', {
   index('set_items_set_id_idx').on(table.setId),
   index('set_items_item_id_idx').on(table.itemId),
   check('set_items_quantity_positive', sql`${table.quantity} > 0`),
-]);
-
-// ---------------------------------------------------------------------------
-// Set attribute values — a set's own values for its product's attribute
-// template, same split as itemAttributeValues/productAttributeKeys (e.g. the
-// "Indoor Rope Climbing Set" product has a "Size" key; each of its S/M/L set
-// rows owns its own value for it here).
-// ---------------------------------------------------------------------------
-
-export const setAttributeValues = sqliteTable('set_attribute_values', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  setId: integer('set_id').notNull().references(() => sets.id, { onDelete: 'cascade' }),
-  attributeId: integer('attribute_id').notNull().references(() => productAttributeKeys.id, { onDelete: 'cascade' }),
-  value: text('value').notNull().default(''),
-}, (table) => [
-  uniqueIndex('set_attribute_values_set_attribute_unique').on(table.setId, table.attributeId),
-  index('set_attribute_values_set_id_idx').on(table.setId),
-  index('set_attribute_values_attribute_id_idx').on(table.attributeId),
 ]);
 
 export const users = sqliteTable('users', {
@@ -385,7 +376,6 @@ export const productAttributeKeysRelations = relations(productAttributeKeys, ({ 
     references: [products.id],
   }),
   values: many(itemAttributeValues),
-  setValues: many(setAttributeValues),
 }));
 
 export const itemsRelations = relations(items, ({ one, many }) => ({
@@ -415,7 +405,6 @@ export const setsRelations = relations(sets, ({ one, many }) => ({
     references: [products.id],
   }),
   setItems: many(setItems),
-  attributeValues: many(setAttributeValues),
 }));
 
 export const setItemsRelations = relations(setItems, ({ one }) => ({
@@ -426,17 +415,6 @@ export const setItemsRelations = relations(setItems, ({ one }) => ({
   item: one(items, {
     fields: [setItems.itemId],
     references: [items.id],
-  }),
-}));
-
-export const setAttributeValuesRelations = relations(setAttributeValues, ({ one }) => ({
-  set: one(sets, {
-    fields: [setAttributeValues.setId],
-    references: [sets.id],
-  }),
-  attribute: one(productAttributeKeys, {
-    fields: [setAttributeValues.attributeId],
-    references: [productAttributeKeys.id],
   }),
 }));
 

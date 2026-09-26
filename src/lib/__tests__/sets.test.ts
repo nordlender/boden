@@ -1,11 +1,19 @@
 import { describe, it, expect, vi } from 'vitest';
-import { computeSetAvailability, getSetChildren, getValidSetIds, resolveEntriesToItemQuantities } from '../sets';
+import {
+	computeSetAvailability,
+	getSetChildren,
+	getSetComponentDisplay,
+	getSetComponentDisplayBulk,
+	getValidSetIds,
+	resolveEntriesToItemQuantities,
+} from '../sets';
 
-// getSetChildren/getValidSetIds/resolveEntriesToItemQuantities join against
-// the db (src/lib/sets.ts imports ../db/client) — swap it here for a seeded
-// in-memory sqlite db, same pattern as cart.test.ts/orders.test.ts.
-// Deterministic ids: item1/item2/item3 (the only rows ever inserted into
-// `items`), set1 (only row ever inserted into `sets`, archived-set2).
+// getSetChildren/getValidSetIds/resolveEntriesToItemQuantities/
+// getSetComponentDisplayBulk all join against the db (src/lib/sets.ts
+// imports ../db/client) — swap it here for a seeded in-memory sqlite db,
+// same pattern as cart.test.ts/orders.test.ts. Deterministic ids:
+// item1..item7 (the only rows ever inserted into `items`), set1..set4
+// (`sets`) — see the comments alongside each insert below.
 vi.mock('../../db/client', async () => {
 	const { default: Database } = await import('better-sqlite3');
 	const { drizzle } = await import('drizzle-orm/better-sqlite3');
@@ -27,6 +35,43 @@ vi.mock('../../db/client', async () => {
 		{ setId: 1, itemId: 2, quantity: 2 },
 	]);
 	await db.insert(schema.sets).values({ slug: 'archived-set', name: 'Archived Set', archived: true }); // id === 2
+
+	// "Widget" product: two items (4, 5) sharing an identical attribute-key
+	// signature (Size, Color) — both leave Color blank, to also exercise the
+	// all-blank-column trim.
+	const [widget] = await db.insert(schema.products).values({ slug: 'widget', title: 'Widget', status: 'published' }).returning();
+	const [sizeKey] = await db.insert(schema.productAttributeKeys).values({ productId: widget.id, name: 'Size', sortOrder: 0 }).returning();
+	const [colorKey] = await db
+		.insert(schema.productAttributeKeys)
+		.values({ productId: widget.id, name: 'Color', sortOrder: 1 })
+		.returning();
+	await db.insert(schema.items).values({ productId: widget.id, slug: 'item-4', name: 'Item 4', stockCount: 5 }); // id === 4
+	await db.insert(schema.items).values({ productId: widget.id, slug: 'item-5', name: 'Item 5', stockCount: 5 }); // id === 5
+	await db.insert(schema.itemAttributeValues).values([
+		{ itemId: 4, attributeId: sizeKey.id, value: 'S' },
+		{ itemId: 4, attributeId: colorKey.id, value: '' },
+		{ itemId: 5, attributeId: sizeKey.id, value: 'M' },
+		{ itemId: 5, attributeId: colorKey.id, value: '' },
+	]);
+
+	// "Gadget" product: one item (6), no siblings sharing its signature.
+	const [gadget] = await db.insert(schema.products).values({ slug: 'gadget', title: 'Gadget', status: 'published' }).returning();
+	const [typeKey] = await db.insert(schema.productAttributeKeys).values({ productId: gadget.id, name: 'Type', sortOrder: 0 }).returning();
+	await db.insert(schema.items).values({ productId: gadget.id, slug: 'item-6', name: 'Item 6', stockCount: 5 }); // id === 6
+	await db.insert(schema.itemAttributeValues).values({ itemId: 6, attributeId: typeKey.id, value: 'Standard' });
+
+	// Unassigned item (7) — no product, so no attribute keys/values at all.
+	await db.insert(schema.items).values({ slug: 'item-7', name: 'Item 7 (internal)', stockCount: 5 }); // id === 7
+
+	await db.insert(schema.sets).values({ slug: 'set-2', name: 'Set 2' }); // id === 3
+	await db.insert(schema.setItems).values([
+		{ setId: 3, itemId: 4, quantity: 1 },
+		{ setId: 3, itemId: 5, quantity: 2 },
+	]);
+	await db.insert(schema.sets).values({ slug: 'set-3', name: 'Set 3' }); // id === 4
+	await db.insert(schema.setItems).values({ setId: 4, itemId: 6, quantity: 1 });
+	await db.insert(schema.sets).values({ slug: 'set-4', name: 'Set 4' }); // id === 5
+	await db.insert(schema.setItems).values({ setId: 5, itemId: 7, quantity: 1 });
 
 	return { db };
 });
@@ -117,5 +162,56 @@ describe('resolveEntriesToItemQuantities', () => {
 	it('contributes nothing for a set that no longer has any components', async () => {
 		const result = await resolveEntriesToItemQuantities([{ setId: 2, quantity: 5 }]);
 		expect(result).toEqual([]);
+	});
+});
+
+describe('getSetComponentDisplayBulk', () => {
+	it('groups components sharing an identical attribute-key signature into one table, dropping all-blank columns', async () => {
+		const result = await getSetComponentDisplayBulk([3]);
+		expect(result.get(3)).toEqual([
+			{
+				kind: 'table',
+				// Color dropped: both rows left it blank.
+				keys: ['Size'],
+				rows: [
+					{ productTitle: 'Widget', quantity: 1, values: ['S'] },
+					{ productTitle: 'Widget', quantity: 2, values: ['M'] },
+				],
+			},
+		]);
+	});
+
+	it('renders a lone component (no signature siblings) as a plain line with its non-blank attributes', async () => {
+		const result = await getSetComponentDisplayBulk([4]);
+		expect(result.get(4)).toEqual([{ kind: 'line', productTitle: 'Gadget', quantity: 1, attributes: [{ key: 'Type', value: 'Standard' }] }]);
+	});
+
+	it('falls back to the item’s own internal name only for an unassigned component with no product', async () => {
+		const result = await getSetComponentDisplayBulk([5]);
+		expect(result.get(5)).toEqual([{ kind: 'line', productTitle: 'Item 7 (internal)', quantity: 1, attributes: [] }]);
+	});
+
+	it('returns [] for a set with no components', async () => {
+		const result = await getSetComponentDisplayBulk([2]);
+		expect(result.get(2)).toEqual([]);
+	});
+
+	it('returns an empty map for an empty input', async () => {
+		expect(await getSetComponentDisplayBulk([])).toEqual(new Map());
+	});
+});
+
+describe('getSetComponentDisplay', () => {
+	it('is the singular convenience wrapper around the bulk version', async () => {
+		expect(await getSetComponentDisplay(3)).toEqual([
+			{
+				kind: 'table',
+				keys: ['Size'],
+				rows: [
+					{ productTitle: 'Widget', quantity: 1, values: ['S'] },
+					{ productTitle: 'Widget', quantity: 2, values: ['M'] },
+				],
+			},
+		]);
 	});
 });

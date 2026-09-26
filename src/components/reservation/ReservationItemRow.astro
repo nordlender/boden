@@ -8,14 +8,18 @@ interface Props {
 	productTitle: string;
 	imageUrl: string | null;
 	quantity: number;
-	attributes: { key: string; value: string }[];
+	// Already-formatted per-kind subtitle text, computed by the caller — an
+	// item's joined attribute values, or a set's own manually-typed label
+	// (see cart.ts's CartSetLine comment on why a set has no attributes of
+	// its own to join).
+	subtitle: string | null;
 	// Only for a set row — its resolved components, shown indented and
 	// smaller underneath, read-only (never independently split/removed —
 	// see cart.ts's CartSetChild).
-	children?: { name: string; quantityPerSet: number }[];
+	children?: { productTitle: string; quantityPerSet: number }[];
 }
 
-const { kind, id, productSlug, productTitle, imageUrl, quantity, attributes, children = [] } = Astro.props;
+const { kind, id, productSlug, productTitle, imageUrl, quantity, subtitle, children = [] } = Astro.props;
 const lineKey = `${kind}:${id}`;
 ---
 
@@ -30,7 +34,7 @@ const lineKey = `${kind}:${id}`;
 				{productTitle}
 			</a>
 			{kind === 'set' && <span class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">Set</span>}
-			{attributes.length > 0 && <p class="text-sm text-gray-500">{attributes.map((a) => a.value).join(' / ')}</p>}
+			{subtitle && <p class="text-sm text-gray-500">{subtitle}</p>}
 			<p class="text-sm text-gray-500">Qty: {quantity}</p>
 		</div>
 
@@ -60,7 +64,7 @@ const lineKey = `${kind}:${id}`;
 				return (
 					<li>
 						{totalQuantity > 1 ? `${totalQuantity}× ` : ''}
-						{child.name}
+						{child.productTitle}
 					</li>
 				);
 			})}

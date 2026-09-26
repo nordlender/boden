@@ -23,7 +23,7 @@ const { variants } = Astro.props;
 					productSlug={variant.productSlug}
 					productTitle={variant.productTitle}
 					imageUrl={variant.imageUrl}
-					attributes={variant.attributes}
+					variantLabel={variant.kind === 'item' ? variant.attributes.map((a) => a.value).join(' / ') : variant.label}
 				/>
 			))}
 		</div>

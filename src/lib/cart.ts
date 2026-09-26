@@ -46,17 +46,23 @@ export interface CartItemLine {
 
 // One component of a set line, shown as an indented, smaller row under it —
 // never independently addable/removable, just a read-only breakdown of what
-// the set resolves into.
+// the set resolves into. `productTitle` is the component's own product's
+// title, never its items.name — that field is internal/admin-only
+// everywhere else in this codebase, and a set's children are shown to
+// customers (see sets.ts's SetChildDetail).
 export interface CartSetChild {
 	itemId: number;
-	name: string;
+	productTitle: string;
 	quantityPerSet: number;
 }
 
 // Display shape for a cart line pointing at a set. stockCount/inStock are
 // the most sets orderable right now, capped by whichever component has the
 // least room (see src/lib/sets.ts's computeSetAvailability) — a set has no
-// stock of its own.
+// stock of its own. Unlike an item line, there's no `attributes` here — a
+// set has no attribute template of its own (see schema.ts's `sets.label`
+// comment); `label` is the admin's own short, manually-typed text
+// distinguishing this set from its siblings (e.g. "S"/"M"/"L").
 export interface CartSetLine {
 	setId: number;
 	productSlug: string | null;
@@ -65,7 +71,7 @@ export interface CartSetLine {
 	quantity: number;
 	stockCount: number;
 	inStock: number;
-	attributes: CartItemAttribute[];
+	label: string | null;
 	children: CartSetChild[];
 }
 
@@ -175,10 +181,7 @@ async function buildSetLines(entries: { setId: number; quantity: number }[]): Pr
 	const setIds = entries.map((e) => e.setId);
 	const rows = await db.query.sets.findMany({
 		where: (t, { inArray }) => inArray(t.id, setIds),
-		with: {
-			product: true,
-			attributeValues: { with: { attribute: true } },
-		},
+		with: { product: true },
 	});
 
 	// Same visibility rule as items: dropped silently rather than erroring —
@@ -204,10 +207,10 @@ async function buildSetLines(entries: { setId: number; quantity: number }[]): Pr
 				quantity: entry.quantity,
 				stockCount,
 				inStock,
-				attributes: sortAttributes(row.attributeValues),
+				label: row.label,
 				children: children.map((child) => ({
 					itemId: child.itemId,
-					name: child.name,
+					productTitle: child.productTitle,
 					quantityPerSet: child.quantity,
 				})),
 			};

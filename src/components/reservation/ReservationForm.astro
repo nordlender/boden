@@ -55,7 +55,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 							productTitle={line.productTitle}
 							imageUrl={line.imageUrl}
 							quantity={line.quantity}
-							attributes={line.attributes}
+							subtitle={line.label}
 							children={line.children}
 						/>
 					) : (
@@ -66,7 +66,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 							productTitle={line.productTitle}
 							imageUrl={line.imageUrl}
 							quantity={line.quantity}
-							attributes={line.attributes}
+							subtitle={line.attributes.map((a) => a.value).join(' / ')}
 						/>
 					),
 				)

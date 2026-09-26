@@ -47,8 +47,10 @@ import CartActionsBar from './CartActionsBar.astro';
 				productTitle: string;
 				imageUrl: string | null;
 				quantity: number;
-				attributes: { key: string; value: string }[];
-				children: { itemId: number; name: string; quantityPerSet: number }[];
+				// No attribute template of its own — a set's subtitle is the
+				// admin's manually-typed label (e.g. "S"), not an attribute list.
+				label: string | null;
+				children: { itemId: number; productTitle: string; quantityPerSet: number }[];
 			};
 
 	const sidebar = document.querySelector<HTMLElement>('[data-cart-sidebar]');
@@ -107,7 +109,7 @@ import CartActionsBar from './CartActionsBar.astro';
 				name.textContent = isSet ? `Set — ${line.productTitle}` : line.productTitle;
 				info.appendChild(name);
 
-				const variantLabel = line.attributes.map((a) => a.value).join(' / ');
+				const variantLabel = isSet ? (line.label ?? '') : line.attributes.map((a) => a.value).join(' / ');
 				if (variantLabel) {
 					const variant = document.createElement('p');
 					variant.className = 'truncate text-text-muted';
@@ -143,7 +145,7 @@ import CartActionsBar from './CartActionsBar.astro';
 					for (const child of line.children) {
 						const totalQuantity = child.quantityPerSet * line.quantity;
 						const li = document.createElement('li');
-						li.textContent = totalQuantity > 1 ? `${totalQuantity}× ${child.name}` : child.name;
+						li.textContent = totalQuantity > 1 ? `${totalQuantity}× ${child.productTitle}` : child.productTitle;
 						childList.appendChild(li);
 					}
 					wrapper.appendChild(childList);

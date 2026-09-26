@@ -31,15 +31,25 @@ import CartActionsBar from './CartActionsBar.astro';
 	// astro.config.mjs — so there is no per-request cart cookie to read
 	// server-side. It always fetches its content client-side instead, from
 	// GET /api/cart (src/pages/api/cart.ts), which wraps
-	// src/lib/cart.ts's getCartItems.
-	type CartApiItem = {
-		itemId: number;
-		productSlug: string | null;
-		productTitle: string;
-		imageUrl: string | null;
-		quantity: number;
-		attributes: { key: string; value: string }[];
-	};
+	// src/lib/cart.ts's getCartLines.
+	type CartApiLine =
+		| {
+				itemId: number;
+				productSlug: string | null;
+				productTitle: string;
+				imageUrl: string | null;
+				quantity: number;
+				attributes: { key: string; value: string }[];
+			}
+		| {
+				setId: number;
+				productSlug: string | null;
+				productTitle: string;
+				imageUrl: string | null;
+				quantity: number;
+				attributes: { key: string; value: string }[];
+				children: { itemId: number; name: string; quantityPerSet: number }[];
+			};
 
 	const sidebar = document.querySelector<HTMLElement>('[data-cart-sidebar]');
 	const backdrop = document.querySelector<HTMLElement>('[data-cart-backdrop]');
@@ -53,17 +63,17 @@ import CartActionsBar from './CartActionsBar.astro';
 		const isOpen = () => !sidebar.classList.contains('translate-x-full');
 
 		async function loadCart() {
-			let cartItems: CartApiItem[] = [];
+			let cartLines: CartApiLine[] = [];
 			try {
 				const res = await fetch('/api/cart');
-				cartItems = await res.json();
+				cartLines = await res.json();
 			} catch {
 				return;
 			}
 
 			list?.querySelectorAll('[data-cart-row]').forEach((row) => row.remove());
 
-			if (cartItems.length === 0) {
+			if (cartLines.length === 0) {
 				emptyMessage!.hidden = false;
 				if (clearWrapper) clearWrapper.hidden = true;
 				return;
@@ -71,26 +81,33 @@ import CartActionsBar from './CartActionsBar.astro';
 			emptyMessage!.hidden = true;
 			if (clearWrapper) clearWrapper.hidden = false;
 
-			for (const item of cartItems) {
+			for (const line of cartLines) {
+				const isSet = 'setId' in line;
+				const lineIdField = isSet ? 'setId' : 'itemId';
+				const lineId = isSet ? line.setId : line.itemId;
+
+				const wrapper = document.createElement('div');
+				wrapper.dataset.cartRow = '';
+				wrapper.className = 'py-3';
+
 				const row = document.createElement('div');
-				row.dataset.cartRow = '';
-				row.className = 'flex items-center gap-3 py-3';
+				row.className = 'flex items-center gap-3';
 
 				const img = document.createElement('img');
-				img.src = item.imageUrl ?? '/favicon.svg';
-				img.alt = item.productTitle;
+				img.src = line.imageUrl ?? '/favicon.svg';
+				img.alt = line.productTitle;
 				img.className = 'h-12 w-12 shrink-0 rounded object-cover bg-bg-subtle';
 
 				const info = document.createElement('div');
 				info.className = 'min-w-0 flex-1 text-sm';
 
 				const name = document.createElement('a');
-				name.href = item.productSlug ? `/products/${item.productSlug}` : '/cart';
+				name.href = line.productSlug ? `/products/${line.productSlug}` : '/cart';
 				name.className = 'block truncate font-medium text-text hover:underline';
-				name.textContent = item.productTitle;
+				name.textContent = isSet ? `Set — ${line.productTitle}` : line.productTitle;
 				info.appendChild(name);
 
-				const variantLabel = item.attributes.map((a) => a.value).join(' / ');
+				const variantLabel = line.attributes.map((a) => a.value).join(' / ');
 				if (variantLabel) {
 					const variant = document.createElement('p');
 					variant.className = 'truncate text-text-muted';
@@ -100,7 +117,7 @@ import CartActionsBar from './CartActionsBar.astro';
 
 				const qty = document.createElement('p');
 				qty.className = 'text-text-muted';
-				qty.textContent = `Qty: ${item.quantity}`;
+				qty.textContent = `Qty: ${line.quantity}`;
 				info.appendChild(qty);
 
 				// Destructive action — error color is the conventional choice here.
@@ -110,13 +127,29 @@ import CartActionsBar from './CartActionsBar.astro';
 				removeButton.textContent = 'Remove';
 				removeButton.addEventListener('click', async () => {
 					const body = new FormData();
-					body.set('itemId', String(item.itemId));
+					body.set(lineIdField, String(lineId));
 					await fetch('/api/cart/remove', { method: 'POST', body });
 					loadCart();
 				});
 
 				row.append(img, info, removeButton);
-				list?.appendChild(row);
+				wrapper.appendChild(row);
+
+				// Read-only breakdown of what the set resolves into — indented and
+				// smaller than the set's own row, same as /cart's review page.
+				if (isSet && line.children.length > 0) {
+					const childList = document.createElement('ul');
+					childList.className = 'mt-2 ml-[3.75rem] flex flex-col gap-0.5 border-l border-border pl-3 text-xs text-text-muted';
+					for (const child of line.children) {
+						const totalQuantity = child.quantityPerSet * line.quantity;
+						const li = document.createElement('li');
+						li.textContent = totalQuantity > 1 ? `${totalQuantity}× ${child.name}` : child.name;
+						childList.appendChild(li);
+					}
+					wrapper.appendChild(childList);
+				}
+
+				list?.appendChild(wrapper);
 			}
 		}
 

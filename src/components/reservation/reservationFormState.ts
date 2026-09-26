@@ -1,6 +1,6 @@
-// Wires the calendar's chosen [from, to] range to the per-item
+// Wires the calendar's chosen [from, to] range to the per-line
 // availability badges, the mixed-availability warning/split-order
-// affordance, and the checkout form's hidden fromDate/toDate/splitItemIds
+// affordance, and the checkout form's hidden fromDate/toDate/splitLineKeys
 // fields — see POST /api/reservation/availability and
 // src/lib/orders.ts's createOrder/createSplitOrders.
 //
@@ -8,14 +8,17 @@
 // fetched availability, submit enable/disable). Pure DOM painting lives in
 // reservationFormRender.ts — this module decides *what* to render and calls
 // those functions with the result.
-import { hideRow, renderRow, renderSplitToggle, setSubmitEnabled, setSubmitHint, type ItemAvailability } from './reservationFormRender';
+import { hideRow, renderRow, renderSplitToggle, setSubmitEnabled, setSubmitHint, type LineAvailability } from './reservationFormRender';
 
-export interface ReservationCartItemRef {
-	itemId: number;
-	quantity: number;
-}
+// A cart line's reservation-relevant shape — `key` is cart.ts's entryKey
+// ('item:<id>' or 'set:<id>'), matching this line's `[data-line-key]`
+// attribute (ReservationItemRow.astro) and what POST
+// /api/reservation/availability expects per line.
+export type ReservationCartLineRef =
+	| { key: string; itemId: number; quantity: number }
+	| { key: string; setId: number; quantity: number };
 
-export function initReservationForm(cartItems: ReservationCartItemRef[]): void {
+export function initReservationForm(cartLines: ReservationCartLineRef[]): void {
 	const form = document.querySelector<HTMLElement>('[data-reservation-form]');
 	const warning = document.querySelector('[data-mixed-availability-warning]');
 	const loadingIndicator = document.querySelector('[data-availability-loading]');
@@ -25,26 +28,31 @@ export function initReservationForm(cartItems: ReservationCartItemRef[]): void {
 	const submitButton = checkoutForm?.querySelector('button[type="submit"]');
 	const fromDateInput = checkoutForm?.querySelector('[data-checkout-from-date]');
 	const toDateInput = checkoutForm?.querySelector('[data-checkout-to-date]');
-	const splitItemIdsInput = checkoutForm?.querySelector('[data-checkout-split-item-ids]');
+	const splitLineKeysInput = checkoutForm?.querySelector('[data-checkout-split-line-keys]');
 
-	// Which items the member has moved into their own order via each row's
-	// split-order button — sent to the server as splitItemIds so
-	// createSplitOrders can partition the cart accordingly.
-	const splitItemIds = new Set<number>();
+	// A line's own requested quantity, by key — used to decide whether
+	// splitting it off into its own order is even offerable (see
+	// refreshAvailability's splitOfferable comment below).
+	const quantityByKey = new Map(cartLines.map((line) => [line.key, line.quantity]));
+
+	// Which lines (items or sets) the member has moved into their own order
+	// via each row's split-order button — sent to the server as
+	// splitLineKeys so createSplitOrders can partition the cart accordingly.
+	const splitLineKeys = new Set<string>();
 	let lastAllAvailable = false;
 	let lastMixed = false;
 	// Guards against an in-flight request landing after a later one (rapid
 	// date changes while typing/dragging the calendar selection).
 	let requestToken = 0;
 
-	function syncSplitItemIdsInput() {
-		if (splitItemIdsInput instanceof HTMLInputElement) {
-			splitItemIdsInput.value = Array.from(splitItemIds).join(',');
+	function syncSplitLineKeysInput() {
+		if (splitLineKeysInput instanceof HTMLInputElement) {
+			splitLineKeysInput.value = Array.from(splitLineKeys).join(',');
 		}
 	}
 
 	function refreshSubmitState() {
-		const enabled = lastAllAvailable || (lastMixed && splitItemIds.size > 0);
+		const enabled = lastAllAvailable || (lastMixed && splitLineKeys.size > 0);
 		setSubmitEnabled(submitButton, enabled);
 		if (enabled) {
 			setSubmitHint(submitHint, '');
@@ -76,12 +84,12 @@ export function initReservationForm(cartItems: ReservationCartItemRef[]): void {
 
 		loadingIndicator?.removeAttribute('hidden');
 
-		let availabilities: ItemAvailability[];
+		let availabilities: LineAvailability[];
 		try {
 			const res = await fetch('/api/reservation/availability', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ from, to, items: cartItems }),
+				body: JSON.stringify({ from, to, lines: cartLines }),
 			});
 			if (token !== requestToken) return;
 			if (!res.ok) {
@@ -96,7 +104,7 @@ export function initReservationForm(cartItems: ReservationCartItemRef[]): void {
 
 		loadingIndicator?.setAttribute('hidden', '');
 
-		const byItemId = new Map(availabilities.map((a) => [a.itemId, a]));
+		const byKey = new Map(availabilities.map((a) => [a.key, a]));
 		const allAvailable = availabilities.every((a) => a.available);
 		const someAvailable = availabilities.some((a) => a.available);
 		const mixed = someAvailable && !allAvailable;
@@ -104,19 +112,19 @@ export function initReservationForm(cartItems: ReservationCartItemRef[]): void {
 		if (mixed && form) form.dataset.mixed = '1';
 		else delete form?.dataset.mixed;
 
-		// Items no longer eligible to split (e.g. the range changed and
+		// Lines no longer eligible to split (e.g. the range changed and
 		// availability is no longer mixed) shouldn't stay silently selected.
-		if (!mixed) splitItemIds.clear();
+		if (!mixed) splitLineKeys.clear();
 
 		warning?.toggleAttribute('hidden', !mixed);
 		lastAllAvailable = allAvailable;
 		lastMixed = mixed;
-		syncSplitItemIdsInput();
+		syncSplitLineKeysInput();
 		refreshSubmitState();
 
 		rows.forEach((row) => {
-			const itemId = Number((row as HTMLElement).dataset.itemId);
-			const availability = byItemId.get(itemId);
+			const key = (row as HTMLElement).dataset.lineKey ?? '';
+			const availability = byKey.get(key);
 			if (!availability) return;
 
 			// A row that's become available again is no longer eligible to be
@@ -125,21 +133,21 @@ export function initReservationForm(cartItems: ReservationCartItemRef[]): void {
 			// button goes hidden below, there's no control left to un-press it,
 			// and it would still get silently split into its own order on
 			// submit even though it no longer needs to be.
-			if (availability.available && splitItemIds.has(itemId)) {
-				splitItemIds.delete(itemId);
-				syncSplitItemIdsInput();
+			if (availability.available && splitLineKeys.has(key)) {
+				splitLineKeys.delete(key);
+				syncSplitLineKeysInput();
 				refreshSubmitState();
 			}
 
-			const pressed = splitItemIds.has(itemId);
+			const pressed = splitLineKeys.has(key);
 			// Only offered on a row that's actually unavailable — splitting off
 			// an already-available row wouldn't do anything to resolve the
 			// mixed-availability warning, and would let the member satisfy the
-			// enable-submit condition without ever touching the blocked item.
+			// enable-submit condition without ever touching the blocked line.
 			// Also not offered when this line requests more than one of the
-			// same item, since a partial per-unit availability shortfall can't
-			// be represented by moving the whole line to a separate order.
-			const splitOfferable = Boolean(form?.dataset.mixed) && !availability.available && availability.requestedQuantity <= 1;
+			// same item/set, since a partial per-unit availability shortfall
+			// can't be represented by moving the whole line to a separate order.
+			const splitOfferable = Boolean(form?.dataset.mixed) && !availability.available && (quantityByKey.get(key) ?? 1) <= 1;
 
 			renderRow(row, availability, pressed, splitOfferable);
 		});
@@ -153,12 +161,12 @@ export function initReservationForm(cartItems: ReservationCartItemRef[]): void {
 	rows.forEach((row) => {
 		const splitButton = row.querySelector('[data-split-order-button]');
 		splitButton?.addEventListener('click', () => {
-			const itemId = Number((row as HTMLElement).dataset.itemId);
-			if (splitItemIds.has(itemId)) splitItemIds.delete(itemId);
-			else splitItemIds.add(itemId);
-			const pressed = splitItemIds.has(itemId);
+			const key = (row as HTMLElement).dataset.lineKey ?? '';
+			if (splitLineKeys.has(key)) splitLineKeys.delete(key);
+			else splitLineKeys.add(key);
+			const pressed = splitLineKeys.has(key);
 			renderSplitToggle(row, pressed);
-			syncSplitItemIdsInput();
+			syncSplitLineKeysInput();
 			refreshSubmitState();
 		});
 	});

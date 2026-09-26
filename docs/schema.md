@@ -388,3 +388,36 @@ now, just recording the idea.
 `items.slug` must be derived from `name` at save time (slugify +
 disambiguate on collision) — there's no combinatorial product+option naming
 to derive it from anymore, since items are named freeform.
+
+## Schema addition: sets (rentable bundles) — PR #212
+A product's variant slot can now point to a **set** instead of (or
+alongside) an item — a set resolves to a bundle of real items with
+quantities, e.g. "Indoor Rope Climbing Set — M" -> Harness M + Chalk Bag +
+Singing Rock Rama Belay Device. Three new tables, mirroring the existing
+items/itemAttributeValues split:
+
+- `sets` (id, productId nullable/set-null, slug, name, imageUrl, archived,
+  createdAt) — mirrors `items` exactly. A set is a peer of `items` under a
+  product, not a child of it.
+- `setItems` (setId -> sets cascade, itemId -> items no-action, quantity) —
+  the bundle's composition. unique(setId, itemId).
+- `setAttributeValues` (setId -> sets cascade, attributeId ->
+  productAttributeKeys cascade, value) — mirrors `itemAttributeValues`, so a
+  set variant (e.g. Size: M) uses the same product attribute-key template an
+  item variant does.
+
+Orders/rentals still always reference items, never sets (unchanged
+invariant from the top of this doc) — a set cart entry is expanded into its
+component items, merged by itemId with any other demand for the same item
+in the cart, only at checkout (`src/lib/sets.ts`'s
+`resolveEntriesToItemQuantities`, called from `src/lib/orders.ts`). No admin
+UI exists yet for authoring sets — see the seed script
+(`scripts/seed-example-catalog.mjs`) for the one example set currently in
+the dev catalogue. Building a wizard flow for sets (create a set, assign
+components, assign to a product) is a natural next step, not done here.
+
+Note: "Set" here (a rentable bundle) is unrelated to this doc's existing
+"Set dropdown"/"Set attributes"/"Set product" wizard-UI terminology above
+(a bulk-action menu for selected items) — an unfortunate naming collision,
+not a design relationship. Worth renaming one of the two if it causes
+confusion in practice.

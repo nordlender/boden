@@ -7,22 +7,33 @@ interface Attribute {
 }
 
 interface Props {
-	itemId: number;
+	// Which product-page query param this tile preselects — see
+	// src/pages/products/[slug].astro's `?item=`/`?set=` handling.
+	kind: 'item' | 'set';
+	variantId: number;
 	productSlug: string;
 	productTitle: string;
 	imageUrl: string | null;
 	attributes: Attribute[];
 }
 
-const { itemId, productSlug, productTitle, imageUrl, attributes } = Astro.props;
+const { kind, variantId, productSlug, productTitle, imageUrl, attributes } = Astro.props;
 const variantLabel = attributes.map((a) => a.value).join(' / ');
+const href = `/products/${productSlug}?${kind}=${variantId}`;
 ---
 
 <a
-	href={`/products/${productSlug}?item=${itemId}`}
+	href={href}
 	class="group flex flex-col overflow-hidden rounded-lg border border-border bg-surface transition hover:border-border-strong hover:shadow-sm"
 >
-	<div class="aspect-square overflow-hidden bg-bg-subtle">
+	<div class="relative aspect-square overflow-hidden bg-bg-subtle">
+		{
+			kind === 'set' && (
+				<span class="absolute left-2 top-2 rounded-full bg-surface px-2 py-0.5 text-[10px] font-medium text-text-muted shadow-sm">
+					Set
+				</span>
+			)
+		}
 		{
 			imageUrl ? (
 				<img src={imageUrl} alt={productTitle} class="h-full w-full object-cover transition group-hover:scale-105" />

@@ -179,3 +179,49 @@ export function hasMixedAvailability(availabilities: ReservationAvailability[]):
 	const someUnavailable = availabilities.some((a) => !a.available);
 	return someAvailable && someUnavailable;
 }
+
+// A cart line (see cart.ts's CartLine) at the granularity the reservation
+// page actually renders — a plain item line's itemRequirements is just
+// itself; a set line's is its components, already expanded (quantity
+// multiplied by however many of the set are requested) by whoever built
+// this — see sets.ts's resolveEntriesToItemQuantities/getSetChildrenBulk.
+export interface ReservationLine {
+	key: string; // cart.ts's entryKey — 'item:<id>' or 'set:<id>'
+	itemRequirements: { itemId: number; quantity: number }[];
+}
+
+export interface ReservationLineAvailability {
+	key: string;
+	available: boolean;
+}
+
+// Rolls per-item availability (getReservationAvailability) up to the
+// cart-line granularity the reservation page renders. A plain item line is
+// available iff its own item is; a set line is available iff *every* one of
+// its components is. Every line's demand for a given item is merged into
+// one quantity before checking — the whole point being that a component
+// shared by two different lines (the same chalk bag sold loose and inside a
+// set, say) is checked once against its real combined demand, not
+// independently per line against the same stock.
+export function getCartLineAvailability(
+	range: ReservationDateRange,
+	lines: ReservationLine[],
+	excludeOrderId?: number,
+	executor: QueryExecutor = db,
+): ReservationLineAvailability[] {
+	const totals = new Map<number, number>();
+	for (const line of lines) {
+		for (const req of line.itemRequirements) {
+			totals.set(req.itemId, (totals.get(req.itemId) ?? 0) + req.quantity);
+		}
+	}
+	const merged = Array.from(totals, ([itemId, quantity]) => ({ itemId, quantity }));
+	const availableByItem = new Map(
+		getReservationAvailability(range, merged, excludeOrderId, executor).map((a) => [a.itemId, a.available]),
+	);
+
+	return lines.map((line) => ({
+		key: line.key,
+		available: line.itemRequirements.length > 0 && line.itemRequirements.every((req) => availableByItem.get(req.itemId) ?? false),
+	}));
+}

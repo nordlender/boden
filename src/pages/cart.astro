@@ -4,10 +4,10 @@ export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 import CartActionsBar from '../components/cart/CartActionsBar.astro';
 import Button from '../components/ui/Button.astro';
-import { getCartItems } from '../lib/cart';
+import { getCartLines } from '../lib/cart';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
-const cartItems = await getCartItems(Astro.cookies);
+const cartLines = await getCartLines(Astro.cookies);
 ---
 
 <BaseLayout title="Cart">
@@ -15,66 +15,89 @@ const cartItems = await getCartItems(Astro.cookies);
 		<h1 class="mb-6 text-2xl font-semibold tracking-tight text-text">Cart</h1>
 
 		{
-			cartItems.length === 0 ? (
+			cartLines.length === 0 ? (
 				<p class="mb-8 text-sm text-text-muted">Your cart is empty.</p>
 			) : (
 				<div class="mb-8 divide-y divide-border border-y border-border">
-					{cartItems.map((item) => (
-						<div class="flex flex-wrap items-center gap-4 py-4">
-							<div class="h-16 w-16 shrink-0 overflow-hidden rounded bg-bg-subtle">
-								{item.imageUrl && <img src={item.imageUrl} alt={item.productTitle} class="h-full w-full object-cover" />}
-							</div>
+					{cartLines.map((line) => {
+						const isSet = 'setId' in line;
+						const lineIdField = isSet ? 'setId' : 'itemId';
+						const lineId = isSet ? line.setId : line.itemId;
+						return (
+							<div class="py-4">
+								<div class="flex flex-wrap items-center gap-4">
+									<div class="h-16 w-16 shrink-0 overflow-hidden rounded bg-bg-subtle">
+										{line.imageUrl && <img src={line.imageUrl} alt={line.productTitle} class="h-full w-full object-cover" />}
+									</div>
 
-							<div class="min-w-0 flex-1">
-								<a
-									href={item.productSlug ? `/products/${item.productSlug}` : '#'}
-									class="font-medium text-text hover:underline"
-								>
-									{item.productTitle}
-								</a>
-								{item.attributes.length > 0 && (
-									<p class="text-sm text-text-muted">{item.attributes.map((a) => a.value).join(' / ')}</p>
+									<div class="min-w-0 flex-1">
+										<a href={line.productSlug ? `/products/${line.productSlug}` : '#'} class="font-medium text-text hover:underline">
+											{line.productTitle}
+										</a>
+										{isSet && (
+											<span class="ml-2 rounded-full bg-bg-subtle px-2 py-0.5 text-[10px] font-medium text-text-muted">Set</span>
+										)}
+										{line.attributes.length > 0 && (
+											<p class="text-sm text-text-muted">{line.attributes.map((a) => a.value).join(' / ')}</p>
+										)}
+										{line.quantity > line.inStock && (
+											// TODO: Style later, warning? — low-stock notice, not necessarily an error.
+											<p class="text-sm text-error">Only {Math.max(line.inStock, 0)} left in stock</p>
+										)}
+									</div>
+
+									<form method="post" action="/api/cart/update" class="flex items-center gap-2">
+										<input type="hidden" name={lineIdField} value={lineId} />
+										<label class="sr-only" for={`quantity-${lineIdField}-${lineId}`}>
+											Quantity for {line.productTitle}
+										</label>
+										<input
+											id={`quantity-${lineIdField}-${lineId}`}
+											type="number"
+											name="quantity"
+											value={line.quantity}
+											min="0"
+											class="w-16 rounded-md border border-border-interactive px-2 py-1 text-sm"
+										/>
+										<Button type="submit" size="sm">
+											Update
+										</Button>
+									</form>
+
+									<form method="post" action="/api/cart/remove">
+										<input type="hidden" name={lineIdField} value={lineId} />
+										<button type="submit" class="text-sm text-error hover:underline">
+											Remove
+										</button>
+									</form>
+								</div>
+
+								{isSet && line.children.length > 0 && (
+									// Read-only breakdown of what the set resolves into — indented
+									// and smaller than the set's own row, never independently
+									// addable/removable (see cart.ts's CartSetChild).
+									<ul class="mt-3 ml-20 flex flex-col gap-0.5 border-l border-border pl-3 text-xs text-text-muted">
+										{line.children.map((child) => {
+											const totalQuantity = child.quantityPerSet * line.quantity;
+											return (
+												<li>
+													{totalQuantity > 1 ? `${totalQuantity}× ` : ''}
+													{child.name}
+												</li>
+											);
+										})}
+									</ul>
 								)}
-								{item.quantity > item.inStock && (
-									<p class="text-sm text-error">Only {Math.max(item.inStock, 0)} left in stock</p>
-								)}
 							</div>
-
-							<form method="post" action="/api/cart/update" class="flex items-center gap-2">
-								<input type="hidden" name="itemId" value={item.itemId} />
-								<label class="sr-only" for={`quantity-${item.itemId}`}>
-									Quantity for {item.productTitle}
-								</label>
-								<input
-									id={`quantity-${item.itemId}`}
-									type="number"
-									name="quantity"
-									value={item.quantity}
-									min="0"
-									class="w-16 rounded-md border border-border-interactive px-2 py-1 text-sm"
-								/>
-								<Button type="submit" size="sm">Update</Button>
-							</form>
-
-							<form method="post" action="/api/cart/remove">
-								<input type="hidden" name="itemId" value={item.itemId} />
-								<button type="submit" class="text-sm text-error hover:underline">
-									Remove
-								</button>
-							</form>
-						</div>
-					))}
+						);
+					})}
 				</div>
 			)
 		}
 
 		{
-			cartItems.length > 0 && (
-				<CartActionsBar
-					primaryHref="/reservation"
-					primaryLabel="Continue to reservation dates"
-					clearAction="/api/cart/clear"
-				/>
+			cartLines.length > 0 && (
+				<CartActionsBar primaryHref="/reservation" primaryLabel="Continue to reservation dates" clearAction="/api/cart/clear" />
 			)
 		}
 	</div>

@@ -3,17 +3,17 @@ export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ReservationForm from '../components/reservation/ReservationForm.astro';
-import { getCartItems } from '../lib/cart';
+import { getCartLines } from '../lib/cart';
 import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
 import { getMaxRentalDays } from '../lib/rental-policy';
 import { todayIsoInOslo } from '../lib/dates';
 import { getSession } from 'auth-astro/server';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
-const cartItems = await getCartItems(Astro.cookies);
+const cartLines = await getCartLines(Astro.cookies);
 const session = await getSession(Astro.request);
 
-if (cartItems.length === 0) {
+if (cartLines.length === 0) {
 	return Astro.redirect('/cart');
 }
 
@@ -41,7 +41,7 @@ const errorMessage =
 		{errorMessage && <p class="mb-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMessage}</p>}
 
 		<ReservationForm
-			cartItems={cartItems}
+			cartLines={cartLines}
 			availablePickupDates={availablePickupDates}
 			name={session?.user?.name ?? null}
 			email={session?.user?.email ?? null}

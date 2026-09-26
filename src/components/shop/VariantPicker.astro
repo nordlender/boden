@@ -1,65 +1,110 @@
 ---
-// Owns the "choose a variant, add to cart" form on the product page:
-// item select (when a product has more than one item), the resulting
-// attribute list, stock message, quantity cap, and add-to-cart button — plus
-// the client-side script that keeps all of those (and the product image
-// rendered by the page above this form) in sync as the selected item
-// changes, including a `?item=<id>` preselect from an ItemCard link.
+// Owns the "choose a variant, add to cart" form on the product page: the
+// variant select (when the product has more than one), the resulting
+// attribute list, a set's "Includes" breakdown, stock message, quantity
+// cap, and add-to-cart button — plus the client-side script that keeps all
+// of those (and the product image rendered by the page above this form) in
+// sync as the selected variant changes, including a `?item=<id>`/`?set=<id>`
+// preselect from an ItemCard link.
+//
+// A product's variant slot is an item OR a set (src/db/schema.ts's `sets`
+// comment), and the two are assumed mutually exclusive per product — a
+// product's variants are all items, or all sets, never a mix. This picker
+// enforces that assumption itself rather than trusting callers/data to hold
+// it: it picks exactly one kind (items, unless there are none) and never
+// shows a set as an option alongside an item, or vice versa.
 //
 // The product image lives in the page, not here (it's rendered above this
 // form in a separate grid column) — the script below reaches it via the
 // same `[data-product-image]`/`[data-product-image-placeholder]` selectors
 // the page renders, rather than this component owning that markup too.
-import type { ShopItem } from '../../lib/shop';
+import type { ShopItem, ShopSet } from '../../lib/shop';
 import Button from '../ui/Button.astro';
 
 interface Props {
 	items: ShopItem[];
+	sets: ShopSet[];
 	productSlug: string;
 	thumbnailImageUrl: string | null;
 	attributeKeyOrder: string[];
 }
 
-const { items, productSlug, thumbnailImageUrl, attributeKeyOrder } = Astro.props;
-const initialItem = items[0] ?? null;
+const { items, sets, productSlug, thumbnailImageUrl, attributeKeyOrder } = Astro.props;
+
+interface Variant {
+	kind: 'item' | 'set';
+	id: number;
+	imageUrl: string | null;
+	inStock: number;
+	attributes: { key: string; value: string }[];
+	children: { name: string; quantity: number }[];
+}
+
+const variantKind: 'item' | 'set' = items.length > 0 ? 'item' : 'set';
+const variants: Variant[] =
+	variantKind === 'item'
+		? items.map((item): Variant => ({ kind: 'item', id: item.id, imageUrl: item.imageUrl, inStock: item.inStock, attributes: item.attributes, children: [] }))
+		: sets.map((set): Variant => ({ kind: 'set', id: set.id, imageUrl: set.imageUrl, inStock: set.inStock, attributes: set.attributes, children: set.children }));
+const initialVariant = variants[0] ?? null;
 ---
 
 <form action="/api/cart/add" method="post" class="flex flex-col gap-4 border-t border-border pt-4">
 	<input type="hidden" name="redirect" value={`/products/${productSlug}`} />
+	<!--
+		Exactly one of these is ever actually submitted — a disabled input is
+		left out of FormData entirely, so the script below toggles `disabled`
+		alongside `value` whenever the selected variant's kind changes, rather
+		than this form ever sending both an itemId and a setId.
+	-->
+	<input
+		type="hidden"
+		name="itemId"
+		data-variant-item-id
+		value={initialVariant?.kind === 'item' ? String(initialVariant.id) : ''}
+		disabled={initialVariant?.kind !== 'item'}
+	/>
+	<input
+		type="hidden"
+		name="setId"
+		data-variant-set-id
+		value={initialVariant?.kind === 'set' ? String(initialVariant.id) : ''}
+		disabled={initialVariant?.kind !== 'set'}
+	/>
 
 	{
-		items.length > 1 ? (
+		variants.length > 1 && (
 			<div>
-				<label class="mb-2 block text-sm font-medium text-text" for="itemId">
+				<label class="mb-2 block text-sm font-medium text-text" for="variant">
 					Choose a variant
 				</label>
-				<select id="itemId" name="itemId" class="w-full rounded-md border border-border-interactive px-3 py-2 text-sm">
-					{items.map((item) => {
-						const label = item.attributes.map((a) => a.value).join(' / ') || `Option ${item.id}`;
+				<select id="variant" data-variant-select class="w-full rounded-md border border-border-interactive px-3 py-2 text-sm">
+					{variants.map((variant) => {
+						const label = variant.attributes.map((a) => a.value).join(' / ') || `Option ${variant.id}`;
 						return (
 							<option
-								value={item.id}
-								selected={item.id === initialItem?.id}
-								disabled={item.inStock <= 0}
-								data-image={item.imageUrl ?? thumbnailImageUrl ?? ''}
-								data-stock={item.inStock}
-								data-attributes={JSON.stringify(item.attributes)}
+								value={`${variant.kind}:${variant.id}`}
+								selected={variant.kind === initialVariant?.kind && variant.id === initialVariant?.id}
+								disabled={variant.inStock <= 0}
+								data-kind={variant.kind}
+								data-id={variant.id}
+								data-image={variant.imageUrl ?? thumbnailImageUrl ?? ''}
+								data-stock={variant.inStock}
+								data-attributes={JSON.stringify(variant.attributes)}
+								data-children={JSON.stringify(variant.children)}
 							>
-								{label}
-								{item.inStock <= 0 ? ' (out of stock)' : ''}
+								{variant.kind === 'set' ? `Set — ${label}` : label}
+								{variant.inStock <= 0 ? ' (out of stock)' : ''}
 							</option>
 						);
 					})}
 				</select>
 			</div>
-		) : (
-			<input type="hidden" name="itemId" value={items[0].id} />
 		)
 	}
 
 	{attributeKeyOrder.length > 0 && (
 		<dl data-item-attributes class="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-sm">
-			{(initialItem?.attributes ?? []).map((attribute) => (
+			{(initialVariant?.attributes ?? []).map((attribute) => (
 				<div class="contents">
 					<dt class="text-text-muted">{attribute.key}</dt>
 					<dd class="text-text">{attribute.value}</dd>
@@ -68,12 +113,24 @@ const initialItem = items[0] ?? null;
 		</dl>
 	)}
 
+	<div data-set-includes hidden={initialVariant?.kind !== 'set'} class="border-t border-border pt-4 text-sm">
+		<p class="mb-1 font-medium text-text">Includes</p>
+		<ul data-set-includes-list class="flex flex-col gap-0.5 text-text-muted">
+			{(initialVariant?.kind === 'set' ? initialVariant.children : []).map((child) => (
+				<li>
+					{child.quantity > 1 ? `${child.quantity}× ` : ''}
+					{child.name}
+				</li>
+			))}
+		</ul>
+	</div>
+
 	{/* TODO: Style later, warning? — is "out of stock" an error or a warning state? */}
 	<p
 		data-stock-message
-		class={`text-sm font-medium ${(initialItem?.inStock ?? 0) > 0 ? 'text-success-text' : 'text-error-text'}`}
+		class={`text-sm font-medium ${(initialVariant?.inStock ?? 0) > 0 ? 'text-success-text' : 'text-error-text'}`}
 	>
-		{(initialItem?.inStock ?? 0) > 0 ? `${initialItem?.inStock} in stock` : 'Out of stock'}
+		{(initialVariant?.inStock ?? 0) > 0 ? `${initialVariant?.inStock} in stock` : 'Out of stock'}
 	</p>
 
 	<div class="flex items-center gap-3">
@@ -82,29 +139,34 @@ const initialItem = items[0] ?? null;
 			name="quantity"
 			value="1"
 			min="1"
-			max={Math.max(initialItem?.inStock ?? 1, 1)}
+			max={Math.max(initialVariant?.inStock ?? 1, 1)}
 			required
 			data-quantity-input
 			class="w-16 rounded-md border border-border-interactive px-2 py-1.5 text-sm"
 		/>
-		<Button type="submit" variant="primary" size="lg" data-add-to-cart disabled={(initialItem?.inStock ?? 0) <= 0}>
+		<Button type="submit" variant="primary" size="lg" data-add-to-cart disabled={(initialVariant?.inStock ?? 0) <= 0}>
 			Add to cart
 		</Button>
 	</div>
 </form>
 
 <script>
-	// Keeps the image, stock message, quantity cap, and attribute list in
-	// sync with whichever variant is selected — including a `?item=<id>`
-	// preselect from an ItemCard link, applied here rather than server-side
-	// since the product page is prerendered.
-	const select = document.querySelector<HTMLSelectElement>('select[name="itemId"]');
+	// Keeps the image, stock message, quantity cap, attribute list, and
+	// "Includes" breakdown in sync with whichever variant is selected —
+	// including a `?item=<id>`/`?set=<id>` preselect from an ItemCard link,
+	// applied here rather than server-side since the product page is
+	// prerendered.
+	const select = document.querySelector<HTMLSelectElement>('[data-variant-select]');
 	const image = document.querySelector<HTMLImageElement>('[data-product-image]');
 	const imagePlaceholder = document.querySelector<HTMLElement>('[data-product-image-placeholder]');
 	const stockMessage = document.querySelector<HTMLElement>('[data-stock-message]');
 	const quantityInput = document.querySelector<HTMLInputElement>('[data-quantity-input]');
 	const submitButton = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
 	const attributesList = document.querySelector<HTMLElement>('[data-item-attributes]');
+	const itemIdInput = document.querySelector<HTMLInputElement>('[data-variant-item-id]');
+	const setIdInput = document.querySelector<HTMLInputElement>('[data-variant-set-id]');
+	const setIncludes = document.querySelector<HTMLElement>('[data-set-includes]');
+	const setIncludesList = document.querySelector<HTMLElement>('[data-set-includes-list]');
 
 	function renderAttributes(json: string | undefined) {
 		if (!attributesList || !json) return;
@@ -133,9 +195,32 @@ const initialItem = items[0] ?? null;
 		}
 	}
 
+	function renderSetIncludes(kind: string | undefined, json: string | undefined) {
+		if (!setIncludes || !setIncludesList) return;
+		const isSet = kind === 'set';
+		setIncludes.hidden = !isSet;
+		if (!isSet) return;
+
+		let children: { name: string; quantity: number }[];
+		try {
+			children = json ? JSON.parse(json) : [];
+		} catch {
+			children = [];
+		}
+
+		setIncludesList.replaceChildren();
+		for (const { name, quantity } of children) {
+			const li = document.createElement('li');
+			li.textContent = quantity > 1 ? `${quantity}× ${name}` : name;
+			setIncludesList.appendChild(li);
+		}
+	}
+
 	function applyOption(option: HTMLOptionElement) {
 		const stock = Number(option.dataset.stock ?? '0');
 		const imageUrl = option.dataset.image ?? '';
+		const kind = option.dataset.kind;
+		const id = option.dataset.id ?? '';
 
 		if (image) {
 			if (imageUrl) {
@@ -158,13 +243,26 @@ const initialItem = items[0] ?? null;
 		if (quantityInput) quantityInput.max = String(Math.max(stock, 1));
 		if (submitButton) submitButton.disabled = stock <= 0;
 
+		if (itemIdInput) {
+			itemIdInput.disabled = kind !== 'item';
+			itemIdInput.value = kind === 'item' ? id : '';
+		}
+		if (setIdInput) {
+			setIdInput.disabled = kind !== 'set';
+			setIdInput.value = kind === 'set' ? id : '';
+		}
+
 		renderAttributes(option.dataset.attributes);
+		renderSetIncludes(kind, option.dataset.children);
 	}
 
 	if (select) {
-		const preselect = new URLSearchParams(location.search).get('item');
-		if (preselect && select.querySelector(`option[value="${CSS.escape(preselect)}"]`)) {
-			select.value = preselect;
+		const params = new URLSearchParams(location.search);
+		const presetKind = params.has('set') ? 'set' : params.has('item') ? 'item' : null;
+		const presetId = presetKind ? params.get(presetKind) : null;
+		if (presetKind && presetId) {
+			const match = select.querySelector(`option[data-kind="${presetKind}"][data-id="${CSS.escape(presetId)}"]`);
+			if (match instanceof HTMLOptionElement) select.value = match.value;
 		}
 
 		select.addEventListener('change', () => {

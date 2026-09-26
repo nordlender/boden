@@ -64,6 +64,13 @@
       "when": 1790438198181,
       "tag": "0008_multi_time_per_day",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1790439629011,
+      "tag": "0009_pickup_days_time_not_null",
+      "breakpoints": true
     }
   ]
 }

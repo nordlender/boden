@@ -288,8 +288,12 @@ export const pickupRecurringRules = sqliteTable('pickup_recurring_rules', {
 export const pickupDays = sqliteTable('pickup_days', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   date: text('date').notNull(), // YYYY-MM-DD
-  startTime: text('start_time'), // HH:MM, 24h — nullable
-  endTime: text('end_time'), // HH:MM, 24h
+  // NOT NULL — every real caller already requires a window, and the
+  // pickup_days_single_user_date_time_unique index below needs both
+  // non-null to actually dedup (SQLite unique indexes treat NULL as
+  // distinct from NULL).
+  startTime: text('start_time').notNull(), // HH:MM, 24h
+  endTime: text('end_time').notNull(), // HH:MM, 24h
   where: text('where'), // free-text meeting point — moderator single-day submissions only
   userId: text('user_id').notNull().references(() => users.id),
   kind: text('kind', { enum: ['single', 'recurring'] }).notNull().default('single'),

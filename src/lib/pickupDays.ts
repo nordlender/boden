@@ -23,8 +23,8 @@ export type PickupDayKind = 'single' | 'recurring';
 export interface PickupDayRow {
 	id: number;
 	date: string;
-	startTime: string | null;
-	endTime: string | null;
+	startTime: string;
+	endTime: string;
 	where: string | null;
 	userId: string;
 	kind: PickupDayKind;
@@ -67,8 +67,8 @@ export async function listUpcomingPickupDays(fromDate: string): Promise<PickupDa
 
 export interface NewSingleDay {
 	date: string;
-	startTime: string | null;
-	endTime: string | null;
+	startTime: string;
+	endTime: string;
 	where: string | null;
 }
 

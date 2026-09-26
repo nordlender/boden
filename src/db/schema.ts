@@ -301,8 +301,16 @@ export const pickupRecurringRules = sqliteTable('pickup_recurring_rules', {
 export const pickupDays = sqliteTable('pickup_days', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   date: text('date').notNull(), // YYYY-MM-DD
-  startTime: text('start_time'), // HH:MM, 24h — nullable: not every single day gets a time window
-  endTime: text('end_time'), // HH:MM, 24h
+  // HH:MM, 24h — NOT NULL: every real caller already requires a window
+  // (the moderator API validates it before calling createSingleDays;
+  // createRecurringRule always copies it from the rule). Kept NOT NULL
+  // deliberately, not just by convention: pickup_days_single_user_date_time_unique
+  // below is scoped to (date, startTime, endTime), and SQLite treats NULL as
+  // distinct from NULL in a unique index — nullable columns here would have
+  // silently let two null-time single days for the same user/date past that
+  // constraint.
+  startTime: text('start_time').notNull(),
+  endTime: text('end_time').notNull(),
   // Free-text meeting point ("At Vulkan", "In the reception at SiO Athletica
   // Blindern") — moderator-submitted single days only; recurring rows leave
   // this null (the recurring form never collects one).

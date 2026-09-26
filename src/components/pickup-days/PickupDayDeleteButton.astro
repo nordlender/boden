@@ -25,7 +25,7 @@ const popoverId = `pickup-day-delete-${id}`;
 <div data-pickup-day-delete={endpoint}>
 	<ActionPopover id={popoverId} title={title} confirmLabel="Delete" confirmVariant="danger">
 		<Fragment slot="trigger">
-			<MorphButton action="delete" size="sm" label={title} popovertarget={popoverId} />
+			<MorphButton action="delete" variant="danger" size="sm" label={title} popovertarget={popoverId} />
 		</Fragment>
 		<p class="text-sm text-text-muted">{body}</p>
 	</ActionPopover>

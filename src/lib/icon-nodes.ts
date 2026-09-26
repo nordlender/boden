@@ -69,6 +69,19 @@ export const navMenu = {
 
 // The item row's expand/collapse toggle: list-details when collapsed,
 // circle-chevron-up once the details box is open.
+// FileExplorerNode.astro's directory row icon.
+export const folderToggle = {
+	closed: [['path', { d: 'M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2' }]] satisfies IconNode,
+	open: [
+		[
+			'path',
+			{
+				d: 'M5 19l2.757 -7.351a1 1 0 0 1 .936 -.649h12.307a1 1 0 0 1 .986 1.164l-.996 5.211a2 2 0 0 1 -1.964 1.625h-14.026a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2h4l3 3h7a2 2 0 0 1 2 2v2',
+			},
+		],
+	] satisfies IconNode,
+};
+
 export const detailsToggle = {
 	closed: [
 		['path', { d: 'M13 5h8m-8 4h5m-5 6h8m-8 4h5M3 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zm0 10a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z' }],

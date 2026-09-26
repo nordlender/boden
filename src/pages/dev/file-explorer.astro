@@ -1,0 +1,25 @@
+---
+export const prerender = false;
+
+// Dev-only preview page for <FileExplorer> (#96, PR #107) — not gated by
+// middleware since /dev isn't in any protected prefix; just for eyeballing
+// the component against public/ during development.
+import '../../styles/global.css';
+import FileExplorer from '../../components/FileExplorer.astro';
+import { PUBLIC_ROOT } from '../../lib/fileExplorer';
+---
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>File explorer (dev)</title>
+	</head>
+	<body class="min-h-screen bg-bg-subtle p-8">
+		<div class="mx-auto flex max-w-md flex-col gap-4">
+			<h1 class="text-xl font-semibold text-text">File explorer</h1>
+			<div class="rounded-lg border border-border bg-surface p-4">
+				<FileExplorer root={PUBLIC_ROOT} label="public/" />
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,23 @@
+---
+import { formatDateDisplay } from '../../lib/dates';
+import OrderStatusBadge from './OrderStatusBadge.astro';
+
+interface Props {
+	orderCode: string;
+	status: string;
+	fromDate: string;
+	toDate: string;
+}
+
+const { orderCode, status, fromDate, toDate } = Astro.props;
+---
+
+<div class="flex flex-col gap-1">
+	<div class="flex flex-wrap items-center gap-2">
+		<h1 class="text-xl font-semibold text-text">Order #{orderCode}</h1>
+		<OrderStatusBadge status={status} />
+	</div>
+	<p class="text-sm text-text-muted">
+		Pick-up {formatDateDisplay(fromDate)} &middot; Return {formatDateDisplay(toDate)}
+	</p>
+</div>

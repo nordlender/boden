@@ -1,15 +1,23 @@
 ---
+import IconButton from '../ui/IconButton.astro';
+import { iconOnlyPixelSize } from '../../lib/button-styles';
+
+// This inline svg (the escape-hatch slot IconButton offers when AppIcon's
+// fixed icon set doesn't cover a shape, see IconButton.astro) renders
+// outside IconButton's own AppIcon-driven sizing, so it has to size itself
+// to match explicitly rather than relying on IconButton's default staying
+// in sync with `size` below.
+const size = iconOnlyPixelSize.md;
 ---
 
-<button
-	type="button"
+<IconButton
+	label="Toggle cart"
+	size="md"
 	data-cart-toggle
-	aria-label="Toggle cart"
 	aria-expanded="false"
 	aria-controls="cart-sidebar"
-	class="flex h-9 w-9 items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle"
 >
-	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width={size} height={size}>
 		<path
 			stroke-linecap="round"
 			stroke-linejoin="round"
@@ -18,4 +26,4 @@
 		<circle cx="9" cy="20.25" r="1" fill="currentColor" stroke="none" />
 		<circle cx="18" cy="20.25" r="1" fill="currentColor" stroke="none" />
 	</svg>
-</button>
+</IconButton>

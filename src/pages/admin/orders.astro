@@ -1,0 +1,85 @@
+---
+export const prerender = false;
+
+// Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
+// reached only when logged in with role === 'admin'.
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { db } from '../../db/client';
+import OrdersTable from '../../components/orders/OrdersTable.astro';
+import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
+import OrdersLayoutToggle from '../../components/orders/OrdersLayoutToggle.astro';
+
+// src/db/schema.ts's orders.status enum.
+const ORDER_STATUSES = ['requested', 'active', 'returned', 'rejected'] as const;
+type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+const statusParam = Astro.url.searchParams.get('status');
+const activeStatus: OrderStatus | null = ORDER_STATUSES.includes(statusParam as OrderStatus)
+	? (statusParam as OrderStatus)
+	: null;
+
+function statusHref(status: OrderStatus | null) {
+	return status ? `/admin/orders?status=${status}` : '/admin/orders';
+}
+
+const allOrders = await db.query.orders.findMany({
+	where: activeStatus ? (t, { eq }) => eq(t.status, activeStatus) : undefined,
+	orderBy: (t, { desc }) => [desc(t.createdAt)],
+	with: { user: true, orderItems: { with: { item: true } } },
+});
+
+const rows: OrdersTableRow[] = allOrders.map((order) => ({
+	orderCode: order.orderCode,
+	status: order.status,
+	fromDate: order.fromDate,
+	toDate: order.toDate,
+	// users.name is nullable (set from the external OAuth provider) — fall
+	// back to the checkout-time contact name snapshot rather than showing
+	// a blank customer.
+	customerName: order.user?.name || order.contactName,
+	items: order.orderItems.map((oi) => ({
+		itemName: oi.item.name,
+		requestedQuantity: oi.requestedQuantity,
+	})),
+}));
+---
+<AdminLayout title="Orders">
+	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+		<div>
+			<h1 class="text-xl font-semibold text-text">Orders</h1>
+			<p class="mt-1 text-sm text-text-muted">All member rental requests, most recent first.</p>
+		</div>
+
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<div class="flex flex-wrap gap-2">
+				<a
+					href={statusHref(null)}
+					class:list={[
+						'rounded-full border px-3 py-1 text-xs font-medium capitalize',
+						activeStatus === null ? 'border-border-strong bg-bg text-text' : 'border-border text-text-muted hover:text-text',
+					]}
+				>
+					All
+				</a>
+				{
+					ORDER_STATUSES.map((status) => (
+						<a
+							href={statusHref(status)}
+							class:list={[
+								'rounded-full border px-3 py-1 text-xs font-medium capitalize',
+								activeStatus === status
+									? 'border-border-strong bg-bg text-text'
+									: 'border-border text-text-muted hover:text-text',
+							]}
+						>
+							{status}
+						</a>
+					))
+				}
+			</div>
+			<OrdersLayoutToggle />
+		</div>
+
+		<OrdersTable orders={rows} viewHref={(code: string) => `/admin/orders/${code}`} emptyMessage="No orders match this filter." />
+	</div>
+</AdminLayout>

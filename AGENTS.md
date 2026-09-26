@@ -31,6 +31,10 @@ Consult these guides before working on related tasks:
 - [Adding styles or using Tailwind](https://docs.astro.build/en/guides/styling/)
 - [Supporting multiple languages](https://docs.astro.build/en/guides/internationalization/)
 
+### Styling
+
+This project uses a semantic theme-token system (`--ui-*`/`--color-*` in `src/styles/global.css`) for all colors, with light/dark mode support. Never use raw Tailwind palette classes (`bg-slate-100`, `text-gray-500`, literal `white`/`black`, etc.) in components or pages — use the semantic utilities (`bg-surface`, `text-text-muted`, `border-selected-border`, ...) instead. See `docs/styling.md` for the full token reference and rules.
+
 ## Workflow
 ### Tasks
 Tasks are now done through GitHub issues. Use the github-issue-tasks skill. When planning work-items this should be used.

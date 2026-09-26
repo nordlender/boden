@@ -1,4 +1,6 @@
 ---
+import Button from '../ui/Button.astro';
+
 interface Props {
   name: string | null;
   email: string | null;
@@ -24,7 +26,6 @@ const labelClass = 'block text-sm font-medium text-gray-700';
 	<input type="hidden" name="fromDate" data-checkout-from-date />
 	<input type="hidden" name="toDate" data-checkout-to-date />
 	<input type="hidden" name="splitItemIds" data-checkout-split-item-ids />
-	{/* TODO: Style later, warning? — this is advisory ("you can still submit"), not a blocking error. */}
 	{hasUnpaidFees && (
 		<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
 			Note: you have an unpaid fee. You can still submit the form. Please check your payments on osiklatring.no. If you have paid the current semester fee, this could be an error.
@@ -56,10 +57,5 @@ const labelClass = 'block text-sm font-medium text-gray-700';
 		Note
 		<textarea name="note" placeholder="Optional note for the moderator" rows={3} class={`${fieldClass} mt-1`}></textarea>
 	</label>
-	<button
-		type="submit"
-		class="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-text-inverted hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-text"
-	>
-		Place order
-	</button>
+	<Button type="submit" variant="primary" size="lg" class="self-start">Place order</Button>
 </form>

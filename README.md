@@ -41,37 +41,19 @@ The dev server binds to `localhost:4321` by default. Running inside a
 container and need it reachable from outside? See the Development section
 in [`AGENTS.md`](AGENTS.md).
 
-### Setting up a new worktree
+#### Setting up a new worktree
 
-Worktrees don't inherit untracked files, so a fresh worktree has no `.env`
-and no sqlite db under `data/`. Instead of copying `.env` and running
-migrations/seeding by hand, run:
+Worktrees don't inherit untracked files like `.env`, and won't have
+migrations run or the database seeded. Instead of the manual steps above,
+run:
 
 ```sh
-npm install   # not run by dev-setup — do this first
 npm run dev-setup
 ```
 
-This copies `.env` from the main checkout, creates `data/` and runs pending
-Drizzle migrations, then seeds the example catalog (categories/products/items)
-via `scripts/seed-example-catalog.mjs`. Safe to re-run.
-
-Known gaps:
-
-- **REDIRECT_URL port mismatch.** `.env`'s `REDIRECT_URL` is tied to
-  whichever port the main checkout's dev server runs on, but per
-  [`AGENTS.md`](AGENTS.md) worktrees are meant to run on different ports
-  (4321–4324) concurrently. Copying `.env` verbatim from main carries over
-  main's port, which breaks bloc OAuth login here if this worktree's dev
-  server runs on a different one. Not yet fixed — update `REDIRECT_URL` by
-  hand if login fails after `dev-setup`.
-- **Overwrites local `.env` edits.** The copy from main is unconditional. If
-  you've hand-added your bloc user id to `ADMIN_USER_IDS`/
-  `MODERATOR_USER_IDS` in this worktree's `.env` to test admin/moderator UI,
-  re-running `dev-setup` drops that edit — re-add it after.
-- **Reseeding reverts manual test edits.** The seed step re-runs every time,
-  so hand-edits to a seeded item (stock count via checkout, fields via the
-  admin wizard) get reset to fixture values on the next `dev-setup` run.
+This copies `.env` from the main checkout, runs pending Drizzle migrations
+(creating `data/` if needed), and seeds the example catalog via
+`scripts/seed-example-catalog.mjs`. See `scripts/dev-setup.sh` for details.
 
 ### Environment variables
 
@@ -84,6 +66,7 @@ yet).
 
 | Command | Action |
 |---|---|
+| `npm run dev-setup` | Copy `.env` from the main checkout, run migrations, seed the example catalog |
 | `npm run dev` | Start the dev server |
 | `npm run dev-setup` | Bootstrap a fresh worktree: copy `.env` from main, migrate, seed |
 | `npm run build` | Build for production |
@@ -117,12 +100,12 @@ src/
 
 ## Documentation
 
-- [`TASKS.md`](TASKS.md) — the live task tracker: what's done, in progress, and blocked. Check this first.
+- Tasks are tracked as [GitHub issues](https://github.com/nordlender/boden/issues), not a `TASKS.md` file.
 - [`docs/schema.md`](docs/schema.md) — the current database schema and design rationale.
 - [`docs/wizard.md`](docs/wizard.md) — the admin product/item wizard design and implementation notes.
 - [`docs/icons.md`](docs/icons.md) — icon system (astro-icon + morphicons).
 - [`docs/moderator-review.md`](docs/moderator-review.md) — the moderator order-review page (planned).
-- [`docs/auth-handoff.md`](docs/auth-handoff.md), [`docs/auth-testing.md`](docs/auth-testing.md), [`docs/auth-work-items.md`](docs/auth-work-items.md) — bloc OAuth implementation history, manual testing guide, and open items.
+- [`docs/auth-testing.md`](docs/auth-testing.md) — manual bloc-login testing guide and open items.
 - [`docs/bloc-api.md`](docs/bloc-api.md) — notes from exploring bloc's API.
 - [`docs/rental-shop.md`](docs/rental-shop.md) — the original project spec.
 - [`docs/schema-legacy-fixes.md`](docs/schema-legacy-fixes.md) — historical, superseded by `docs/schema.md`; kept because a few decisions in it are still cited by number elsewhere.

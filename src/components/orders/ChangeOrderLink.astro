@@ -1,0 +1,96 @@
+---
+import Modal from '../ui/Modal.astro';
+import Button from '../ui/Button.astro';
+import ReservationCalendar from '../reservation/ReservationCalendar.astro';
+
+interface Props {
+	orderCode: string;
+	status: string;
+	fromDate: string;
+	toDate: string;
+	maxRentalDays: number;
+}
+
+const { orderCode, status, fromDate, toDate, maxRentalDays } = Astro.props;
+const modalId = `change-order-${orderCode}`;
+const titleId = `${modalId}-title`;
+---
+
+{
+	status === 'requested' && (
+		<div data-change-order={orderCode}>
+			<Button type="button" data-modal-open data-modal-target={modalId}>
+				Change order
+			</Button>
+
+			<Modal id={modalId} labelledBy={titleId}>
+				<h2 id={titleId} class="text-base font-semibold text-text">
+					Change pick-up &amp; return dates
+				</h2>
+				<ReservationCalendar value={`${fromDate}/${toDate}`} maxRangeDays={maxRentalDays} />
+				<p data-change-order-error hidden class="text-sm text-error-text" />
+				<div class="flex justify-end gap-2">
+					<Button type="button" data-modal-close>Cancel</Button>
+					<Button type="button" variant="primary" data-change-order-confirm disabled>
+						Confirm new dates
+					</Button>
+				</div>
+			</Modal>
+		</div>
+	)
+}
+
+<script>
+	document.querySelectorAll<HTMLElement>('[data-change-order]').forEach((container) => {
+		const orderCode = container.dataset.changeOrder;
+		const confirmButton = container.querySelector<HTMLButtonElement>('[data-change-order-confirm]');
+		const errorEl = container.querySelector<HTMLElement>('[data-change-order-error]');
+
+		let pending: { from: string; to: string } | null = null;
+
+		container.addEventListener('reservation-range-change', (event) => {
+			const { from, to } = (event as CustomEvent<{ from?: string; to?: string }>).detail;
+			pending = from && to ? { from, to } : null;
+			if (confirmButton) confirmButton.disabled = !pending;
+			errorEl?.setAttribute('hidden', '');
+		});
+
+		confirmButton?.addEventListener('click', async () => {
+			if (!orderCode || !pending) return;
+
+			confirmButton.disabled = true;
+			errorEl?.setAttribute('hidden', '');
+
+			try {
+				const res = await fetch(`/api/orders/${orderCode}/reschedule`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ fromDate: pending.from, toDate: pending.to }),
+				});
+				if (res.ok) {
+					window.location.reload();
+					return;
+				}
+				const body = await res.json().catch(() => ({}));
+				if (errorEl) {
+					errorEl.textContent =
+						body.error === 'unavailable'
+							? 'One or more items are not available for those dates.'
+							: body.error === 'not_modifiable'
+								? `This order can no longer be rescheduled (status: ${body.status}).`
+								: body.error === 'invalid_dates'
+									? 'Please pick a valid date range (within the maximum rental duration).'
+									: 'This order could not be rescheduled.';
+					errorEl.removeAttribute('hidden');
+				}
+			} catch {
+				if (errorEl) {
+					errorEl.textContent = 'Something went wrong. Please try again.';
+					errorEl.removeAttribute('hidden');
+				}
+			} finally {
+				confirmButton.disabled = !pending;
+			}
+		});
+	});
+</script>

@@ -5,6 +5,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import ReservationForm from '../components/reservation/ReservationForm.astro';
 import { getCartItems } from '../lib/cart';
 import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
+import { getMaxRentalDays } from '../lib/rental-policy';
+import { todayIsoInOslo } from '../lib/dates';
 import { getSession } from 'auth-astro/server';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
@@ -15,7 +17,8 @@ if (cartItems.length === 0) {
 	return Astro.redirect('/cart');
 }
 
-const todayIso = new Date().toISOString().slice(0, 10);
+// Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
+const todayIso = todayIsoInOslo();
 const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
 
 // Surfaces the two error redirects /api/orders/create can send back here
@@ -24,7 +27,7 @@ const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
 const error = Astro.url.searchParams.get('error');
 const errorMessage =
 	error === 'invalid_dates'
-		? 'Your selected dates were invalid, or the pick-up date has already passed — please choose your dates again.'
+		? `Your selected dates were invalid, the pick-up date has already passed, or the range was longer than the maximum ${getMaxRentalDays()} days — please choose your dates again.`
 		: error === 'unavailable'
 			? "One or more items in your cart are no longer available for the selected dates — check the availability badges below and adjust your dates, or split off the unavailable item(s), before submitting again."
 			: null;

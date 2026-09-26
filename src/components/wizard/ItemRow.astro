@@ -6,6 +6,7 @@ import ProductTag from './ProductTag.astro';
 import StockIndicator from './StockIndicator.astro';
 import DetailsToggle from './DetailsToggle.astro';
 import AppIcon from '../icons/AppIcon.astro';
+import TextMorphButton from '../ui/TextMorphButton.astro';
 import { GRID_TEMPLATE, type PanelVariant } from './grid';
 
 interface AttributeEntry {
@@ -96,7 +97,7 @@ const {
 										value={attribute.value}
 										class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm"
 									/>
-									<button type="submit" class="rounded border border-border-strong px-2 py-1 text-xs text-text-muted hover:bg-surface">Save</button>
+									<TextMorphButton type="submit" action="save" size="sm" />
 								</form>
 							</details>
 						))}
@@ -115,7 +116,7 @@ const {
 								placeholder="Value"
 								class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm"
 							/>
-							<button type="submit" class="rounded border border-border-strong px-2 py-1 text-xs text-text-muted hover:bg-surface">Add</button>
+							<TextMorphButton type="submit" action="add" size="sm" />
 						</form>
 					</div>
 				) : (

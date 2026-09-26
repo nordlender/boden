@@ -1,0 +1,69 @@
+---
+import ActionPopover from '../ui/ActionPopover.astro';
+
+interface Props {
+	orderCode: string;
+	status: string;
+}
+
+const { orderCode, status } = Astro.props;
+const popoverId = `delete-order-${orderCode}-confirm`;
+---
+
+{
+	status === 'requested' && (
+		<div data-delete-order={orderCode}>
+			<ActionPopover
+				id={popoverId}
+				title={`Delete order #${orderCode}?`}
+				triggerLabel="Delete order"
+				triggerVariant="danger"
+				confirmLabel="Delete"
+				confirmVariant="danger"
+			>
+				<p class="text-sm text-text-muted">This cannot be undone.</p>
+			</ActionPopover>
+			<p data-delete-order-error hidden class="mt-2 text-sm text-error-text" />
+		</div>
+	)
+}
+
+<script>
+	document.querySelectorAll<HTMLElement>('[data-delete-order]').forEach((container) => {
+		const orderCode = container.dataset.deleteOrder;
+		const trigger = container.querySelector<HTMLButtonElement>('[data-action-popover-confirm]');
+		const errorEl = container.querySelector<HTMLElement>('[data-delete-order-error]');
+
+		trigger?.addEventListener('click', async () => {
+			if (!orderCode) return;
+
+			const popover = trigger.closest('[popover]') as HTMLElement | null;
+			popover?.hidePopover();
+			trigger.disabled = true;
+			errorEl?.setAttribute('hidden', '');
+
+			try {
+				const res = await fetch(`/api/orders/${orderCode}`, { method: 'DELETE' });
+				if (res.ok) {
+					window.location.href = '/';
+					return;
+				}
+				const body = await res.json().catch(() => ({}));
+				if (errorEl) {
+					errorEl.textContent =
+						body.error === 'not_deletable'
+							? `This order can no longer be deleted (status: ${body.status}).`
+							: 'This order could not be deleted.';
+					errorEl.removeAttribute('hidden');
+				}
+			} catch {
+				if (errorEl) {
+					errorEl.textContent = 'Something went wrong. Please try again.';
+					errorEl.removeAttribute('hidden');
+				}
+			} finally {
+				trigger.disabled = false;
+			}
+		});
+	});
+</script>

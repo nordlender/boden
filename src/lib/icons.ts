@@ -37,6 +37,16 @@ export const icons = {
 	// {folder_icon} is gone from here — animated with morphicons now (see
 	// folderToggle in src/lib/icon-nodes.ts), used by FileExplorerNode.astro.
 	file: 'tabler:file',
+	// Navbar Account button. A plain static icon on purpose — not morphicons
+	// (see icon-nodes.ts) — since a client-rendered custom element there would
+	// interfere with Astro's prefetch of the link it sits on.
+	user: 'tabler:user',
+	// Orders table (OrdersTable.astro): the compact row's view-order action
+	// is icon-only, and the layout toggle switches between the compact and
+	// detailed row components.
+	view: 'tabler:eye',
+	layoutCompact: 'tabler:list',
+	layoutDetailed: 'tabler:layout-list',
 } as const;
 
 export type IconName = keyof typeof icons;

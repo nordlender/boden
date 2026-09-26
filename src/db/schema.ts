@@ -177,8 +177,11 @@ export const users = sqliteTable('users', {
 // One order = one rental request, potentially covering multiple items
 export const orders = sqliteTable('orders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  // Short random alphanumeric code (6 chars, excludes ambiguous 0/O, 1/I) — this is
-  // what members read aloud to moderators and what appears in the retrieve-order URL.
+  // `NNAAX` format — two digits, two free letters, then a letter flagging
+  // the creating member's role: A=admin, B=board member, I=instructor
+  // (moderator), M=member — always one of these four — see
+  // src/lib/orders.ts's generateOrderCode. This is what members read aloud
+  // to moderators and what appears in the retrieve-order URL.
   orderCode: text('order_code').notNull().unique(),
   // Shared by every order created from one checkout submission (split or
   // not) — the confirmation page looks orders up by this instead of by
@@ -200,10 +203,32 @@ export const orders = sqliteTable('orders', {
   fromDate: text('from_date').notNull(),
   toDate: text('to_date').notNull(),
   note: text('note'), // optional note from member at checkout
+  // Snapshot of the checkout form's contact fields at submission time — not
+  // kept in sync with the member's live profile. contactEmail/contactMobile
+  // are intentionally not shown on the member-facing order page (privacy);
+  // they exist for future admin/moderator visibility only.
+  contactName: text('contact_name').notNull().default(''),
+  contactEmail: text('contact_email').notNull().default(''),
+  contactMobile: text('contact_mobile'),
+  // Snapshot of the checkout form's readonly bloc-sourced fields at
+  // submission time (see docs/moderator-review.md) — not re-fetched live
+  // from bloc at review time. Nullable boolean rather than a text tri-state
+  // enum: "Unknown" isn't a real business state, it's the absence of data
+  // (bloc's hasUnpaidFees/userIsMember API defect currently returns null for
+  // every member), so NULL is the correct representation, same as the
+  // underlying value's real type. Mapping from the form's submitted
+  // "Yes"/"No"/"Unknown" string happens in src/pages/api/orders/create.ts.
+  hasUnpaidFees: integer('has_unpaid_fees', { mode: 'boolean' }),
+  userIsMember: integer('user_is_member', { mode: 'boolean' }),
   // Moderator accountability: who confirmed retrieval / processed the return
   confirmedByUserId: text('confirmed_by_user_id').references(() => users.id),
   returnedByUserId: text('returned_by_user_id').references(() => users.id),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  // Set when a moderator accepts the order on the review step, ahead of
+  // retrieval — deliberately not a 5th `status` value: accept leaves
+  // `status: 'requested'` unchanged (see docs/moderator-review.md), it just
+  // gates whether the order is eligible for the retrieve/confirm flow yet.
+  acceptedAt: integer('accepted_at', { mode: 'timestamp' }),
   activatedAt: integer('activated_at', { mode: 'timestamp' }), // set when moderator confirms
   returnedAt: integer('returned_at', { mode: 'timestamp' }), // set when moderator marks returned
   rejectedAt: integer('rejected_at', { mode: 'timestamp' }), // set when moderator rejects

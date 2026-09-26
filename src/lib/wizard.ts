@@ -1,6 +1,7 @@
 import { db } from '../db/client';
-import { items, productAttributeKeys, itemAttributeValues, orderItems, orders } from '../db/schema';
-import { eq, and, inArray, sql } from 'drizzle-orm';
+import { items, productAttributeKeys, itemAttributeValues } from '../db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
+import { reservedQuantitiesByItem } from './stock';
 
 export interface WizardAttribute {
 	key: string;
@@ -42,20 +43,6 @@ async function uniqueItemSlug(name: string): Promise<string> {
 		candidate = `${base}-${suffix++}`;
 	}
 	return candidate;
-}
-
-async function reservedQuantitiesByItem(itemIds: number[]): Promise<Map<number, number>> {
-	if (itemIds.length === 0) return new Map();
-	const rows = await db
-		.select({
-			itemId: orderItems.itemId,
-			reserved: sql<number>`sum(${orderItems.requestedQuantity})`.as('reserved'),
-		})
-		.from(orderItems)
-		.innerJoin(orders, eq(orderItems.orderId, orders.id))
-		.where(and(inArray(orderItems.itemId, itemIds), inArray(orders.status, ['requested', 'active'])))
-		.groupBy(orderItems.itemId);
-	return new Map(rows.map((row) => [row.itemId, row.reserved]));
 }
 
 export async function getWizardItems(): Promise<{ unassigned: WizardItem[]; assigned: WizardItem[] }> {
@@ -121,6 +108,14 @@ export async function createItem(input: { name: string; imageUrl?: string | null
 export async function archiveItems(itemIds: number[]): Promise<void> {
 	if (itemIds.length === 0) return;
 	await db.update(items).set({ archived: true }).where(inArray(items.id, itemIds));
+}
+
+// Bulk "Set image" — assigns the same imageUrl to every selected item, same
+// shape as archiveItems above. Unlike setItemsProduct there's no attribute
+// fan-out to worry about, so this is a plain single-statement bulk update.
+export async function setItemsImage(itemIds: number[], imageUrl: string): Promise<void> {
+	if (itemIds.length === 0) return;
+	await db.update(items).set({ imageUrl }).where(inArray(items.id, itemIds));
 }
 
 // docs/schema.md Work item: "'Set product' reassignment must keep attribute

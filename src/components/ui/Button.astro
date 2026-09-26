@@ -1,0 +1,39 @@
+---
+// Text-only button/link primitive — primary/secondary/danger actions with
+// no icon (e.g. "Delete order", "Save item", "Checkout"). See
+// IconButton.astro for icon-only actions and TextIconButton.astro for the
+// text+icon case.
+import { baseClasses, sizeClasses, variantClasses, type ButtonSize, type ButtonVariant } from '../../lib/button-styles';
+
+interface Props {
+	variant?: ButtonVariant;
+	size?: ButtonSize;
+	type?: 'button' | 'submit' | 'reset';
+	href?: string;
+	disabled?: boolean;
+	class?: string;
+	// Lets a button submit a different <form> than the one it's nested in
+	// (wizard's ButtonStrip targets a form elsewhere in the DOM).
+	form?: string;
+	formaction?: string;
+	// Native Popover API triggers — lets a Button open/close a Popover.astro
+	// instance without a script (see ActionPopover.astro).
+	popovertarget?: string;
+	popovertargetaction?: 'show' | 'hide' | 'toggle';
+}
+
+const { variant = 'secondary', size = 'md', type = 'button', href, disabled = false, class: className, ...rest } = Astro.props;
+
+const classes = [baseClasses, sizeClasses[size], variantClasses[variant], className].filter(Boolean).join(' ');
+---
+{
+	href ? (
+		<a href={href} class={classes} aria-disabled={disabled || undefined} {...rest}>
+			<slot />
+		</a>
+	) : (
+		<button type={type} disabled={disabled} class={classes} {...rest}>
+			<slot />
+		</button>
+	)
+}

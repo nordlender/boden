@@ -9,6 +9,7 @@
 // inherited from whichever product the item ends up assigned to, so there's
 // nothing product-dependent left to set at creation — just image, id, name.
 import AppIcon from '../icons/AppIcon.astro';
+import TextMorphButton from '../ui/TextMorphButton.astro';
 
 interface Props {
 	redirectTo: string;
@@ -41,7 +42,7 @@ const { redirectTo } = Astro.props;
 		</div>
 	</div>
 	<div class="mt-3 flex justify-end gap-2">
-		<button type="reset" class="rounded border border-border-strong px-3 py-1.5 text-sm text-text-muted hover:bg-surface">Cancel</button>
-		<button type="submit" class="rounded bg-accent px-3 py-1.5 text-sm font-medium text-text-inverted hover:bg-accent-hover">Save item</button>
+		<TextMorphButton type="reset" action="cancel" />
+		<TextMorphButton type="submit" action="save" variant="primary">Save item</TextMorphButton>
 	</div>
 </form>

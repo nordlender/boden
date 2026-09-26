@@ -35,11 +35,6 @@ const otherDays = pickupDays.filter((day) => day.kind === 'single' && day.userId
 		<SelectedPickupDaysForm />
 
 		<section class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-text">All pickup days</h2>
-			<PickupDaysTable rows={pickupDays} currentUserId={currentUserId} emptyMessage="No upcoming pickup days yet." />
-		</section>
-
-		<section class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-text">My pickup days</h2>
 			<PickupDaysTable rows={myDays} currentUserId={currentUserId} deletable emptyMessage="You haven't offered any pickup days yet." />
 		</section>

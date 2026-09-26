@@ -174,7 +174,7 @@ boden/
 │   │   ├── nav/                             # Logo, NavLinks, CartButton, UserMenu, ThemeToggle
 │   │   ├── wizard/                          # Admin product/item wizard, see docs/wizard.md
 │   │   ├── icons/                           # AppIcon
-│   │   └── ui/                              # Callout, CalloutPopover
+│   │   └── ui/                              # Button family, Modal, Callout, CalloutPopover, ExpandBox
 │   │
 │   └── layouts/
 │       └── BaseLayout.astro                 # HTML shell, Navbar, Tailwind, slot

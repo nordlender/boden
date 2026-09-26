@@ -13,7 +13,10 @@
 // Trigger wiring matches Modal.astro's decoupled data-modal-target
 // convention: any element anywhere on the page — including the built-in
 // `trigger` slot below, or an unrelated existing button like a
-// TextMorphButton — opts in with data-expand-target={id} and a single
+// TextMorphButton — opts in with data-expand-target={id} (toggles) or
+// data-expand-open={id} (always opens, never closes — for a trigger like a
+// shortcut link that jumps to a field inside the panel and needs it
+// visible/focusable rather than toggled shut if already open) and a single
 // document-level listener (see the <script> below) does the rest.
 import MorphIcon from 'morphicons/astro';
 import { dropdownChevron } from '../../lib/icon-nodes';
@@ -22,9 +25,10 @@ interface Props {
 	id: string;
 	open?: boolean;
 	class?: string;
+	triggerClass?: string;
 }
 
-const { id, open = false, class: className } = Astro.props;
+const { id, open = false, class: className, triggerClass } = Astro.props;
 const hasTrigger = Astro.slots.has('trigger');
 ---
 
@@ -32,7 +36,7 @@ const hasTrigger = Astro.slots.has('trigger');
 	hasTrigger && (
 		<button
 			type="button"
-			class="expand-box-trigger flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface px-4 py-3 text-left text-sm font-medium text-text hover:bg-bg-subtle"
+			class:list={['expand-box-trigger flex w-full items-center justify-between gap-2 text-left text-sm font-medium text-text', triggerClass]}
 			aria-expanded={open}
 			aria-controls={id}
 			data-expand-target={id}
@@ -71,18 +75,10 @@ const hasTrigger = Astro.slots.has('trigger');
 	import type { MorphIconElement } from 'morphicons/element';
 	import { dropdownChevron } from '../../lib/icon-nodes';
 
-	document.addEventListener('click', (event) => {
-		const target = event.target;
-		if (!(target instanceof Element)) return;
-
-		const trigger = target.closest<HTMLElement>('[data-expand-target]');
-		if (!trigger) return;
-
-		const id = trigger.dataset.expandTarget;
-		const panel = id ? document.getElementById(id) : null;
+	function setOpen(id: string, open: boolean) {
+		const panel = document.getElementById(id);
 		if (!panel || !panel.hasAttribute('data-expand-panel')) return;
 
-		const open = !panel.hasAttribute('data-open');
 		panel.toggleAttribute('data-open', open);
 
 		const content = panel.querySelector<HTMLElement>('.expand-box-content');
@@ -91,10 +87,28 @@ const hasTrigger = Astro.slots.has('trigger');
 			content.toggleAttribute('inert', !open);
 		}
 
-		document.querySelectorAll<HTMLElement>(`[data-expand-target="${id}"]`).forEach((el) => {
+		document.querySelectorAll<HTMLElement>(`[data-expand-target="${id}"], [data-expand-open="${id}"]`).forEach((el) => {
 			el.setAttribute('aria-expanded', String(open));
 			const chevron = el.querySelector<MorphIconElement>('.expand-box-chevron');
 			if (chevron) chevron.icon = open ? dropdownChevron.open : dropdownChevron.closed;
 		});
+	}
+
+	document.addEventListener('click', (event) => {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+
+		const opener = target.closest<HTMLElement>('[data-expand-open]');
+		if (opener?.dataset.expandOpen) {
+			setOpen(opener.dataset.expandOpen, true);
+			return;
+		}
+
+		const toggler = target.closest<HTMLElement>('[data-expand-target]');
+		if (!toggler?.dataset.expandTarget) return;
+
+		const panel = document.getElementById(toggler.dataset.expandTarget);
+		if (!panel || !panel.hasAttribute('data-expand-panel')) return;
+		setOpen(toggler.dataset.expandTarget, !panel.hasAttribute('data-open'));
 	});
 </script>

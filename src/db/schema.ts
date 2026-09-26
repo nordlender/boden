@@ -267,7 +267,7 @@ export const pickupAvailableDays = sqliteTable('pickup_available_days', {
 });
 
 // Admin-authored messages shown on the moderator hub (see
-// src/components/moderator/MessagesBox.astro) — shift notes, stock issues,
+// src/components/messages/MessageTable.astro) — shift notes, stock issues,
 // closures, etc. A plain feed (newest first), no expiry or read-receipts:
 // those were open questions on issue #151, deliberately deferred rather than
 // guessed at. authorName is a snapshot of the posting admin's display name

@@ -11,14 +11,14 @@ cd "$root_dir"
 
 main_root="$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')"
 
-if [ -z "$main_root" ]; then
+if [[ -z "$main_root" ]]; then
   echo "Could not determine the main checkout path via 'git worktree list'." >&2
   exit 1
 fi
 
-if [ "$main_root" = "$root_dir" ]; then
+if [[ "$main_root" == "$root_dir" ]]; then
   echo "Already in the main checkout — skipping .env copy."
-elif [ ! -f "$main_root/.env" ]; then
+elif [[ ! -f "$main_root/.env" ]]; then
   echo "No .env found at $main_root — nothing to copy. Set one up there first." >&2
   exit 1
 else

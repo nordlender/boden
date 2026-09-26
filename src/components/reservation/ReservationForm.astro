@@ -2,10 +2,11 @@
 import ReservationCalendar from './ReservationCalendar.astro';
 import ReservationItemRow from './ReservationItemRow.astro';
 import CheckoutForm from '../cart/CheckoutForm.astro';
-import type { CartItem } from '../../lib/cart';
+import { entryKey, type CartLine } from '../../lib/cart';
+import type { ReservationCartLineRef } from './reservationFormState';
 
 interface Props {
-	cartItems: CartItem[];
+	cartLines: CartLine[];
 	availablePickupDates: string[];
 	name: string | null;
 	email: string | null;
@@ -14,14 +15,16 @@ interface Props {
 	userIsMember: boolean | null;
 }
 
-const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
+const { cartLines, availablePickupDates, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
+
+const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
+	'setId' in line
+		? { key: entryKey({ setId: line.setId }), setId: line.setId, quantity: line.quantity }
+		: { key: entryKey({ itemId: line.itemId }), itemId: line.itemId, quantity: line.quantity },
+);
 ---
 
-<div
-	data-reservation-form
-	data-cart-items={JSON.stringify(cartItems.map((item) => ({ itemId: item.itemId, quantity: item.quantity })))}
-	class="flex flex-col gap-8"
->
+<div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} class="flex flex-col gap-8">
 	<section>
 		<h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase">1. Pick-up &amp; return dates</h2>
 		<ReservationCalendar availablePickupDates={availablePickupDates} />
@@ -43,16 +46,30 @@ const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, use
 
 		<div class="divide-y divide-gray-200 border-y border-gray-200">
 			{
-				cartItems.map((item) => (
-					<ReservationItemRow
-						itemId={item.itemId}
-						productSlug={item.productSlug}
-						productTitle={item.productTitle}
-						imageUrl={item.imageUrl}
-						quantity={item.quantity}
-						attributes={item.attributes}
-					/>
-				))
+				cartLines.map((line) =>
+					'setId' in line ? (
+						<ReservationItemRow
+							kind="set"
+							id={line.setId}
+							productSlug={line.productSlug}
+							productTitle={line.productTitle}
+							imageUrl={line.imageUrl}
+							quantity={line.quantity}
+							attributes={line.attributes}
+							children={line.children}
+						/>
+					) : (
+						<ReservationItemRow
+							kind="item"
+							id={line.itemId}
+							productSlug={line.productSlug}
+							productTitle={line.productTitle}
+							imageUrl={line.imageUrl}
+							quantity={line.quantity}
+							attributes={line.attributes}
+						/>
+					),
+				)
 			}
 		</div>
 	</section>
@@ -67,13 +84,13 @@ const { cartItems, availablePickupDates, name, email, mobile, hasUnpaidFees, use
 <script>
 	// See reservationFormState.ts for the fetch/availability/submit-state
 	// logic and reservationFormRender.ts for the pure DOM rendering it calls
-	// into. This tag just reads the cart items back out of the DOM (passed
-	// down as data-cart-items, since a real module script — unlike
+	// into. This tag just reads the cart lines back out of the DOM (passed
+	// down as data-cart-lines, since a real module script — unlike
 	// is:inline + define:vars — can't have server frontmatter values
 	// injected directly) and wires everything up.
-	import { initReservationForm } from './reservationFormState';
+	import { initReservationForm, type ReservationCartLineRef } from './reservationFormState';
 
 	const form = document.querySelector<HTMLElement>('[data-reservation-form]');
-	const cartItems: { itemId: number; quantity: number }[] = JSON.parse(form?.dataset.cartItems ?? '[]');
-	initReservationForm(cartItems);
+	const cartLines: ReservationCartLineRef[] = JSON.parse(form?.dataset.cartLines ?? '[]');
+	initReservationForm(cartLines);
 </script>

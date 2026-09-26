@@ -34,10 +34,12 @@ const CONTACT = {
 // same pattern as src/lib/__tests__/cart.test.ts and reservation.test.ts.
 // Deterministic ids: itemA=1, itemB=2, itemC=3 (the only rows ever inserted
 // into `items` here, and sqlite autoincrement counters start at 1 per table
-// per in-memory db instance).
+// per in-memory db instance). setX=1 (the only row ever inserted into
+// `sets`), resolving to 1× item B + 1× item C.
 const ITEM_A_ID = 1;
 const ITEM_B_ID = 2;
 const ITEM_C_ID = 3;
+const SET_X_ID = 1;
 
 vi.mock('../../db/client', async () => {
 	const { default: Database } = await import('better-sqlite3');
@@ -60,6 +62,14 @@ vi.mock('../../db/client', async () => {
 	await db.insert(schema.items).values({ productId: product.id, slug: 'item-a', name: 'Item A', stockCount: 1 });
 	await db.insert(schema.items).values({ productId: product.id, slug: 'item-b', name: 'Item B', stockCount: 5 });
 	await db.insert(schema.items).values({ productId: product.id, slug: 'item-c', name: 'Item C', stockCount: 5 });
+	// vi.mock factories are hoisted above top-level const declarations, so
+	// these use literal ids (1/2/3) rather than the ITEM_*_ID/SET_X_ID
+	// constants declared above — same reason the item inserts below do too.
+	await db.insert(schema.sets).values({ productId: product.id, slug: 'set-x', name: 'Set X' });
+	await db.insert(schema.setItems).values([
+		{ setId: 1, itemId: 2, quantity: 1 },
+		{ setId: 1, itemId: 3, quantity: 1 },
+	]);
 	await db.insert(schema.users).values({ id: 'member-1', name: 'Member', email: 'member@example.com' });
 	const [otherUser] = await db.insert(schema.users).values({ id: 'other-user', name: 'Other', email: 'other@example.com' }).returning();
 
@@ -122,6 +132,54 @@ describe('createOrder', () => {
 
 		expect(result).toEqual({ ok: false, error: 'user_not_found' });
 	});
+
+	it('resolves a set entry into its component items at checkout', async () => {
+		const cartEntries: CartEntry[] = [{ setId: SET_X_ID, quantity: 2 }];
+		const result = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries,
+			fromDate: '2026-02-10',
+			toDate: '2026-02-12',
+			...CONTACT,
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		const { db } = await import('../../db/client');
+		const schema = await import('../../db/schema');
+		const rows = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, result.orderId));
+		expect(rows.map((row) => [row.itemId, row.requestedQuantity]).sort()).toEqual([
+			[ITEM_B_ID, 2],
+			[ITEM_C_ID, 2],
+		]);
+	});
+
+	it('merges a direct item entry with the same item pulled in via a set into one summed orderItems row', async () => {
+		const cartEntries: CartEntry[] = [
+			{ itemId: ITEM_B_ID, quantity: 1 },
+			{ setId: SET_X_ID, quantity: 1 }, // also resolves to 1× item B
+		];
+		const result = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries,
+			fromDate: '2026-02-15',
+			toDate: '2026-02-16',
+			...CONTACT,
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		const { db } = await import('../../db/client');
+		const schema = await import('../../db/schema');
+		const rows = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, result.orderId));
+		expect(rows).toHaveLength(2); // one row per distinct item, not per cart entry
+		expect(rows.find((row) => row.itemId === ITEM_B_ID)?.requestedQuantity).toBe(2);
+		expect(rows.find((row) => row.itemId === ITEM_C_ID)?.requestedQuantity).toBe(1);
+	});
 });
 
 describe('createSplitOrders', () => {
@@ -138,7 +196,7 @@ describe('createSplitOrders', () => {
 			cartEntries,
 			fromDate: '2026-04-01',
 			toDate: '2026-04-05',
-			splitItemIds: [ITEM_C_ID],
+			splitLineKeys: [`item:${ITEM_C_ID}`],
 			...CONTACT,
 		});
 
@@ -168,7 +226,7 @@ describe('createSplitOrders', () => {
 			cartEntries,
 			fromDate: '2026-01-06',
 			toDate: '2026-01-08',
-			splitItemIds: [ITEM_A_ID],
+			splitLineKeys: [`item:${ITEM_A_ID}`],
 			...CONTACT,
 		});
 
@@ -193,7 +251,7 @@ describe('createSplitOrders', () => {
 			cartEntries,
 			fromDate: '2026-01-06',
 			toDate: '2026-01-08',
-			splitItemIds: [ITEM_A_ID],
+			splitLineKeys: [`item:${ITEM_A_ID}`],
 			...CONTACT,
 		});
 
@@ -210,7 +268,7 @@ describe('createSplitOrders', () => {
 			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
 			fromDate: '2026-03-01',
 			toDate: '2026-03-02',
-			splitItemIds: [],
+			splitLineKeys: [],
 			...CONTACT,
 		});
 
@@ -218,6 +276,35 @@ describe('createSplitOrders', () => {
 		if (!result.ok) return;
 		expect(result.orders).toHaveLength(1);
 		expect(result.checkoutToken).toHaveLength(10);
+	});
+
+	it('splits a set line into its own order using a set: line key', async () => {
+		// Both the item and the set are available for this range — split the
+		// set line out into its own order and confirm it resolves to real
+		// items (item B + item C) rather than being inserted as-is.
+		const cartEntries: CartEntry[] = [
+			{ itemId: ITEM_C_ID, quantity: 1 },
+			{ setId: SET_X_ID, quantity: 1 },
+		];
+		const result = await createSplitOrders({
+			userId: 'member-1',
+			note: null,
+			cartEntries,
+			fromDate: '2026-04-15',
+			toDate: '2026-04-17',
+			splitLineKeys: [`set:${SET_X_ID}`],
+			...CONTACT,
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.orders).toHaveLength(2);
+
+		const { db } = await import('../../db/client');
+		const schema = await import('../../db/schema');
+		const setOrder = result.orders[1];
+		const rows = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, setOrder.orderId));
+		expect(rows.map((row) => row.itemId).sort()).toEqual([ITEM_B_ID, ITEM_C_ID]);
 	});
 });
 

@@ -2,7 +2,9 @@ import { db } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
+import { entryKey } from './cart';
 import type { Role } from './auth';
+import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
 
@@ -120,7 +122,10 @@ function insertOrder(
     fromDate: string;
     toDate: string;
     checkoutToken: string;
-    entries: CartEntry[];
+    // Always already resolved down to real items (see
+    // resolveEntriesToItemQuantities) — a set never reaches this far; orders
+    // always reference items, never sets (see schema.ts's `sets` comment).
+    entries: { itemId: number; quantity: number }[];
     contactName: string;
     contactEmail: string;
     contactMobile: string | null;
@@ -135,12 +140,7 @@ function insertOrder(
   // point. Doing it here rather than before the transaction closes the race
   // between two members submitting overlapping requests concurrently: the
   // check and the insert commit atomically together.
-  const availabilities = getReservationAvailability(
-    { from: input.fromDate, to: input.toDate },
-    input.entries.map((e) => ({ itemId: e.itemId, quantity: e.quantity })),
-    undefined,
-    tx,
-  );
+  const availabilities = getReservationAvailability({ from: input.fromDate, to: input.toDate }, input.entries, undefined, tx);
   const unavailableItemIds = availabilities.filter((a) => !a.available).map((a) => a.itemId);
   if (unavailableItemIds.length > 0) {
     throw new UnavailableItemsError(unavailableItemIds);
@@ -189,21 +189,23 @@ function insertOrder(
 }
 
 // Shared by createOrder/createSplitOrders: drops cart entries pointing at
-// items that no longer exist or were archived — stock shortfall itself is
-// resolved later by the moderator at the confirm step (see
+// items/sets that no longer exist or were archived — stock shortfall itself
+// is resolved later by the moderator at the confirm step (see
 // orderItems.retrievedQuantity), not here.
 //
-// Deliberately not checked here: item.product.status. Unlike getCartItems
-// (src/lib/cart.ts), this doesn't drop an entry whose product was
-// unpublished after it was added to the cart — so a stale/tampered cart can
-// still produce an orderItems row for it. Accepted for now rather than fixed
-// here: the not-yet-built moderator hand-out flow is expected to (a) warn
-// when an order contains an item that's since become archived/unpublished,
-// and (b) let the moderator hand out only a subset of an order's items, so
-// they can simply decline to hand out that one instead of it being a hard
-// failure. See the moderator-workflow-deferred memory.
+// Deliberately not checked here: item/set product.status. Unlike
+// getCartLines (src/lib/cart.ts), this doesn't drop an entry whose product
+// was unpublished after it was added to the cart — so a stale/tampered cart
+// can still produce an orderItems row for it. Accepted for now rather than
+// fixed here: the not-yet-built moderator hand-out flow is expected to (a)
+// warn when an order contains an item that's since become
+// archived/unpublished, and (b) let the moderator hand out only a subset of
+// an order's items, so they can simply decline to hand out that one instead
+// of it being a hard failure. See the moderator-workflow-deferred memory.
 async function resolveOrderableEntries(cartEntries: CartEntry[]): Promise<CartEntry[]> {
-  const itemIds = cartEntries.map((e) => e.itemId);
+  const itemIds = cartEntries.filter((e): e is { itemId: number; quantity: number } => 'itemId' in e).map((e) => e.itemId);
+  const setIds = cartEntries.filter((e): e is { setId: number; quantity: number } => 'setId' in e).map((e) => e.setId);
+
   const validItems = itemIds.length
     ? await db
         .select({ id: items.id })
@@ -211,12 +213,23 @@ async function resolveOrderableEntries(cartEntries: CartEntry[]): Promise<CartEn
         .where(and(inArray(items.id, itemIds), eq(items.archived, false)))
     : [];
   const validItemIds = new Set(validItems.map((i) => i.id));
-  return cartEntries.filter((e) => validItemIds.has(e.itemId));
+  const validSetIds = await getValidSetIds(setIds);
+
+  return cartEntries.filter((e) => ('itemId' in e ? validItemIds.has(e.itemId) : validSetIds.has(e.setId)));
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
   const entriesToOrder = await resolveOrderableEntries(input.cartEntries);
   if (entriesToOrder.length === 0) {
+    return { ok: false, error: 'empty_cart' };
+  }
+  // Expand any set entries into their component items and merge everything
+  // down to one summed quantity per itemId — see sets.ts's
+  // resolveEntriesToItemQuantities. orderItems always references items,
+  // never sets (schema.ts's `sets` comment) — this is the one place that
+  // resolution happens for a real checkout.
+  const resolvedEntries = await resolveEntriesToItemQuantities(entriesToOrder);
+  if (resolvedEntries.length === 0) {
     return { ok: false, error: 'empty_cart' };
   }
 
@@ -230,7 +243,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         fromDate: input.fromDate,
         toDate: input.toDate,
         checkoutToken,
-        entries: entriesToOrder,
+        entries: resolvedEntries,
         contactName: input.contactName,
         contactEmail: input.contactEmail,
         contactMobile: input.contactMobile,
@@ -260,11 +273,11 @@ export type CreateSplitOrdersInput = {
   cartEntries: CartEntry[];
   fromDate: string;
   toDate: string;
-  // itemIds the member chose to move into their own order via the
-  // reservation page's split-order action — see TASKS.md's Reservation
-  // section on why this isn't offered for a line requesting more than one of
-  // the same item.
-  splitItemIds: number[];
+  // Cart-line keys (see cart.ts's entryKey — 'item:<id>' or 'set:<id>') the
+  // member chose to move into their own order via the reservation page's
+  // split-order action — see TASKS.md's Reservation section on why this
+  // isn't offered for a line requesting more than one of the same item/set.
+  splitLineKeys: string[];
   contactName: string;
   contactEmail: string;
   contactMobile: string | null;
@@ -280,19 +293,32 @@ export type CreateSplitOrdersResult =
 
 // Same validation/entry-filtering as createOrder, but partitions the
 // resulting entries into up to two orders sharing the same date range: one
-// for the split-out items, one for the rest. Falls back to a single order
-// when nothing (or everything) was split — e.g. splitItemIds is empty, or
-// names every item still in the cart.
+// for the split-out lines, one for the rest. Falls back to a single order
+// when nothing (or everything) was split — e.g. splitLineKeys is empty, or
+// names every line still in the cart.
 export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<CreateSplitOrdersResult> {
   const entriesToOrder = await resolveOrderableEntries(input.cartEntries);
   if (entriesToOrder.length === 0) {
     return { ok: false, error: 'empty_cart' };
   }
 
-  const splitIds = new Set(input.splitItemIds);
-  const splitGroup = entriesToOrder.filter((e) => splitIds.has(e.itemId));
-  const mainGroup = entriesToOrder.filter((e) => !splitIds.has(e.itemId));
+  const splitKeys = new Set(input.splitLineKeys);
+  const splitGroup = entriesToOrder.filter((e) => splitKeys.has(entryKey(e)));
+  const mainGroup = entriesToOrder.filter((e) => !splitKeys.has(entryKey(e)));
   const groups = [mainGroup, splitGroup].filter((g) => g.length > 0);
+
+  // Resolve each group's set entries into real items *before* the
+  // transaction (set composition is static config, not something that needs
+  // the atomic re-check — only stock/reservation numbers do, and those are
+  // still re-checked inside insertOrder below). A group that resolves to
+  // nothing (e.g. it only contained a set that's since lost all its
+  // components) is dropped rather than inserted as an empty order.
+  const resolvedGroups = (await Promise.all(groups.map((group) => resolveEntriesToItemQuantities(group)))).filter(
+    (group) => group.length > 0,
+  );
+  if (resolvedGroups.length === 0) {
+    return { ok: false, error: 'empty_cart' };
+  }
 
   const checkoutToken = generateCheckoutToken();
   try {
@@ -300,7 +326,7 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
     // be unavailable, the whole submission rolls back rather than leaving
     // one half of a split checkout placed and the other silently dropped.
     const created = db.transaction((tx) =>
-      groups.map((entries) =>
+      resolvedGroups.map((entries) =>
         insertOrder(tx, {
           userId: input.userId,
           role: input.role,

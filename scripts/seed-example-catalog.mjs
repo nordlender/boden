@@ -260,6 +260,70 @@ const products = [
   },
 ];
 
+// Component items for the example set below — created unassigned to any
+// product (productId stays null), same as any freeform item a rented set
+// resolves into: they're never browsed/added-to-cart on their own, only
+// pulled in via a set's setItems rows.
+const setComponentItems = [
+  { slug: 'set-harness-s', name: 'Harness (set component) — S', imageUrl: '/uploads/harness.svg', stockCount: 3 },
+  { slug: 'set-harness-m', name: 'Harness (set component) — M', imageUrl: '/uploads/harness.svg', stockCount: 3 },
+  { slug: 'set-harness-l', name: 'Harness (set component) — L', imageUrl: '/uploads/harness.svg', stockCount: 3 },
+  { slug: 'set-chalk-bag', name: 'Chalk Bag (set component)', imageUrl: '/uploads/quickdraws.svg', stockCount: 6 },
+  {
+    slug: 'set-belay-device',
+    name: 'Singing Rock Rama Belay Device (set component)',
+    imageUrl: '/uploads/quickdraws.svg',
+    stockCount: 5,
+  },
+];
+
+// The example set: a product ("Indoor Rope Climbing Set") whose S/M/L
+// variants are sets, not items — each resolving to a size-matched harness
+// plus a shared chalk bag and belay device. See src/db/schema.ts's `sets`
+// comment for why this is a separate concept from a product's items.
+const setProducts = [
+  {
+    slug: 'indoor-rope-climbing-set',
+    title: 'Indoor Rope Climbing Set',
+    description: 'Everything for an indoor top-rope session — harness, chalk bag, and belay device, bundled by size.',
+    categorySlug: 'ropes',
+    thumbnailImageUrl: '/uploads/rope-60m.svg',
+    attributeKeys: ['Size'],
+    sets: [
+      {
+        slug: 'indoor-rope-climbing-set-s',
+        name: 'Indoor Rope Climbing Set (internal) — S',
+        values: { Size: 'S' },
+        components: [
+          { itemSlug: 'set-harness-s', quantity: 1 },
+          { itemSlug: 'set-chalk-bag', quantity: 1 },
+          { itemSlug: 'set-belay-device', quantity: 1 },
+        ],
+      },
+      {
+        slug: 'indoor-rope-climbing-set-m',
+        name: 'Indoor Rope Climbing Set (internal) — M',
+        values: { Size: 'M' },
+        components: [
+          { itemSlug: 'set-harness-m', quantity: 1 },
+          { itemSlug: 'set-chalk-bag', quantity: 1 },
+          { itemSlug: 'set-belay-device', quantity: 1 },
+        ],
+      },
+      {
+        slug: 'indoor-rope-climbing-set-l',
+        name: 'Indoor Rope Climbing Set (internal) — L',
+        values: { Size: 'L' },
+        components: [
+          { itemSlug: 'set-harness-l', quantity: 1 },
+          { itemSlug: 'set-chalk-bag', quantity: 1 },
+          { itemSlug: 'set-belay-device', quantity: 1 },
+        ],
+      },
+    ],
+  },
+];
+
 const db = new Database(dbPath);
 db.pragma('foreign_keys = ON');
 
@@ -308,6 +372,27 @@ const upsertAttributeValue = db.prepare(
    ON CONFLICT(item_id, attribute_id) DO UPDATE SET value = excluded.value`,
 );
 
+const upsertSet = db.prepare(
+  `INSERT INTO sets (product_id, slug, name, image_url, archived)
+   VALUES (@productId, @slug, @name, @imageUrl, 0)
+   ON CONFLICT(slug) DO UPDATE SET
+     product_id = excluded.product_id,
+     name = excluded.name,
+     image_url = excluded.image_url,
+     archived = 0`,
+);
+const getSetBySlug = db.prepare('SELECT id FROM sets WHERE slug = ?');
+
+const upsertSetAttributeValue = db.prepare(
+  `INSERT INTO set_attribute_values (set_id, attribute_id, value) VALUES (?, ?, ?)
+   ON CONFLICT(set_id, attribute_id) DO UPDATE SET value = excluded.value`,
+);
+
+const upsertSetItem = db.prepare(
+  `INSERT INTO set_items (set_id, item_id, quantity) VALUES (?, ?, ?)
+   ON CONFLICT(set_id, item_id) DO UPDATE SET quantity = excluded.quantity`,
+);
+
 const seed = db.transaction(() => {
   for (const c of categories) upsertCategory.run(c.name, c.slug);
 
@@ -351,10 +436,51 @@ const seed = db.transaction(() => {
       }
     }
   }
+
+  for (const item of setComponentItems) {
+    upsertItem.run({ productId: null, slug: item.slug, name: item.name, imageUrl: item.imageUrl, stockCount: item.stockCount });
+  }
+
+  for (const p of setProducts) {
+    const categoryId = getCategoryBySlug.get(p.categorySlug).id;
+
+    upsertProduct.run({
+      slug: p.slug,
+      title: p.title,
+      description: p.description,
+      categoryId,
+      subcategoryId: null,
+      thumbnailImageUrl: p.thumbnailImageUrl,
+    });
+    const productId = getProductBySlug.get(p.slug).id;
+
+    const attributeIds = {};
+    p.attributeKeys.forEach((name, i) => {
+      upsertAttributeKey.run(productId, name, i);
+      attributeIds[name] = getAttributeKey.get(productId, name).id;
+    });
+
+    for (const set of p.sets) {
+      upsertSet.run({ productId, slug: set.slug, name: set.name, imageUrl: set.imageUrl ?? null });
+      const setId = getSetBySlug.get(set.slug).id;
+
+      for (const [key, value] of Object.entries(set.values)) {
+        upsertSetAttributeValue.run(setId, attributeIds[key], value);
+      }
+
+      for (const component of set.components) {
+        const itemId = getItemBySlug.get(component.itemSlug).id;
+        upsertSetItem.run(setId, itemId, component.quantity);
+      }
+    }
+  }
 });
 
 seed();
 db.close();
 
-const totalItems = products.reduce((sum, p) => sum + p.items.length, 0);
-console.log(`Seeded ${categories.length} categories, ${products.length} products, ${totalItems} items.`);
+const totalItems = products.reduce((sum, p) => sum + p.items.length, 0) + setComponentItems.length;
+const totalSets = setProducts.reduce((sum, p) => sum + p.sets.length, 0);
+console.log(
+  `Seeded ${categories.length} categories, ${products.length + setProducts.length} products, ${totalItems} items, ${totalSets} sets.`,
+);

@@ -25,7 +25,7 @@ const labelClass = 'block text-sm font-medium text-gray-700';
 <form class="checkout-form flex flex-col gap-4" method="POST" action="/api/orders/create">
 	<input type="hidden" name="fromDate" data-checkout-from-date />
 	<input type="hidden" name="toDate" data-checkout-to-date />
-	<input type="hidden" name="splitItemIds" data-checkout-split-item-ids />
+	<input type="hidden" name="splitLineKeys" data-checkout-split-line-keys />
 	{hasUnpaidFees && (
 		<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
 			Note: you have an unpaid fee. You can still submit the form. Please check your payments on osiklatring.no. If you have paid the current semester fee, this could be an error.

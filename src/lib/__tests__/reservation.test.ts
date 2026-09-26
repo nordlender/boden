@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
-import { isValidDateRange, hasMixedAvailability, getReservationAvailability } from '../reservation';
+import { isValidDateRange, hasMixedAvailability, getReservationAvailability, getCartLineAvailability } from '../reservation';
 
 // isValidDateRange rejects a `from` before "today" (src/lib/reservation.ts) —
 // pin the clock well before every fixture date below (all in Jan/Feb 2026)
@@ -145,5 +145,64 @@ describe('getReservationAvailability', () => {
 		]);
 		expect(availability.peakReserved).toBe(1);
 		expect(availability.available).toBe(true);
+	});
+});
+
+describe('getCartLineAvailability', () => {
+	it('reports a plain item line available/unavailable the same as getReservationAvailability', () => {
+		const [unavailable] = getCartLineAvailability({ from: '2026-01-06', to: '2026-01-08' }, [
+			{ key: 'item:1', itemRequirements: [{ itemId: ITEM_A_ID, quantity: 2 }] },
+		]);
+		expect(unavailable).toEqual({ key: 'item:1', available: false });
+
+		const [available] = getCartLineAvailability({ from: '2026-01-06', to: '2026-01-08' }, [
+			{ key: 'item:2', itemRequirements: [{ itemId: ITEM_B_ID, quantity: 5 }] },
+		]);
+		expect(available).toEqual({ key: 'item:2', available: true });
+	});
+
+	it('reports a set line unavailable when any one of its components is', () => {
+		// Item A only has 1 free unit during this overlap (see the mock db
+		// setup above) — a set needing 2 of item A plus some of item B (which
+		// has plenty) is unavailable overall, because one insufficient
+		// component caps the whole set.
+		const [availability] = getCartLineAvailability({ from: '2026-01-06', to: '2026-01-08' }, [
+			{
+				key: 'set:1',
+				itemRequirements: [
+					{ itemId: ITEM_A_ID, quantity: 2 },
+					{ itemId: ITEM_B_ID, quantity: 1 },
+				],
+			},
+		]);
+		expect(availability).toEqual({ key: 'set:1', available: false });
+	});
+
+	it('reports a set line available when every one of its components is', () => {
+		const [availability] = getCartLineAvailability({ from: '2026-01-06', to: '2026-01-08' }, [
+			{
+				key: 'set:1',
+				itemRequirements: [
+					{ itemId: ITEM_A_ID, quantity: 1 },
+					{ itemId: ITEM_B_ID, quantity: 1 },
+				],
+			},
+		]);
+		expect(availability).toEqual({ key: 'set:1', available: true });
+	});
+
+	it('merges demand for a component shared by two different lines before checking either', () => {
+		// Item A has only 1 free unit during this overlap. A plain item line
+		// wanting 1 unit and a set line also needing 1 unit of the same item
+		// together demand 2 — more than the 1 actually free — so both lines
+		// come back unavailable, even though neither alone would exceed it.
+		const availabilities = getCartLineAvailability({ from: '2026-01-06', to: '2026-01-08' }, [
+			{ key: 'item:1', itemRequirements: [{ itemId: ITEM_A_ID, quantity: 1 }] },
+			{ key: 'set:1', itemRequirements: [{ itemId: ITEM_A_ID, quantity: 1 }] },
+		]);
+		expect(availabilities).toEqual([
+			{ key: 'item:1', available: false },
+			{ key: 'set:1', available: false },
+		]);
 	});
 });

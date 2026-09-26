@@ -154,6 +154,79 @@ export const itemAttributeValues = sqliteTable('item_attribute_values', {
   index('item_attribute_values_attribute_id_idx').on(table.attributeId),
 ]);
 
+// ---------------------------------------------------------------------------
+// Sets — an alternative to `items` for a product's variant slot. A product
+// points to an item OR a set for each of its variants (schema-v3 already
+// lets a product have several items as its variants, e.g. Size/Color; a set
+// is the same idea, except that variant resolves to a *bundle* of items
+// rather than one physical item — e.g. "Indoor Rope Climbing Set" comes in
+// S/M/L, each a `sets` row, each resolving via `setItems` to a harness of
+// that size plus a chalk bag and a belay device). Mirrors `items` in shape
+// (productId, slug, name, imageUrl, archived) so the two behave the same way
+// everywhere a product lists its variants.
+// ---------------------------------------------------------------------------
+
+export const sets = sqliteTable('sets', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  // Nullable/set-null, same rationale as items.productId: a set can exist
+  // unassigned, and deleting a product must never delete (or orphan the
+  // meaning of) a set that past orders' resolved items still reference.
+  productId: integer('product_id').references(() => products.id, { onDelete: 'set null' }),
+  slug: text('slug').notNull().unique(),
+  // Internal/admin-only label, same as items.name — never shown to customers.
+  name: text('name').notNull(),
+  imageUrl: text('image_url'),
+  // Soft delete: a set that's ever been ordered has its resolved items
+  // living on in orderItems, independent of this row — same rationale as
+  // items.archived.
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index('sets_product_id_idx').on(table.productId),
+]);
+
+// ---------------------------------------------------------------------------
+// Set items — the bundle a set resolves into. A rental/order never
+// references a set directly (see orderItems above); at the moment an order
+// is placed, each cart line for a set is expanded into its setItems rows
+// (quantity multiplied by however many of the set were requested) and
+// inserted as ordinary orderItems rows. Kept here purely so a set's
+// composition — and therefore its availability, computed from its
+// components' stock same as any other item — can be looked up.
+// ---------------------------------------------------------------------------
+
+export const setItems = sqliteTable('set_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  setId: integer('set_id').notNull().references(() => sets.id, { onDelete: 'cascade' }),
+  // No onDelete: a component item can't be hard-deleted out from under a
+  // set that still resolves to it — same convention as orderItems.itemId.
+  itemId: integer('item_id').notNull().references(() => items.id),
+  quantity: integer('quantity').notNull().default(1),
+}, (table) => [
+  uniqueIndex('set_items_set_item_unique').on(table.setId, table.itemId),
+  index('set_items_set_id_idx').on(table.setId),
+  index('set_items_item_id_idx').on(table.itemId),
+  check('set_items_quantity_positive', sql`${table.quantity} > 0`),
+]);
+
+// ---------------------------------------------------------------------------
+// Set attribute values — a set's own values for its product's attribute
+// template, same split as itemAttributeValues/productAttributeKeys (e.g. the
+// "Indoor Rope Climbing Set" product has a "Size" key; each of its S/M/L set
+// rows owns its own value for it here).
+// ---------------------------------------------------------------------------
+
+export const setAttributeValues = sqliteTable('set_attribute_values', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  setId: integer('set_id').notNull().references(() => sets.id, { onDelete: 'cascade' }),
+  attributeId: integer('attribute_id').notNull().references(() => productAttributeKeys.id, { onDelete: 'cascade' }),
+  value: text('value').notNull().default(''),
+}, (table) => [
+  uniqueIndex('set_attribute_values_set_attribute_unique').on(table.setId, table.attributeId),
+  index('set_attribute_values_set_id_idx').on(table.setId),
+  index('set_attribute_values_attribute_id_idx').on(table.attributeId),
+]);
+
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(), // ID from external OAuth provider
   // WARNING: this UNIQUE constraint assumes bloc never reports the same
@@ -296,6 +369,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   // Convenience relation only — no real FK column on `products` (same
   // pattern as usersRelations' `many(orders)` below).
   items: many(items),
+  sets: many(sets),
 }));
 
 export const productLinksRelations = relations(productLinks, ({ one }) => ({
@@ -311,6 +385,7 @@ export const productAttributeKeysRelations = relations(productAttributeKeys, ({ 
     references: [products.id],
   }),
   values: many(itemAttributeValues),
+  setValues: many(setAttributeValues),
 }));
 
 export const itemsRelations = relations(items, ({ one, many }) => ({
@@ -320,6 +395,7 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   }),
   attributeValues: many(itemAttributeValues),
   orderItems: many(orderItems),
+  setItems: many(setItems),
 }));
 
 export const itemAttributeValuesRelations = relations(itemAttributeValues, ({ one }) => ({
@@ -329,6 +405,37 @@ export const itemAttributeValuesRelations = relations(itemAttributeValues, ({ on
   }),
   attribute: one(productAttributeKeys, {
     fields: [itemAttributeValues.attributeId],
+    references: [productAttributeKeys.id],
+  }),
+}));
+
+export const setsRelations = relations(sets, ({ one, many }) => ({
+  product: one(products, {
+    fields: [sets.productId],
+    references: [products.id],
+  }),
+  setItems: many(setItems),
+  attributeValues: many(setAttributeValues),
+}));
+
+export const setItemsRelations = relations(setItems, ({ one }) => ({
+  set: one(sets, {
+    fields: [setItems.setId],
+    references: [sets.id],
+  }),
+  item: one(items, {
+    fields: [setItems.itemId],
+    references: [items.id],
+  }),
+}));
+
+export const setAttributeValuesRelations = relations(setAttributeValues, ({ one }) => ({
+  set: one(sets, {
+    fields: [setAttributeValues.setId],
+    references: [sets.id],
+  }),
+  attribute: one(productAttributeKeys, {
+    fields: [setAttributeValues.attributeId],
     references: [productAttributeKeys.id],
   }),
 }));

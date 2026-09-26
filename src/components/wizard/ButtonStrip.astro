@@ -72,7 +72,7 @@ const { variant, formId, products, redirectTo } = Astro.props;
 			Add item
 		</TextMorphButton>
 	)}
-	<TextMorphButton variant="danger-filled" action="delete" type="submit" form={formId} formaction="/api/wizard/archive">
+	<TextMorphButton variant="danger-filled" action="delete" type="submit" form={formId} formaction="/api/wizard/archive" data-archive-trigger={formId}>
 		Delete <span class="selected-count" data-form-id={formId}>0</span> item(s)
 	</TextMorphButton>
 </div>
@@ -107,6 +107,21 @@ const { variant, formId, products, redirectTo } = Astro.props;
 		const count = document.querySelectorAll(`input.select-checkbox-input[form="${formId}"]:checked`).length;
 		document.querySelectorAll(`.selected-count[data-form-id="${formId}"]`).forEach((el) => {
 			el.textContent = String(count);
+		});
+	});
+
+	// Guard against archiving with nothing selected — without this the form
+	// still submits to /api/wizard/archive with an empty selection, which
+	// just redirects back with no visible effect (see issue #200).
+	document.querySelectorAll<HTMLElement>('[data-archive-trigger]').forEach((trigger) => {
+		trigger.addEventListener('click', (event) => {
+			const formId = trigger.getAttribute('data-archive-trigger');
+			if (!formId) return;
+			const count = document.querySelectorAll(`input.select-checkbox-input[form="${formId}"]:checked`).length;
+			if (count === 0) {
+				event.preventDefault();
+				window.alert('Select at least one item to delete.');
+			}
 		});
 	});
 </script>

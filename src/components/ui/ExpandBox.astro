@@ -10,14 +10,17 @@
 // today; the grid trick gets the same "auto height" animation everywhere
 // without measuring anything in JS.
 //
-// Trigger wiring matches Modal.astro's decoupled data-modal-target
-// convention: any element anywhere on the page — including the built-in
-// `trigger` slot below, or an unrelated existing button like a
-// TextMorphButton — opts in with data-expand-target={id} (toggles) or
-// data-expand-open={id} (always opens, never closes — for a trigger like a
-// shortcut link that jumps to a field inside the panel and needs it
-// visible/focusable rather than toggled shut if already open) and a single
-// document-level listener (see the <script> below) does the rest.
+// Trigger wiring is decoupled the same way as Modal.astro's — any element
+// anywhere on the page, including the built-in `trigger` slot below or an
+// unrelated existing button like a TextMorphButton, can be wired up without
+// this component knowing about it — but the attribute shape differs: Modal
+// pairs a boolean `data-modal-open` flag with a separate `data-modal-target={id}`
+// on the same opener, while here the id lives directly on a single
+// attribute's value: data-expand-target={id} (toggles) or data-expand-open={id}
+// (always opens, never closes — for a trigger like a shortcut link that
+// jumps to a field inside the panel and needs it visible/focusable rather
+// than toggled shut if already open). A single document-level listener (see
+// the <script> below) does the rest.
 import MorphIcon from 'morphicons/astro';
 import { dropdownChevron } from '../../lib/icon-nodes';
 

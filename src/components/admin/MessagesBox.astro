@@ -23,6 +23,9 @@ const modalId = 'add-message-modal';
 	<MessageList messages={messages} editable redirectTo={redirectTo} />
 </div>
 
+{/* TODO(#206): replace this Modal with an inline expanding box — other page
+	elements below it should smoothly slide down/out of the way as it opens,
+	rather than the current dialog overlay. See issue #206. */}
 <Modal id={modalId} labelledBy={`${modalId}-title`}>
 	<h2 id={`${modalId}-title`} class="text-sm font-semibold text-text">
 		New message

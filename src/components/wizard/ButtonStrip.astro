@@ -68,7 +68,7 @@ const { variant, formId, products, redirectTo } = Astro.props;
 	<div class="flex-1"></div>
 
 	{variant === 'unassigned' && (
-		<TextMorphButton variant="primary" action="add" href="#add-item-name">
+		<TextMorphButton variant="primary" action="add" href="#add-item-name" data-expand-open="add-item-panel">
 			Add item
 		</TextMorphButton>
 	)}

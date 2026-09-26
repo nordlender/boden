@@ -1,0 +1,117 @@
+---
+// Inline expanding/collapsing panel (issue #206). Unlike Modal.astro's
+// <dialog>, this stays in normal document flow — whatever sits below it
+// smoothly slides down/up as it opens/closes, instead of a dialog
+// appearing on top of everything.
+//
+// Animates with the CSS grid-template-rows 0fr/1fr trick (see the
+// `expand-box-panel` rules below) rather than <details>'s new
+// calc-size()-driven animation or interpolate-size: both are Chrome-only
+// today; the grid trick gets the same "auto height" animation everywhere
+// without measuring anything in JS.
+//
+// Trigger wiring is decoupled the same way as Modal.astro's — any element
+// anywhere on the page, including the built-in `trigger` slot below or an
+// unrelated existing button like a TextMorphButton, can be wired up without
+// this component knowing about it — but the attribute shape differs: Modal
+// pairs a boolean `data-modal-open` flag with a separate `data-modal-target={id}`
+// on the same opener, while here the id lives directly on a single
+// attribute's value: data-expand-target={id} (toggles) or data-expand-open={id}
+// (always opens, never closes — for a trigger like a shortcut link that
+// jumps to a field inside the panel and needs it visible/focusable rather
+// than toggled shut if already open). A single document-level listener (see
+// the <script> below) does the rest.
+import MorphIcon from 'morphicons/astro';
+import { dropdownChevron } from '../../lib/icon-nodes';
+
+interface Props {
+	id: string;
+	open?: boolean;
+	class?: string;
+	triggerClass?: string;
+}
+
+const { id, open = false, class: className, triggerClass } = Astro.props;
+const hasTrigger = Astro.slots.has('trigger');
+---
+
+{
+	hasTrigger && (
+		<button
+			type="button"
+			class:list={['expand-box-trigger flex w-full items-center justify-between gap-2 text-left text-sm font-medium text-text', triggerClass]}
+			aria-expanded={open}
+			aria-controls={id}
+			data-expand-target={id}
+		>
+			<slot name="trigger" />
+			<MorphIcon icon={open ? dropdownChevron.open : dropdownChevron.closed} size={17} class="expand-box-chevron shrink-0 text-text-muted" />
+		</button>
+	)
+}
+
+<div id={id} class="expand-box-panel" data-expand-panel data-open={open ? '' : undefined}>
+	<div class:list={['expand-box-content min-h-0 overflow-hidden', className]} aria-hidden={!open} inert={!open}>
+		<slot />
+	</div>
+</div>
+
+<style>
+	.expand-box-panel {
+		display: grid;
+		grid-template-rows: 0fr;
+		transition: grid-template-rows 0.25s ease-in-out;
+	}
+
+	.expand-box-panel[data-open] {
+		grid-template-rows: 1fr;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.expand-box-panel {
+			transition: none;
+		}
+	}
+</style>
+
+<script>
+	import type { MorphIconElement } from 'morphicons/element';
+	import { dropdownChevron } from '../../lib/icon-nodes';
+
+	function setOpen(id: string, open: boolean) {
+		const panel = document.getElementById(id);
+		if (!panel || !panel.hasAttribute('data-expand-panel')) return;
+
+		panel.toggleAttribute('data-open', open);
+
+		const content = panel.querySelector<HTMLElement>('.expand-box-content');
+		if (content) {
+			content.setAttribute('aria-hidden', String(!open));
+			content.toggleAttribute('inert', !open);
+		}
+
+		document.querySelectorAll<HTMLElement>(`[data-expand-target="${id}"], [data-expand-open="${id}"]`).forEach((el) => {
+			el.setAttribute('aria-expanded', String(open));
+			const chevron = el.querySelector<MorphIconElement>('.expand-box-chevron');
+			if (chevron) chevron.icon = open ? dropdownChevron.open : dropdownChevron.closed;
+		});
+	}
+
+	document.addEventListener('click', (event) => {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+
+		const opener = target.closest<HTMLElement>('[data-expand-open]');
+		if (opener?.dataset.expandOpen) {
+			setOpen(opener.dataset.expandOpen, true);
+			return;
+		}
+
+		const toggler = target.closest<HTMLElement>('[data-expand-target]');
+		if (!toggler?.dataset.expandTarget) return;
+
+		const panel = document.getElementById(toggler.dataset.expandTarget);
+		if (!panel || !panel.hasAttribute('data-expand-panel')) return;
+		setOpen(toggler.dataset.expandTarget, !panel.hasAttribute('data-open'));
+	});
+</script>

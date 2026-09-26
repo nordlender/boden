@@ -4,7 +4,6 @@ export const prerender = false;
 // Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
 // reached only when logged in with role === 'admin'.
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import AdminNavbar from '../../components/AdminNavbar.astro';
 import { db } from '../../db/client';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
 import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
@@ -45,7 +44,6 @@ const rows: OrdersTableRow[] = allOrders.map((order) => ({
 }));
 ---
 <AdminLayout title="Orders">
-	<AdminNavbar />
 	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
 		<div>
 			<h1 class="text-xl font-semibold text-text">Orders</h1>

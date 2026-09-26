@@ -4,7 +4,6 @@ export const prerender = false;
 // Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
 // reached only when logged in with role === 'admin'.
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import AdminNavbar from '../../components/AdminNavbar.astro';
 import PickupDaysCalendar from '../../components/pickup-days/PickupDaysCalendar.astro';
 import SelectedPickupDaysForm from '../../components/pickup-days/SelectedPickupDaysForm.astro';
 import PickupDaysTable from '../../components/pickup-days/PickupDaysTable.astro';
@@ -25,9 +24,7 @@ const [pickupDays, recurringRules] = await Promise.all([listUpcomingPickupDays(t
 // pickup days" table here to split it against.
 const singleDays = pickupDays.filter((day) => day.kind === 'single');
 ---
-
 <AdminLayout title="Pickup days">
-	<AdminNavbar />
 	<div class="mx-auto flex max-w-3xl flex-col gap-8 p-8">
 		<div>
 			<h1 class="text-xl font-semibold text-text">Pickup days</h1>

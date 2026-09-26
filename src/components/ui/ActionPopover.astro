@@ -21,6 +21,13 @@
 // element carrying `data-popover-container`; ActionPopover doesn't add
 // this to its own trigger, since fill-parent's point is to span siblings
 // outside this component's own markup.
+//
+// The trigger itself defaults to a text Button (triggerLabel/triggerVariant)
+// but can be swapped for something else — e.g. a MorphButton icon, see
+// src/components/pickup-days/PickupDayDeleteButton.astro — via the named
+// `trigger` slot; whatever's slotted in there just needs its own
+// `popovertarget={id}` to open this popover. triggerLabel/triggerVariant are
+// ignored when a custom trigger is slotted in.
 import Popover from './Popover.astro';
 import Button from './Button.astro';
 
@@ -28,7 +35,9 @@ interface Props {
 	id: string;
 	title: string;
 	confirmLabel: string;
-	triggerLabel: string;
+	// Only used by the default text-Button trigger — required unless a
+	// custom trigger is slotted in via the `trigger` slot (see above).
+	triggerLabel?: string;
 	triggerVariant?: 'primary' | 'secondary' | 'danger';
 	confirmVariant?: 'primary' | 'secondary' | 'danger';
 	placement?: 'anchor' | 'fill-parent';
@@ -53,9 +62,11 @@ const {
 const titleId = `${id}-title`;
 ---
 
-<Button popovertarget={id} variant={triggerVariant}>
-	{triggerLabel}
-</Button>
+<slot name="trigger">
+	<Button popovertarget={id} variant={triggerVariant}>
+		{triggerLabel}
+	</Button>
+</slot>
 
 <Popover id={id} placement={placement} side={side} labelledBy={titleId} class={className}>
 	{

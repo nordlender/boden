@@ -44,3 +44,23 @@ export function dateToIsoInOslo(date: Date): string {
 export function todayIsoInOslo(): string {
   return dateToIsoInOslo(new Date());
 }
+
+// dd/mm — used by the pickup-days tables (src/components/pickup-days/),
+// where rows are dense and the year is implied by "upcoming". Parsed as
+// UTC (not local midnight): unlike todayIsoInOslo() above, this formats an
+// already-fixed YYYY-MM-DD calendar date rather than deriving "today", so
+// there's no real-world "now" to get an Oslo-vs-UTC answer for — UTC
+// parsing just avoids the date shifting a day in either direction depending
+// on the viewer's own device timezone, same reasoning as
+// ReservationCalendar.astro's addDaysIso.
+export function formatDateShort(value: string): string {
+  const date = new Date(`${value}T00:00:00Z`);
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  return `${day}/${month}`;
+}
+
+// Weekday name for a bare YYYY-MM-DD date — see formatDateShort re: UTC parsing.
+export function formatWeekdayName(value: string): string {
+  return new Date(`${value}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+}

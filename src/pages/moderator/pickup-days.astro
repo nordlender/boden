@@ -1,25 +1,52 @@
 ---
 export const prerender = false;
 
-// Placeholder — moderator self-service pick-up availability isn't designed
-// or built yet (see issue #56: table schema, ad-hoc-vs-admin-baseline
-// design, retraction, and how it surfaces on the member calendar are all
-// still open questions). This page exists so the index page's "Pickup
-// days" tile has somewhere to land; replace with the real form once #56 is
-// scoped. Gated by src/middleware/index.ts (MOD_ROUTE_PREFIXES via
-// /moderator).
+// Gated by src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator) —
+// reached only when logged in as at least a moderator (admins included).
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
+import PickupDaysCalendar from '../../components/pickup-days/PickupDaysCalendar.astro';
+import SelectedPickupDaysForm from '../../components/pickup-days/SelectedPickupDaysForm.astro';
+import PickupDaysTable from '../../components/pickup-days/PickupDaysTable.astro';
+import RecurringPickupDaysTable from '../../components/pickup-days/RecurringPickupDaysTable.astro';
+import { listUpcomingPickupDays, listRecurringRules } from '../../lib/pickupDays';
+import { todayIsoInOslo } from '../../lib/dates';
+
+const currentUserId = Astro.locals.user!.id;
+const todayIso = todayIsoInOslo();
+
+const [pickupDays, recurringRules] = await Promise.all([listUpcomingPickupDays(todayIso), listRecurringRules()]);
+
+const myDays = pickupDays.filter((day) => day.kind === 'single' && day.userId === currentUserId);
+const otherDays = pickupDays.filter((day) => day.kind === 'single' && day.userId !== currentUserId);
 ---
 
 <ModeratorLayout title="Pickup days — Moderator">
-	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
-		<div class="rounded-lg border border-border bg-surface p-6 text-center">
+	<div class="mx-auto flex max-w-3xl flex-col gap-8 p-6">
+		<div>
 			<h1 class="text-xl font-semibold text-text">Pickup days</h1>
-			<p class="mt-2 text-sm text-text-muted">
-				Registering your own pick-up availability isn't built yet — this is a placeholder. See
-				<a href="https://github.com/nordlender/boden/issues/56" class="underline hover:text-text">issue #56</a>
-				for the plan.
+			<p class="mt-1 text-sm text-text-muted">
+				Select one or more days you're available to hand out orders. Other moderators (in yellow) and recurring
+				training days (in red) stay visible so you can avoid duplicate coverage.
 			</p>
 		</div>
+
+		<PickupDaysCalendar rows={pickupDays} currentUserId={currentUserId} />
+
+		<SelectedPickupDaysForm />
+
+		<section class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-text">My pickup days</h2>
+			<PickupDaysTable rows={myDays} currentUserId={currentUserId} deletable emptyMessage="You haven't offered any pickup days yet." />
+		</section>
+
+		<section class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-text">Other pickup days</h2>
+			<PickupDaysTable rows={otherDays} currentUserId={currentUserId} emptyMessage="No other moderator has offered a pickup day yet." />
+		</section>
+
+		<section class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-text">Recurring pickup days</h2>
+			<RecurringPickupDaysTable rules={recurringRules} emptyMessage="No recurring training days set up yet." />
+		</section>
 	</div>
 </ModeratorLayout>

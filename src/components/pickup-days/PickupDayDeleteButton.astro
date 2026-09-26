@@ -1,0 +1,69 @@
+---
+// Delete-with-confirm for a persisted pickup-days row (a moderator's own
+// single day, or — from RecurringPickupDaysTable — an admin's recurring
+// rule). Same ActionPopover + fetch pattern as
+// src/components/orders/DeleteOrderButton.astro, except on success this
+// removes the row from the DOM in place instead of navigating away (the
+// table stays on the page), and the trigger is an icon-only MorphButton
+// (via ActionPopover's `trigger` slot) rather than the text Button
+// DeleteOrderButton uses — these rows are dense table rows, not a single
+// detail-page action.
+import ActionPopover from '../ui/ActionPopover.astro';
+import MorphButton from '../ui/MorphButton.astro';
+
+interface Props {
+	id: string; // unique per row — becomes the popover's DOM id
+	endpoint: string; // DELETE URL
+	title: string;
+	body?: string;
+}
+
+const { id, endpoint, title, body = 'This cannot be undone.' } = Astro.props;
+const popoverId = `pickup-day-delete-${id}`;
+---
+
+{/* justify-self-end: this is always the last cell of a row's CSS grid (PickupDaysTable.astro/RecurringPickupDaysTable.astro) — right-aligns the icon against the row's edge instead of sitting flush against "Where"/"Time". */}
+<div data-pickup-day-delete={endpoint} class="justify-self-end">
+	<ActionPopover id={popoverId} title={title} confirmLabel="Delete" confirmVariant="danger">
+		<Fragment slot="trigger">
+			<MorphButton action="delete" variant="danger" size="sm" label={title} popovertarget={popoverId} />
+		</Fragment>
+		<p class="text-sm text-text-muted">{body}</p>
+	</ActionPopover>
+	<p data-pickup-day-delete-error hidden class="mt-1 text-xs text-error-text" />
+</div>
+
+<script>
+	document.querySelectorAll<HTMLElement>('[data-pickup-day-delete]').forEach((container) => {
+		const endpoint = container.dataset.pickupDayDelete;
+		const trigger = container.querySelector<HTMLButtonElement>('[data-action-popover-confirm]');
+		const errorEl = container.querySelector<HTMLElement>('[data-pickup-day-delete-error]');
+
+		trigger?.addEventListener('click', async () => {
+			if (!endpoint) return;
+			const popover = trigger.closest('[popover]') as HTMLElement | null;
+			popover?.hidePopover();
+			trigger.disabled = true;
+			errorEl?.setAttribute('hidden', '');
+
+			try {
+				const res = await fetch(endpoint, { method: 'DELETE' });
+				if (res.ok) {
+					container.closest<HTMLElement>('[data-pickup-day-row]')?.remove();
+					return;
+				}
+				if (errorEl) {
+					errorEl.textContent = 'This could not be deleted — try refreshing the page.';
+					errorEl.removeAttribute('hidden');
+				}
+			} catch {
+				if (errorEl) {
+					errorEl.textContent = 'Something went wrong. Please try again.';
+					errorEl.removeAttribute('hidden');
+				}
+			} finally {
+				trigger.disabled = false;
+			}
+		});
+	});
+</script>

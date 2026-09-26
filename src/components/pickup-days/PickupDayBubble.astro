@@ -1,0 +1,31 @@
+---
+// A small colored circle, no text — same success/warning/error tokens as
+// OrderStatusBadge.astro's pill, just circular and label-less, and reused
+// across every pickup-days table so a row's origin reads at a glance
+// without a legend lookup once you already know the calendar's colors
+// (PickupDaysCalendar.astro's legend: red = training, green = me, yellow =
+// other).
+export type PickupDayBubbleKind = 'mine' | 'other' | 'recurring';
+
+interface Props {
+	kind: PickupDayBubbleKind;
+	class?: string;
+}
+
+const { kind, class: className } = Astro.props;
+
+// Written out in full (not built from `kind`) so Tailwind's class scanner can see them.
+const bubbleClasses: Record<PickupDayBubbleKind, string> = {
+	mine: 'bg-success-subtle border-success-border',
+	other: 'bg-warning-subtle border-warning-border',
+	recurring: 'bg-error-subtle border-error-border',
+};
+
+const labels: Record<PickupDayBubbleKind, string> = {
+	mine: 'Your pickup day',
+	other: "Another moderator's pickup day",
+	recurring: 'Recurring training day',
+};
+---
+
+<span class:list={['inline-block h-3 w-3 shrink-0 rounded-full border', bubbleClasses[kind], className]} title={labels[kind]} aria-hidden="true"></span>

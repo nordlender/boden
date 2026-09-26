@@ -196,8 +196,8 @@ export const orders = sqliteTable('orders', {
   // Reservation date range (YYYY-MM-DD, inclusive on both ends) chosen on the
   // /reservation page — the whole order (all its orderItems) shares one
   // range. fromDate is the pick-up day, toDate the return day (see
-  // pickupAvailableDays below for which pick-up days have a moderator
-  // confirmed available to hand out the order). Availability for a range is
+  // pickupDays below for which pick-up days have a moderator confirmed
+  // available to hand out the order). Availability for a range is
   // computed from other requested/active orders whose range overlaps this
   // one — see src/lib/reservation.ts.
   fromDate: text('from_date').notNull(),
@@ -257,17 +257,86 @@ export const orderItems = sqliteTable('order_items', {
   check('retrieved_quantity_non_negative', sql`${table.retrievedQuantity} IS NULL OR ${table.retrievedQuantity} >= 0`),
 ]);
 
-// Which pick-up days (orders.fromDate) have a moderator confirmed available
-// to hand out orders — maintained by an admin (see /admin/pickup-days,
-// src/lib/pickupDays.ts) and expected to change often as moderator
-// availability is confirmed week to week. Existence of a row is the only
-// signal: a date with no row here just means nobody's confirmed a moderator
-// for it yet, not that pick-up is refused — the reservation page shows it
-// as "request pick up" rather than disallowing it.
-export const pickupAvailableDays = sqliteTable('pickup_available_days', {
-  date: text('date').primaryKey(), // YYYY-MM-DD
+// A recurring rule an admin sets up (see /admin/pickup-days): "every
+// Monday, 18:00-20:00, between these two dates". This row exists purely for
+// display (docs/schema.md / the admin UI collapse every date the rule
+// generated back into one line, e.g. "21/09 - 10/12 | Monday | 18:00 -
+// 20:00") — the rule is never re-evaluated at read time. The individual
+// dates it covers are generated once, up front, as ordinary rows in
+// `pickupDays` below (kind: 'recurring', recurringRuleId: this row's id).
+// Deleting a rule cascades to those generated rows (onDelete: 'cascade' on
+// pickupDays.recurringRuleId).
+export const pickupRecurringRules = sqliteTable('pickup_recurring_rules', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
+  // 0 (Sunday) - 6 (Saturday), matching JS Date#getDay().
+  weekday: integer('weekday').notNull(),
+  startTime: text('start_time').notNull(), // HH:MM, 24h
+  endTime: text('end_time').notNull(), // HH:MM, 24h
+  startDate: text('start_date').notNull(), // YYYY-MM-DD, inclusive
+  endDate: text('end_date').notNull(), // YYYY-MM-DD, inclusive
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
+}, (table) => [
+  index('pickup_recurring_rules_created_by_user_id_idx').on(table.createdByUserId),
+  check('pickup_recurring_rules_weekday_valid', sql`${table.weekday} BETWEEN 0 AND 6`),
+  check('pickup_recurring_rules_date_range_valid', sql`${table.endDate} >= ${table.startDate}`),
+]);
+
+// One row per individual pick-up day, of either origin:
+//
+// - 'single': a moderator (or admin) registering their own ad-hoc
+//   availability via the calendar on /moderator/pickup-days or
+//   /admin/pickup-days — userId is whoever submitted it, recurringRuleId is
+//   null. Deletable only by its owner (see deleteSingleDay in
+//   src/lib/pickupDays.ts, which enforces that in the WHERE clause itself,
+//   not just a check before calling — a lesson carried over from the
+//   ownership bug flagged in the abandoned PR #112).
+// - 'recurring': one of the individual dates generated from a
+//   pickupRecurringRules row at creation time — userId is that rule's
+//   creator (an admin), recurringRuleId points back to it.
+//
+// Every row (of either kind) is a real pick-up day: /reservation reads the
+// union of both to color its calendar, exactly like the old
+// pickupAvailableDays table's rows did — see getUpcomingAvailablePickupDates.
+export const pickupDays = sqliteTable('pickup_days', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull(), // YYYY-MM-DD
+  // HH:MM, 24h — NOT NULL: every real caller already requires a window
+  // (the moderator API validates it before calling createSingleDays;
+  // createRecurringRule always copies it from the rule). Kept NOT NULL
+  // deliberately, not just by convention: pickup_days_single_user_date_time_unique
+  // below is scoped to (date, startTime, endTime), and SQLite treats NULL as
+  // distinct from NULL in a unique index — nullable columns here would have
+  // silently let two null-time single days for the same user/date past that
+  // constraint.
+  startTime: text('start_time').notNull(),
+  endTime: text('end_time').notNull(),
+  // Free-text meeting point ("At Vulkan", "In the reception at SiO Athletica
+  // Blindern") — moderator-submitted single days only; recurring rows leave
+  // this null (the recurring form never collects one).
+  where: text('where'),
+  userId: text('user_id').notNull().references(() => users.id),
+  kind: text('kind', { enum: ['single', 'recurring'] }).notNull().default('single'),
+  recurringRuleId: integer('recurring_rule_id').references(() => pickupRecurringRules.id, { onDelete: 'cascade' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index('pickup_days_date_idx').on(table.date),
+  index('pickup_days_user_id_idx').on(table.userId),
+  index('pickup_days_recurring_rule_id_idx').on(table.recurringRuleId),
+  // A moderator can offer more than one window on the same day (e.g.
+  // 12:00-14:00 and 18:00-20:00) — so uniqueness is scoped to a distinct
+  // (date, startTime, endTime) per moderator, not just (date), and only
+  // blocks submitting the exact same window twice. Overlapping-but-not-
+  // identical windows on the same day aren't rejected — not asked for, and
+  // detecting real overlap would need interval comparison this doesn't do.
+  // Scoped to kind = 'single' only: a recurring rule may legitimately
+  // generate the same date twice if two separate rules overlap (e.g. two
+  // different training rules both landing on the same Monday).
+  uniqueIndex('pickup_days_single_user_date_time_unique')
+    .on(table.userId, table.date, table.startTime, table.endTime)
+    .where(sql`${table.kind} = 'single'`),
+  check('pickup_days_kind_recurring_rule_consistent', sql`(${table.kind} = 'recurring') = (${table.recurringRuleId} IS NOT NULL)`),
+]);
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
   subcategories: many(subcategories),
@@ -353,5 +422,24 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   item: one(items, {
     fields: [orderItems.itemId],
     references: [items.id],
+  }),
+}));
+
+export const pickupRecurringRulesRelations = relations(pickupRecurringRules, ({ one, many }) => ({
+  createdBy: one(users, {
+    fields: [pickupRecurringRules.createdByUserId],
+    references: [users.id],
+  }),
+  generatedDays: many(pickupDays),
+}));
+
+export const pickupDaysRelations = relations(pickupDays, ({ one }) => ({
+  user: one(users, {
+    fields: [pickupDays.userId],
+    references: [users.id],
+  }),
+  recurringRule: one(pickupRecurringRules, {
+    fields: [pickupDays.recurringRuleId],
+    references: [pickupRecurringRules.id],
   }),
 }));

@@ -4,78 +4,54 @@ export const prerender = false;
 // Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
 // reached only when logged in with role === 'admin'.
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import Button from '../../components/ui/Button.astro';
-import TextMorphButton from '../../components/ui/TextMorphButton.astro';
-import { listAvailablePickupDates } from '../../lib/pickupDays';
-import { todayIsoInOslo, formatDateDisplay } from '../../lib/dates';
+import PickupDaysCalendar from '../../components/pickup-days/PickupDaysCalendar.astro';
+import SelectedPickupDaysForm from '../../components/pickup-days/SelectedPickupDaysForm.astro';
+import PickupDaysTable from '../../components/pickup-days/PickupDaysTable.astro';
+import RecurringPickupDaysTable from '../../components/pickup-days/RecurringPickupDaysTable.astro';
+import RecurringPickupDayForm from '../../components/pickup-days/RecurringPickupDayForm.astro';
+import { listUpcomingPickupDays, listRecurringRules } from '../../lib/pickupDays';
+import { todayIsoInOslo } from '../../lib/dates';
 
-const redirectTo = Astro.url.pathname;
-const dates = await listAvailablePickupDates();
-// Europe/Oslo's today, not the server host's — see src/lib/dates.ts. Same
-// bug class as the reservation calendar/form (#50): this page's `min` and
-// past-date strikethrough were comparing against a UTC-derived "today".
+const currentUserId = Astro.locals.user!.id;
 const todayIso = todayIsoInOslo();
-const error = Astro.url.searchParams.get('error');
+
+const [pickupDays, recurringRules] = await Promise.all([listUpcomingPickupDays(todayIso), listRecurringRules()]);
+
+// "Single pickup days" is every moderator/admin ad-hoc submission, with no
+// userId filter — unlike /moderator/pickup-days's "Other pickup days"
+// (which is this exact same underlying data, just filtered away from the
+// viewer), an admin sees the full pool in one table since there's no "My
+// pickup days" table here to split it against.
+const singleDays = pickupDays.filter((day) => day.kind === 'single');
 ---
-<AdminLayout title="Pick-up days">
-	<div class="mx-auto flex max-w-2xl flex-col gap-6 p-8">
+<AdminLayout title="Pickup days">
+	<div class="mx-auto flex max-w-3xl flex-col gap-8 p-8">
 		<div>
-			<h1 class="text-xl font-semibold text-text">Pick-up days</h1>
+			<h1 class="text-xl font-semibold text-text">Pickup days</h1>
 			<p class="mt-1 text-sm text-text-muted">
-				Dates listed here show as "Pick up available" (green) on the member-facing reservation calendar — add a date
-				once a moderator is confirmed to hand out orders that day.
+				Set up recurring training days below, or select individual days on the calendar the same way a moderator
+				would.
 			</p>
 		</div>
 
-		{
-			error === 'invalid_date' && (
-				<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
-					That doesn't look like a valid date (expected YYYY-MM-DD).
-				</p>
-			)
-		}
+		<PickupDaysCalendar rows={pickupDays} currentUserId={currentUserId} />
 
-		<form
-			method="post"
-			action="/api/pickup-days/add"
-			class="flex items-end gap-3 rounded-lg border border-border bg-warning-subtle px-3 py-3"
-		>
-			<input type="hidden" name="redirectTo" value={redirectTo} />
-			<div>
-				<label class="mb-1 block text-xs text-text-muted" for="pickup-day-date">Date</label>
-				<input
-					id="pickup-day-date"
-					name="date"
-					type="date"
-					min={todayIso}
-					required
-					class="rounded border border-border-interactive px-2 py-1.5 text-sm"
-				/>
-			</div>
-			<Button type="submit" variant="primary">Mark available</Button>
-		</form>
+		<SelectedPickupDaysForm />
 
-		<div class="rounded-lg border border-border bg-surface">
-			{
-				dates.length === 0 ? (
-					<p class="p-4 text-sm text-text-muted">No pick-up days marked available yet.</p>
-				) : (
-					<ul class="divide-y divide-border">
-						{dates.map((date) => (
-							<li class="flex items-center justify-between gap-4 px-4 py-2.5 text-sm">
-								<span class={date < todayIso ? 'text-disabled-text line-through' : 'text-text'}>{formatDateDisplay(date, { weekday: true })}</span>
-								<form method="post" action="/api/pickup-days/remove">
-									<input type="hidden" name="redirectTo" value={redirectTo} />
-									<input type="hidden" name="date" value={date} />
-									<button type="submit" class="text-xs text-error-text hover:underline">
-										Remove
-									</button>
-								</form>
-							</li>
-						))}
-					</ul>
-				)
-			}
-		</div>
+		<section class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-text">All pickup days</h2>
+			<PickupDaysTable rows={pickupDays} currentUserId={currentUserId} emptyMessage="No upcoming pickup days yet." />
+		</section>
+
+		<section class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-text">Recurring pickup days</h2>
+			<RecurringPickupDayForm />
+			<RecurringPickupDaysTable rules={recurringRules} deletable emptyMessage="No recurring training days set up yet." />
+		</section>
+
+		<section class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-text">Single pickup days</h2>
+			<PickupDaysTable rows={singleDays} currentUserId={currentUserId} emptyMessage="No moderator has offered a pickup day yet." />
+		</section>
 	</div>
 </AdminLayout>

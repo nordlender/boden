@@ -8,11 +8,25 @@ import { getCartItems } from '../lib/cart';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
 const cartItems = await getCartItems(Astro.cookies);
+
+// Surfaces the error redirects POST /api/orders/create can send back here
+// (empty_cart, account_not_found) — previously the form just silently
+// re-rendered with no indication anything had failed, same gap
+// reservation.astro's invalid_dates/unavailable handling already closed.
+const error = Astro.url.searchParams.get('error');
+const errorMessage =
+	error === 'empty_cart'
+		? 'One or more items in your cart are no longer available (they may have been removed or archived) — please review your cart and try again.'
+		: error === 'account_not_found'
+			? "We couldn't find your account to place this order — please sign out and back in, then try again."
+			: null;
 ---
 
 <BaseLayout title="Cart">
 	<div class="mx-auto max-w-3xl px-4 py-8">
 		<h1 class="mb-6 text-2xl font-semibold tracking-tight text-text">Cart</h1>
+
+		{errorMessage && <p class="mb-6 rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">{errorMessage}</p>}
 
 		{
 			cartItems.length === 0 ? (

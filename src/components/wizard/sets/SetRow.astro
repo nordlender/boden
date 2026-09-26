@@ -1,0 +1,110 @@
+---
+// Sets' equivalent of ../ItemRow.astro. Two differences in shape: (1) a
+// Label cell (plain admin-typed string, no key/value template — see
+// schema.ts's `sets.label` comment) inline-editable the same way an
+// attribute value is; (2) the expanded panel has an "Includes" section
+// (read-only, derived — SetIncludesDisplay) instead of/alongside an
+// editable "Components" section (the actual setItems rows).
+import SelectIcon from '../SelectIcon.astro';
+import Thumbnail from '../Thumbnail.astro';
+import ProductTag from '../ProductTag.astro';
+import StockIndicator from '../StockIndicator.astro';
+import DetailsToggle from '../DetailsToggle.astro';
+import TextMorphButton from '../../ui/TextMorphButton.astro';
+import AppIcon from '../../icons/AppIcon.astro';
+import SetIncludesDisplay from './SetIncludesDisplay.astro';
+import SetComponentList from './SetComponentList.astro';
+import SetComponentPicker from './SetComponentPicker.astro';
+import { SET_GRID_TEMPLATE, type SetPanelVariant } from './grid';
+import type { WizardSetComponent } from '../../../lib/setWizard';
+import type { SetComponentDisplay } from '../../../lib/sets';
+
+interface Props {
+	variant: SetPanelVariant;
+	formId: string;
+	setId: number;
+	selected?: boolean;
+	image?: string | null;
+	name: string;
+	label: string | null;
+	product?: string;
+	inStock: number;
+	totalStock: number;
+	components: WizardSetComponent[];
+	includes: SetComponentDisplay[];
+	componentItemOptions: { id: number; name: string; productTitle?: string }[];
+	needsAttention: boolean;
+	redirectTo: string;
+}
+
+const {
+	variant,
+	formId,
+	setId,
+	selected = false,
+	image,
+	name,
+	label,
+	product,
+	inStock,
+	totalStock,
+	components,
+	includes,
+	componentItemOptions,
+	needsAttention,
+	redirectTo,
+} = Astro.props;
+
+const warningLabel = components.length === 0 ? 'This set has no components yet — it can’t be rented' : 'One of this set’s components is archived';
+---
+<div class="set-row border-b border-border last:border-b-0" data-details-row>
+	<div
+		class:list={["grid items-center gap-3 px-3 py-2 hover:bg-bg-subtle", selected && 'bg-selected-subtle/60 hover:bg-selected-subtle']}
+		style={`grid-template-columns: ${SET_GRID_TEMPLATE[variant]}`}
+	>
+		<SelectIcon itemId={setId} formId={formId} checked={selected} label={`Select ${name}`} name="setIds" />
+		<Thumbnail src={image} alt={name} />
+		<div class="min-w-0">
+			<p class="truncate text-sm font-medium text-text">{name}</p>
+			<p class="font-mono text-xs text-text-muted">#{setId}</p>
+		</div>
+		<details class="label-cell group/edit">
+			<summary class="flex cursor-pointer list-none items-center gap-1 text-sm text-text [&::-webkit-details-marker]:hidden">
+				<span class="truncate">{label || <span class="italic text-text-muted">—</span>}</span>
+				<AppIcon name="edit" size={12} class="shrink-0 text-disabled-text group-hover/edit:text-text-muted" />
+			</summary>
+			<form method="post" action="/api/wizard/sets-label" class="mt-1 flex items-center gap-1.5">
+				<input type="hidden" name="setId" value={setId} />
+				<input type="hidden" name="redirectTo" value={redirectTo} />
+				<input type="text" name="label" value={label ?? ''} placeholder="e.g. M" class="w-16 rounded border border-border-interactive px-1.5 py-1 text-sm" />
+				<TextMorphButton type="submit" action="save" size="sm" />
+			</form>
+		</details>
+		{variant === 'assigned' && product && <ProductTag name={product} />}
+		<StockIndicator inStock={inStock} total={totalStock} />
+		<DetailsToggle label={`Show details for ${name}`} warning={needsAttention} warningLabel={warningLabel} />
+	</div>
+	<div class="set-details hidden border-t border-border bg-bg-subtle/60 px-4 py-4" data-details-panel>
+		<div class="flex gap-4">
+			<Thumbnail src={image} alt={name} size={112} />
+			<div class="min-w-0 flex-1">
+				<div class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
+					<AppIcon name="set" size={14} />
+					Includes
+				</div>
+				<div class="mt-1">
+					<SetIncludesDisplay display={includes} />
+				</div>
+
+				<div class="mt-4 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
+					<AppIcon name="attribute" size={14} />
+					Components
+				</div>
+				<div class="mt-1">
+					<SetComponentList setId={setId} components={components} redirectTo={redirectTo} />
+					<SetComponentPicker setId={setId} items={componentItemOptions} redirectTo={redirectTo} />
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

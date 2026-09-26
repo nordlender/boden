@@ -1,0 +1,51 @@
+---
+// The set's current components — editable list inside SetRow's expanded
+// details panel. Each row is its own tiny form (quantity + save) plus a
+// one-click remove; unlike ../ItemRow.astro's attribute rows this has no
+// <details>-per-row disclosure since there's nothing to hide, just a number
+// to edit.
+import Thumbnail from '../Thumbnail.astro';
+import MorphButton from '../../ui/MorphButton.astro';
+import TextMorphButton from '../../ui/TextMorphButton.astro';
+import type { WizardSetComponent } from '../../../lib/setWizard';
+
+interface Props {
+	setId: number;
+	components: WizardSetComponent[];
+	redirectTo: string;
+}
+
+const { setId, components, redirectTo } = Astro.props;
+---
+<div class="flex flex-col gap-1.5">
+	{components.map((component) => (
+		<div class="flex items-center gap-2">
+			<Thumbnail src={component.imageUrl} alt={component.name} size={28} />
+			<div class="min-w-0 flex-1">
+				<span class:list={['truncate text-sm', component.archived ? 'text-error' : 'text-text']}>
+					{component.productTitle ?? component.name}
+				</span>
+				{component.archived && <span class="ml-1 text-xs text-error">(archived)</span>}
+			</div>
+			<form method="post" action="/api/wizard/set-component-update" class="flex items-center gap-1.5">
+				<input type="hidden" name="setId" value={setId} />
+				<input type="hidden" name="itemId" value={component.itemId} />
+				<input type="hidden" name="redirectTo" value={redirectTo} />
+				<input
+					type="number"
+					name="quantity"
+					value={component.quantity}
+					min="1"
+					class="w-16 rounded border border-border-interactive px-2 py-1 text-right text-sm"
+				/>
+				<TextMorphButton type="submit" action="save" size="sm" />
+			</form>
+			<form method="post" action="/api/wizard/set-component-remove">
+				<input type="hidden" name="setId" value={setId} />
+				<input type="hidden" name="itemId" value={component.itemId} />
+				<input type="hidden" name="redirectTo" value={redirectTo} />
+				<MorphButton type="submit" action="delete" size="sm" label={`Remove ${component.productTitle ?? component.name}`} />
+			</form>
+		</div>
+	))}
+</div>

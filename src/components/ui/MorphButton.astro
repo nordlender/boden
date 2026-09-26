@@ -20,6 +20,11 @@ interface Props {
 	class?: string;
 	form?: string;
 	formaction?: string;
+	// Lets a MorphButton open a Popover.astro-based popup the same way
+	// Button.astro can — see src/components/pickup-days/PickupDayDeleteButton.astro,
+	// which slots one into ActionPopover.astro's `trigger` slot.
+	popovertarget?: string;
+	popovertargetaction?: 'show' | 'hide' | 'toggle';
 }
 
 const {

@@ -3,9 +3,13 @@
 // single day, or — from RecurringPickupDaysTable — an admin's recurring
 // rule). Same ActionPopover + fetch pattern as
 // src/components/orders/DeleteOrderButton.astro, except on success this
-// removes the row from the DOM in place instead of navigating away — the
-// table stays on the page.
+// removes the row from the DOM in place instead of navigating away (the
+// table stays on the page), and the trigger is an icon-only MorphButton
+// (via ActionPopover's `trigger` slot) rather than the text Button
+// DeleteOrderButton uses — these rows are dense table rows, not a single
+// detail-page action.
 import ActionPopover from '../ui/ActionPopover.astro';
+import MorphButton from '../ui/MorphButton.astro';
 
 interface Props {
 	id: string; // unique per row — becomes the popover's DOM id
@@ -19,7 +23,10 @@ const popoverId = `pickup-day-delete-${id}`;
 ---
 
 <div data-pickup-day-delete={endpoint}>
-	<ActionPopover id={popoverId} title={title} triggerLabel="Delete" triggerVariant="danger" confirmLabel="Delete" confirmVariant="danger">
+	<ActionPopover id={popoverId} title={title} confirmLabel="Delete" confirmVariant="danger">
+		<Fragment slot="trigger">
+			<MorphButton action="delete" size="sm" label={title} popovertarget={popoverId} />
+		</Fragment>
 		<p class="text-sm text-text-muted">{body}</p>
 	</ActionPopover>
 	<p data-pickup-day-delete-error hidden class="mt-1 text-xs text-error-text" />

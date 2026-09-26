@@ -393,28 +393,35 @@ to derive it from anymore, since items are named freeform.
 A product's variant slot can now point to a **set** instead of (or
 alongside) an item — a set resolves to a bundle of real items with
 quantities, e.g. "Indoor Rope Climbing Set — M" -> Harness M + Chalk Bag +
-Singing Rock Rama Belay Device. Three new tables, mirroring the existing
-items/itemAttributeValues split:
+Singing Rock Rama Belay Device. Two new tables:
 
-- `sets` (id, productId nullable/set-null, slug, name, imageUrl, archived,
-  createdAt) — mirrors `items` exactly. A set is a peer of `items` under a
-  product, not a child of it.
+- `sets` (id, productId nullable/set-null, slug, name, label nullable,
+  imageUrl, archived, createdAt) — mostly mirrors `items`, except `label`: a
+  plain, manually-typed short string (e.g. "S"/"M"/"L") the admin picks to
+  distinguish sibling sets. A set is a peer of `items` under a product, not
+  a child of it.
 - `setItems` (setId -> sets cascade, itemId -> items no-action, quantity) —
   the bundle's composition. unique(setId, itemId).
-- `setAttributeValues` (setId -> sets cascade, attributeId ->
-  productAttributeKeys cascade, value) — mirrors `itemAttributeValues`, so a
-  set variant (e.g. Size: M) uses the same product attribute-key template an
-  item variant does.
+
+Deliberately **no** `productAttributeKeys`/`itemAttributeValues`-style
+template for sets (an earlier version of this PR added exactly that —
+`setAttributeValues` — before the addition below replaced it): a set never
+gets its own admin-entered attribute values. What a set "includes" is
+instead derived automatically at display time from its components' own
+already-existing attribute values — `src/lib/sets.ts`'s
+`getSetComponentDisplayBulk` groups components sharing an identical
+attribute-key signature (i.e. the same product template) into one shared
+table (e.g. a rack of different cam sizes); anything else — a lone
+component, or one with no attribute keys at all — renders as a plain line.
 
 Orders/rentals still always reference items, never sets (unchanged
 invariant from the top of this doc) — a set cart entry is expanded into its
 component items, merged by itemId with any other demand for the same item
 in the cart, only at checkout (`src/lib/sets.ts`'s
 `resolveEntriesToItemQuantities`, called from `src/lib/orders.ts`). No admin
-UI exists yet for authoring sets — see the seed script
-(`scripts/seed-example-catalog.mjs`) for the one example set currently in
-the dev catalogue. Building a wizard flow for sets (create a set, assign
-components, assign to a product) is a natural next step, not done here.
+UI exists yet for authoring sets (tracked as issue #214) — see the seed
+script (`scripts/seed-example-catalog.mjs`) for the two example sets
+currently in the dev catalogue.
 
 Note: "Set" here (a rentable bundle) is unrelated to this doc's existing
 "Set dropdown"/"Set attributes"/"Set product" wizard-UI terminology above

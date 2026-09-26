@@ -1,9 +1,12 @@
 ---
 // Shared "Messages" box — used read-only on the moderator hub
 // (src/components/moderator/MessagesBox.astro) and, with `editable`, on the
-// admin hub (src/components/admin/MessagesBox.astro) where admins can edit
-// or delete their own posts inline. Kept as one component so the two hubs
-// can't drift into two different box layouts (see issue #151).
+// admin hub (src/components/admin/MessagesBox.astro) where any admin can
+// edit or delete any message inline, not just their own — there's no
+// per-author ownership check here or in src/pages/api/messages/{update,
+// delete}.ts, same as the shared pickup_available_days admin surface.
+// Kept as one component so the two hubs can't drift into two different box
+// layouts (see issue #151).
 import AppIcon from '../icons/AppIcon.astro';
 import Button from '../ui/Button.astro';
 import MorphButton from '../ui/MorphButton.astro';
@@ -39,7 +42,10 @@ const { messages, editable = false, redirectTo } = Astro.props;
 						// visual position regardless of DOM order.
 						<li class="px-4 py-3">
 							<details class="message-edit flex flex-wrap items-start gap-3">
-								<summary class="edit-summary order-2 cursor-pointer list-none rounded-md p-1.5 text-text-muted hover:bg-bg-subtle hover:text-text [&::-webkit-details-marker]:hidden">
+								<summary
+										aria-label="Edit message"
+										class="edit-summary order-2 cursor-pointer list-none rounded-md p-1.5 text-text-muted hover:bg-bg-subtle hover:text-text [&::-webkit-details-marker]:hidden"
+									>
 									<AppIcon name="edit" size={16} />
 								</summary>
 								<div class="message-view order-1 min-w-0 flex-1">

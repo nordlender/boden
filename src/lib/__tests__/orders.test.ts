@@ -40,15 +40,10 @@ const ITEM_B_ID = 2;
 const ITEM_C_ID = 3;
 
 vi.mock('../../db/client', async () => {
-	const { default: Database } = await import('better-sqlite3');
-	const { drizzle } = await import('drizzle-orm/better-sqlite3');
-	const { migrate } = await import('drizzle-orm/better-sqlite3/migrator');
+	const { createTestDb } = await import('../../db/testDb');
 	const schema = await import('../../db/schema');
 
-	const sqlite = new Database(':memory:');
-	sqlite.pragma('foreign_keys = ON');
-	const db = drizzle(sqlite, { schema });
-	migrate(db, { migrationsFolder: './src/db/migrations' });
+	const db = createTestDb();
 
 	const [category] = await db.insert(schema.categories).values({ name: 'Ropes', slug: 'ropes' }).returning();
 	const [product] = await db

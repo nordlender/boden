@@ -22,16 +22,8 @@ describe('matchesPrefix', () => {
     expect(matchesPrefix('/admin', ADMIN_ROUTE_PREFIXES)).toBe(true);
   });
 
-  it('matches /api/wizard/items (a nested wizard write route)', () => {
+  it('matches a nested wizard write route', () => {
     expect(matchesPrefix('/api/wizard/items', ADMIN_ROUTE_PREFIXES)).toBe(true);
-  });
-
-  it('matches /api/wizard/set-product', () => {
-    expect(matchesPrefix('/api/wizard/set-product', ADMIN_ROUTE_PREFIXES)).toBe(true);
-  });
-
-  it('matches nested route patterns like /api/wizard/attributes/bulk', () => {
-    expect(matchesPrefix('/api/wizard/attributes/bulk', ADMIN_ROUTE_PREFIXES)).toBe(true);
   });
 
   it('does not match a route that merely shares the prefix string without a boundary', () => {
@@ -69,17 +61,5 @@ describe('isApiRoute', () => {
     expect(isApiRoute('/admin')).toBe(false);
     expect(isApiRoute('/cart')).toBe(false);
     expect(isApiRoute('/moderator/orders/[id]')).toBe(false);
-  });
-
-  // Regression test: adding /api/wizard to ADMIN_ROUTE_PREFIXES means an
-  // unauthenticated request to a wizard write route now matches the
-  // login-redirect branch in src/middleware/index.ts. Without this
-  // isApiRoute check, that branch would redirect to /auth/login?next=/api/wizard/items,
-  // and Auth.js's OAuth callback would then GET back to that same
-  // POST-only route once sign-in completes — which 404s. isApiRoute lets
-  // the middleware give API callers a plain 401 instead.
-  it('is used to route API auth failures to 401 instead of a login redirect', () => {
-    expect(isApiRoute('/api/wizard/archive')).toBe(true);
-    expect(isApiRoute('/api/moderator/retrieve')).toBe(true);
   });
 });

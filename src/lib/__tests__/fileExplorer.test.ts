@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildFileTree } from '../fileExplorer';
+import { buildFileTree, listChildren } from '../fileExplorer';
 
 describe('buildFileTree', () => {
   let root: string;
@@ -34,19 +34,16 @@ describe('buildFileTree', () => {
     ]);
   });
 
-  it('recurses into subdirectories and reports paths relative to root', () => {
+  it('lists only the top level, flagging directories with public children via hasChildren', () => {
     mkdirSync(join(root, 'sub'));
     writeFileSync(join(root, 'sub', 'nested.txt'), '');
+    mkdirSync(join(root, 'empty-dir'));
 
     const tree = buildFileTree(root);
 
     expect(tree).toEqual([
-      {
-        name: 'sub',
-        path: 'sub',
-        type: 'directory',
-        children: [{ name: 'nested.txt', path: 'sub/nested.txt', type: 'file' }],
-      },
+      { name: 'empty-dir', path: 'empty-dir', type: 'directory', hasChildren: false },
+      { name: 'sub', path: 'sub', type: 'directory', hasChildren: true },
     ]);
   });
 
@@ -91,5 +88,60 @@ describe('buildFileTree', () => {
 
   it('returns an empty array for an empty directory', () => {
     expect(buildFileTree(root)).toEqual([]);
+  });
+});
+
+describe('listChildren', () => {
+  let root: string;
+  let outsideRoot: string;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'file-explorer-root-'));
+    outsideRoot = mkdtempSync(join(tmpdir(), 'file-explorer-outside-'));
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(outsideRoot, { recursive: true, force: true });
+  });
+
+  it("lists a subdirectory's immediate children, relative to root", () => {
+    mkdirSync(join(root, 'sub'));
+    writeFileSync(join(root, 'sub', 'nested.txt'), '');
+    mkdirSync(join(root, 'sub', 'deeper'));
+    writeFileSync(join(root, 'sub', 'deeper', 'ignored.txt'), '');
+
+    expect(listChildren(root, 'sub')).toEqual([
+      { name: 'deeper', path: 'sub/deeper', type: 'directory', hasChildren: true },
+      { name: 'nested.txt', path: 'sub/nested.txt', type: 'file' },
+    ]);
+  });
+
+  it('rejects a path containing a ".." segment', () => {
+    mkdirSync(join(root, 'sub'));
+
+    expect(() => listChildren(root, 'sub/../..')).toThrow();
+  });
+
+  it('rejects a subPath that resolves outside root via a symlink', () => {
+    symlinkSync(outsideRoot, join(root, 'escape-dir'), 'dir');
+
+    expect(() => listChildren(root, 'escape-dir')).toThrow();
+  });
+
+  it('rejects a subPath that points at a file, not a directory', () => {
+    writeFileSync(join(root, 'a.txt'), '');
+
+    expect(() => listChildren(root, 'a.txt')).toThrow();
+  });
+
+  it('rejects a subPath that does not exist', () => {
+    expect(() => listChildren(root, 'nope')).toThrow();
+  });
+
+  it('lists the root itself for an empty subPath', () => {
+    writeFileSync(join(root, 'a.txt'), '');
+
+    expect(listChildren(root, '')).toEqual([{ name: 'a.txt', path: 'a.txt', type: 'file' }]);
   });
 });

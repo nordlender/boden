@@ -1,0 +1,32 @@
+---
+export const prerender = false;
+
+// Lazy-load endpoint backing <FileExplorer>'s expand-on-demand folders.
+// Returns just the <li> fragment for one directory's immediate children —
+// no full HTML document — so the client (FileExplorerNode.astro's toggle
+// listener) can drop it straight into the placeholder <ul> already
+// rendered for that row. Reusing FileExplorerNode here (rather than
+// hand-building HTML in a .ts endpoint) keeps one source of truth for the
+// row markup instead of two templates that could drift.
+//
+// Scoped to the fixed PUBLIC_ROOT (see fileExplorer.ts) — `path` is client
+// input (which folder they expanded), validated by listChildren() the same
+// way symlinks are checked for every entry it reads: rejected if it
+// resolves outside root. Deliberately NOT gated behind /admin: root is
+// always the project's already-public public/ directory, which both the
+// gated (/admin) and ungated (/dev) <FileExplorer> pages browse — see
+// those pages for why an unauthenticated public/ listing isn't a
+// meaningful disclosure.
+import FileExplorerNode from '../../components/FileExplorerNode.astro';
+import { listChildren, PUBLIC_ROOT } from '../../lib/fileExplorer';
+
+const subPath = Astro.url.searchParams.get('path') ?? '';
+
+let children;
+try {
+	children = listChildren(PUBLIC_ROOT, subPath);
+} catch {
+	return new Response('Not found', { status: 404 });
+}
+---
+{children.map((child) => <FileExplorerNode node={child} />)}

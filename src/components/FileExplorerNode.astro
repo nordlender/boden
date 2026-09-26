@@ -1,12 +1,13 @@
 ---
-// One row of <FileExplorer>'s tree, recursing into its own children.
-// Directories are plain <details>/<summary> — closed by default. The folder
+// One row of <FileExplorer>'s tree. Directories are plain <details>/
+// <summary> — closed by default, children loaded lazily (see the
+// fetch-on-toggle listener below) rather than recursed into up front, so a
+// large tree costs only what's actually expanded on screen. The folder
 // icon is an animated morphicons pair (see folderToggle in icon-nodes.ts),
-// swapped by the delegated `toggle` listener below the same way
-// Dropdown.astro animates its chevron.
+// swapped by the same listener the same way Dropdown.astro animates its
+// chevron.
 import AppIcon from './icons/AppIcon.astro';
 import MorphIcon from 'morphicons/astro';
-import FileExplorerNode from './FileExplorerNode.astro';
 import { folderToggle } from '../lib/icon-nodes';
 import type { FileNode } from '../lib/fileExplorer';
 
@@ -31,12 +32,12 @@ const { node } = Astro.props;
 				    box's round 8px. border-l is itself a 1px band starting at `ml`,
 				    so its own visual center is ml + 0.5px — ml is set half a pixel
 				    short of the icon's center (8.33 - 0.5) to compensate. */}
-				{node.children && node.children.length > 0 ? (
-					<ul class="ml-[7.83px] border-l border-border pl-3">
-						{node.children.map((child) => (
-							<FileExplorerNode node={child} />
-						))}
-					</ul>
+				{node.hasChildren ? (
+					// Empty until first expanded — see the fetch-on-toggle listener
+					// below. hasChildren is a cheap existence check (see
+					// hasPublicEntry in fileExplorer.ts), not a full read, so we know
+					// to render this instead of "Empty" without paying for the read.
+					<ul class="folder-children ml-[7.83px] border-l border-border pl-3" data-path={node.path} data-loaded="false"></ul>
 				) : (
 					<p class="ml-[7.83px] border-l border-border py-1 pl-3 text-text-muted">Empty</p>
 				)}
@@ -52,7 +53,8 @@ const { node } = Astro.props;
 
 <script>
 	// Delegated (Astro dedupes identical inline scripts across the many
-	// FileExplorerNode instances on a page, so this runs once) — same
+	// FileExplorerNode instances on a page, so this runs once, and capture
+	// phase catches it for rows fetched in later on demand too) — same
 	// pattern as Dropdown.astro's chevron. `toggle` doesn't bubble, so the
 	// listener has to sit on the capture phase to see it at all.
 	import type { MorphIconElement } from 'morphicons/element';
@@ -63,10 +65,34 @@ const { node } = Astro.props;
 		(event) => {
 			const details = event.target;
 			if (!(details instanceof HTMLDetailsElement)) return;
+
 			const icon = details.querySelector<MorphIconElement>(':scope > summary > .folder-icon');
-			if (!icon) return;
-			icon.icon = details.open ? folderToggle.open : folderToggle.closed;
+			if (icon) icon.icon = details.open ? folderToggle.open : folderToggle.closed;
+
+			if (!details.open) return;
+			void loadChildren(details);
 		},
 		true,
 	);
+
+	// Fetches a row's children the first time it's expanded — server only
+	// ever sends one level (see buildFileTree/listChildren in
+	// fileExplorer.ts), so every deeper level is filled in here on demand.
+	// `data-loaded` is flipped before the fetch resolves so re-toggling
+	// mid-request doesn't fire a second one.
+	async function loadChildren(details: HTMLDetailsElement) {
+		const ul = details.querySelector<HTMLUListElement>(':scope > ul.folder-children');
+		if (!ul || ul.dataset.loaded === 'true') return;
+		ul.dataset.loaded = 'true';
+		ul.textContent = 'Loading…';
+
+		try {
+			const res = await fetch(`/api/file-explorer?path=${encodeURIComponent(ul.dataset.path ?? '')}`);
+			if (!res.ok) throw new Error(`${res.status}`);
+			ul.innerHTML = await res.text();
+		} catch {
+			ul.textContent = 'Failed to load';
+			ul.dataset.loaded = 'false'; // let a retry (re-close/re-open) try again
+		}
+	}
 </script>

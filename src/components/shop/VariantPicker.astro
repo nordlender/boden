@@ -1,15 +1,18 @@
 ---
-// Owns the "choose a variant, add to cart" form on the product page: a
-// combined item+set select (when the product has more than one variant
-// total), the resulting attribute list, a set's "Includes" breakdown, stock
-// message, quantity cap, and add-to-cart button — plus the client-side
-// script that keeps all of those (and the product image rendered by the
-// page above this form) in sync as the selected variant changes, including
-// a `?item=<id>`/`?set=<id>` preselect from an ItemCard link.
+// Owns the "choose a variant, add to cart" form on the product page: the
+// variant select (when the product has more than one), the resulting
+// attribute list, a set's "Includes" breakdown, stock message, quantity
+// cap, and add-to-cart button — plus the client-side script that keeps all
+// of those (and the product image rendered by the page above this form) in
+// sync as the selected variant changes, including a `?item=<id>`/`?set=<id>`
+// preselect from an ItemCard link.
 //
 // A product's variant slot is an item OR a set (src/db/schema.ts's `sets`
-// comment) — this picker merges both into one combined, sorted-by-kind list
-// so a product can mix them (or use only one) transparently.
+// comment), and the two are assumed mutually exclusive per product — a
+// product's variants are all items, or all sets, never a mix. This picker
+// enforces that assumption itself rather than trusting callers/data to hold
+// it: it picks exactly one kind (items, unless there are none) and never
+// shows a set as an option alongside an item, or vice versa.
 //
 // The product image lives in the page, not here (it's rendered above this
 // form in a separate grid column) — the script below reaches it via the
@@ -37,10 +40,11 @@ interface Variant {
 	children: { name: string; quantity: number }[];
 }
 
-const variants: Variant[] = [
-	...items.map((item): Variant => ({ kind: 'item', id: item.id, imageUrl: item.imageUrl, inStock: item.inStock, attributes: item.attributes, children: [] })),
-	...sets.map((set): Variant => ({ kind: 'set', id: set.id, imageUrl: set.imageUrl, inStock: set.inStock, attributes: set.attributes, children: set.children })),
-];
+const variantKind: 'item' | 'set' = items.length > 0 ? 'item' : 'set';
+const variants: Variant[] =
+	variantKind === 'item'
+		? items.map((item): Variant => ({ kind: 'item', id: item.id, imageUrl: item.imageUrl, inStock: item.inStock, attributes: item.attributes, children: [] }))
+		: sets.map((set): Variant => ({ kind: 'set', id: set.id, imageUrl: set.imageUrl, inStock: set.inStock, attributes: set.attributes, children: set.children }));
 const initialVariant = variants[0] ?? null;
 ---
 

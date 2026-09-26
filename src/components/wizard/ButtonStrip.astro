@@ -13,6 +13,8 @@ import MorphIcon from 'morphicons/astro';
 import { dropdownChevron } from '../../lib/icon-nodes';
 import AppIcon from '../icons/AppIcon.astro';
 import Button from '../ui/Button.astro';
+import Callout from '../ui/Callout.astro';
+import Popover from '../ui/Popover.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
 import type { PanelVariant } from './grid';
 
@@ -24,6 +26,8 @@ interface Props {
 }
 
 const { variant, formId, products, redirectTo } = Astro.props;
+
+const archiveHintId = `archive-hint-${formId}`;
 ---
 <div class="flex items-center gap-2 border-b border-border bg-bg-subtle px-3 py-2">
 	<details class="set-dropdown relative inline-block">
@@ -72,10 +76,23 @@ const { variant, formId, products, redirectTo } = Astro.props;
 			Add item
 		</TextMorphButton>
 	)}
-	<TextMorphButton variant="danger-filled" action="delete" type="submit" form={formId} formaction="/api/wizard/archive">
+	<TextMorphButton
+		variant="danger-filled"
+		action="delete"
+		type="submit"
+		form={formId}
+		formaction="/api/wizard/archive"
+		data-archive-trigger={formId}
+		popovertarget={archiveHintId}
+		popovertargetaction="show"
+	>
 		Delete <span class="selected-count" data-form-id={formId}>0</span> item(s)
 	</TextMorphButton>
 </div>
+
+<Popover id={archiveHintId} placement="anchor" side="top" class="p-0 shadow-lg">
+	<Callout variant="warning">Select at least one item to delete.</Callout>
+</Popover>
 
 <script>
 	// Same chevron-morph pattern as Dropdown.astro, duplicated rather than
@@ -108,5 +125,40 @@ const { variant, formId, products, redirectTo } = Astro.props;
 		document.querySelectorAll(`.selected-count[data-form-id="${formId}"]`).forEach((el) => {
 			el.textContent = String(count);
 		});
+	});
+
+	// Guard against archiving with nothing selected — without this the form
+	// still submits to /api/wizard/archive with an empty selection, which
+	// just redirects back with no visible effect (see issue #200). The
+	// button also carries `popovertarget` (for Popover.astro's positioning
+	// lookup) and `form`/`formaction`, so both its native default actions
+	// are prevented here and replaced with an explicit branch.
+	document.querySelectorAll<HTMLElement>('[data-archive-trigger]').forEach((trigger) => {
+		trigger.addEventListener('click', (event) => {
+			const formId = trigger.getAttribute('data-archive-trigger');
+			if (!formId) return;
+			event.preventDefault();
+
+			const count = document.querySelectorAll(`input.select-checkbox-input[form="${formId}"]:checked`).length;
+			if (count === 0) {
+				document.getElementById(`archive-hint-${formId}`)?.showPopover();
+				return;
+			}
+			(document.getElementById(formId) as HTMLFormElement | null)?.requestSubmit(trigger as HTMLButtonElement);
+		});
+	});
+
+	// The hint is only relevant while the selection is empty — dismiss it as
+	// soon as the user checks an item, per HintPopover.astro's guidance for
+	// hints shown in response to a transient condition.
+	document.addEventListener('change', (event) => {
+		const input = event.target;
+		if (!(input instanceof HTMLInputElement) || !input.classList.contains('select-checkbox-input')) return;
+		const formId = input.getAttribute('form');
+		if (!formId) return;
+		const count = document.querySelectorAll(`input.select-checkbox-input[form="${formId}"]:checked`).length;
+		if (count > 0) {
+			document.getElementById(`archive-hint-${formId}`)?.hidePopover();
+		}
 	});
 </script>

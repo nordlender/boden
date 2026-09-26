@@ -3,7 +3,11 @@ export const prerender = false;
 
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
 import Button from '../../components/ui/Button.astro';
-import { ORDER_CODE_LENGTH } from '../../lib/orders';
+
+// Allows an optional leading "#" (e.g. "#AB12CD") on top of the
+// ORDER_CODE_LENGTH-character code itself — stripped server-side in
+// src/pages/api/moderator/retrieve.ts before the lookup.
+const CODE_INPUT_MAX_LENGTH = 8;
 
 // Universal entry point for the moderator flow — reached by asking the
 // member to read out their order code, for either the review step or the
@@ -32,11 +36,11 @@ const error = Astro.url.searchParams.get('error');
 					type="text"
 					name="code"
 					required
-					maxlength={ORDER_CODE_LENGTH}
+					maxlength={CODE_INPUT_MAX_LENGTH}
 					autocomplete="off"
 					autocapitalize="characters"
 					class="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-accent"
-					placeholder="e.g. AB12CD"
+					placeholder="e.g. #AB12CD"
 				/>
 			</label>
 			<Button type="submit" variant="primary">

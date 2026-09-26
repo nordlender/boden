@@ -18,7 +18,7 @@ const modalId = 'add-message-modal';
 ---
 
 <div class="flex flex-col gap-3">
-	<TextMorphButton action="message" class="self-start" data-modal-open data-modal-target={modalId} />
+	<TextMorphButton action="message" variant="primary" class="self-end" data-modal-open data-modal-target={modalId} />
 
 	<MessageList messages={messages} editable redirectTo={redirectTo} />
 </div>

@@ -299,9 +299,14 @@ export const pickupDays = sqliteTable('pickup_days', {
   index('pickup_days_date_idx').on(table.date),
   index('pickup_days_user_id_idx').on(table.userId),
   index('pickup_days_recurring_rule_id_idx').on(table.recurringRuleId),
-  // Scoped to kind = 'single' only: two different recurring rules may
-  // legitimately generate the same date for the same admin.
-  uniqueIndex('pickup_days_single_user_date_unique').on(table.userId, table.date).where(sql`${table.kind} = 'single'`),
+  // A moderator can offer more than one time window on the same day (e.g.
+  // 12:00-14:00 and 18:00-20:00) — scoped to (date, startTime, endTime), not
+  // just (date), so only an exact duplicate window is rejected. Also scoped
+  // to kind = 'single' only: two different recurring rules may legitimately
+  // generate the same date for the same admin.
+  uniqueIndex('pickup_days_single_user_date_time_unique')
+    .on(table.userId, table.date, table.startTime, table.endTime)
+    .where(sql`${table.kind} = 'single'`),
   check('pickup_days_kind_recurring_rule_consistent', sql`(${table.kind} = 'recurring') = (${table.recurringRuleId} IS NOT NULL)`),
 ]);
 

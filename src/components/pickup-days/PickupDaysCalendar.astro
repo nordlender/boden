@@ -167,7 +167,6 @@ const dayKinds = Object.fromEntries(kindByDate);
 	type MultiCalendar = HTMLElement & {
 		value?: string;
 		getDayParts?: (date: Date) => string;
-		isDateDisallowed?: (date: Date) => boolean;
 	};
 
 	const calendar = document.querySelector<MultiCalendar>('[data-pickup-days-calendar]');
@@ -180,11 +179,11 @@ const dayKinds = Object.fromEntries(kindByDate);
 		}
 
 		calendar.getDayParts = (date) => dayKinds[dateToIsoInOslo(date)] ?? '';
-		// A moderator can't re-offer a date they've already personally offered
-		// (the schema only allows one single-day row per user per date) — but
-		// another moderator's day, or a recurring/training day, stays pickable
-		// (see the spec: "it will still allow the moderator to set it
-		// themselves").
-		calendar.isDateDisallowed = (date) => dayKinds[dateToIsoInOslo(date)] === 'mine';
+		// Every day stays pickable, including one already showing "mine" — a
+		// moderator can offer more than one time window on the same day (e.g.
+		// 12:00-14:00 and 18:00-20:00), so re-selecting a day they've already
+		// offered is how SelectedPickupDaysForm.astro's "add another time for
+		// this day" flow gets started. No isDateDisallowed here; the schema's
+		// uniqueness is scoped to (date, startTime, endTime), not just (date).
 	}
 </script>

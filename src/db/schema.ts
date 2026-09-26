@@ -315,12 +315,18 @@ export const pickupDays = sqliteTable('pickup_days', {
   index('pickup_days_date_idx').on(table.date),
   index('pickup_days_user_id_idx').on(table.userId),
   index('pickup_days_recurring_rule_id_idx').on(table.recurringRuleId),
-  // A moderator can only offer one window per day themselves; a recurring
-  // rule, however, may legitimately generate the same date twice if two
-  // separate rules overlap (e.g. two different training rules both landing
-  // on the same Monday) — so uniqueness is scoped to single days only via
-  // the partial index below.
-  uniqueIndex('pickup_days_single_user_date_unique').on(table.userId, table.date).where(sql`${table.kind} = 'single'`),
+  // A moderator can offer more than one window on the same day (e.g.
+  // 12:00-14:00 and 18:00-20:00) — so uniqueness is scoped to a distinct
+  // (date, startTime, endTime) per moderator, not just (date), and only
+  // blocks submitting the exact same window twice. Overlapping-but-not-
+  // identical windows on the same day aren't rejected — not asked for, and
+  // detecting real overlap would need interval comparison this doesn't do.
+  // Scoped to kind = 'single' only: a recurring rule may legitimately
+  // generate the same date twice if two separate rules overlap (e.g. two
+  // different training rules both landing on the same Monday).
+  uniqueIndex('pickup_days_single_user_date_time_unique')
+    .on(table.userId, table.date, table.startTime, table.endTime)
+    .where(sql`${table.kind} = 'single'`),
   check('pickup_days_kind_recurring_rule_consistent', sql`(${table.kind} = 'recurring') = (${table.recurringRuleId} IS NOT NULL)`),
 ]);
 

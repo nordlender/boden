@@ -78,11 +78,22 @@ describe('single pickup days', () => {
 		expect(await getUpcomingAvailablePickupDates('2026-01-01')).toEqual([]);
 	});
 
-	it('re-submitting the same date for the same moderator does not duplicate', async () => {
+	it('re-submitting the exact same date and time for the same moderator does not duplicate', async () => {
 		await createSingleDays(MODERATOR_A, [{ date: '2026-09-10', startTime: '10:00', endTime: '12:00', where: 'At Vulkan' }]);
-		await createSingleDays(MODERATOR_A, [{ date: '2026-09-10', startTime: '14:00', endTime: '16:00', where: 'Elsewhere' }]);
+		await createSingleDays(MODERATOR_A, [{ date: '2026-09-10', startTime: '10:00', endTime: '12:00', where: 'At Vulkan' }]);
 		const rows = await listUpcomingPickupDays('2026-01-01');
 		expect(rows).toHaveLength(1);
+	});
+
+	it('a moderator can offer more than one time window on the same date', async () => {
+		await createSingleDays(MODERATOR_A, [
+			{ date: '2026-09-10', startTime: '12:00', endTime: '14:00', where: 'At Vulkan' },
+			{ date: '2026-09-10', startTime: '18:00', endTime: '20:00', where: 'At Vulkan' },
+		]);
+		const rows = await listUpcomingPickupDays('2026-01-01');
+		expect(rows).toHaveLength(2);
+		expect(rows.every((r) => r.date === '2026-09-10')).toBe(true);
+		expect(rows.map((r) => r.startTime)).toEqual(['12:00', '18:00']);
 	});
 
 	it('two different moderators can each offer the same date', async () => {

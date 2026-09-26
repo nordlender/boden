@@ -22,7 +22,8 @@ const { id, endpoint, title, body = 'This cannot be undone.' } = Astro.props;
 const popoverId = `pickup-day-delete-${id}`;
 ---
 
-<div data-pickup-day-delete={endpoint}>
+{/* justify-self-end: this is always the last cell of a row's CSS grid (PickupDaysTable.astro/RecurringPickupDaysTable.astro) — right-aligns the icon against the row's edge instead of sitting flush against "Where"/"Time". */}
+<div data-pickup-day-delete={endpoint} class="justify-self-end">
 	<ActionPopover id={popoverId} title={title} confirmLabel="Delete" confirmVariant="danger">
 		<Fragment slot="trigger">
 			<MorphButton action="delete" variant="danger" size="sm" label={title} popovertarget={popoverId} />

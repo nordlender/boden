@@ -44,7 +44,7 @@ const { setId, components, redirectTo } = Astro.props;
 				<input type="hidden" name="setId" value={setId} />
 				<input type="hidden" name="itemId" value={component.itemId} />
 				<input type="hidden" name="redirectTo" value={redirectTo} />
-				<MorphButton type="submit" action="delete" size="sm" label={`Remove ${component.productTitle ?? component.name}`} />
+				<MorphButton type="submit" action="delete" variant="danger" size="sm" label={`Remove ${component.productTitle ?? component.name}`} />
 			</form>
 		</div>
 	))}

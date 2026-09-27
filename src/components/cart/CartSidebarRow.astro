@@ -1,0 +1,32 @@
+---
+import ItemLine from '../ui/ItemLine.astro';
+import type { CartItem } from '../../lib/cart';
+
+interface Props {
+	item: CartItem;
+}
+
+const { item } = Astro.props;
+---
+
+<div data-cart-row class="py-3">
+	<ItemLine
+		imageUrl={item.imageUrl}
+		name={item.productTitle}
+		href={item.productSlug ? `/products/${item.productSlug}` : null}
+		attributes={item.attributes}
+		quantity={item.quantity}
+		thumbnailSize={48}
+	>
+		<Fragment slot="action">
+			<button
+				type="button"
+				data-cart-remove
+				data-item-id={item.itemId}
+				class="shrink-0 self-start text-xs text-error hover:underline"
+			>
+				Remove
+			</button>
+		</Fragment>
+	</ItemLine>
+</div>

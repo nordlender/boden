@@ -1,0 +1,16 @@
+---
+// Rendered server-side via the Container API by GET /api/cart, since the
+// pages that host CartSidebar can be prerendered (see CartSidebar.astro) and
+// so have no per-request cart cookie at render time. This is the HTML
+// partial the sidebar's client script swaps into `[data-cart-rows]`.
+import CartSidebarRow from './CartSidebarRow.astro';
+import type { CartItem } from '../../lib/cart';
+
+interface Props {
+	items: CartItem[];
+}
+
+const { items } = Astro.props;
+---
+
+{items.map((item) => <CartSidebarRow item={item} />)}

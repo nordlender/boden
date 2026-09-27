@@ -23,10 +23,10 @@ export function renderRow(row: Element, availability: ItemAvailability, pressed:
 	badge.hidden = false;
 	if (availability.available) {
 		badge.textContent = 'Available';
-		badge.className = 'rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700';
+		badge.className = 'rounded-full bg-success-subtle px-2 py-0.5 text-xs font-medium text-success-text';
 	} else {
 		badge.textContent = 'Not available';
-		badge.className = 'rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700';
+		badge.className = 'rounded-full bg-error-subtle px-2 py-0.5 text-xs font-medium text-error-text';
 	}
 
 	if (splitButton instanceof HTMLButtonElement) {

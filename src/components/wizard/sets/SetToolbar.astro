@@ -1,0 +1,107 @@
+---
+// Sets' equivalent of ../ButtonStrip.astro. Labeled "Assign" rather than
+// "Set" — ButtonStrip's dropdown trigger is already named "Set" (the verb,
+// "Set image"/"Set product") on /admin/items, and reusing that label here
+// right next to actual *sets* (the noun) would be confusing. Worth applying
+// the same rename to ButtonStrip itself at some point, but that's an
+// /admin/items change, out of scope for this PR.
+import MorphIcon from 'morphicons/astro';
+import { dropdownChevron } from '../../../lib/icon-nodes';
+import AppIcon from '../../icons/AppIcon.astro';
+import Button from '../../ui/Button.astro';
+import TextMorphButton from '../../ui/TextMorphButton.astro';
+import type { SetPanelVariant } from './grid';
+
+interface Props {
+	variant: SetPanelVariant;
+	formId: string;
+	products: { id: number; title: string }[];
+	redirectTo: string;
+}
+
+const { variant, formId, products, redirectTo } = Astro.props;
+---
+<div class="flex items-center gap-2 border-b border-border bg-bg-subtle px-3 py-2">
+	<details class="assign-dropdown relative inline-block">
+		<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
+			<span>Assign</span>
+			<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
+		</summary>
+		<div class="absolute left-0 z-10 mt-1 w-80 rounded-md border border-border bg-surface p-3 shadow-lg">
+			<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
+			<section class="border-b border-border pb-3">
+				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
+					<AppIcon name="image" size={13} /> Set image
+				</p>
+				<div class="flex items-center gap-2">
+					<input type="text" name="imageUrl" form={formId} placeholder="https://…" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm" />
+					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/sets-image" class="shrink-0">
+						Apply
+					</Button>
+				</div>
+			</section>
+
+			<section class="py-3">
+				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
+					<AppIcon name="product" size={13} /> Set product
+				</p>
+				<div class="flex items-center gap-2">
+					<select name="productId" form={formId} class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm">
+						<option value="" disabled selected>Choose a product…</option>
+						{products.map((p) => (
+							<option value={p.id}>{p.title}</option>
+						))}
+					</select>
+					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/sets-product" class="shrink-0">
+						Apply
+					</Button>
+				</div>
+				<p class="mt-1 text-xs text-text-muted">Also how you reassign an already-assigned set to a <em>different</em> product. Unlike items, there's no attribute template to fan out — the set's own <code>label</code> and components are untouched.</p>
+			</section>
+		</div>
+	</details>
+
+	<div class="flex-1"></div>
+
+	{variant === 'unassigned' && (
+		<TextMorphButton variant="primary" action="add" href="#add-set-name" data-expand-open="add-set-panel">
+			Add set
+		</TextMorphButton>
+	)}
+	<TextMorphButton variant="danger-filled" action="delete" type="submit" form={formId} formaction="/api/wizard/sets-archive">
+		Delete <span class="selected-count" data-form-id={formId}>0</span> set(s)
+	</TextMorphButton>
+</div>
+
+<script>
+	// Same chevron-morph pattern as ../ButtonStrip.astro, duplicated for the
+	// same reason it duplicates it from Dropdown.astro: this trigger's menu
+	// content isn't a simple item list.
+	import type { MorphIconElement } from 'morphicons/element';
+	import { dropdownChevron } from '../../../lib/icon-nodes';
+
+	document.addEventListener(
+		'toggle',
+		(event) => {
+			const details = event.target;
+			if (!(details instanceof HTMLDetailsElement) || !details.classList.contains('assign-dropdown')) return;
+			const chevron = details.querySelector<MorphIconElement>('.dropdown-chevron');
+			if (!chevron) return;
+			chevron.icon = details.open ? dropdownChevron.open : dropdownChevron.closed;
+		},
+		true,
+	);
+
+	// Selection count — identical logic to ../ButtonStrip.astro's, scoped to
+	// this panel's own formId so the two wizards' counts never cross-talk.
+	document.addEventListener('change', (event) => {
+		const input = event.target;
+		if (!(input instanceof HTMLInputElement) || !input.classList.contains('select-checkbox-input')) return;
+		const formId = input.getAttribute('form');
+		if (!formId) return;
+		const count = document.querySelectorAll(`input.select-checkbox-input[form="${formId}"]:checked`).length;
+		document.querySelectorAll(`.selected-count[data-form-id="${formId}"]`).forEach((el) => {
+			el.textContent = String(count);
+		});
+	});
+</script>

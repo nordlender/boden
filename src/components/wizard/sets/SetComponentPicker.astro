@@ -1,0 +1,28 @@
+---
+// "Add a component" row at the bottom of SetRow's Components section —
+// same shape as ../ItemRow.astro's "New attribute" row. Picking an item
+// already in the set isn't an error: setWizard.ts's addSetComponent bumps
+// that row's quantity instead of erroring, per the setItems unique(setId,
+// itemId) constraint.
+import TextMorphButton from '../../ui/TextMorphButton.astro';
+
+interface Props {
+	setId: number;
+	items: { id: number; name: string; productTitle?: string }[];
+	redirectTo: string;
+}
+
+const { setId, items, redirectTo } = Astro.props;
+---
+<form method="post" action="/api/wizard/set-component-add" class="mt-1.5 flex items-center gap-2">
+	<input type="hidden" name="setId" value={setId} />
+	<input type="hidden" name="redirectTo" value={redirectTo} />
+	<select name="itemId" required class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm">
+		<option value="" disabled selected>Add a component item…</option>
+		{items.map((item) => (
+			<option value={item.id}>{item.productTitle ? `${item.productTitle} — ${item.name}` : item.name}</option>
+		))}
+	</select>
+	<input type="number" name="quantity" value="1" min="1" class="w-16 rounded border border-border-interactive px-2 py-1 text-right text-sm" />
+	<TextMorphButton type="submit" action="add" size="sm" />
+</form>

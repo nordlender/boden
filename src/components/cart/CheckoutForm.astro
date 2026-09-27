@@ -17,7 +17,7 @@ const { name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
 // disabled field wouldn't submit with the form once order persistence exists).
 const yesNo = (value: boolean | null) => (value === null ? 'Unknown' : value ? 'Yes' : 'No');
 
-const fieldClass = 'w-full rounded-md border border-border-interactive px-3 py-2 text-sm text-text focus:border-border-interactive focus:outline-none';
+const fieldClass = 'w-full rounded-md border border-border-interactive px-3 py-2 text-sm text-text focus:border-accent focus:outline-none';
 const readonlyFieldClass = `${fieldClass} bg-disabled-bg text-disabled-text`;
 const labelClass = 'block text-sm font-medium text-text';
 ---

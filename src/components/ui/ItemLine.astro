@@ -16,6 +16,20 @@
 import Thumbnail from './Thumbnail.astro';
 import { formatAttributes, type Attribute } from '../../lib/attributes';
 
+// Gap between thumbnail/text/badge/action — a plain Tailwind class string
+// on `class` can only ever append, never override, the built-in row-flex
+// classes below, so the gap needs its own prop. 'sm'/'md' match the compact
+// 40px-thumbnail rows (moderator order lines, blind count); 'lg' matches the
+// 64px-thumbnail rows (cart, reservation) that used a wider gap before this
+// primitive existed.
+type ItemLineGap = 'sm' | 'md' | 'lg';
+
+const gapClasses: Record<ItemLineGap, string> = {
+	sm: 'gap-2',
+	md: 'gap-3',
+	lg: 'gap-4',
+};
+
 interface Props {
 	imageUrl?: string | null;
 	name: string;
@@ -29,6 +43,7 @@ interface Props {
 	// 'line' style.
 	quantityStyle?: 'line' | 'inline';
 	thumbnailSize?: number;
+	gap?: ItemLineGap;
 	class?: string;
 }
 
@@ -40,13 +55,14 @@ const {
 	quantity = null,
 	quantityStyle = 'line',
 	thumbnailSize = 40,
+	gap = 'md',
 	class: className,
 } = Astro.props;
 
 const attributeLabel = formatAttributes(attributes);
 ---
 
-<div class:list={['flex items-center gap-3', className]}>
+<div class:list={['flex items-center', gapClasses[gap], className]}>
 	<Thumbnail src={imageUrl} alt={name} size={thumbnailSize} />
 	<div class="min-w-0 flex-1">
 		{

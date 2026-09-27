@@ -14,7 +14,7 @@ interface Props {
 const { itemId, productSlug, productTitle, imageUrl, quantity, attributes } = Astro.props;
 ---
 
-<div data-reservation-row data-item-id={itemId} class="flex flex-wrap items-center gap-4 py-4">
+<div data-reservation-row data-item-id={itemId} class="py-4">
 	<ItemLine
 		imageUrl={imageUrl}
 		name={productTitle}
@@ -22,24 +22,29 @@ const { itemId, productSlug, productTitle, imageUrl, quantity, attributes } = As
 		attributes={attributes}
 		quantity={quantity}
 		thumbnailSize={64}
-		class="flex-1"
-	/>
-
-	<p data-availability-badge hidden class="rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"></p>
-
-	<p data-split-tag hidden class="rounded-full bg-selected px-2 py-0.5 text-xs font-medium text-text-inverted">
-		Separate order
-	</p>
-
-	<button
-		type="button"
-		data-split-order-button
-		hidden
-		aria-pressed="false"
-		title="Move this item to a separate order"
-		class="shrink-0 rounded-md border border-border-strong p-1.5 text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-selected aria-pressed:bg-selected aria-pressed:text-text-inverted"
+		gap="lg"
+		class="flex-wrap"
 	>
-		<AppIcon name="splitOrder" size={16} />
-		<span class="sr-only">Move {productTitle} to a separate order</span>
-	</button>
+		<Fragment slot="badge">
+			<p data-availability-badge hidden class="rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"></p>
+
+			<p data-split-tag hidden class="rounded-full bg-selected px-2 py-0.5 text-xs font-medium text-text-inverted">
+				Separate order
+			</p>
+		</Fragment>
+
+		<Fragment slot="action">
+			<button
+				type="button"
+				data-split-order-button
+				hidden
+				aria-pressed="false"
+				title="Move this item to a separate order"
+				class="shrink-0 rounded-md border border-border-strong p-1.5 text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-selected aria-pressed:bg-selected aria-pressed:text-text-inverted"
+			>
+				<AppIcon name="splitOrder" size={16} />
+				<span class="sr-only">Move {productTitle} to a separate order</span>
+			</button>
+		</Fragment>
+	</ItemLine>
 </div>

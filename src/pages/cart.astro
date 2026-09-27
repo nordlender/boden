@@ -28,6 +28,7 @@ const cartItems = await getCartItems(Astro.cookies);
 								href={item.productSlug ? `/products/${item.productSlug}` : null}
 								attributes={item.attributes}
 								thumbnailSize={64}
+								gap="lg"
 								class="flex-wrap"
 							>
 								{item.quantity > item.inStock && (

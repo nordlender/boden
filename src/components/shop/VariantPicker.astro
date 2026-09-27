@@ -122,7 +122,7 @@ function optionLabel(variant: Variant): string {
 	)}
 
 	<div data-set-includes hidden={variantKind !== 'set'} class="border-t border-border pt-4 text-sm">
-		<p class="mb-2 font-medium text-text">Includes</p>
+		<p class="mb-2 font-medium text-text">Attributes</p>
 		<div data-set-includes-content class="flex flex-col gap-3">
 			{(initialVariant?.kind === 'set' ? initialVariant.componentDisplay : []).map((group) =>
 				group.kind === 'table' ? (

@@ -2,7 +2,7 @@
 // Sets' equivalent of ../ItemRow.astro. Two differences in shape: (1) a
 // Label cell (plain admin-typed string, no key/value template — see
 // schema.ts's `sets.label` comment) inline-editable the same way an
-// attribute value is; (2) the expanded panel has an "Includes" section
+// attribute value is; (2) the expanded panel has an "Attributes" section
 // (read-only, derived — SetIncludesDisplay) instead of/alongside an
 // editable "Components" section (the actual setItems rows).
 import SelectIcon from '../SelectIcon.astro';
@@ -90,7 +90,7 @@ const warningLabel = components.length === 0 ? 'This set has no components yet �
 			<div class="min-w-0 flex-1">
 				<div class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
 					<AppIcon name="set" size={14} />
-					Includes
+					Attributes
 				</div>
 				<div class="mt-1">
 					<SetIncludesDisplay display={includes} />

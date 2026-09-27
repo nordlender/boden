@@ -68,7 +68,7 @@ const { variant, formId, products, redirectTo } = Astro.props;
 			Add set
 		</TextMorphButton>
 	)}
-	<TextMorphButton variant="danger-filled" action="delete" type="submit" form={formId} formaction="/api/wizard/sets-archive">
+	<TextMorphButton variant="danger" action="delete" type="submit" form={formId} formaction="/api/wizard/sets-archive">
 		Delete <span class="selected-count" data-form-id={formId}>0</span> set(s)
 	</TextMorphButton>
 </div>

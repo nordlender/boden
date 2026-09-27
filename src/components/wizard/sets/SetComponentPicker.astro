@@ -4,6 +4,13 @@
 // already in the set isn't an error: setWizard.ts's addSetComponent bumps
 // that row's quantity instead of erroring, per the setItems unique(setId,
 // itemId) constraint.
+//
+// A search-as-you-type combobox rather than a plain <select> — with the
+// catalogue already tens of items deep, a flat dropdown gets unwieldy fast.
+// Filters entirely client-side against the `items` list passed in (small
+// enough per page load that there's no need for a server round-trip per
+// keystroke).
+import AppIcon from '../../icons/AppIcon.astro';
 import TextMorphButton from '../../ui/TextMorphButton.astro';
 
 interface Props {
@@ -13,16 +20,105 @@ interface Props {
 }
 
 const { setId, items, redirectTo } = Astro.props;
+const searchableItems = items.map((item) => ({ id: item.id, label: item.productTitle ? `${item.productTitle} — ${item.name}` : item.name }));
 ---
-<form method="post" action="/api/wizard/set-component-add" class="mt-1.5 flex items-center gap-2">
+
+<form
+	method="post"
+	action="/api/wizard/set-component-add"
+	class="set-component-picker mt-1.5 flex items-center gap-2"
+	data-items={JSON.stringify(searchableItems)}
+>
 	<input type="hidden" name="setId" value={setId} />
 	<input type="hidden" name="redirectTo" value={redirectTo} />
-	<select name="itemId" required class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm">
-		<option value="" disabled selected>Add a component item…</option>
-		{items.map((item) => (
-			<option value={item.id}>{item.productTitle ? `${item.productTitle} — ${item.name}` : item.name}</option>
-		))}
-	</select>
+	<input type="hidden" name="itemId" data-component-item-id />
+
+	<div class="relative min-w-0 flex-1">
+		<AppIcon name="search" size={14} class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+		<input
+			type="text"
+			placeholder="Search for a component item…"
+			autocomplete="off"
+			class="w-full rounded border border-border-interactive py-1 pl-7 pr-2 text-sm"
+			data-component-search
+		/>
+		<ul
+			class="absolute left-0 z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-border bg-surface py-1 text-sm shadow-lg"
+			data-component-results
+			hidden
+		>
+		</ul>
+	</div>
+
 	<input type="number" name="quantity" value="1" min="1" class="w-16 rounded border border-border-interactive px-2 py-1 text-right text-sm" />
-	<TextMorphButton type="submit" action="add" size="sm" />
+	<TextMorphButton type="submit" action="add" size="sm" disabled data-component-submit />
 </form>
+
+<script>
+	// One wiring pass per picker on the page (a set's expanded details panel
+	// on /admin/sets can have several, one per set) — the `data-wired` guard
+	// keeps a re-render (e.g. after an htmx-less full page reload isn't an
+	// issue, but this stays defensive the same way TextMorphButton's own
+	// script does) from double-binding.
+	document.querySelectorAll<HTMLFormElement>('.set-component-picker').forEach((form) => {
+		if (form.dataset.wired) return;
+		form.dataset.wired = 'true';
+
+		let candidates: { id: number; label: string }[] = [];
+		try {
+			candidates = JSON.parse(form.dataset.items ?? '[]');
+		} catch {
+			candidates = [];
+		}
+
+		const searchInput = form.querySelector<HTMLInputElement>('[data-component-search]');
+		const idInput = form.querySelector<HTMLInputElement>('[data-component-item-id]');
+		const results = form.querySelector<HTMLUListElement>('[data-component-results]');
+		const submitButton = form.querySelector<HTMLButtonElement>('[data-component-submit]');
+
+		function setChosen(item: { id: number; label: string } | null) {
+			if (idInput) idInput.value = item ? String(item.id) : '';
+			if (submitButton) submitButton.disabled = !item;
+		}
+
+		function renderResults(query: string) {
+			if (!results) return;
+			const q = query.trim().toLowerCase();
+			// Nothing typed yet: show nothing rather than the whole catalogue —
+			// this is a search box, not a scroll-and-pick list.
+			const matches = q ? candidates.filter((item) => item.label.toLowerCase().includes(q)).slice(0, 20) : [];
+
+			results.replaceChildren();
+			results.hidden = matches.length === 0;
+			for (const item of matches) {
+				const li = document.createElement('li');
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = 'block w-full truncate px-2.5 py-1.5 text-left text-text hover:bg-bg-subtle';
+				button.textContent = item.label;
+				button.addEventListener('click', () => {
+					if (searchInput) searchInput.value = item.label;
+					setChosen(item);
+					if (results) results.hidden = true;
+				});
+				li.appendChild(button);
+				results.appendChild(li);
+			}
+		}
+
+		searchInput?.addEventListener('input', () => {
+			// Typing again invalidates whatever was previously picked — the
+			// visible text and the submitted itemId must never disagree.
+			setChosen(null);
+			renderResults(searchInput.value);
+		});
+
+		searchInput?.addEventListener('focus', () => renderResults(searchInput.value));
+
+		document.addEventListener('click', (event) => {
+			if (!results || results.hidden) return;
+			if (event.target instanceof Node && form.contains(event.target)) return;
+			results.hidden = true;
+		});
+	});
+</script>

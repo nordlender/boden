@@ -30,10 +30,16 @@ interface Props {
 	placement?: 'anchor' | 'fill-parent';
 	side?: 'top' | 'bottom' | 'left' | 'right';
 	labelledBy?: string;
+	// Set to false when the slotted content already supplies its own visual
+	// box (e.g. HintPopover's Callout) — otherwise that content ends up
+	// nested inside this card, rendering as two visibly stacked boxes.
+	// false still keeps the positioning/sizing classes, just drops the
+	// border/bg/padding/shadow.
+	chrome?: boolean;
 	class?: string;
 }
 
-const { id, placement = 'anchor', side = 'top', labelledBy, class: className } = Astro.props;
+const { id, placement = 'anchor', side = 'top', labelledBy, chrome = true, class: className } = Astro.props;
 ---
 
 <div
@@ -44,7 +50,8 @@ const { id, placement = 'anchor', side = 'top', labelledBy, class: className } =
 	data-popover-side={side}
 	aria-labelledby={labelledBy}
 	class:list={[
-		'fixed inset-auto m-0 max-w-sm rounded-lg border border-border bg-surface p-4 text-text shadow-lg',
+		'fixed inset-auto m-0 max-w-sm text-text',
+		chrome && 'rounded-lg border border-border bg-surface p-4 shadow-lg',
 		className,
 	]}
 >

@@ -4,6 +4,7 @@ export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 import CartActionsBar from '../components/cart/CartActionsBar.astro';
 import Button from '../components/ui/Button.astro';
+import ItemLine from '../components/ui/ItemLine.astro';
 import { getCartItems } from '../lib/cart';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
@@ -20,48 +21,44 @@ const cartItems = await getCartItems(Astro.cookies);
 			) : (
 				<div class="mb-8 divide-y divide-border border-y border-border">
 					{cartItems.map((item) => (
-						<div class="flex flex-wrap items-center gap-4 py-4">
-							<div class="h-16 w-16 shrink-0 overflow-hidden rounded bg-bg-subtle">
-								{item.imageUrl && <img src={item.imageUrl} alt={item.productTitle} class="h-full w-full object-cover" />}
-							</div>
-
-							<div class="min-w-0 flex-1">
-								<a
-									href={item.productSlug ? `/products/${item.productSlug}` : '#'}
-									class="font-medium text-text hover:underline"
-								>
-									{item.productTitle}
-								</a>
-								{item.attributes.length > 0 && (
-									<p class="text-sm text-text-muted">{item.attributes.map((a) => a.value).join(' / ')}</p>
-								)}
+						<div class="py-4">
+							<ItemLine
+								imageUrl={item.imageUrl}
+								name={item.productTitle}
+								href={item.productSlug ? `/products/${item.productSlug}` : null}
+								attributes={item.attributes}
+								thumbnailSize={64}
+								gap="lg"
+								class="flex-wrap"
+							>
 								{item.quantity > item.inStock && (
 									<p class="text-sm text-error">Only {Math.max(item.inStock, 0)} left in stock</p>
 								)}
-							</div>
+								<Fragment slot="action">
+									<form method="post" action="/api/cart/update" class="flex items-center gap-2">
+										<input type="hidden" name="itemId" value={item.itemId} />
+										<label class="sr-only" for={`quantity-${item.itemId}`}>
+											Quantity for {item.productTitle}
+										</label>
+										<input
+											id={`quantity-${item.itemId}`}
+											type="number"
+											name="quantity"
+											value={item.quantity}
+											min="0"
+											class="w-16 rounded-md border border-border-interactive px-2 py-1 text-sm"
+										/>
+										<Button type="submit" size="sm">Update</Button>
+									</form>
 
-							<form method="post" action="/api/cart/update" class="flex items-center gap-2">
-								<input type="hidden" name="itemId" value={item.itemId} />
-								<label class="sr-only" for={`quantity-${item.itemId}`}>
-									Quantity for {item.productTitle}
-								</label>
-								<input
-									id={`quantity-${item.itemId}`}
-									type="number"
-									name="quantity"
-									value={item.quantity}
-									min="0"
-									class="w-16 rounded-md border border-border-interactive px-2 py-1 text-sm"
-								/>
-								<Button type="submit" size="sm">Update</Button>
-							</form>
-
-							<form method="post" action="/api/cart/remove">
-								<input type="hidden" name="itemId" value={item.itemId} />
-								<button type="submit" class="text-sm text-error hover:underline">
-									Remove
-								</button>
-							</form>
+									<form method="post" action="/api/cart/remove">
+										<input type="hidden" name="itemId" value={item.itemId} />
+										<button type="submit" class="text-sm text-error hover:underline">
+											Remove
+										</button>
+									</form>
+								</Fragment>
+							</ItemLine>
 						</div>
 					))}
 				</div>

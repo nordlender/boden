@@ -5,7 +5,7 @@
 // The moderator's count must always be blind, so `target` is only used
 // here to compute the correction message — it's never echoed into the
 // form as a hidden/pre-filled value.
-import Thumbnail from '../wizard/Thumbnail.astro';
+import ItemLine from '../ui/ItemLine.astro';
 import Button from '../ui/Button.astro';
 
 interface Line {
@@ -47,20 +47,20 @@ const { title, description, action, mismatch = false, lines, submitLabel = 'Comp
 		<ul class="flex flex-col divide-y divide-border">
 			{
 				lines.map((line) => (
-					<li class="flex items-center gap-3 py-2">
-						<Thumbnail src={line.itemImageUrl} alt={line.itemName} size={40} />
-						<div class="flex flex-1 flex-col gap-0.5">
-							<span class="text-sm text-text">{line.itemName}</span>
+					<li class="py-2">
+						<ItemLine imageUrl={line.itemImageUrl} name={line.itemName}>
 							{line.correction && <span class="text-xs font-medium text-warning-text">{line.correction}</span>}
-						</div>
-						<input
-							type="number"
-							name={`qty_${line.orderItemId}`}
-							min="0"
-							value={line.enteredValue ?? undefined}
-							required
-							class="w-20 rounded border border-border-strong px-2 py-1 text-sm text-text"
-						/>
+							<Fragment slot="action">
+								<input
+									type="number"
+									name={`qty_${line.orderItemId}`}
+									min="0"
+									value={line.enteredValue ?? undefined}
+									required
+									class="w-20 rounded border border-border-strong px-2 py-1 text-sm text-text"
+								/>
+							</Fragment>
+						</ItemLine>
 					</li>
 				))
 			}

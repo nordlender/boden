@@ -1,0 +1,87 @@
+---
+// Shared "one item line" primitive — thumbnail, name (optionally linked),
+// variant attributes, and quantity — factored out of what used to be three
+// separate near-identical implementations: reservation/ReservationItemRow,
+// moderator/OrderItemRow, and moderator/BlindCountList's inline row.
+//
+// Per-context extras (availability badges, a split-order button, an
+// adjustable quantity input, a retrieved/correction readout, ...) are left to
+// the caller via slots rather than a growing pile of boolean props:
+//   - default slot: extra stacked lines under the name/attributes/quantity
+//     (e.g. OrderItemRow's availability badges, BlindCountList's correction)
+//   - "badge" slot: trailing pill(s) next to the text block (e.g.
+//     ReservationItemRow's availability badge + split tag)
+//   - "action" slot: trailing control at the end of the row (e.g. a remove
+//     button, a split-order button, an adjustable qty input)
+import Thumbnail from './Thumbnail.astro';
+import { formatAttributes, type Attribute } from '../../lib/attributes';
+
+interface Props {
+	imageUrl?: string | null;
+	name: string;
+	href?: string | null;
+	attributes?: Attribute[];
+	quantity?: number | null;
+	// 'line' (default): name, then attributes, then "Qty: N", each on their
+	// own line — the cart/reservation convention. 'inline': "{name} × {qty}"
+	// on a single line — the moderator order-line convention. No current
+	// caller combines attributes with 'inline', so they're only rendered in
+	// 'line' style.
+	quantityStyle?: 'line' | 'inline';
+	thumbnailSize?: number;
+	class?: string;
+}
+
+const {
+	imageUrl = null,
+	name,
+	href = null,
+	attributes = [],
+	quantity = null,
+	quantityStyle = 'line',
+	thumbnailSize = 40,
+	class: className,
+} = Astro.props;
+
+const attributeLabel = formatAttributes(attributes);
+---
+
+<div class:list={['flex items-center gap-3', className]}>
+	<Thumbnail src={imageUrl} alt={name} size={thumbnailSize} />
+	<div class="min-w-0 flex-1">
+		{
+			quantityStyle === 'inline' ? (
+				<p class="text-sm text-text">
+					{href ? (
+						<a href={href} class="hover:underline">
+							{name}
+						</a>
+					) : (
+						name
+					)}
+					{quantity !== null && (
+						<>
+							{' '}
+							&times; {quantity}
+						</>
+					)}
+				</p>
+			) : (
+				<Fragment>
+					{href ? (
+						<a href={href} class="block truncate font-medium text-text hover:underline">
+							{name}
+						</a>
+					) : (
+						<p class="truncate font-medium text-text">{name}</p>
+					)}
+					{attributeLabel && <p class="truncate text-sm text-text-muted">{attributeLabel}</p>}
+					{quantity !== null && <p class="text-sm text-text-muted">Qty: {quantity}</p>}
+				</Fragment>
+			)
+		}
+		<slot />
+	</div>
+	<slot name="badge" />
+	<slot name="action" />
+</div>

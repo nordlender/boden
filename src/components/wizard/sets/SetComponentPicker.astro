@@ -10,6 +10,10 @@
 // Filters entirely client-side against the `items` list passed in (small
 // enough per page load that there's no need for a server round-trip per
 // keystroke).
+//
+// No quantity field here — a component is always added at quantity 1;
+// SetComponentList's own per-row quantity field is where it's adjusted
+// afterward, so this row doesn't need to duplicate that control.
 import AppIcon from '../../icons/AppIcon.astro';
 import TextMorphButton from '../../ui/TextMorphButton.astro';
 
@@ -32,11 +36,11 @@ const searchableItems = items.map((item) => ({ id: item.id, label: item.productT
 	<input type="hidden" name="setId" value={setId} />
 	<input type="hidden" name="redirectTo" value={redirectTo} />
 	<input type="hidden" name="itemId" data-component-item-id />
+	<input type="hidden" name="quantity" value="1" />
 
 	<!--
 		Matches SetComponentList's Thumbnail column (size=28) exactly, so this
-		row's search box lines up with the name column above it, and the
-		quantity/action columns after it line up too.
+		row's search box lines up with the name column above it.
 	-->
 	<div class="shrink-0" style="width: 28px; height: 28px;" aria-hidden="true"></div>
 
@@ -57,15 +61,7 @@ const searchableItems = items.map((item) => ({ id: item.id, label: item.productT
 		</ul>
 	</div>
 
-	<input type="number" name="quantity" value="1" min="1" class="w-16 rounded border border-border-interactive px-2 py-1 text-right text-sm" />
 	<TextMorphButton type="submit" action="add" size="sm" disabled data-component-submit />
-	<!--
-		Matches the width of SetComponentList's per-row remove button (a
-		size="sm" icon-only MorphButton, ~28px) — this row has no remove
-		button of its own, so without this the quantity input above would sit
-		further right than the quantity inputs in the list rows.
-	-->
-	<div class="shrink-0" style="width: 28px; height: 28px;" aria-hidden="true"></div>
 </form>
 
 <script>

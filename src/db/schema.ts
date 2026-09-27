@@ -116,10 +116,10 @@ export const items = sqliteTable('items', {
   name: text('name').notNull(),
   imageUrl: text('image_url'),
   // Total owned. "In stock right now" is never stored — it's always
-  // computed as stockCount minus quantities on currently active/requested
-  // rentals (see docs/schema-legacy-fixes.md's original `available` derivation,
-  // carried forward unchanged): a stored second number can only drift out
-  // of sync.
+  // computed as stockCount minus quantities on currently active/scheduled/
+  // requested rentals (see docs/schema-legacy-fixes.md's original `available`
+  // derivation, carried forward unchanged): a stored second number can only
+  // drift out of sync.
   stockCount: integer('stock_count').notNull().default(1),
   // Soft delete: items referenced by orderItems can't be hard-deleted.
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
@@ -191,7 +191,7 @@ export const orders = sqliteTable('orders', {
   checkoutToken: text('checkout_token').notNull(),
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', {
-    enum: ['requested', 'active', 'returned', 'rejected'],
+    enum: ['requested', 'scheduled', 'active', 'returned', 'rejected'],
   }).notNull().default('requested'),
   // Reservation date range (YYYY-MM-DD, inclusive on both ends) chosen on the
   // /reservation page — the whole order (all its orderItems) shares one
@@ -225,9 +225,9 @@ export const orders = sqliteTable('orders', {
   returnedByUserId: text('returned_by_user_id').references(() => users.id),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   // Set when a moderator accepts the order on the review step, ahead of
-  // retrieval — deliberately not a 5th `status` value: accept leaves
-  // `status: 'requested'` unchanged (see docs/moderator-review.md), it just
-  // gates whether the order is eligible for the retrieve/confirm flow yet.
+  // retrieval — accept also moves `status` to 'scheduled' (see
+  // src/lib/moderatorOrders.ts's acceptOrder), so acceptedAt is redundant
+  // with that for gating purposes but kept as the accountability timestamp.
   acceptedAt: integer('accepted_at', { mode: 'timestamp' }),
   activatedAt: integer('activated_at', { mode: 'timestamp' }), // set when moderator confirms
   returnedAt: integer('returned_at', { mode: 'timestamp' }), // set when moderator marks returned

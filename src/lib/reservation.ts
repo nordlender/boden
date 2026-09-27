@@ -96,7 +96,7 @@ export function getReservationAvailability(
 		.where(
 			and(
 				inArray(orderItems.itemId, itemIds),
-				inArray(orders.status, ['requested', 'active']),
+				inArray(orders.status, ['requested', 'scheduled', 'active']),
 				lte(orders.fromDate, range.to),
 				gte(orders.toDate, range.from),
 			),

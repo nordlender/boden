@@ -33,7 +33,7 @@ export interface OrderDetail {
 	userId: string;
 	userName: string | null;
 	userEmail: string;
-	status: 'requested' | 'active' | 'returned' | 'rejected';
+	status: 'requested' | 'scheduled' | 'active' | 'returned' | 'rejected';
 	fromDate: string;
 	toDate: string;
 	note: string | null;
@@ -205,7 +205,11 @@ const PENDING_REVIEW_WHERE = (orderId: number) =>
 	and(eq(orders.id, orderId), eq(orders.status, 'requested'), isNull(orders.acceptedAt), isNull(orders.rejectedAt));
 
 export async function acceptOrder(orderId: number): Promise<AcceptOrderResult> {
-	const result = db.update(orders).set({ acceptedAt: new Date() }).where(PENDING_REVIEW_WHERE(orderId)).run();
+	const result = db
+		.update(orders)
+		.set({ status: 'scheduled', acceptedAt: new Date() })
+		.where(PENDING_REVIEW_WHERE(orderId))
+		.run();
 	return result.changes > 0 ? { ok: true } : { ok: false, error: 'not_pending_review' };
 }
 
@@ -273,7 +277,7 @@ export async function confirmRetrieval(
 				.from(orders)
 				.where(eq(orders.id, orderId))
 				.get();
-			if (!order || order.status !== 'requested' || order.acceptedAt === null || order.rejectedAt !== null) {
+			if (!order || order.status !== 'scheduled' || order.acceptedAt === null || order.rejectedAt !== null) {
 				throw new NotAcceptableError();
 			}
 
@@ -334,13 +338,13 @@ export interface FollowingRentalWarning {
 
 // If this order isn't returned by its stated toDate, does that break
 // another already-placed order? For each item in this order, look at other
-// requested/active orders (excluding this one) containing the same item
-// with fromDate >= this order's toDate (scheduled to start on or after this
-// order's own return day), nearest one first. For each candidate, check its
-// own availability via getReservationAvailability — deliberately NOT
+// requested/scheduled/active orders (excluding this one) containing the same
+// item with fromDate >= this order's toDate (scheduled to start on or after
+// this order's own return day), nearest one first. For each candidate, check
+// its own availability via getReservationAvailability — deliberately NOT
 // excluding this order from that sweep (excludeOrderId is the candidate's
 // own id, not this order's), since the whole point is that this order is
-// still requested/active in the DB and therefore still counted as
+// still requested/scheduled/active in the DB and therefore still counted as
 // consuming stock through its own toDate. If that comes back unavailable
 // for the shared item, this order is a contributing cause.
 export async function getFollowingRentalWorries(orderId: number): Promise<FollowingRentalWarning[]> {
@@ -365,7 +369,7 @@ export async function getFollowingRentalWorries(orderId: number): Promise<Follow
 			.where(
 				and(
 					eq(orderItems.itemId, oi.itemId),
-					inArray(orders.status, ['requested', 'active']),
+					inArray(orders.status, ['requested', 'scheduled', 'active']),
 					gte(orders.fromDate, order.toDate),
 					ne(orders.id, order.id),
 				),

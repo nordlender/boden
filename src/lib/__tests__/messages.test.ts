@@ -14,7 +14,9 @@ vi.mock('../../db/client', async () => {
 	return { db };
 });
 
-const { listMessages, createMessage, updateMessage, deleteMessage, pinMessage, unpinMessage } = await import('../messages');
+const { listMessages, createMessage, updateMessage, deleteMessage, pinMessage, unpinMessage, getMessageById } = await import(
+	'../messages'
+);
 
 describe('messages', () => {
 	beforeEach(async () => {
@@ -81,5 +83,12 @@ describe('messages', () => {
 		const rows = await listMessages();
 		expect(rows.map((r) => r.content)).toEqual(['Newer', 'Older']);
 		expect(rows.every((r) => r.pinnedAt === null)).toBe(true);
+	});
+
+	it('getMessageById returns the matching row, or undefined when there is none', async () => {
+		await createMessage('Findable', 'Admin');
+		const [message] = await listMessages();
+		expect((await getMessageById(message.id))?.content).toBe('Findable');
+		expect(await getMessageById(message.id + 1)).toBeUndefined();
 	});
 });

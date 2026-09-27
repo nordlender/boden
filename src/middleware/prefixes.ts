@@ -22,13 +22,13 @@ export const MEMBER_ROUTE_PREFIXES = ['/cart', '/checkout', '/orders', '/reserva
 // means a future moderator route that forgets the inline check isn't left
 // with zero protection.
 export const MOD_ROUTE_PREFIXES = ['/moderator', '/api/moderator'];
-// /api/wizard and /api/admin/pickup-days are included here as
-// defense-in-depth: their write routes each already re-implement their own
-// `requireAdmin()`/`locals.user?.role !== 'admin'` check inline (see those
-// files), so this is redundant today — but it means a future route in
-// either group that forgets the inline check isn't left with zero
-// protection.
-export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard', '/api/admin/pickup-days'];
+// /api/wizard, /api/admin/pickup-days, and /api/messages are included here
+// as defense-in-depth: their write routes each already re-implement their
+// own `requireAdmin()`/`locals.user?.role !== 'admin'` check inline (see
+// those files), so this is redundant today — but it means a future route in
+// any of the three groups that forgets the inline check isn't left with
+// zero protection.
+export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard', '/api/admin/pickup-days', '/api/messages'];
 
 export function matchesPrefix(routePattern: string, prefixes: string[]) {
   return prefixes.some((p) => routePattern === p || routePattern.startsWith(`${p}/`));

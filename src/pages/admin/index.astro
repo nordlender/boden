@@ -1,0 +1,99 @@
+---
+export const prerender = false;
+
+// Admin hub — landing page for the /admin/* section, mirroring
+// /moderator/index.astro's role as a landing page. Gated by
+// src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin). The message
+// board here is the authoring side of what /moderator's MessageTable shows
+// read-only (see issue #151) — same shared component, `editable` here plus
+// the "Message" trigger + modal for posting, which /moderator doesn't render.
+import '../../styles/global.css';
+import ThemeInit from '../../components/ThemeInit.astro';
+import AdminNavbar from '../../components/AdminNavbar.astro';
+import MessageTable from '../../components/messages/MessageTable.astro';
+import Modal from '../../components/ui/Modal.astro';
+import Button from '../../components/ui/Button.astro';
+import TextMorphButton from '../../components/ui/TextMorphButton.astro';
+import ActionButton from '../../components/admin/ActionButton.astro';
+import { listMessages } from '../../lib/messages';
+
+const redirectTo = Astro.url.pathname;
+const error = Astro.url.searchParams.get('error');
+const messages = await listMessages();
+const modalId = 'add-message-modal';
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Admin</title>
+		<ThemeInit />
+	</head>
+	<body class="min-h-screen bg-bg-subtle">
+		<AdminNavbar />
+		<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+			<h1 class="text-xl font-semibold text-text">Admin</h1>
+			{
+				error === 'empty_message' && (
+					<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
+						Message can't be blank.
+					</p>
+				)
+			}
+			<MessageTable messages={messages} editable redirectTo={redirectTo}>
+				<TextMorphButton
+					slot="actions"
+					action="message"
+					variant="primary"
+					data-modal-open
+					data-modal-target={modalId}
+				/>
+			</MessageTable>
+
+			<div class="flex flex-col gap-3 sm:flex-row">
+				<ActionButton
+					href="/admin/items"
+					iconKey="items"
+					label="Items"
+					description="Manage item stock and assign them to products."
+				/>
+				<ActionButton
+					href="/admin/products"
+					iconKey="products"
+					label="Products"
+					description="Manage the shop's product listings."
+				/>
+				<ActionButton
+					href="/admin/orders"
+					iconKey="orders"
+					label="Orders"
+					description="Review and manage member rental orders."
+				/>
+			</div>
+		</div>
+
+		{/* TODO(#206): replace this Modal with an inline expanding box — other page
+			elements below it should smoothly slide down/out of the way as it opens,
+			rather than the current dialog overlay. See issue #206. */}
+		<Modal id={modalId} labelledBy={`${modalId}-title`}>
+			<h2 id={`${modalId}-title`} class="text-sm font-semibold text-text">
+				New message
+			</h2>
+			<form method="post" action="/api/messages/add" class="flex flex-col gap-3">
+				<input type="hidden" name="redirectTo" value={redirectTo} />
+				<textarea
+					name="content"
+					rows="4"
+					required
+					placeholder="Shift notes, stock issues, closures…"
+					class="min-w-0 rounded border border-border-interactive px-2 py-1.5 text-sm"
+				></textarea>
+				<div class="flex justify-end gap-2">
+					<Button type="button" data-modal-close>Cancel</Button>
+					<Button type="submit" variant="primary">Post</Button>
+				</div>
+			</form>
+		</Modal>
+	</body>
+</html>

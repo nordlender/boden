@@ -2,16 +2,18 @@
 export const prerender = false;
 
 // Moderator hub — landing page for the /moderator/* section. Gated by
-// src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator). Messages box
-// is a placeholder (see MessagesBox.astro and issue for the /admin
-// authoring side); the requests list reuses the same query/shape as
-// requests.astro via getPendingRequestRows so the two never drift apart.
+// src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator). The message
+// board is the read-only side of the admin-authored MessageTable (see
+// /admin/index.astro's `editable` usage, issue #151); the requests list
+// reuses the same query/shape as requests.astro via getPendingRequestRows
+// so the two never drift apart.
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
-import MessagesBox from '../../components/moderator/MessagesBox.astro';
+import MessageTable from '../../components/messages/MessageTable.astro';
 import ActionButton from '../../components/moderator/ActionButton.astro';
 import TextMorphButton from '../../components/ui/TextMorphButton.astro';
 import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
 import { getPendingRequestRows } from '../../lib/moderatorOrders';
+import { listMessages } from '../../lib/messages';
 
 // This is a preview, not the full queue (see the "See all" link to
 // /moderator/requests below) — capped and compact-only (no item contents),
@@ -22,11 +24,12 @@ import { getPendingRequestRows } from '../../lib/moderatorOrders';
 const MAX_PREVIEW_REQUESTS = 8;
 const pendingRequests = await getPendingRequestRows();
 const previewRequests = pendingRequests.slice(0, MAX_PREVIEW_REQUESTS);
+const messages = await listMessages();
 ---
 
 <ModeratorLayout title="Moderator — Boden">
 	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-		<MessagesBox />
+		<MessageTable messages={messages} />
 
 		<div class="flex flex-col gap-3">
 			<div class="flex items-baseline justify-between gap-4">

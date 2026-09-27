@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { messages } from '../db/schema';
 
@@ -8,17 +8,22 @@ export interface MessageRow {
 	authorName: string;
 	createdAt: Date;
 	updatedAt: Date;
+	pinnedAt: Date | null;
 }
 
-// Newest first — the message board is a plain feed (see src/db/schema.ts's
-// `messages` table comment for the open questions this deliberately
-// punts on: expiry, read receipts). No pagination: admins are expected to
-// only ever post a modest number of these, same assumption as
+// Pinned messages first (most recently pinned on top), then the rest newest
+// first — the message board is otherwise a plain feed (see src/db/schema.ts's
+// `messages` table comment for the open questions this deliberately punts
+// on: expiry, read receipts). No pagination: admins are expected to only
+// ever post a modest number of these, same assumption as
 // listAvailablePickupDates in src/lib/pickupDays.ts. Tiebreak on id: two
-// posts within the same second (createdAt has 1s resolution) would
-// otherwise sort in an unspecified order.
+// posts within the same second (createdAt/pinnedAt have 1s resolution)
+// would otherwise sort in an unspecified order.
 export async function listMessages(): Promise<MessageRow[]> {
-	return db.select().from(messages).orderBy(desc(messages.createdAt), desc(messages.id));
+	return db
+		.select()
+		.from(messages)
+		.orderBy(sql`${messages.pinnedAt} is null`, desc(messages.pinnedAt), desc(messages.createdAt), desc(messages.id));
 }
 
 // Returns the trimmed content, or null for blank/whitespace-only input — the
@@ -49,4 +54,12 @@ export async function updateMessage(id: number, content: string): Promise<boolea
 
 export async function deleteMessage(id: number): Promise<void> {
 	await db.delete(messages).where(eq(messages.id, id));
+}
+
+export async function pinMessage(id: number): Promise<void> {
+	await db.update(messages).set({ pinnedAt: new Date() }).where(eq(messages.id, id));
+}
+
+export async function unpinMessage(id: number): Promise<void> {
+	await db.update(messages).set({ pinnedAt: null }).where(eq(messages.id, id));
 }

@@ -124,6 +124,35 @@ export const actionIcons = {
 			['path', { d: 'M5 12l14 0' }],
 		] satisfies IconNode,
 	},
+	// Unpinned message row's pin hint: pin outline morphs to a checkmark on
+	// hover, confirming what clicking it does.
+	pin: {
+		// pin
+		default: [
+			['path', { d: 'M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5-1.5l1.5-4l4-4' }],
+			['path', { d: 'M9 15l-4.5 4.5' }],
+			['path', { d: 'M14.5 4l5.5 5.5' }],
+		] satisfies IconNode,
+		// check
+		hover: [['path', { d: 'M5 12l5 5l10-10' }]] satisfies IconNode,
+	},
+	// Pinned message row's "Pinned" hint: filled/standing pin morphs to a
+	// crossed-out pin on hover, confirming that clicking it unpins.
+	unpin: {
+		// pinned
+		default: [
+			['path', { d: 'M9 4v6l-2 4v2h10v-2l-2-4v-6' }],
+			['path', { d: 'M12 16l0 5' }],
+			['path', { d: 'M8 4l8 0' }],
+		] satisfies IconNode,
+		// pinned-off
+		hover: [
+			['path', { d: 'M3 3l18 18' }],
+			['path', { d: 'M15 4.5l-3.249 3.249m-2.57 1.433l-2.181 .818l-1.5 1.5l7 7l1.5-1.5l.82-2.186m1.43-2.563l3.25-3.251' }],
+			['path', { d: 'M9 15l-4.5 4.5' }],
+			['path', { d: 'M14.5 4l5.5 5.5' }],
+		] satisfies IconNode,
+	},
 } as const;
 
 export type ActionIconKey = keyof typeof actionIcons;

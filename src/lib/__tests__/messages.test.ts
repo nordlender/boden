@@ -14,7 +14,7 @@ vi.mock('../../db/client', async () => {
 	return { db };
 });
 
-const { listMessages, createMessage, updateMessage, deleteMessage } = await import('../messages');
+const { listMessages, createMessage, updateMessage, deleteMessage, pinMessage, unpinMessage } = await import('../messages');
 
 describe('messages', () => {
 	beforeEach(async () => {
@@ -60,5 +60,26 @@ describe('messages', () => {
 		const [message] = await listMessages();
 		await deleteMessage(message.id);
 		expect(await listMessages()).toEqual([]);
+	});
+
+	it('pinned messages sort before unpinned ones regardless of post order', async () => {
+		await createMessage('Older, unpinned', 'Admin');
+		await createMessage('Newer, will be pinned', 'Admin');
+		const [newer] = await listMessages();
+		await pinMessage(newer.id);
+		const rows = await listMessages();
+		expect(rows.map((r) => r.content)).toEqual(['Newer, will be pinned', 'Older, unpinned']);
+		expect(rows[0].pinnedAt).not.toBeNull();
+	});
+
+	it('unpinning drops a message back into newest-first order', async () => {
+		await createMessage('Older', 'Admin');
+		await createMessage('Newer', 'Admin');
+		const [, older] = await listMessages();
+		await pinMessage(older.id);
+		await unpinMessage(older.id);
+		const rows = await listMessages();
+		expect(rows.map((r) => r.content)).toEqual(['Newer', 'Older']);
+		expect(rows.every((r) => r.pinnedAt === null)).toBe(true);
 	});
 });

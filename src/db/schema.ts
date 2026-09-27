@@ -273,12 +273,16 @@ export const pickupAvailableDays = sqliteTable('pickup_available_days', {
 // guessed at. authorName is a snapshot of the posting admin's display name
 // at write time, same reasoning as orders.contactName — there's no local
 // users table to join against (see src/lib/auth.ts), only bloc user ids.
+// pinnedAt: null means not pinned; a timestamp both flags a message as
+// pinned and orders the pinned group (most recently pinned first) without a
+// separate boolean + sort column.
 export const messages = sqliteTable('messages', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   content: text('content').notNull(),
   authorName: text('author_name').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  pinnedAt: integer('pinned_at', { mode: 'timestamp' }),
 });
 
 export const categoriesRelations = relations(categories, ({ many }) => ({

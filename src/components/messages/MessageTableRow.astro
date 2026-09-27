@@ -1,10 +1,12 @@
 ---
 // One message in MessageTable.astro's list. Read-only unless `editable`
-// (the admin hub), in which case an edit icon reveals an inline update
-// form and a delete control is shown alongside it.
+// (the admin hub), in which case a pin/unpin hint, an edit icon (which
+// reveals an inline update form), and a delete control are shown in the
+// top-right corner.
 import AppIcon from '../icons/AppIcon.astro';
 import Button from '../ui/Button.astro';
 import MorphButton from '../ui/MorphButton.astro';
+import TextMorphButton from '../ui/TextMorphButton.astro';
 import type { MessageRow } from '../../lib/messages';
 import { formatDateTimeDisplay } from '../../lib/dates';
 
@@ -29,6 +31,15 @@ const { message, editable = false, redirectTo } = Astro.props;
 		{
 			editable && (
 				<div class="flex shrink-0 items-center gap-1">
+					<form method="post" action={message.pinnedAt ? '/api/messages/unpin' : '/api/messages/pin'}>
+						<input type="hidden" name="id" value={message.id} />
+						<input type="hidden" name="redirectTo" value={redirectTo} />
+						{message.pinnedAt ? (
+							<TextMorphButton action="unpin" size="sm" type="submit" />
+						) : (
+							<MorphButton action="pin" size="sm" type="submit" />
+						)}
+					</form>
 					<details class="edit-toggle">
 						<summary
 							aria-label="Edit message"

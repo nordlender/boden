@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "3a004474-5a06-48c5-b5fa-c8ef2e522211",
-  "prevId": "25d98026-2b26-4d44-9493-3ccf315a91a7",
+  "id": "1f0bc08c-cb72-409f-95d3-933cfc21719f",
+  "prevId": "4e4ff9d4-f560-4fd7-872f-1bfbd8244531",
   "tables": {
     "categories": {
       "name": "categories",
@@ -233,6 +233,60 @@
           "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "messages": {
+      "name": "messages",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "author_name": {
+          "name": "author_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        },
+        "pinned_at": {
+          "name": "pinned_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -599,14 +653,14 @@
           "name": "start_time",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "end_time": {
           "name": "end_time",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "where": {
@@ -669,11 +723,13 @@
           ],
           "isUnique": false
         },
-        "pickup_days_single_user_date_unique": {
-          "name": "pickup_days_single_user_date_unique",
+        "pickup_days_single_user_date_time_unique": {
+          "name": "pickup_days_single_user_date_time_unique",
           "columns": [
             "user_id",
-            "date"
+            "date",
+            "start_time",
+            "end_time"
           ],
           "isUnique": true,
           "where": "\"pickup_days\".\"kind\" = 'single'"

@@ -47,15 +47,36 @@
     {
       "idx": 6,
       "version": "6",
-      "when": 1790255624544,
-      "tag": "0006_blue_vivisector",
+      "when": 1790375022265,
+      "tag": "0006_drop_pickup_available_days",
       "breakpoints": true
     },
     {
       "idx": 7,
       "version": "6",
-      "when": 1790472174770,
-      "tag": "0007_mushy_sally_floyd",
+      "when": 1790375048656,
+      "tag": "0007_add_pickup_days",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1790438198181,
+      "tag": "0008_multi_time_per_day",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1790439629011,
+      "tag": "0009_pickup_days_time_not_null",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1790513706633,
+      "tag": "0010_silent_prism",
       "breakpoints": true
     }
   ]

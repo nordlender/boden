@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "3a004474-5a06-48c5-b5fa-c8ef2e522211",
-  "prevId": "25d98026-2b26-4d44-9493-3ccf315a91a7",
+  "id": "45826c9a-30c6-4a0f-bac1-1f4645757aab",
+  "prevId": "3a004474-5a06-48c5-b5fa-c8ef2e522211",
   "tables": {
     "categories": {
       "name": "categories",
@@ -669,11 +669,13 @@
           ],
           "isUnique": false
         },
-        "pickup_days_single_user_date_unique": {
-          "name": "pickup_days_single_user_date_unique",
+        "pickup_days_single_user_date_time_unique": {
+          "name": "pickup_days_single_user_date_time_unique",
           "columns": [
             "user_id",
-            "date"
+            "date",
+            "start_time",
+            "end_time"
           ],
           "isUnique": true,
           "where": "\"pickup_days\".\"kind\" = 'single'"

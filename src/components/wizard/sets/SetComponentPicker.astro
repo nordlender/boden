@@ -38,12 +38,6 @@ const searchableItems = items.map((item) => ({ id: item.id, label: item.productT
 	<input type="hidden" name="itemId" data-component-item-id />
 	<input type="hidden" name="quantity" value="1" />
 
-	<!--
-		Matches SetComponentList's Thumbnail column (size=28) exactly, so this
-		row's search box lines up with the name column above it.
-	-->
-	<div class="shrink-0" style="width: 28px; height: 28px;" aria-hidden="true"></div>
-
 	<div class="relative min-w-0 flex-1">
 		<AppIcon name="search" size={14} class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
 		<input

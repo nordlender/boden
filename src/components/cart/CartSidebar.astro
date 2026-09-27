@@ -35,8 +35,8 @@ import CartActionsBar from './CartActionsBar.astro';
 	// CartSidebarRows/ItemLine markup server-side via the Container API and
 	// returns it as an HTML partial — the client just swaps it in rather
 	// than building DOM nodes by hand. Since the rows are replaced wholesale
-	// on every load, remove-button clicks are handled by delegation on
-	// [data-cart-rows] instead of a per-row listener.
+	// on every load, the remove button and the quantity update form are both
+	// handled by delegation on [data-cart-rows] instead of per-row listeners.
 	const sidebar = document.querySelector<HTMLElement>('[data-cart-sidebar]');
 	const backdrop = document.querySelector<HTMLElement>('[data-cart-backdrop]');
 	const list = document.querySelector<HTMLElement>('[data-cart-list]');
@@ -70,6 +70,16 @@ import CartActionsBar from './CartActionsBar.astro';
 			const body = new FormData();
 			body.set('itemId', button.dataset.itemId);
 			await fetch('/api/cart/remove', { method: 'POST', body });
+			loadCart();
+		});
+
+		rows.addEventListener('submit', async (event) => {
+			const form = (event.target as HTMLElement).closest<HTMLFormElement>('[data-cart-update-form]');
+			if (!form?.dataset.itemId) return;
+			event.preventDefault();
+			const body = new FormData(form);
+			body.set('itemId', form.dataset.itemId);
+			await fetch('/api/cart/update', { method: 'POST', body });
 			loadCart();
 		});
 

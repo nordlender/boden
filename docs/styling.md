@@ -81,10 +81,6 @@ and update this list:
 - `src/components/reservation/ReservationCalendar.astro` — fixed on
   branch `fix/calendar-dark-mode` (PR #110, not yet merged to main); once
   merged, drop it from this list.
-- `src/components/cart/CheckoutForm.astro`
-- `src/components/reservation/ReservationForm.astro`
-- `src/components/reservation/ReservationItemRow.astro`
-- `src/pages/reservation.astro`
 
 When converting one of these, the raw-to-token mapping is consistent
 throughout the app; use it rather than guessing per file:

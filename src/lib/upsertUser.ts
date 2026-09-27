@@ -59,19 +59,9 @@ export interface SignInUser {
 // users.id) is a schema change too, and this path is expected to be hit
 // rarely enough that a stray placeholder row isn't a real cost.
 //
-// TODO(investigate): the genuine-collision fallback only makes sense if
-// "some other id currently holds this email" always means reassignment
-// (the old id is dead) once the id-scheme migration above has settled. It
-// can't distinguish that from two still-live bloc accounts that simply
-// share an email (e.g. a household/org address) — in that case the two ids
-// perpetually vacate each other's email on alternating sign-ins. Open
-// question: does bloc ever report one current email for two live ids? If
-// not (or if we're willing to treat that as "same person, two bloc
-// accounts" and not worry about it), consider instead just dropping the
-// UNIQUE constraint on `users.email` (schema.ts) and deleting this entire
-// fallback — nothing in this codebase looks up a user by email (orders/etc.
-// all key on `users.id`), so the constraint isn't protecting any real
-// invariant today.
+// NOTE: see issue #13 — the genuine-collision fallback assumes bloc never
+// reports one live email for two live ids; if that assumption breaks, the
+// two ids perpetually vacate each other's email on alternating sign-ins.
 //
 // Legacy-id detection for the migration heuristic: pre-#59, `users.id` was
 // Auth.js's own `crypto.randomUUID()`. Post-#59, it's always

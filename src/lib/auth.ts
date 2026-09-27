@@ -1,6 +1,6 @@
 import { getToken } from '@auth/core/jwt';
 
-export type Role = 'admin' | 'moderator' | 'member';
+export type Role = 'admin' | 'board' | 'moderator' | 'member';
 
 // Role hierarchy is member < moderator < admin. Any check for "is this user
 // at least a moderator" must go through this helper rather than comparing
@@ -11,10 +11,10 @@ export function isModerator(role: Role | undefined): boolean {
 }
 
 // TEMPORARY: bloc doesn't expose a role endpoint yet (see
-// docs/bloc-api.md), so admin/moderator status is a hardcoded allowlist of
-// bloc user ids (ADMIN_USER_IDS / MODERATOR_USER_IDS in .env, comma-separated)
-// rather than a live external lookup. getRole()'s signature (userId in, Role
-// out, cached) is deliberately the same shape a real
+// docs/bloc-api.md), so admin/board/moderator status is a hardcoded allowlist
+// of bloc user ids (ADMIN_USER_IDS / BOARD_USER_IDS / MODERATOR_USER_IDS in
+// .env, comma-separated) rather than a live external lookup. getRole()'s
+// signature (userId in, Role out, cached) is deliberately the same shape a real
 // getRoleFromExternalApi(accessToken, cacheKey) would have, so swapping the
 // body for a real fetch once bloc ships a role endpoint shouldn't require
 // touching validateSession() or the middleware.
@@ -39,6 +39,7 @@ function parseIdAllowlist(raw: string | undefined): Set<string> {
 }
 
 const ADMIN_USER_IDS = parseIdAllowlist(import.meta.env.ADMIN_USER_IDS);
+const BOARD_USER_IDS = parseIdAllowlist(import.meta.env.BOARD_USER_IDS);
 const MODERATOR_USER_IDS = parseIdAllowlist(import.meta.env.MODERATOR_USER_IDS);
 
 export async function getRole(userId: string): Promise<Role> {
@@ -51,11 +52,16 @@ export async function getRole(userId: string): Promise<Role> {
     return cached.role;
   }
 
-  const role: Role = ADMIN_USER_IDS.has(userId)
-    ? 'admin'
-    : MODERATOR_USER_IDS.has(userId)
-      ? 'moderator'
-      : 'member';
+  let role: Role;
+  if (ADMIN_USER_IDS.has(userId)) {
+    role = 'admin';
+  } else if (BOARD_USER_IDS.has(userId)) {
+    role = 'board';
+  } else if (MODERATOR_USER_IDS.has(userId)) {
+    role = 'moderator';
+  } else {
+    role = 'member';
+  }
 
   roleCache.delete(userId);
   if (roleCache.size >= CACHE_MAX_SIZE) {

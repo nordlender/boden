@@ -2,12 +2,13 @@ import { db } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
+import type { Role } from './auth';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
 
-// Excludes ambiguous characters (0/O, 1/I) — an order code is read aloud by
-// members to moderators and typed into the retrieve-order form; a checkout
-// token isn't, but shares the alphabet for consistency.
+// Only used for the checkout token, which isn't read aloud but shares the
+// alphabet for consistency. The order code itself has its own fixed-format
+// alphabet — see generateOrderCode below.
 const RANDOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 function generateRandomCode(length: number): string {
@@ -18,11 +19,47 @@ function generateRandomCode(length: number): string {
   return code;
 }
 
-export const ORDER_CODE_LENGTH = 6;
+// NNAAX: two digits, two free letters, one role letter.
+export const ORDER_CODE_LENGTH = 5;
 const MAX_ORDER_CODE_ATTEMPTS = 5;
 
-export function generateOrderCode(): string {
-  return generateRandomCode(ORDER_CODE_LENGTH);
+const ORDER_CODE_DIGITS = '0123456789';
+const ORDER_CODE_FREE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+// Maps the role that created the order to its fixed last-character letter —
+// every order code's last letter is always one of these four, so the
+// creating role is legible at a glance rather than merely "privileged vs.
+// not". Ranked highest-privilege first: admin > board member > instructor
+// (moderator) > member. A user can hold more than one of these at once (an
+// admin is implicitly also a board member/instructor, etc.), but getRole()
+// (src/lib/auth.ts) already resolves that down to a single highest-ranked
+// Role before it ever reaches here, so this map is a direct one-to-one
+// lookup.
+const ORDER_CODE_ROLE_LETTERS: Record<Role, string> = {
+  admin: 'A',
+  board: 'B',
+  moderator: 'I', // instructor
+  member: 'M',
+};
+
+function randomChar(alphabet: string): string {
+  return alphabet[Math.floor(Math.random() * alphabet.length)];
+}
+
+// Order code format is `NNAAX` (see issue #155, revised): two digits, two
+// free letters, then a role-flag letter always drawn from
+// ORDER_CODE_ROLE_LETTERS — A/B/I/M for admin/board member/instructor
+// (moderator)/member, so the creating role is legible at a glance. `role` is
+// the role of the member who created the order.
+export function generateOrderCode(role: Role = 'member'): string {
+  const lastLetter = ORDER_CODE_ROLE_LETTERS[role];
+  return (
+    randomChar(ORDER_CODE_DIGITS) +
+    randomChar(ORDER_CODE_DIGITS) +
+    randomChar(ORDER_CODE_FREE_LETTERS) +
+    randomChar(ORDER_CODE_FREE_LETTERS) +
+    lastLetter
+  );
 }
 
 // Shared by every order created from one checkout submission (split or
@@ -50,6 +87,9 @@ class UnavailableItemsError extends Error {
 
 export type CreateOrderInput = {
   userId: string;
+  // Role of the member creating the order, used to pick the order code's
+  // reserved last character — see generateOrderCode.
+  role: Role;
   note: string | null;
   cartEntries: CartEntry[];
   fromDate: string;
@@ -75,6 +115,7 @@ function insertOrder(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   input: {
     userId: string;
+    role: Role;
     note: string | null;
     fromDate: string;
     toDate: string;
@@ -106,7 +147,7 @@ function insertOrder(
   }
 
   for (let attempt = 0; attempt < MAX_ORDER_CODE_ATTEMPTS; attempt++) {
-    const orderCode = generateOrderCode();
+    const orderCode = generateOrderCode(input.role);
     try {
       const order = tx
         .insert(orders)
@@ -147,8 +188,22 @@ function insertOrder(
   throw new Error('Failed to generate a unique order code');
 }
 
-export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
-  const itemIds = input.cartEntries.map((e) => e.itemId);
+// Shared by createOrder/createSplitOrders: drops cart entries pointing at
+// items that no longer exist or were archived — stock shortfall itself is
+// resolved later by the moderator at the confirm step (see
+// orderItems.retrievedQuantity), not here.
+//
+// Deliberately not checked here: item.product.status. Unlike getCartItems
+// (src/lib/cart.ts), this doesn't drop an entry whose product was
+// unpublished after it was added to the cart — so a stale/tampered cart can
+// still produce an orderItems row for it. Accepted for now rather than fixed
+// here: the not-yet-built moderator hand-out flow is expected to (a) warn
+// when an order contains an item that's since become archived/unpublished,
+// and (b) let the moderator hand out only a subset of an order's items, so
+// they can simply decline to hand out that one instead of it being a hard
+// failure. See the moderator-workflow-deferred memory.
+async function resolveOrderableEntries(cartEntries: CartEntry[]): Promise<CartEntry[]> {
+  const itemIds = cartEntries.map((e) => e.itemId);
   const validItems = itemIds.length
     ? await db
         .select({ id: items.id })
@@ -156,21 +211,11 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         .where(and(inArray(items.id, itemIds), eq(items.archived, false)))
     : [];
   const validItemIds = new Set(validItems.map((i) => i.id));
+  return cartEntries.filter((e) => validItemIds.has(e.itemId));
+}
 
-  // Drop entries pointing at items that no longer exist or were archived —
-  // stock shortfall itself is resolved later by the moderator at the confirm
-  // step (see orderItems.retrievedQuantity), not here.
-  //
-  // Deliberately not checked here: item.product.status. Unlike
-  // getCartItems (src/lib/cart.ts), this doesn't drop an entry whose product
-  // was unpublished after it was added to the cart — so a stale/tampered
-  // cart can still produce an orderItems row for it. Accepted for now rather
-  // than fixed here: the not-yet-built moderator hand-out flow is expected to
-  // (a) warn when an order contains an item that's since become
-  // archived/unpublished, and (b) let the moderator hand out only a subset of
-  // an order's items, so they can simply decline to hand out that one instead
-  // of it being a hard failure. See the moderator-workflow-deferred memory.
-  const entriesToOrder = input.cartEntries.filter((e) => validItemIds.has(e.itemId));
+export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
+  const entriesToOrder = await resolveOrderableEntries(input.cartEntries);
   if (entriesToOrder.length === 0) {
     return { ok: false, error: 'empty_cart' };
   }
@@ -180,6 +225,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     const result = db.transaction((tx) =>
       insertOrder(tx, {
         userId: input.userId,
+        role: input.role,
         note: input.note,
         fromDate: input.fromDate,
         toDate: input.toDate,
@@ -209,6 +255,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
 
 export type CreateSplitOrdersInput = {
   userId: string;
+  role: Role;
   note: string | null;
   cartEntries: CartEntry[];
   fromDate: string;
@@ -237,15 +284,7 @@ export type CreateSplitOrdersResult =
 // when nothing (or everything) was split — e.g. splitItemIds is empty, or
 // names every item still in the cart.
 export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<CreateSplitOrdersResult> {
-  const itemIds = input.cartEntries.map((e) => e.itemId);
-  const validItems = itemIds.length
-    ? await db
-        .select({ id: items.id })
-        .from(items)
-        .where(and(inArray(items.id, itemIds), eq(items.archived, false)))
-    : [];
-  const validItemIds = new Set(validItems.map((i) => i.id));
-  const entriesToOrder = input.cartEntries.filter((e) => validItemIds.has(e.itemId));
+  const entriesToOrder = await resolveOrderableEntries(input.cartEntries);
   if (entriesToOrder.length === 0) {
     return { ok: false, error: 'empty_cart' };
   }
@@ -264,6 +303,7 @@ export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<
       groups.map((entries) =>
         insertOrder(tx, {
           userId: input.userId,
+          role: input.role,
           note: input.note,
           fromDate: input.fromDate,
           toDate: input.toDate,

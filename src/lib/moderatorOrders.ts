@@ -169,6 +169,17 @@ export async function getOrderDetailByCode(orderCode: string): Promise<OrderDeta
 	return order ? toOrderDetail(order) : null;
 }
 
+// Code-only lookup for reject.ts's blank_reason redirect, which needs to
+// bounce back to the order's (code-keyed) review page but only has the
+// numeric id from its own route param.
+export async function getOrderCodeById(orderId: number): Promise<string | null> {
+	const order = await db.query.orders.findFirst({
+		where: (t, { eq: eqCol }) => eqCol(t.id, orderId),
+		columns: { orderCode: true },
+	});
+	return order?.orderCode ?? null;
+}
+
 // Id-only lookup for the retrieve form (src/pages/api/moderator/retrieve.ts),
 // which only needs the id to redirect to the hub page — that page immediately
 // re-runs getOrderDetail(id) itself, so doing the full joins + availability

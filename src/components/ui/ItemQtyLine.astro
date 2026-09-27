@@ -1,0 +1,14 @@
+---
+// Trivial "{name} × {quantity}" list line, factored out of orders/OrderContents
+// and orders/OrdersTableRowDetailed where it was copy-pasted verbatim.
+interface Props {
+	name: string;
+	quantity: number;
+}
+
+const { name, quantity } = Astro.props;
+---
+
+<li>
+	{name} &times; {quantity}
+</li>

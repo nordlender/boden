@@ -12,11 +12,13 @@ interface Props {
 
 const { src, alt, size = 40 } = Astro.props;
 const style = `width: ${size}px; height: ${size}px;`;
+// Icon at ~45% of the box, in line with the icon-to-container ratio in docs/sizing.md.
+const iconSize = Math.round(size * 0.45);
 ---
 {src ? (
 	<img src={src} alt={alt} class="rounded object-cover" style={style} />
 ) : (
 	<div class="grid place-items-center rounded bg-bg-subtle text-text-muted" style={style}>
-		<AppIcon name="image" size={Math.round(size * 0.45)} />
+		<AppIcon name="image" size={iconSize} />
 	</div>
 )}

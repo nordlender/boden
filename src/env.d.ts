@@ -8,9 +8,10 @@ interface ImportMetaEnv {
   readonly REDIRECT_URL: string;
   readonly AUTH_SECRET: string;
   // TEMPORARY: bloc has no role endpoint yet (see docs/bloc-api.md) — these
-  // are comma-separated bloc user ids treated as admin/moderator until a real
-  // role API exists. See src/lib/auth.ts's getRole().
+  // are comma-separated bloc user ids treated as admin/board/moderator until a
+  // real role API exists. See src/lib/auth.ts's getRole().
   readonly ADMIN_USER_IDS: string;
+  readonly BOARD_USER_IDS: string;
   readonly MODERATOR_USER_IDS: string;
 }
 

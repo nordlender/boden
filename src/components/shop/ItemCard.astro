@@ -1,10 +1,6 @@
 ---
 import ImagePlaceholder from './ImagePlaceholder.astro';
-
-interface Attribute {
-	key: string;
-	value: string;
-}
+import { formatAttributes, type Attribute } from '../../lib/attributes';
 
 interface Props {
 	itemId: number;
@@ -15,7 +11,7 @@ interface Props {
 }
 
 const { itemId, productSlug, productTitle, imageUrl, attributes } = Astro.props;
-const variantLabel = attributes.map((a) => a.value).join(' / ');
+const variantLabel = formatAttributes(attributes);
 ---
 
 <a

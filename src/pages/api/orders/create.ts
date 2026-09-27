@@ -4,6 +4,7 @@ import type { APIRoute } from 'astro';
 import { getCart, setCart } from '../../../lib/cart';
 import { createOrder, createSplitOrders } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
+import { requireUser } from '../../../lib/wizard-http';
 
 // Maps the checkout form's readonly hasUnpaidFees/userIsMember text inputs
 // (literally "Yes" | "No" | "Unknown", see CheckoutForm.astro's yesNo()) back
@@ -21,9 +22,8 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   // Not covered by src/middleware/index.ts's route-prefix gate (that only
   // matches /cart, /checkout, /orders — not /api/...), so check auth here,
   // same as docs/rental-shop.md §9's confirm.ts/return.ts examples.
-  if (!locals.user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  const authError = requireUser(locals);
+  if (authError) return authError;
 
   const cart = getCart(cookies);
   if (cart.length === 0) {
@@ -66,7 +66,8 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const result =
     splitItemIds.length > 0
       ? await createSplitOrders({
-          userId: locals.user.id,
+          userId: locals.user!.id,
+          role: locals.user!.role,
           note,
           cartEntries: cart,
           fromDate,
@@ -79,7 +80,8 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           userIsMember,
         })
       : await createOrder({
-          userId: locals.user.id,
+          userId: locals.user!.id,
+          role: locals.user!.role,
           note,
           cartEntries: cart,
           fromDate,

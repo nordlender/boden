@@ -5,15 +5,14 @@
 // client-side role check is needed the way member-facing Navbar.astro needs
 // one for authOnly links). "Home" (the hub) first, then "Requests" (review
 // stage) before "Retrieve order" (retrieval/return stage), matching the
-// flow's own order. No pickup-days link — that page is still a placeholder
-// (see /moderator/pickup-days.astro, issue #56); it's reachable from the
-// hub's tile only until it's real.
+// flow's own order, with "Pickup days" last.
 import BaseNavbar from './nav/BaseNavbar.astro';
 
 const links = [
 	{ href: '/moderator', label: 'Home' },
 	{ href: '/moderator/requests', label: 'Requests' },
 	{ href: '/moderator/retrieve', label: 'Retrieve order' },
+	{ href: '/moderator/pickup-days', label: 'Pickup days' },
 ];
 ---
 

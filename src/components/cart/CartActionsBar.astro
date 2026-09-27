@@ -21,15 +21,15 @@ const { primaryHref, primaryLabel, clearAction, clearHidden = false } = Astro.pr
 	{
 		clearAction ? (
 			<form method="post" action={clearAction}>
-				<EmptyCartButton class="h-10" />
+				<EmptyCartButton />
 			</form>
 		) : (
 			<div data-cart-clear-wrapper hidden={clearHidden}>
-				<EmptyCartButton type="button" class="h-10" />
+				<EmptyCartButton type="button" />
 			</div>
 		)
 	}
-	<Button variant="primary" href={primaryHref} class="h-10 flex-1">
+	<Button variant="primary" href={primaryHref} class="flex-1">
 		{primaryLabel}
 	</Button>
 </div>

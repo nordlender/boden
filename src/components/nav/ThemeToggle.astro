@@ -1,15 +1,16 @@
 ---
 import MorphIcon from 'morphicons/astro';
 import { themeToggle } from '../../lib/icon-nodes';
+import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 ---
 
 <button
 	type="button"
 	id="theme-toggle"
-	class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle"
+	class:list={['flex cursor-pointer items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle', triggerBoxClasses.md]}
 	aria-label="Toggle dark mode"
 >
-	<MorphIcon icon={themeToggle.light} size={20} class="theme-toggle-icon" />
+	<MorphIcon icon={themeToggle.light} size={triggerIconPixelSize.md} class="theme-toggle-icon" />
 </button>
 
 <script>
@@ -34,6 +35,20 @@ import { themeToggle } from '../../lib/icon-nodes';
 		icon.set(themeToggle.dark);
 	}
 
+	// Hint at the click action with tabler's "sun-moon" icon while
+	// hovered or focused, then morph back to the current theme's icon.
+	// Tracked as one combined state rather than two independent on/off
+	// pairs, since hover and focus can overlap (e.g. tabbing to the
+	// button while the mouse already rests over it) and either one
+	// ending shouldn't clear the hint while the other still holds.
+	let hovered = false;
+	let focused = false;
+
+	function syncIcon() {
+		if (!icon) return;
+		icon.icon = hovered || focused ? themeToggle.hover : themeToggle[resolvedTheme()];
+	}
+
 	button?.addEventListener('click', () => {
 		const root = document.documentElement;
 		const next = resolvedTheme() === 'dark' ? 'light' : 'dark';
@@ -45,6 +60,27 @@ import { themeToggle } from '../../lib/icon-nodes';
 			// localStorage may be unavailable (privacy mode); theme just won't persist.
 		}
 
-		if (icon) icon.icon = themeToggle[next];
+		// Only morph to the theme icon if not currently hinting via
+		// hover/focus — syncIcon is the source of truth for that, so this
+		// avoids fighting it if hover/focus is still active when the
+		// click lands.
+		if (icon && !hovered && !focused) icon.icon = themeToggle[next];
+	});
+
+	button?.addEventListener('mouseenter', () => {
+		hovered = true;
+		syncIcon();
+	});
+	button?.addEventListener('mouseleave', () => {
+		hovered = false;
+		syncIcon();
+	});
+	button?.addEventListener('focus', () => {
+		focused = true;
+		syncIcon();
+	});
+	button?.addEventListener('blur', () => {
+		focused = false;
+		syncIcon();
 	});
 </script>

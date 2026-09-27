@@ -68,6 +68,7 @@ yet).
 |---|---|
 | `npm run dev-setup` | Copy `.env` from the main checkout, run migrations, seed the example catalog |
 | `npm run dev` | Start the dev server |
+| `npm run dev-setup` | Bootstrap a fresh worktree: copy `.env` from main, migrate, seed |
 | `npm run build` | Build for production |
 | `npm run preview` | Preview a production build locally |
 | `npm test` | Run the test suite once |

@@ -7,6 +7,7 @@
 // delegated click listener (matching SelectIcon's pattern) sidesteps that.
 import MorphIcon from 'morphicons/astro';
 import { detailsToggle } from '../../lib/icon-nodes';
+import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 
 interface Props {
 	label: string;
@@ -18,8 +19,8 @@ interface Props {
 
 const { label, warning = false } = Astro.props;
 ---
-<button type="button" class="details-toggle-button relative grid h-8 w-8 place-items-center justify-self-center rounded text-text-muted hover:bg-bg-subtle hover:text-text" aria-expanded="false" aria-label={label}>
-	<MorphIcon icon={detailsToggle.closed} size={17} class="details-toggle-icon" />
+<button type="button" class:list={['details-toggle-button relative grid place-items-center justify-self-center rounded text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]} aria-expanded="false" aria-label={label}>
+	<MorphIcon icon={detailsToggle.closed} size={triggerIconPixelSize.sm} class="details-toggle-icon" />
 	{warning && (
 		// TODO: Style later — bg-warning only clears ~2.9:1 against the
 		// button's hover:bg-bg-subtle background, short of WCAG's 3:1 for

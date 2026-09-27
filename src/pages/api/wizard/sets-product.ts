@@ -15,7 +15,7 @@ export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 	// set-product.ts for why (0 would otherwise pass and blow up the FK).
 	const setIds = form
 		.getAll('setIds')
-		.map((v) => Number(v))
+		.map(Number)
 		.filter(isPositiveInteger);
 	const productId = Number(form.get('productId'));
 

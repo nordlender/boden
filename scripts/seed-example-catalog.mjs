@@ -462,6 +462,66 @@ const upsertSetItem = db.prepare(
    ON CONFLICT(set_id, item_id) DO UPDATE SET quantity = excluded.quantity`,
 );
 
+// Shared by seedProduct/seedSetProduct — both a regular product and a
+// set-only product upsert the same row shape, just with a different set of
+// children underneath.
+function upsertProductRow(p) {
+  const categoryId = getCategoryBySlug.get(p.categorySlug).id;
+  const subcategoryId = p.subcategorySlug ? getSubcategoryBySlug.get(categoryId, p.subcategorySlug).id : null;
+
+  upsertProduct.run({
+    slug: p.slug,
+    title: p.title,
+    description: p.description,
+    categoryId,
+    subcategoryId,
+    thumbnailImageUrl: p.thumbnailImageUrl,
+  });
+  return getProductBySlug.get(p.slug).id;
+}
+
+function seedItem(productId, item, attributeIds) {
+  upsertItem.run({
+    productId,
+    slug: item.slug,
+    name: item.name,
+    imageUrl: item.imageUrl,
+    stockCount: item.stockCount,
+  });
+  const itemId = getItemBySlug.get(item.slug).id;
+
+  for (const [key, value] of Object.entries(item.values)) {
+    upsertAttributeValue.run(itemId, attributeIds[key], value);
+  }
+}
+
+function seedProduct(p) {
+  const productId = upsertProductRow(p);
+
+  const attributeIds = {};
+  p.attributeKeys.forEach((name, i) => {
+    upsertAttributeKey.run(productId, name, i);
+    attributeIds[name] = getAttributeKey.get(productId, name).id;
+  });
+
+  for (const item of p.items) seedItem(productId, item, attributeIds);
+}
+
+function seedSet(productId, set) {
+  upsertSet.run({ productId, slug: set.slug, name: set.name, label: set.label ?? null, imageUrl: set.imageUrl ?? null });
+  const setId = getSetBySlug.get(set.slug).id;
+
+  for (const component of set.components) {
+    const itemId = getItemBySlug.get(component.itemSlug).id;
+    upsertSetItem.run(setId, itemId, component.quantity);
+  }
+}
+
+function seedSetProduct(p) {
+  const productId = upsertProductRow(p);
+  for (const set of p.sets) seedSet(productId, set);
+}
+
 const seed = db.transaction(() => {
   for (const c of categories) upsertCategory.run(c.name, c.slug);
 
@@ -470,66 +530,8 @@ const seed = db.transaction(() => {
     upsertSubcategory.run(categoryId, name, slug);
   }
 
-  for (const p of products) {
-    const categoryId = getCategoryBySlug.get(p.categorySlug).id;
-    const subcategoryId = p.subcategorySlug ? getSubcategoryBySlug.get(categoryId, p.subcategorySlug).id : null;
-
-    upsertProduct.run({
-      slug: p.slug,
-      title: p.title,
-      description: p.description,
-      categoryId,
-      subcategoryId,
-      thumbnailImageUrl: p.thumbnailImageUrl,
-    });
-    const productId = getProductBySlug.get(p.slug).id;
-
-    const attributeIds = {};
-    p.attributeKeys.forEach((name, i) => {
-      upsertAttributeKey.run(productId, name, i);
-      attributeIds[name] = getAttributeKey.get(productId, name).id;
-    });
-
-    for (const item of p.items) {
-      upsertItem.run({
-        productId,
-        slug: item.slug,
-        name: item.name,
-        imageUrl: item.imageUrl,
-        stockCount: item.stockCount,
-      });
-      const itemId = getItemBySlug.get(item.slug).id;
-
-      for (const [key, value] of Object.entries(item.values)) {
-        upsertAttributeValue.run(itemId, attributeIds[key], value);
-      }
-    }
-  }
-
-  for (const p of setProducts) {
-    const categoryId = getCategoryBySlug.get(p.categorySlug).id;
-    const subcategoryId = p.subcategorySlug ? getSubcategoryBySlug.get(categoryId, p.subcategorySlug).id : null;
-
-    upsertProduct.run({
-      slug: p.slug,
-      title: p.title,
-      description: p.description,
-      categoryId,
-      subcategoryId,
-      thumbnailImageUrl: p.thumbnailImageUrl,
-    });
-    const productId = getProductBySlug.get(p.slug).id;
-
-    for (const set of p.sets) {
-      upsertSet.run({ productId, slug: set.slug, name: set.name, label: set.label ?? null, imageUrl: set.imageUrl ?? null });
-      const setId = getSetBySlug.get(set.slug).id;
-
-      for (const component of set.components) {
-        const itemId = getItemBySlug.get(component.itemSlug).id;
-        upsertSetItem.run(setId, itemId, component.quantity);
-      }
-    }
-  }
+  for (const p of products) seedProduct(p);
+  for (const p of setProducts) seedSetProduct(p);
 });
 
 seed();

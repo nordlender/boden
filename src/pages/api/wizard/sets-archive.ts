@@ -13,7 +13,7 @@ export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 	const form = await request.formData();
 	const setIds = form
 		.getAll('setIds')
-		.map((v) => Number(v))
+		.map(Number)
 		.filter(isPositiveInteger);
 
 	if (setIds.length === 0) {

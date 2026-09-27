@@ -14,6 +14,7 @@ import MessageTable from '../../components/messages/MessageTable.astro';
 import Modal from '../../components/ui/Modal.astro';
 import Button from '../../components/ui/Button.astro';
 import TextMorphButton from '../../components/ui/TextMorphButton.astro';
+import ActionButton from '../../components/admin/ActionButton.astro';
 import { listMessages } from '../../lib/messages';
 
 const redirectTo = Astro.url.pathname;
@@ -49,6 +50,27 @@ const modalId = 'add-message-modal';
 					data-modal-target={modalId}
 				/>
 			</MessageTable>
+
+			<div class="flex flex-col gap-3 sm:flex-row">
+				<ActionButton
+					href="/admin/items"
+					iconKey="items"
+					label="Items"
+					description="Manage item stock and assign them to products."
+				/>
+				<ActionButton
+					href="/admin/products"
+					iconKey="products"
+					label="Products"
+					description="Manage the shop's product listings."
+				/>
+				<ActionButton
+					href="/admin/orders"
+					iconKey="orders"
+					label="Orders"
+					description="Review and manage member rental orders."
+				/>
+			</div>
 		</div>
 
 		{/* TODO(#206): replace this Modal with an inline expanding box — other page

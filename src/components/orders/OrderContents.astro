@@ -1,23 +1,41 @@
 ---
 import ItemQtyLine from '../ui/ItemQtyLine.astro';
+import ItemLine from '../ui/ItemLine.astro';
 
 interface OrderItemView {
 	itemName: string;
 	requestedQuantity: number;
+	itemImageUrl?: string | null;
 }
 
 interface Props {
 	items: OrderItemView[];
 	note: string | null;
+	// Renders each line as an image+name×qty ItemLine instead of the
+	// plain "{name} × {qty}" text line — used by the checkout success
+	// receipt, where a picture helps confirm what was actually reserved.
+	// Defaults to false so /orders/[code].astro's existing text-only look
+	// is unaffected.
+	showImages?: boolean;
 }
 
-const { items, note } = Astro.props;
+const { items, note, showImages = false } = Astro.props;
 ---
 
 <section class="flex flex-col gap-2">
 	<h2 class="text-sm font-semibold tracking-wide text-text-muted uppercase">Items</h2>
 	<ul class="flex flex-col gap-1 text-sm text-text">
-		{items.map((item) => <ItemQtyLine name={item.itemName} quantity={item.requestedQuantity} />)}
+		{
+			items.map((item) =>
+				showImages ? (
+					<li>
+						<ItemLine imageUrl={item.itemImageUrl} name={item.itemName} quantity={item.requestedQuantity} quantityStyle="inline" />
+					</li>
+				) : (
+					<ItemQtyLine name={item.itemName} quantity={item.requestedQuantity} />
+				),
+			)
+		}
 	</ul>
 	{note && <p class="text-sm text-text-muted">Note: {note}</p>}
 </section>

@@ -201,3 +201,59 @@ export const moderatorActionIcons = {
 		] satisfies IconNode,
 	},
 } satisfies Record<string, { default: IconNode; hover: IconNode }>;
+
+// The three large tiles on the admin index page (components/admin/ActionButton.astro),
+// same pull-from-@iconify-json/tabler approach as moderatorActionIcons above.
+export const adminActionIcons = {
+	items: {
+		// cube
+		default: [
+			[
+				'path',
+				{
+					d: 'M21 16.008V7.99a1.98 1.98 0 0 0-1-1.717l-7-4.008a2.02 2.02 0 0 0-2 0L4 6.273c-.619.355-1 1.01-1 1.718v8.018c0 .709.381 1.363 1 1.717l7 4.008a2.02 2.02 0 0 0 2 0l7-4.008c.619-.355 1-1.01 1-1.718M12 22V12m0 0l8.73-5.04m-17.46 0L12 12',
+				},
+			],
+		] satisfies IconNode,
+		// cube-3d-sphere
+		hover: [
+			[
+				'path',
+				{
+					d: 'm6 17.6l-2-1.1V14m0-4V7.5l2-1.1m4-2.3L12 3l2 1.1m4 2.3l2 1.1V10m0 4v2.5l-2 1.12m-4 2.28L12 21l-2-1.1m2-7.9l2-1.1m4-2.3l2-1.1M12 12v2.5m0 4V21m0-9l-2-1.12M6 8.6L4 7.5',
+				},
+			],
+		] satisfies IconNode,
+	},
+	products: {
+		// package
+		default: [
+			[
+				'path',
+				{ d: 'm12 3l8 4.5v9L12 21l-8-4.5v-9zm0 9l8-4.5M12 12v9m0-9L4 7.5m12-2.25l-8 4.5' },
+			],
+		] satisfies IconNode,
+		// cube-3d-sphere
+		hover: [
+			[
+				'path',
+				{
+					d: 'm6 17.6l-2-1.1V14m0-4V7.5l2-1.1m4-2.3L12 3l2 1.1m4 2.3l2 1.1V10m0 4v2.5l-2 1.12m-4 2.28L12 21l-2-1.1m2-7.9l2-1.1m4-2.3l2-1.1M12 12v2.5m0 4V21m0-9l-2-1.12M6 8.6L4 7.5',
+				},
+			],
+		] satisfies IconNode,
+	},
+	orders: {
+		// clipboard-text
+		default: [
+			['path', { d: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2' }],
+			['path', { d: 'M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2m0 7h6m-6 4h6' }],
+		] satisfies IconNode,
+		// clipboard-smile
+		hover: [
+			['path', { d: 'M10 13h.01M14 13h.01M10 16a3.5 3.5 0 0 0 4 0' }],
+			['path', { d: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2' }],
+			['path', { d: 'M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2' }],
+		] satisfies IconNode,
+	},
+} satisfies Record<string, { default: IconNode; hover: IconNode }>;

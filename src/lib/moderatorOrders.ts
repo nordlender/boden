@@ -107,7 +107,7 @@ function toOrderDetail(order: RawOrderDetail): OrderDetail {
 			itemImageUrl: oi.item.imageUrl,
 			requestedQuantity: oi.requestedQuantity,
 			retrievedQuantity: oi.retrievedQuantity,
-			archived: oi.item.archived || !oi.item.product?.published,
+			archived: oi.item.archived || oi.item.product?.status !== 'published',
 			doubleBooked: !(availableByItemId.get(oi.itemId) ?? true),
 		})),
 	};

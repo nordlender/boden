@@ -274,8 +274,8 @@ const upsertSubcategory = db.prepare(
 const getSubcategoryBySlug = db.prepare('SELECT id FROM subcategories WHERE category_id = ? AND slug = ?');
 
 const upsertProduct = db.prepare(
-  `INSERT INTO products (slug, title, description, category_id, subcategory_id, published, thumbnail_image_url)
-   VALUES (@slug, @title, @description, @categoryId, @subcategoryId, 1, @thumbnailImageUrl)
+  `INSERT INTO products (slug, title, description, category_id, subcategory_id, status, thumbnail_image_url)
+   VALUES (@slug, @title, @description, @categoryId, @subcategoryId, 'published', @thumbnailImageUrl)
    ON CONFLICT(slug) DO UPDATE SET
      title = excluded.title,
      description = excluded.description,

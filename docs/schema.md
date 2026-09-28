@@ -445,21 +445,6 @@ now, just recording the idea.
 disambiguate on collision) — there's no combinatorial product+option naming
 to derive it from anymore, since items are named freeform.
 
-## Schema change: `products.status` enum replaced with `products.published` boolean
-`status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden')`
-is replaced with `published: integer('published', { mode: 'boolean' }).notNull().default(false)`
-(migration `0011_replace_product_status_with_published`, index renamed
-`products_status_idx` -> `products_published_idx`). Same semantics as the
-old `hidden`/`published` pair (see "Resolved" above — unpublished is still a
-deliberate, permanent admin choice, not an incomplete/abandoned product) —
-this only collapses the two-value enum into a boolean, and flips the
-zero-value default so a newly created product is unpublished until an
-admin explicitly publishes it (old default was the equivalent `'hidden'`).
-Every `product.status === 'published'` / `eq(products.status, 'published')`
-call site (shop.ts, cart.ts, moderatorOrders.ts, api/cart/add.ts,
-api/cart/update.ts, admin/products.astro) now reads `product.published` /
-`eq(products.published, true)` directly.
-
 ## Feature: homepage grid groups tiles by product, not item
 `getShopGridProducts()`/`groupShopItemsByProduct()` in `src/lib/shop.ts`
 collapse `getShopItems()`'s one-row-per-item rows into one row per product

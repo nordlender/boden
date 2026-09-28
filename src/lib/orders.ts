@@ -193,7 +193,7 @@ function insertOrder(
 // resolved later by the moderator at the confirm step (see
 // orderItems.retrievedQuantity), not here.
 //
-// Deliberately not checked here: item.product.published. Unlike getCartItems
+// Deliberately not checked here: item.product.status. Unlike getCartItems
 // (src/lib/cart.ts), this doesn't drop an entry whose product was
 // unpublished after it was added to the cart — so a stale/tampered cart can
 // still produce an orderItems row for it. Accepted for now rather than fixed

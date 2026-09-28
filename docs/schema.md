@@ -444,3 +444,17 @@ now, just recording the idea.
 `items.slug` must be derived from `name` at save time (slugify +
 disambiguate on collision) — there's no combinatorial product+option naming
 to derive it from anymore, since items are named freeform.
+
+## Feature: homepage grid groups tiles by product, not item
+`getShopGridProducts()`/`groupShopItemsByProduct()` in `src/lib/shop.ts`
+collapse `getShopItems()`'s one-row-per-item rows into one row per product
+for the homepage grid, so a product's size/color variants share a single
+tile instead of one tile each. The representative item (used for the
+tile's image and its `?item=<id>` preselect link) is the first in-stock
+item in the group, falling back to the group's first item if none are in
+stock. The tile's stock number sums `inStock` across every item in the
+group — an interim approach (issue #64 still owns the stock badge's final
+design), so it effectively reads "in stock if any item in the group is
+available." `ItemGrid.astro`/`ItemCard.astro` take product-level props now;
+`ItemCard.astro` no longer renders a per-variant attribute label, since a
+tile can represent several variants at once.

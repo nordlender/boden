@@ -20,6 +20,7 @@ const toItemView = (item: Awaited<ReturnType<typeof getWizardItems>>['unassigned
 	product: item.productTitle,
 	inStock: item.inStock,
 	totalStock: item.totalStock,
+	serviceQuantity: item.serviceQuantity,
 	description: item.description,
 	attributes: item.attributes,
 	missingAttributeTemplate: item.missingAttributeTemplate,

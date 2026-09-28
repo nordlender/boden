@@ -14,6 +14,16 @@
 // No quantity field here — a component is always added at quantity 1;
 // SetComponentList's own per-row quantity field is where it's adjusted
 // afterward, so this row doesn't need to duplicate that control.
+//
+// The results list is `position: fixed`, positioned in JS from the search
+// input's own bounding rect, rather than `absolute` within this row —
+// SetPanel.astro's row-list wrapper has `overflow-hidden` (to clip row
+// backgrounds to the panel's rounded bottom corners, same as
+// ../ItemPanel.astro), and this picker lives inside one specific row's own
+// expanded details panel, not as that panel's sibling the way
+// ButtonStrip's/SetToolbar's dropdowns do — so unlike those, relying on
+// `absolute` positioning here would get clipped by that ancestor
+// regardless of z-index.
 import AppIcon from '../../icons/AppIcon.astro';
 import TextMorphButton from '../../ui/TextMorphButton.astro';
 
@@ -48,7 +58,7 @@ const searchableItems = items.map((item) => ({ id: item.id, label: item.productT
 			data-component-search
 		/>
 		<ul
-			class="absolute left-0 z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-border bg-surface py-1 text-sm shadow-lg"
+			class="fixed z-20 max-h-56 overflow-y-auto rounded-md border border-border bg-surface py-1 text-sm shadow-lg"
 			data-component-results
 			hidden
 		>
@@ -85,6 +95,17 @@ const searchableItems = items.map((item) => ({ id: item.id, label: item.productT
 			if (submitButton) submitButton.disabled = !item;
 		}
 
+		// Anchors the fixed-position results list under the search input —
+		// called whenever it opens, and again on scroll/resize while it's
+		// open, since `position: fixed` doesn't track the input on its own.
+		function positionResults() {
+			if (!results || !searchInput) return;
+			const rect = searchInput.getBoundingClientRect();
+			results.style.left = `${rect.left}px`;
+			results.style.top = `${rect.bottom + 4}px`;
+			results.style.width = `${rect.width}px`;
+		}
+
 		function renderResults(query: string) {
 			if (!results) return;
 			const q = query.trim().toLowerCase();
@@ -94,6 +115,7 @@ const searchableItems = items.map((item) => ({ id: item.id, label: item.productT
 
 			results.replaceChildren();
 			results.hidden = matches.length === 0;
+			if (!results.hidden) positionResults();
 			for (const item of matches) {
 				const li = document.createElement('li');
 				const button = document.createElement('button');
@@ -123,6 +145,22 @@ const searchableItems = items.map((item) => ({ id: item.id, label: item.productT
 			if (!results || results.hidden) return;
 			if (event.target instanceof Node && form.contains(event.target)) return;
 			results.hidden = true;
+		});
+
+		// Keep the fixed-position results list under the input if the page (or
+		// any scrollable ancestor, e.g. the details panel) scrolls or the
+		// window resizes while it's open — `capture: true` on scroll so this
+		// fires for scrolling inside a nested container too, not just the
+		// window itself.
+		window.addEventListener(
+			'scroll',
+			() => {
+				if (results && !results.hidden) positionResults();
+			},
+			true,
+		);
+		window.addEventListener('resize', () => {
+			if (results && !results.hidden) positionResults();
 		});
 	});
 </script>

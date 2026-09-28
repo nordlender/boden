@@ -8,7 +8,7 @@ export const prerender = false;
 import '../../styles/global.css';
 import ThemeInit from '../../components/ThemeInit.astro';
 import AdminNavbar from '../../components/AdminNavbar.astro';
-import Button from '../../components/ui/Button.astro';
+import TextMorphButton from '../../components/ui/TextMorphButton.astro';
 import { listProductsForAdmin } from '../../lib/products';
 
 const products = await listProductsForAdmin();
@@ -29,7 +29,7 @@ const products = await listProductsForAdmin();
 					<h1 class="text-xl font-semibold text-text">Products</h1>
 					<p class="mt-1 text-sm text-text-muted">All product listings, alphabetical by title.</p>
 				</div>
-				<Button href="/admin/products/new" variant="primary">New product</Button>
+				<TextMorphButton href="/admin/products/new" action="add" variant="primary">New product</TextMorphButton>
 			</div>
 
 			{

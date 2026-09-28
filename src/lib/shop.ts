@@ -101,7 +101,7 @@ function toShopItem(item: ItemLike, product: ProductLike, reserved: Map<number, 
 // Homepage listing: every non-archived item whose product is published.
 // Items with no product (still mid-wizard, per wizard.ts's "unassigned"
 // bucket) never have a product to be published, so they're excluded
-// implicitly by the `product.status === 'published'` filter below.
+// implicitly by the `product.published` filter below.
 export async function getShopItems(): Promise<ShopItem[]> {
 	const rows = await db.query.items.findMany({
 		where: (t, { eq }) => eq(t.archived, false),
@@ -116,11 +116,69 @@ export async function getShopItems(): Promise<ShopItem[]> {
 
 	const published = rows.filter(
 		(row): row is typeof row & { product: NonNullable<typeof row.product> } =>
-			row.product?.status === 'published',
+			Boolean(row.product?.published),
 	);
 	const reserved = await reservedQuantitiesByItem(published.map((row) => row.id));
 
 	return published.map((row) => toShopItem(row, row.product, reserved));
+}
+
+export interface ShopGridProduct {
+	productId: number;
+	productSlug: string;
+	productTitle: string;
+	// Representative item's image/id — see groupShopItemsByProduct for how
+	// it's picked. Used for the tile's image and the `?item=<id>` link that
+	// preselects a variant on /products/[slug].
+	representativeItemId: number;
+	imageUrl: string | null;
+	categoryName: string | null;
+	subcategoryName: string | null;
+	// Sum of every sibling item's inStock — interim approach (issue #64
+	// still owns the stock badge's final design), so this effectively reads
+	// "in stock if any item in the group is available."
+	inStock: number;
+}
+
+// Collapses getShopItems()'s one-row-per-item rows into one row per
+// product, for the homepage grid — a product with N size/color variants
+// should render as one tile, not N. Preserves the input's ordering (first
+// occurrence of each productId), since getShopItems already orders by item
+// id ascending.
+export function groupShopItemsByProduct(items: ShopItem[]): ShopGridProduct[] {
+	const order: number[] = [];
+	const groups = new Map<number, ShopItem[]>();
+	for (const item of items) {
+		if (!groups.has(item.productId)) {
+			order.push(item.productId);
+			groups.set(item.productId, []);
+		}
+		groups.get(item.productId)!.push(item);
+	}
+
+	return order.map((productId) => {
+		const group = groups.get(productId)!;
+		// Representative = first in-stock item, falling back to the first
+		// item in the group if none are in stock.
+		const representative = group.find((item) => item.inStock > 0) ?? group[0];
+		return {
+			productId,
+			productSlug: representative.productSlug,
+			productTitle: representative.productTitle,
+			representativeItemId: representative.id,
+			imageUrl: representative.imageUrl,
+			categoryName: representative.categoryName,
+			subcategoryName: representative.subcategoryName,
+			inStock: group.reduce((sum, item) => sum + item.inStock, 0),
+		};
+	});
+}
+
+// The homepage grid's data source: one row per published product,
+// collapsing its item variants into a single representative tile.
+export async function getShopGridProducts(): Promise<ShopGridProduct[]> {
+	const items = await getShopItems();
+	return groupShopItemsByProduct(items);
 }
 
 // Every published product's slug with at least a wizard-created row —
@@ -128,7 +186,7 @@ export async function getShopItems(): Promise<ShopItem[]> {
 // catalogue/product pages at build time, see astro.config.mjs).
 export async function getPublishedProductSlugs(): Promise<string[]> {
 	const rows = await db.query.products.findMany({
-		where: (t, { eq }) => eq(t.status, 'published'),
+		where: (t, { eq }) => eq(t.published, true),
 		columns: { slug: true },
 	});
 	return rows.map((row) => row.slug);
@@ -153,7 +211,7 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 		},
 	});
 
-	if (!product || product.status !== 'published') return null;
+	if (!product || !product.published) return null;
 
 	const visibleItems = product.items.filter((item) => !item.archived);
 	const reserved = await reservedQuantitiesByItem(visibleItems.map((item) => item.id));

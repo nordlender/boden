@@ -78,6 +78,13 @@
       "when": 1790513706633,
       "tag": "0010_silent_prism",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1790699999999,
+      "tag": "0011_replace_product_status_with_published",
+      "breakpoints": true
     }
   ]
 }

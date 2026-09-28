@@ -48,7 +48,7 @@ vi.mock('../../db/client', async () => {
 	const [category] = await db.insert(schema.categories).values({ name: 'Ropes', slug: 'ropes' }).returning();
 	const [product] = await db
 		.insert(schema.products)
-		.values({ slug: 'test-rope', title: 'Test Rope', categoryId: category.id, status: 'published' })
+		.values({ slug: 'test-rope', title: 'Test Rope', categoryId: category.id, published: true })
 		.returning();
 	// Item A: 1 in stock, so a single existing reservation fully books it.
 	// Item B and item C: 5 in stock each, never reserved by anyone.

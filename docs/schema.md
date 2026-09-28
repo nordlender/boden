@@ -444,3 +444,32 @@ now, just recording the idea.
 `items.slug` must be derived from `name` at save time (slugify +
 disambiguate on collision) — there's no combinatorial product+option naming
 to derive it from anymore, since items are named freeform.
+
+## Schema change: `products.status` enum replaced with `products.published` boolean
+`status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden')`
+is replaced with `published: integer('published', { mode: 'boolean' }).notNull().default(false)`
+(migration `0011_replace_product_status_with_published`, index renamed
+`products_status_idx` -> `products_published_idx`). Same semantics as the
+old `hidden`/`published` pair (see "Resolved" above — unpublished is still a
+deliberate, permanent admin choice, not an incomplete/abandoned product) —
+this only collapses the two-value enum into a boolean, and flips the
+zero-value default so a newly created product is unpublished until an
+admin explicitly publishes it (old default was the equivalent `'hidden'`).
+Every `product.status === 'published'` / `eq(products.status, 'published')`
+call site (shop.ts, cart.ts, moderatorOrders.ts, api/cart/add.ts,
+api/cart/update.ts, admin/products.astro) now reads `product.published` /
+`eq(products.published, true)` directly.
+
+## Feature: homepage grid groups tiles by product, not item
+`getShopGridProducts()`/`groupShopItemsByProduct()` in `src/lib/shop.ts`
+collapse `getShopItems()`'s one-row-per-item rows into one row per product
+for the homepage grid, so a product's size/color variants share a single
+tile instead of one tile each. The representative item (used for the
+tile's image and its `?item=<id>` preselect link) is the first in-stock
+item in the group, falling back to the group's first item if none are in
+stock. The tile's stock number sums `inStock` across every item in the
+group — an interim approach (issue #64 still owns the stock badge's final
+design), so it effectively reads "in stock if any item in the group is
+available." `ItemGrid.astro`/`ItemCard.astro` take product-level props now;
+`ItemCard.astro` no longer renders a per-variant attribute label, since a
+tile can represent several variants at once.

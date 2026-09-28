@@ -34,7 +34,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 		where: (t, { eq }) => eq(t.id, itemId),
 		with: { product: true },
 	});
-	if (!item || item.archived || item.product?.status !== 'published') {
+	if (!item || item.archived || !item.product?.published) {
 		return new Response('Item not available', { status: 404 });
 	}
 

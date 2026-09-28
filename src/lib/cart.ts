@@ -110,7 +110,7 @@ export async function getCartItems(cookies: AstroCookies): Promise<CartItem[]> {
 		},
 	});
 
-	const visibleRows = rows.filter((row) => !row.archived && row.product?.status === 'published');
+	const visibleRows = rows.filter((row) => !row.archived && Boolean(row.product?.published));
 	const rowsById = new Map(visibleRows.map((row) => [row.id, row]));
 	const reserved = await reservedQuantitiesByItem(visibleRows.map((row) => row.id));
 

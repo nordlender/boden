@@ -4,9 +4,9 @@ export const prerender = false;
 // Admin hub — landing page for the /admin/* section, mirroring
 // /moderator/index.astro's role as a landing page. Gated by
 // src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin). The message
-// board here is the authoring side of what /moderator's MessageTable shows
-// read-only (see issue #151) — same shared component, `editable` here plus
-// the "Message" trigger + modal for posting, which /moderator doesn't render.
+// board here is the same shared MessageTable moderators also post to and
+// see (see issue #151, #225) — this page adds `isAdmin` (pin/delete any
+// message) plus its own "Message" trigger + modal for posting.
 import '../../styles/global.css';
 import ThemeInit from '../../components/ThemeInit.astro';
 import AdminNavbar from '../../components/AdminNavbar.astro';
@@ -41,7 +41,7 @@ const modalId = 'add-message-modal';
 					</p>
 				)
 			}
-			<MessageTable messages={messages} editable redirectTo={redirectTo}>
+			<MessageTable messages={messages} currentUserId={Astro.locals.user?.id ?? null} isAdmin redirectTo={redirectTo}>
 				<TextMorphButton
 					slot="actions"
 					action="message"

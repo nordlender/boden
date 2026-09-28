@@ -36,9 +36,13 @@ function slugify(input: string): string {
 	const base = input
 		.toLowerCase()
 		.trim()
+		// Collapses every run of non-alphanumeric characters (globally) into
+		// one dash first, so by construction there's at most one leading and
+		// one trailing dash left to trim — no `+` needed on these two, which
+		// is what keeps them out of super-linear-backtracking territory.
 		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+/, '')
-		.replace(/-+$/, '');
+		.replace(/^-/, '')
+		.replace(/-$/, '');
 	return base || 'set';
 }
 

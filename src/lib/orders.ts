@@ -25,8 +25,14 @@ function generateRandomCode(length: number): string {
 export const ORDER_CODE_LENGTH = 5;
 const MAX_ORDER_CODE_ATTEMPTS = 5;
 
-const ORDER_CODE_DIGITS = '0123456789';
-const ORDER_CODE_FREE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+// Excludes 0/O and 1/I — same ambiguous-character rationale as
+// RANDOM_CODE_ALPHABET above; an order code is read aloud by members to
+// moderators. 'I' still appears as a *fixed* role-letter suffix below
+// (ORDER_CODE_ROLE_LETTERS) — that's a single, always-in-the-same-position
+// character, not a randomly drawn one, so it doesn't reintroduce the
+// ambiguity this excludes from the two free-letter positions.
+const ORDER_CODE_DIGITS = '23456789';
+const ORDER_CODE_FREE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 
 // Maps the role that created the order to its fixed last-character letter —
 // every order code's last letter is always one of these four, so the

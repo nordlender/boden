@@ -83,7 +83,6 @@ and update this list:
   merged, drop it from this list.
 - `src/components/cart/CheckoutForm.astro`
 - `src/components/reservation/ReservationForm.astro`
-- `src/components/reservation/ReservationItemRow.astro`
 - `src/pages/reservation.astro`
 
 When converting one of these, the raw-to-token mapping is consistent

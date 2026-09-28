@@ -73,6 +73,16 @@ vi.mock('../../db/client', async () => {
 	await db.insert(schema.sets).values({ slug: 'set-4', name: 'Set 4' }); // id === 5
 	await db.insert(schema.setItems).values({ setId: 5, itemId: 7, quantity: 1 });
 
+	// Set 5 (id === 6) has one non-archived component (item 1) and one
+	// archived one (item 8) — for getValidSetIds's "a non-archived set can
+	// still be invalid if one of its own components is archived" case.
+	await db.insert(schema.items).values({ slug: 'item-8', name: 'Item 8', stockCount: 5, archived: true }); // id === 8
+	await db.insert(schema.sets).values({ slug: 'set-5', name: 'Set 5' }); // id === 6
+	await db.insert(schema.setItems).values([
+		{ setId: 6, itemId: 1, quantity: 1 },
+		{ setId: 6, itemId: 8, quantity: 1 },
+	]);
+
 	return { db };
 });
 
@@ -129,6 +139,14 @@ describe('getValidSetIds', () => {
 
 	it('includes a non-archived set and excludes an archived one', async () => {
 		expect(await getValidSetIds([1, 2, 999])).toEqual(new Set([1]));
+	});
+
+	it('excludes a non-archived set that has an archived component', async () => {
+		// Set 5 (id 6) isn't archived itself, but one of its two components
+		// (item 8) is — the whole set must still come back invalid, same as
+		// orders.ts's resolveOrderableEntries already does for a plain
+		// archived item entry (drop the whole line, not a partial resolve).
+		expect(await getValidSetIds([1, 6])).toEqual(new Set([1]));
 	});
 });
 

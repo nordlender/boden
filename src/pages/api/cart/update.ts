@@ -5,25 +5,8 @@ export const prerender = false;
 // (src/pages/api/orders/create.ts).
 
 import type { APIRoute } from 'astro';
-import { db } from '../../../db/client';
 import { updateCartQuantity } from '../../../lib/cart';
-
-// True when the given item/set is still a valid line to add stock for —
-// quantity <= 0 just removes the line (see updateCartQuantity) and skips
-// this check entirely, same as ../remove.ts, even for an item/set that's
-// since been archived/unpublished. A positive quantity re-validates it the
-// same way add.ts does, so this endpoint can't be used to slip a
-// hidden-product or archived entry into the cart that add.ts would have
-// rejected (updateCartQuantity happily inserts a new line for an id that
-// wasn't already in the cart).
-async function isAvailable(kind: 'item' | 'set', id: number): Promise<boolean> {
-	if (kind === 'item') {
-		const item = await db.query.items.findFirst({ where: (t, { eq }) => eq(t.id, id), with: { product: true } });
-		return Boolean(item) && !item!.archived && item!.product?.status === 'published';
-	}
-	const set = await db.query.sets.findFirst({ where: (t, { eq }) => eq(t.id, id), with: { product: true } });
-	return Boolean(set) && !set!.archived && set!.product?.status === 'published';
-}
+import { isCartEntryAvailable, parseCartEntryKind } from '../../../lib/cart-http';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	const form = await request.formData();
@@ -35,8 +18,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 		return new Response('Invalid quantity', { status: 400 });
 	}
 
-	const kind: 'item' | 'set' | null = rawItemId !== null ? 'item' : rawSetId !== null ? 'set' : null;
-	if (kind === null) {
+	const kind = parseCartEntryKind(rawItemId, rawSetId);
+	if (!kind) {
 		return new Response('Missing item or set', { status: 400 });
 	}
 
@@ -45,7 +28,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 		return new Response(kind === 'item' ? 'Invalid item' : 'Invalid set', { status: 400 });
 	}
 
-	if (quantity > 0 && !(await isAvailable(kind, id))) {
+	// quantity <= 0 just removes the line (see updateCartQuantity) — always
+	// allowed, same as ../remove.ts, even for an item/set that's since been
+	// archived/unpublished. A positive quantity re-validates it the same way
+	// add.ts does, so this endpoint can't be used to slip a hidden-product or
+	// archived entry into the cart that add.ts would have rejected
+	// (updateCartQuantity happily inserts a new line for an id that wasn't
+	// already in the cart).
+	if (quantity > 0 && !(await isCartEntryAvailable(kind, id))) {
 		return new Response(kind === 'item' ? 'Item not available' : 'Set not available', { status: 404 });
 	}
 

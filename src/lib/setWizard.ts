@@ -135,6 +135,18 @@ export async function setSetsImage(setIds: number[], imageUrl: string): Promise<
 // wizard.ts's setItemsProduct) — sets don't own attribute values.
 export async function setSetsProduct(setIds: number[], productId: number): Promise<void> {
 	if (setIds.length === 0) return;
+
+	// Mirrors wizard.ts's setItemsProduct's own guard — a product's variants
+	// are assumed all items or all sets, never a mix (see
+	// src/components/shop/VariantPicker.astro's comment). Enforced on both
+	// write paths so the invalid state can't be created from either side.
+	const existingItem = await db.query.items.findFirst({
+		where: (t, { eq: eqCol, and: andCol }) => andCol(eqCol(t.productId, productId), eqCol(t.archived, false)),
+	});
+	if (existingItem) {
+		throw new Error('This product already has items assigned — a product cannot mix item and set variants.');
+	}
+
 	await db.update(sets).set({ productId }).where(inArray(sets.id, setIds));
 }
 

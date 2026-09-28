@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getCartLineAvailability, isValidDateRange, type ReservationLine } from '../../../lib/reservation';
-import { getSetChildrenBulk } from '../../../lib/sets';
+import { getSetChildrenBulk, getValidSetIds } from '../../../lib/sets';
 
 export const prerender = false;
 
@@ -31,17 +31,26 @@ export const POST: APIRoute = async ({ request, locals }) => {
 	const setIds = lineInputs
 		.filter((line): line is { key: string; setId: number; quantity: number } => 'setId' in line)
 		.map((line) => line.setId);
-	const childrenBySet = await getSetChildrenBulk(setIds);
+	const [childrenBySet, validSetIds] = await Promise.all([getSetChildrenBulk(setIds), getValidSetIds(setIds)]);
 
 	const lines: ReservationLine[] = lineInputs.map((line) => ({
 		key: line.key,
 		itemRequirements:
 			'itemId' in line
 				? [{ itemId: line.itemId, quantity: line.quantity }]
-				: (childrenBySet.get(line.setId) ?? []).map((child) => ({
-						itemId: child.itemId,
-						quantity: child.quantity * line.quantity,
-					})),
+				// An archived set, or one with an archived component, resolves
+				// to no requirements at all — getCartLineAvailability already
+				// reports an empty-requirements line as unavailable, matching
+				// what checkout would actually do with it (orders.ts's
+				// resolveOrderableEntries drops the same set for the same
+				// reason via this same getValidSetIds check), rather than
+				// showing "available" here off stale/incomplete data.
+				: validSetIds.has(line.setId)
+					? (childrenBySet.get(line.setId) ?? []).map((child) => ({
+							itemId: child.itemId,
+							quantity: child.quantity * line.quantity,
+						}))
+					: [],
 	}));
 
 	const availabilities = getCartLineAvailability({ from: body.from!, to: body.to! }, lines);

@@ -40,6 +40,7 @@ const ITEM_A_ID = 1;
 const ITEM_B_ID = 2;
 const ITEM_C_ID = 3;
 const SET_X_ID = 1;
+const SET_Y_ID = 2; // contains only item D, which is archived
 
 vi.mock('../../db/client', async () => {
 	const { default: Database } = await import('better-sqlite3');
@@ -70,6 +71,11 @@ vi.mock('../../db/client', async () => {
 		{ setId: 1, itemId: 2, quantity: 1 },
 		{ setId: 1, itemId: 3, quantity: 1 },
 	]);
+	// Item D (archived) and Set Y (containing it) — for the "a set with an
+	// archived component is dropped whole, not partially resolved" case.
+	await db.insert(schema.items).values({ productId: product.id, slug: 'item-d', name: 'Item D', stockCount: 5, archived: true });
+	await db.insert(schema.sets).values({ productId: product.id, slug: 'set-y', name: 'Set Y' });
+	await db.insert(schema.setItems).values({ setId: 2, itemId: 4, quantity: 1 });
 	await db.insert(schema.users).values({ id: 'member-1', name: 'Member', email: 'member@example.com' });
 	const [otherUser] = await db.insert(schema.users).values({ id: 'other-user', name: 'Other', email: 'other@example.com' }).returning();
 
@@ -179,6 +185,44 @@ describe('createOrder', () => {
 		expect(rows).toHaveLength(2); // one row per distinct item, not per cart entry
 		expect(rows.find((row) => row.itemId === ITEM_B_ID)?.requestedQuantity).toBe(2);
 		expect(rows.find((row) => row.itemId === ITEM_C_ID)?.requestedQuantity).toBe(1);
+	});
+
+	it('drops a set entry whole when one of its components is archived, rather than partially resolving it', async () => {
+		const cartEntries: CartEntry[] = [
+			{ itemId: ITEM_B_ID, quantity: 1 },
+			{ setId: SET_Y_ID, quantity: 1 }, // resolves only to item D, which is archived
+		];
+		const result = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries,
+			fromDate: '2026-02-20',
+			toDate: '2026-02-21',
+			...CONTACT,
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		const { db } = await import('../../db/client');
+		const schema = await import('../../db/schema');
+		const rows = await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, result.orderId));
+		// Only item B (the direct entry) made it in — set Y contributed nothing.
+		expect(rows.map((row) => row.itemId)).toEqual([ITEM_B_ID]);
+	});
+
+	it('rejects with empty_cart when the only entry is a set whose sole component is archived', async () => {
+		const cartEntries: CartEntry[] = [{ setId: SET_Y_ID, quantity: 1 }];
+		const result = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries,
+			fromDate: '2026-02-22',
+			toDate: '2026-02-23',
+			...CONTACT,
+		});
+
+		expect(result).toEqual({ ok: false, error: 'empty_cart' });
 	});
 });
 
@@ -495,5 +539,16 @@ describe('generateOrderCode', () => {
 
 	it('matches the NNAAX format', () => {
 		expect(generateOrderCode('member')).toMatch(/^\d{2}[A-Z]{2}[ABIM]$/);
+	});
+
+	it('never draws the randomly-placed digits/letters from the ambiguous 0/O or 1/I pairs', () => {
+		// The fixed 5th character legitimately can be 'I' (moderator) — this
+		// only checks the two random digits and two random free letters
+		// (positions 0-3), same ambiguity rationale as RANDOM_CODE_ALPHABET.
+		for (let i = 0; i < 50; i++) {
+			const code = generateOrderCode('member');
+			const randomPart = code.slice(0, 4);
+			expect(randomPart).not.toMatch(/[01IO]/);
+		}
 	});
 });

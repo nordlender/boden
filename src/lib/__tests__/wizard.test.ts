@@ -154,6 +154,28 @@ describe('wizard', () => {
 				.all();
 			expect(rows.every((r) => r.productId === productY.id)).toBe(true);
 		});
+
+		it('rejects assigning an item to a product that already has a non-archived set', async () => {
+			const productX = seedProduct(testDb, { slug: 'product-x', title: 'Product X' });
+			const itemId = seedItem(testDb, { slug: 'item-1', name: 'Item 1' });
+			testDb.insert(schema.sets).values({ slug: 'set-1', name: 'Set 1', productId: productX.id }).run();
+
+			await expect(setItemsProduct([itemId], productX.id)).rejects.toThrow();
+
+			const [row] = testDb.select({ productId: schema.items.productId }).from(schema.items).where(eq(schema.items.id, itemId)).all();
+			expect(row.productId).toBeNull();
+		});
+
+		it('still allows assigning an item to a product whose only set is archived', async () => {
+			const productX = seedProduct(testDb, { slug: 'product-x', title: 'Product X' });
+			const itemId = seedItem(testDb, { slug: 'item-1', name: 'Item 1' });
+			testDb.insert(schema.sets).values({ slug: 'set-1', name: 'Set 1', productId: productX.id, archived: true }).run();
+
+			await setItemsProduct([itemId], productX.id);
+
+			const [row] = testDb.select({ productId: schema.items.productId }).from(schema.items).where(eq(schema.items.id, itemId)).all();
+			expect(row.productId).toBe(productX.id);
+		});
 	});
 
 	describe('setBulkAttributeValues', () => {

@@ -73,14 +73,23 @@ export async function getSetChildrenDetailedBulk(setIds: number[]): Promise<Map<
 
 // Only ever true|false checked against: a soft-deleted set behaves like an
 // archived item everywhere (cart.ts, orders.ts) — dropped silently rather
-// than erroring, same precedent as items.archived.
+// than erroring, same precedent as items.archived. A set with an archived
+// *component* is treated the same way, dropped as a whole rather than
+// silently resolving to fewer items than it promises — without this, an
+// archived component reachable only through a set (never added to a cart
+// directly) would bypass the exact same archived-item check a plain item
+// entry already gets in orders.ts's resolveOrderableEntries.
 export async function getValidSetIds(setIds: number[]): Promise<Set<number>> {
 	if (setIds.length === 0) return new Set();
 	const rows = await db
 		.select({ id: sets.id })
 		.from(sets)
 		.where(and(inArray(sets.id, setIds), eq(sets.archived, false)));
-	return new Set(rows.map((row) => row.id));
+	const nonArchivedSetIds = rows.map((row) => row.id);
+	if (nonArchivedSetIds.length === 0) return new Set();
+
+	const childrenBySet = await getSetChildrenDetailedBulk(nonArchivedSetIds);
+	return new Set(nonArchivedSetIds.filter((id) => (childrenBySet.get(id) ?? []).every((child) => !child.archived)));
 }
 
 export type ResolvableEntry = { itemId: number; quantity: number } | { setId: number; quantity: number };

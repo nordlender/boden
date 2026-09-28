@@ -62,7 +62,7 @@ export interface ProductInput {
 	description?: string | null;
 	categoryId?: number | null;
 	subcategoryId?: number | null;
-	status?: 'hidden' | 'published';
+	published?: boolean;
 	thumbnailImageUrl?: string | null;
 	links: ProductLinkInput[];
 	// Attribute-key template rows, by name — see docs/schema.md's
@@ -83,7 +83,7 @@ export async function createProduct(input: ProductInput): Promise<number> {
 				description: input.description?.trim() || null,
 				categoryId: input.categoryId ?? null,
 				subcategoryId: input.subcategoryId ?? null,
-				status: input.status ?? 'hidden',
+				published: input.published ?? false,
 				thumbnailImageUrl: input.thumbnailImageUrl?.trim() || null,
 			})
 			.returning({ id: products.id })
@@ -114,7 +114,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
 				description: input.description?.trim() || null,
 				categoryId: input.categoryId ?? null,
 				subcategoryId: input.subcategoryId ?? null,
-				status: input.status ?? 'hidden',
+				published: input.published ?? false,
 				thumbnailImageUrl: input.thumbnailImageUrl?.trim() || null,
 				updatedAt: new Date(),
 			})
@@ -195,7 +195,7 @@ export interface ProductForEdit {
 	description: string | null;
 	categoryId: number | null;
 	subcategoryId: number | null;
-	status: 'hidden' | 'published';
+	published: boolean;
 	thumbnailImageUrl: string | null;
 	links: { id: number; label: string; url: string }[];
 	attributeKeys: { id: number; name: string }[];
@@ -218,7 +218,7 @@ export async function getProductForEdit(id: number): Promise<ProductForEdit | nu
 		description: product.description,
 		categoryId: product.categoryId,
 		subcategoryId: product.subcategoryId,
-		status: product.status,
+		published: product.published,
 		thumbnailImageUrl: product.thumbnailImageUrl,
 		links: product.links.map((link) => ({ id: link.id, label: link.label, url: link.url })),
 		attributeKeys: product.attributeKeys.map((key) => ({ id: key.id, name: key.name })),
@@ -228,7 +228,7 @@ export async function getProductForEdit(id: number): Promise<ProductForEdit | nu
 export interface ProductListRow {
 	id: number;
 	title: string;
-	status: 'hidden' | 'published';
+	published: boolean;
 	categoryName: string | null;
 	subcategoryName: string | null;
 }
@@ -241,7 +241,7 @@ export async function listProductsForAdmin(): Promise<ProductListRow[]> {
 	return rows.map((row) => ({
 		id: row.id,
 		title: row.title,
-		status: row.status,
+		published: row.published,
 		categoryName: row.category?.name ?? null,
 		subcategoryName: row.subcategory?.name ?? null,
 	}));

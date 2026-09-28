@@ -27,7 +27,7 @@ vi.mock('../../db/client', async () => {
       slug: 'test-rope',
       title: 'Test Rope',
       categoryId: category.id,
-      status: 'published',
+      published: true,
       thumbnailImageUrl: '/rope-thumb.jpg',
     })
     .returning();
@@ -53,7 +53,7 @@ vi.mock('../../db/client', async () => {
   // drops items whose product has been unpublished (not just archived items).
   const [hiddenProduct] = await db
     .insert(schema.products)
-    .values({ slug: 'hidden-rope', title: 'Hidden Rope', categoryId: category.id, status: 'hidden' })
+    .values({ slug: 'hidden-rope', title: 'Hidden Rope', categoryId: category.id, published: false })
     .returning();
   await db.insert(schema.items).values({ productId: hiddenProduct.id, slug: 'hidden-rope-item', name: 'Hidden Rope Item', stockCount: 4 }).returning();
 

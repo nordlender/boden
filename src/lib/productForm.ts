@@ -20,8 +20,8 @@ export function parseProductForm(form: FormData): ParsedProductForm {
 		return { ok: false, error: 'Product title is required' };
 	}
 
-	const statusRaw = form.get('status')?.toString();
-	const status = statusRaw === 'published' ? 'published' : 'hidden';
+	// Checkbox: unchecked boxes aren't submitted at all, so presence means true.
+	const published = form.get('published') != null;
 
 	const links = form
 		.getAll('linkLabel[]')
@@ -43,7 +43,7 @@ export function parseProductForm(form: FormData): ParsedProductForm {
 			description: form.get('description')?.toString().trim() || null,
 			categoryId: parseOptionalId(form, 'categoryId'),
 			subcategoryId: parseOptionalId(form, 'subcategoryId'),
-			status,
+			published,
 			thumbnailImageUrl: form.get('thumbnailImageUrl')?.toString().trim() || null,
 			links,
 			attributeKeys,

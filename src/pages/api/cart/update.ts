@@ -19,10 +19,10 @@ import { updateCartQuantity } from '../../../lib/cart';
 async function isAvailable(kind: 'item' | 'set', id: number): Promise<boolean> {
 	if (kind === 'item') {
 		const item = await db.query.items.findFirst({ where: (t, { eq }) => eq(t.id, id), with: { product: true } });
-		return Boolean(item) && !item!.archived && item!.product?.status === 'published';
+		return Boolean(item) && !item!.archived && Boolean(item!.product?.published);
 	}
 	const set = await db.query.sets.findFirst({ where: (t, { eq }) => eq(t.id, id), with: { product: true } });
-	return Boolean(set) && !set!.archived && set!.product?.status === 'published';
+	return Boolean(set) && !set!.archived && Boolean(set!.product?.published);
 }
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {

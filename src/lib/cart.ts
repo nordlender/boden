@@ -154,7 +154,7 @@ async function buildItemLines(entries: { itemId: number; quantity: number }[]): 
 		},
 	});
 
-	const visibleRows = rows.filter((row) => !row.archived && row.product?.status === 'published');
+	const visibleRows = rows.filter((row) => !row.archived && Boolean(row.product?.published));
 	const rowsById = new Map(visibleRows.map((row) => [row.id, row]));
 	const reserved = await reservedQuantitiesByItem(visibleRows.map((row) => row.id));
 
@@ -186,7 +186,7 @@ async function buildSetLines(entries: { setId: number; quantity: number }[]): Pr
 
 	// Same visibility rule as items: dropped silently rather than erroring —
 	// see the precedent this file already sets for archived/unpublished items.
-	const visibleRows = rows.filter((row) => !row.archived && row.product?.status === 'published');
+	const visibleRows = rows.filter((row) => !row.archived && Boolean(row.product?.published));
 	const rowsById = new Map(visibleRows.map((row) => [row.id, row]));
 
 	const childrenBySet = await getSetChildrenDetailedBulk(visibleRows.map((row) => row.id));

@@ -47,19 +47,20 @@ export const products = sqliteTable('products', {
   description: text('description'),
   categoryId: integer('category_id').references(() => categories.id),
   subcategoryId: integer('subcategory_id').references(() => subcategories.id),
-  // "Hidden" is a deliberate, permanent admin choice — the product stays
+  // Unpublished is a deliberate, permanent admin choice — the product stays
   // fully visible/manageable in admin/moderator views, it just isn't shown
   // in the web shop. It does not imply an incomplete or abandoned product
   // (see docs/schema.md's "Open question" re: the old draft-expiry sweep,
-  // deliberately not ported here).
-  status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden'),
+  // deliberately not ported here). Defaults false: newly created products
+  // are unpublished until an admin explicitly publishes them.
+  published: integer('published', { mode: 'boolean' }).notNull().default(false),
   thumbnailImageUrl: text('thumbnail_image_url'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 }, (table) => [
   index('products_category_id_idx').on(table.categoryId),
   index('products_subcategory_id_idx').on(table.subcategoryId),
-  index('products_status_idx').on(table.status),
+  index('products_published_idx').on(table.published),
 ]);
 
 // External links per product (e.g. manufacturer page, manual PDF). Moved

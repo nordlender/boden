@@ -44,7 +44,7 @@ describe('products', () => {
 
 			const row = testDb.select().from(schema.products).where(eq(schema.products.id, id)).get();
 			expect(row?.slug).toBe('edelrid-harness');
-			expect(row?.status).toBe('hidden');
+			expect(row?.published).toBe(false);
 		});
 
 		it('dedupes a title collision by appending a numeric suffix', async () => {

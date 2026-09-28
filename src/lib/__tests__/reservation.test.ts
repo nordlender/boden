@@ -34,7 +34,7 @@ vi.mock('../../db/client', async () => {
 	const [category] = await db.insert(schema.categories).values({ name: 'Ropes', slug: 'ropes' }).returning();
 	const [product] = await db
 		.insert(schema.products)
-		.values({ slug: 'test-rope', title: 'Test Rope', categoryId: category.id, status: 'published' })
+		.values({ slug: 'test-rope', title: 'Test Rope', categoryId: category.id, published: true })
 		.returning();
 	// Item A: 2 in stock. Item B: 5 in stock, never reserved by anyone.
 	await db.insert(schema.items).values({ productId: product.id, slug: 'item-a', name: 'Item A', stockCount: 2 });

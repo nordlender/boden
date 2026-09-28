@@ -83,12 +83,11 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		</div>
 
 		<div class="grid grid-cols-2 gap-4">
-			<div>
-				<label class="mb-1 block text-xs text-text-muted" for="product-status">Status</label>
-				<select id="product-status" name="status" class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm">
-					<option value="hidden" selected={(product?.status ?? 'hidden') === 'hidden'}>Hidden</option>
-					<option value="published" selected={product?.status === 'published'}>Published</option>
-				</select>
+			<div class="flex items-end pb-1.5">
+				<label class="flex items-center gap-2 text-sm" for="product-published">
+					<input id="product-published" name="published" type="checkbox" checked={product?.published ?? false} />
+					Published
+				</label>
 			</div>
 			<div>
 				<label class="mb-1 block text-xs text-text-muted" for="product-thumbnail">Thumbnail image URL</label>

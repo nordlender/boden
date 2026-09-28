@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { requireAdmin, requireModerator, safeRedirectTarget, isPositiveInteger } from '../wizard-http';
+import { requireAdmin, requireModerator, safeRedirectTarget, isPositiveInteger, requirePositiveIntFields } from '../wizard-http';
 
 const ORIGIN = 'https://shop.example.com';
 
@@ -79,6 +79,41 @@ describe('isPositiveInteger', () => {
   it('accepts a positive integer', () => {
     expect(isPositiveInteger(1)).toBe(true);
     expect(isPositiveInteger(42)).toBe(true);
+  });
+});
+
+function formWithFields(fields: Record<string, string>): FormData {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    form.set(key, value);
+  }
+  return form;
+}
+
+describe('requirePositiveIntFields', () => {
+  it('returns every field parsed as a number when all are positive integers', () => {
+    const form = formWithFields({ setId: '3', itemId: '7', quantity: '2' });
+    expect(requirePositiveIntFields(form, ['setId', 'itemId', 'quantity'] as const)).toEqual({
+      setId: 3,
+      itemId: 7,
+      quantity: 2,
+    });
+  });
+
+  it('returns null (not a partial object) when any one field is missing', () => {
+    const form = formWithFields({ setId: '3', itemId: '7' }); // quantity missing
+    expect(requirePositiveIntFields(form, ['setId', 'itemId', 'quantity'] as const)).toBeNull();
+  });
+
+  it('returns null when any one field is zero, negative, or non-numeric', () => {
+    expect(requirePositiveIntFields(formWithFields({ setId: '0', itemId: '7' }), ['setId', 'itemId'] as const)).toBeNull();
+    expect(requirePositiveIntFields(formWithFields({ setId: '-1', itemId: '7' }), ['setId', 'itemId'] as const)).toBeNull();
+    expect(requirePositiveIntFields(formWithFields({ setId: 'abc', itemId: '7' }), ['setId', 'itemId'] as const)).toBeNull();
+  });
+
+  it('works with a subset of fields (e.g. no quantity, for a remove action)', () => {
+    const form = formWithFields({ setId: '3', itemId: '7' });
+    expect(requirePositiveIntFields(form, ['setId', 'itemId'] as const)).toEqual({ setId: 3, itemId: 7 });
   });
 });
 

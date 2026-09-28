@@ -4,23 +4,20 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { addSetComponent } from '../../../lib/setWizard';
-import { requireAdmin, safeRedirectTarget, isPositiveInteger } from '../../../lib/wizard-http';
+import { requireAdmin, requirePositiveIntFields, safeRedirectTarget } from '../../../lib/wizard-http';
 
 export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 	const forbidden = requireAdmin(locals);
 	if (forbidden) return forbidden;
 
 	const form = await request.formData();
-	const setId = Number(form.get('setId'));
-	const itemId = Number(form.get('itemId'));
-	const quantity = Number(form.get('quantity'));
-
-	if (!isPositiveInteger(setId) || !isPositiveInteger(itemId) || !isPositiveInteger(quantity)) {
+	const fields = requirePositiveIntFields(form, ['setId', 'itemId', 'quantity'] as const);
+	if (!fields) {
 		return new Response('A set, an item, and a positive quantity are required', { status: 400 });
 	}
 
 	try {
-		await addSetComponent(setId, itemId, quantity);
+		await addSetComponent(fields.setId, fields.itemId, fields.quantity);
 	} catch {
 		return new Response('Could not add component', { status: 400 });
 	}

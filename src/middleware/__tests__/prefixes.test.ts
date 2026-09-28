@@ -34,6 +34,10 @@ describe('matchesPrefix', () => {
     expect(matchesPrefix('/api/wizard/attributes/bulk', ADMIN_ROUTE_PREFIXES)).toBe(true);
   });
 
+  it('matches /api/products/[id]/update (a nested product write route)', () => {
+    expect(matchesPrefix('/api/products/[id]/update', ADMIN_ROUTE_PREFIXES)).toBe(true);
+  });
+
   it('does not match a route that merely shares the prefix string without a boundary', () => {
     // e.g. a hypothetical /api/wizardry route should not be swept in by the
     // /api/wizard prefix.

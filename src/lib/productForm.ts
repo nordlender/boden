@@ -7,15 +7,28 @@ import { isPositiveInteger } from './wizard-http';
 
 export type ParsedProductForm = { ok: true; input: ProductInput } | { ok: false; error: string };
 
+// FormData entries are `string | File`, not always `string` — a bare
+// `.toString()` on a File falls back to Object's default stringification
+// rather than throwing, so this only ever returns a real string, treating
+// anything else (a File, or a missing field) as absent.
+function formString(form: FormData, field: string): string {
+	const value = form.get(field);
+	return typeof value === 'string' ? value : '';
+}
+
+function formStrings(form: FormData, field: string): string[] {
+	return form.getAll(field).filter((value): value is string => typeof value === 'string');
+}
+
 function parseOptionalId(form: FormData, field: string): number | null {
-	const raw = form.get(field);
-	if (typeof raw !== 'string' || raw.trim() === '') return null;
+	const raw = formString(form, field).trim();
+	if (!raw) return null;
 	const parsed = Number(raw);
 	return isPositiveInteger(parsed) ? parsed : null;
 }
 
 export function parseProductForm(form: FormData): ParsedProductForm {
-	const title = form.get('title')?.toString().trim();
+	const title = formString(form, 'title').trim();
 	if (!title) {
 		return { ok: false, error: 'Product title is required' };
 	}
@@ -23,28 +36,25 @@ export function parseProductForm(form: FormData): ParsedProductForm {
 	// Checkbox: unchecked boxes aren't submitted at all, so presence means true.
 	const published = form.get('published') != null;
 
-	const links = form
-		.getAll('linkLabel[]')
-		.map((label, index) => ({
-			label: label.toString().trim(),
-			url: form.getAll('linkUrl[]')[index]?.toString().trim() ?? '',
-		}))
+	const linkLabels = formStrings(form, 'linkLabel[]');
+	const linkUrls = formStrings(form, 'linkUrl[]');
+	const links = linkLabels
+		.map((label, index) => ({ label: label.trim(), url: (linkUrls[index] ?? '').trim() }))
 		.filter((link) => link.label || link.url);
 
-	const attributeKeys = form
-		.getAll('attributeKey[]')
-		.map((name) => name.toString().trim())
+	const attributeKeys = formStrings(form, 'attributeKey[]')
+		.map((name) => name.trim())
 		.filter(Boolean);
 
 	return {
 		ok: true,
 		input: {
 			title,
-			description: form.get('description')?.toString().trim() || null,
+			description: formString(form, 'description').trim() || null,
 			categoryId: parseOptionalId(form, 'categoryId'),
 			subcategoryId: parseOptionalId(form, 'subcategoryId'),
 			published,
-			thumbnailImageUrl: form.get('thumbnailImageUrl')?.toString().trim() || null,
+			thumbnailImageUrl: formString(form, 'thumbnailImageUrl').trim() || null,
 			links,
 			attributeKeys,
 		},

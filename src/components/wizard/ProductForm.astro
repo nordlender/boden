@@ -140,7 +140,7 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 			<h2 class="text-sm font-medium text-text">Attributes</h2>
 		</div>
 		<p class="text-xs text-text-muted">
-			The field template every item under this product will have (e.g. "Size", "Color") — each item fills in its own value per key. {mode === 'edit' && 'Existing keys can\'t be renamed or removed from here, only added to.'}
+		The field template every item under this product will have (e.g. "Weight", "Size", "Color") — each item fills in its own value per key. {mode === 'edit' && 'Existing keys can\'t be renamed or removed from here, only added to.'}
 		</p>
 
 		{existingAttributeKeys.length > 0 && (
@@ -178,7 +178,7 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 	</section>
 
 	<div class="flex justify-end gap-2">
-		<TextMorphButton href={redirectTo} action="cancel" />
+		<TextMorphButton href={redirectTo} action="cancel" variant="danger" />
 		<TextMorphButton type="submit" action="save" variant="primary">{mode === 'create' ? 'Create product' : 'Save changes'}</TextMorphButton>
 	</div>
 </form>

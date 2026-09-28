@@ -39,7 +39,7 @@ vi.mock('../../db/client', async () => {
 	// "Widget" product: two items (4, 5) sharing an identical attribute-key
 	// signature (Size, Color) — both leave Color blank, to also exercise the
 	// all-blank-column trim.
-	const [widget] = await db.insert(schema.products).values({ slug: 'widget', title: 'Widget', published: true }).returning();
+	const [widget] = await db.insert(schema.products).values({ slug: 'widget', title: 'Widget', status: 'published' }).returning();
 	const [sizeKey] = await db.insert(schema.productAttributeKeys).values({ productId: widget.id, name: 'Size', sortOrder: 0 }).returning();
 	const [colorKey] = await db
 		.insert(schema.productAttributeKeys)
@@ -55,7 +55,7 @@ vi.mock('../../db/client', async () => {
 	]);
 
 	// "Gadget" product: one item (6), no siblings sharing its signature.
-	const [gadget] = await db.insert(schema.products).values({ slug: 'gadget', title: 'Gadget', published: true }).returning();
+	const [gadget] = await db.insert(schema.products).values({ slug: 'gadget', title: 'Gadget', status: 'published' }).returning();
 	const [typeKey] = await db.insert(schema.productAttributeKeys).values({ productId: gadget.id, name: 'Type', sortOrder: 0 }).returning();
 	await db.insert(schema.items).values({ productId: gadget.id, slug: 'item-6', name: 'Item 6', stockCount: 5 }); // id === 6
 	await db.insert(schema.itemAttributeValues).values({ itemId: 6, attributeId: typeKey.id, value: 'Standard' });

@@ -50,13 +50,6 @@
       "when": 1790439903106,
       "tag": "0006_add_sets",
       "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
-      "when": 1790699999999,
-      "tag": "0007_replace_product_status_with_published",
-      "breakpoints": true
     }
   ]
 }

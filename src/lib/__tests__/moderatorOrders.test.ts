@@ -32,11 +32,11 @@ vi.mock('../../db/client', async () => {
 	const [category] = await db.insert(schema.categories).values({ name: 'Test', slug: 'test' }).returning();
 	const [productPublished] = await db
 		.insert(schema.products)
-		.values({ slug: 'published-product', title: 'Published Product', categoryId: category.id, published: true })
+		.values({ slug: 'published-product', title: 'Published Product', categoryId: category.id, status: 'published' })
 		.returning();
 	const [productHidden] = await db
 		.insert(schema.products)
-		.values({ slug: 'hidden-product', title: 'Hidden Product', categoryId: category.id, published: false })
+		.values({ slug: 'hidden-product', title: 'Hidden Product', categoryId: category.id, status: 'hidden' })
 		.returning();
 
 	await db.insert(schema.items).values({ productId: productPublished.id, slug: 'available', name: 'Available Item', stockCount: 5, archived: false });

@@ -428,20 +428,3 @@ Note: "Set" here (a rentable bundle) is unrelated to this doc's existing
 (a bulk-action menu for selected items) — an unfortunate naming collision,
 not a design relationship. Worth renaming one of the two if it causes
 confusion in practice.
-
-## Schema change: `products.status` enum replaced with `products.published` boolean
-`status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden')`
-is replaced with `published: integer('published', { mode: 'boolean' }).notNull().default(false)`
-(migration `0007_replace_product_status_with_published`, index renamed
-`products_status_idx` -> `products_published_idx`). Same semantics as the
-old `hidden`/`published` pair (see "Resolved" above — unpublished is still a
-deliberate, permanent admin choice, not an incomplete/abandoned product) —
-this only collapses the two-value enum into a boolean, and flips the
-zero-value default so a newly created product is unpublished until an
-admin explicitly publishes it (old default was the equivalent `'hidden'`).
-Every `product.status === 'published'` / `eq(products.status, 'published')`
-call site (shop.ts, cart.ts, moderatorOrders.ts, api/cart/add.ts,
-api/cart/update.ts) now reads `product.published` / `eq(products.published,
-true)` directly. `ProductForm.astro`'s Status `<select>` is replaced with a
-`published` checkbox; `productForm.ts` parses it by checkbox presence
-(unchecked boxes aren't submitted, so absence means `false`).

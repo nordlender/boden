@@ -161,7 +161,7 @@ function toShopSet(
 // Homepage listing: every non-archived item whose product is published.
 // Items with no product (still mid-wizard, per wizard.ts's "unassigned"
 // bucket) never have a product to be published, so they're excluded
-// implicitly by the `product.published` filter below.
+// implicitly by the `product.status === 'published'` filter below.
 export async function getShopItems(): Promise<ShopItem[]> {
 	const rows = await db.query.items.findMany({
 		where: (t, { eq }) => eq(t.archived, false),
@@ -176,7 +176,7 @@ export async function getShopItems(): Promise<ShopItem[]> {
 
 	const published = rows.filter(
 		(row): row is typeof row & { product: NonNullable<typeof row.product> } =>
-			Boolean(row.product?.published),
+			row.product?.status === 'published',
 	);
 	const reserved = await reservedQuantitiesByItem(published.map((row) => row.id));
 
@@ -197,7 +197,7 @@ export async function getShopSets(): Promise<ShopSet[]> {
 	});
 
 	const published = rows.filter(
-		(row): row is typeof row & { product: NonNullable<typeof row.product> } => Boolean(row.product?.published),
+		(row): row is typeof row & { product: NonNullable<typeof row.product> } => row.product?.status === 'published',
 	);
 
 	const setIds = published.map((row) => row.id);
@@ -226,7 +226,7 @@ export async function getShopVariants(): Promise<ShopVariant[]> {
 // catalogue/product pages at build time, see astro.config.mjs).
 export async function getPublishedProductSlugs(): Promise<string[]> {
 	const rows = await db.query.products.findMany({
-		where: (t, { eq }) => eq(t.published, true),
+		where: (t, { eq }) => eq(t.status, 'published'),
 		columns: { slug: true },
 	});
 	return rows.map((row) => row.slug);
@@ -252,7 +252,7 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 		},
 	});
 
-	if (!product || !product.published) return null;
+	if (!product || product.status !== 'published') return null;
 
 	const visibleItems = product.items.filter((item) => !item.archived);
 	const reserved = await reservedQuantitiesByItem(visibleItems.map((item) => item.id));

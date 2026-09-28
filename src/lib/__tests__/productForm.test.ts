@@ -41,23 +41,11 @@ describe('parseProductForm', () => {
 		expect(result.input.attributeKeys).toEqual(['Size']);
 	});
 
-	it('defaults published to false when the checkbox is absent', () => {
+	it('defaults status to hidden for anything other than "published"', () => {
 		const result = parseProductForm(formWith([['title', 'Harness']]));
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		expect(result.input.published).toBe(false);
-	});
-
-	it('parses published as true when the checkbox is present', () => {
-		const result = parseProductForm(
-			formWith([
-				['title', 'Harness'],
-				['published', 'on'],
-			]),
-		);
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
-		expect(result.input.published).toBe(true);
+		expect(result.input.status).toBe('hidden');
 	});
 
 	it('parses a positive-integer categoryId and rejects non-positive input', () => {
@@ -75,6 +63,6 @@ describe('parseProductForm', () => {
 				['categoryId', '0'],
 			]),
 		);
-		expect(invalid.ok && invalid.input.categoryId).toBeNull();
+		expect(invalid.ok && invalid.input.categoryId).toBe(null);
 	});
 });

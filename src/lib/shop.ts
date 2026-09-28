@@ -67,6 +67,9 @@ interface ItemLike {
 	name: string;
 	imageUrl: string | null;
 	stockCount: number;
+	// Quantity an admin has pulled out for service/quarantine (issue #62) —
+	// excluded from inStock the same way reserved quantity is.
+	serviceQuantity: number;
 	attributeValues: { value: string; attribute: { name: string; sortOrder: number } }[];
 }
 
@@ -87,7 +90,7 @@ function toShopItem(item: ItemLike, product: ProductLike, reserved: Map<number, 
 		id: item.id,
 		name: item.name,
 		imageUrl: item.imageUrl ?? product.thumbnailImageUrl,
-		inStock: item.stockCount - (reserved.get(item.id) ?? 0),
+		inStock: item.stockCount - item.serviceQuantity - (reserved.get(item.id) ?? 0),
 		stockCount: item.stockCount,
 		productId: product.id,
 		productSlug: product.slug,

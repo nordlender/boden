@@ -47,6 +47,8 @@ export const icons = {
 	view: 'tabler:eye',
 	layoutCompact: 'tabler:list',
 	layoutDetailed: 'tabler:layout-list',
+	// Item details box's "Service / quarantine" section (issue #62).
+	warning: 'tabler:tool',
 } as const;
 
 export type IconName = keyof typeof icons;

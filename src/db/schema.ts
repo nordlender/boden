@@ -121,11 +121,22 @@ export const items = sqliteTable('items', {
   // carried forward unchanged): a stored second number can only drift out
   // of sync.
   stockCount: integer('stock_count').notNull().default(1),
+  // How many of stockCount an admin has manually pulled out of the rentable
+  // pool right now (sent out for service/repair, or quarantined pending
+  // inspection) — issue #62. Deliberately just a quantity, not a separate
+  // item-level status enum: it's not timed/automated, doesn't affect order
+  // history (orders/orderItems are untouched), and every availability query
+  // (reservation.ts, shop.ts, cart.ts, wizard.ts) treats it exactly like
+  // reserved quantity — subtracted from stockCount before anything is offered
+  // as available. Only admins may change it (see /api/wizard/service.ts).
+  // Cleared the same way it's set: an admin sets it back to 0.
+  serviceQuantity: integer('service_quantity').notNull().default(0),
   // Soft delete: items referenced by orderItems can't be hard-deleted.
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 }, (table) => [
   index('items_product_id_idx').on(table.productId),
+  check('service_quantity_bounds', sql`${table.serviceQuantity} >= 0 AND ${table.serviceQuantity} <= ${table.stockCount}`),
 ]);
 
 // ---------------------------------------------------------------------------

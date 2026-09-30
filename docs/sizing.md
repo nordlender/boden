@@ -97,6 +97,10 @@ color-token migration).
   (not a token) since callers need arbitrary sizes (a table cell vs. an
   expanded detail view); `Thumbnail`'s placeholder icon already derives its
   size as ~45% of the box per the ratio guidance above.
+- `src/components/cart/CartActionsBar.astro` — overrides `Button`'s/
+  `EmptyCartButton`'s height with an ad-hoc `class="h-10"` instead of
+  relying on `sizeClasses`, since neither `md` (36px) nor `lg` (44px) lands
+  on the 40px these primary cart CTAs were reviewed at (issue #199).
 
 ## Related follow-up work
 

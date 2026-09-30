@@ -12,6 +12,7 @@
 // the page renders, rather than this component owning that markup too.
 import type { ShopItem } from '../../lib/shop';
 import Button from '../ui/Button.astro';
+import AppIcon from '../icons/AppIcon.astro';
 import { formatAttributes } from '../../lib/attributes';
 
 interface Props {
@@ -23,6 +24,7 @@ interface Props {
 
 const { items, productSlug, thumbnailImageUrl, attributeKeyOrder } = Astro.props;
 const initialItem = items[0] ?? null;
+const initialMax = Math.max(initialItem?.inStock ?? 1, 1);
 ---
 
 <form action="/api/cart/add" method="post" class="flex flex-col gap-4 border-t border-border pt-4">
@@ -78,16 +80,34 @@ const initialItem = items[0] ?? null;
 	</p>
 
 	<div class="flex items-center gap-3">
-		<input
-			type="number"
-			name="quantity"
-			value="1"
-			min="1"
-			max={Math.max(initialItem?.inStock ?? 1, 1)}
-			required
-			data-quantity-input
-			class="w-16 rounded-md border border-border-interactive px-2 py-1.5 text-sm"
-		/>
+		{/* Stepper's height (h-11) and count text (text-base) are pinned to
+			Button's `lg` size (see sizeClasses in lib/button-styles.ts) rather
+			than derived from it, since a plain <input type="number"> can't be
+			styled with the spinner removed consistently across browsers. */}
+		<div class="inline-flex h-11 divide-x divide-border-interactive overflow-hidden rounded-md border border-border-interactive">
+			<button
+				type="button"
+				aria-label="Decrease quantity"
+				data-quantity-decrement
+				disabled
+				class="flex h-11 w-11 items-center justify-center bg-bg-subtle text-text-muted transition-colors hover:text-text active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-disabled-text disabled:active:bg-bg-subtle"
+			>
+				<AppIcon name="decrement" size={20} />
+			</button>
+			<span data-quantity-display class="flex h-11 min-w-[3rem] items-center justify-center text-base font-semibold text-text">
+				1
+			</span>
+			<button
+				type="button"
+				aria-label="Increase quantity"
+				data-quantity-increment
+				disabled={initialMax <= 1}
+				class="flex h-11 w-11 items-center justify-center bg-bg-subtle text-text-muted transition-colors hover:text-text active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-disabled-text disabled:active:bg-bg-subtle"
+			>
+				<AppIcon name="increment" size={20} />
+			</button>
+		</div>
+		<input type="hidden" name="quantity" value="1" data-quantity-input data-max={initialMax} />
 		<Button type="submit" variant="primary" size="lg" data-add-to-cart disabled={(initialItem?.inStock ?? 0) <= 0}>
 			Add to cart
 		</Button>
@@ -104,8 +124,24 @@ const initialItem = items[0] ?? null;
 	const imagePlaceholder = document.querySelector<HTMLElement>('[data-product-image-placeholder]');
 	const stockMessage = document.querySelector<HTMLElement>('[data-stock-message]');
 	const quantityInput = document.querySelector<HTMLInputElement>('[data-quantity-input]');
+	const quantityDisplay = document.querySelector<HTMLElement>('[data-quantity-display]');
+	const quantityIncrement = document.querySelector<HTMLButtonElement>('[data-quantity-increment]');
+	const quantityDecrement = document.querySelector<HTMLButtonElement>('[data-quantity-decrement]');
 	const submitButton = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
 	const attributesList = document.querySelector<HTMLElement>('[data-item-attributes]');
+
+	function setQuantity(value: number) {
+		if (!quantityInput) return;
+		const max = Number(quantityInput.dataset.max ?? '1');
+		const clamped = Math.min(Math.max(Math.trunc(value) || 1, 1), max);
+		quantityInput.value = String(clamped);
+		if (quantityDisplay) quantityDisplay.textContent = String(clamped);
+		if (quantityDecrement) quantityDecrement.disabled = clamped <= 1;
+		if (quantityIncrement) quantityIncrement.disabled = clamped >= max;
+	}
+
+	quantityIncrement?.addEventListener('click', () => setQuantity(Number(quantityInput?.value ?? '1') + 1));
+	quantityDecrement?.addEventListener('click', () => setQuantity(Number(quantityInput?.value ?? '1') - 1));
 
 	function renderAttributes(json: string | undefined) {
 		if (!attributesList || !json) return;
@@ -156,7 +192,10 @@ const initialItem = items[0] ?? null;
 			stockMessage.className = `text-sm font-medium ${stock > 0 ? 'text-success-text' : 'text-error-text'}`;
 		}
 
-		if (quantityInput) quantityInput.max = String(Math.max(stock, 1));
+		if (quantityInput) {
+			quantityInput.dataset.max = String(Math.max(stock, 1));
+			setQuantity(Number(quantityInput.value));
+		}
 		if (submitButton) submitButton.disabled = stock <= 0;
 
 		renderAttributes(option.dataset.attributes);

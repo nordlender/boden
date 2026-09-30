@@ -19,17 +19,20 @@ const { primaryHref, primaryLabel, clearAction, clearHidden = false } = Astro.pr
 
 <div class="flex items-stretch gap-4">
 	{
+		// Explicit h-10 (40px) override: the default `md` size dropped to 36px
+		// in the #197/#198 sizing pass (see issue #199) — these are the cart's
+		// primary CTAs and keep the taller, previously-reviewed height.
 		clearAction ? (
 			<form method="post" action={clearAction}>
-				<EmptyCartButton />
+				<EmptyCartButton class="h-10" />
 			</form>
 		) : (
 			<div data-cart-clear-wrapper hidden={clearHidden}>
-				<EmptyCartButton type="button" />
+				<EmptyCartButton type="button" class="h-10" />
 			</div>
 		)
 	}
-	<Button variant="primary" href={primaryHref} class="flex-1">
+	<Button variant="primary" href={primaryHref} class="h-10 flex-1">
 		{primaryLabel}
 	</Button>
 </div>

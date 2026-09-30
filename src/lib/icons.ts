@@ -24,6 +24,8 @@ export const icons = {
 	selectAll: 'tabler:circle-asterisk',
 	selectInvert: 'tabler:percentage-50',
 	trash: 'tabler:trash',
+	// Confirm/save for an inline edit (cart sidebar's quantity field).
+	check: 'tabler:check',
 	// {edit_icon} — sits next to an attribute's value in the details box;
 	// clicking it reveals the inline edit form for that field.
 	edit: 'tabler:pencil',

@@ -73,6 +73,14 @@ import CartActionsBar from './CartActionsBar.astro';
 			loadCart();
 		});
 
+		// Each row's check button stays disabled until its quantity differs from
+		// what was rendered (defaultValue), so a no-op update can't be submitted.
+		rows.addEventListener('input', (event) => {
+			const input = event.target as HTMLInputElement;
+			const submit = input.form?.querySelector<HTMLButtonElement>('[data-cart-update-submit]');
+			if (submit) submit.disabled = input.value === input.defaultValue;
+		});
+
 		rows.addEventListener('submit', async (event) => {
 			const form = (event.target as HTMLElement).closest<HTMLFormElement>('[data-cart-update-form]');
 			if (!form?.dataset.itemId) return;

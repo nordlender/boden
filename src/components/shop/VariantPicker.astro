@@ -86,24 +86,24 @@ const initialMax = Math.max(initialItem?.inStock ?? 1, 1);
 		<div class="inline-flex h-11 divide-x divide-border-interactive overflow-hidden rounded-md border border-border-interactive">
 			<button
 				type="button"
-				aria-label="Increase quantity"
-				data-quantity-increment
-				disabled={initialMax <= 1}
-				class="flex h-11 w-11 items-center justify-center bg-bg-subtle text-text-muted transition-colors hover:text-text active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-disabled-text disabled:active:bg-bg-subtle"
-			>
-				<AppIcon name="increment" size={20} />
-			</button>
-			<span data-quantity-display class="flex h-11 min-w-[3rem] items-center justify-center text-base font-semibold text-text">
-				1
-			</span>
-			<button
-				type="button"
 				aria-label="Decrease quantity"
 				data-quantity-decrement
 				disabled
 				class="flex h-11 w-11 items-center justify-center bg-bg-subtle text-text-muted transition-colors hover:text-text active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-disabled-text disabled:active:bg-bg-subtle"
 			>
 				<AppIcon name="decrement" size={20} />
+			</button>
+			<span data-quantity-display class="flex h-11 min-w-[3rem] items-center justify-center text-base font-semibold text-text">
+				1
+			</span>
+			<button
+				type="button"
+				aria-label="Increase quantity"
+				data-quantity-increment
+				disabled={initialMax <= 1}
+				class="flex h-11 w-11 items-center justify-center bg-bg-subtle text-text-muted transition-colors hover:text-text active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-disabled-text disabled:active:bg-bg-subtle"
+			>
+				<AppIcon name="increment" size={20} />
 			</button>
 		</div>
 		<input type="hidden" name="quantity" value="1" data-quantity-input data-max={initialMax} />

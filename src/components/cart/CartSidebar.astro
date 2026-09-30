@@ -3,8 +3,11 @@ import CartActionsBar from './CartActionsBar.astro';
 import AppIcon from '../icons/AppIcon.astro';
 ---
 
-{/* Rows are built client-side, so the remove icon is rendered here once and cloned per row. */}
+{/* Rows are built client-side, so their icons are rendered here once and cloned per row. */}
 <template data-cart-remove-icon><AppIcon name="remove" size={16} /></template>
+<template data-cart-increment-icon><AppIcon name="increment" size={16} /></template>
+<template data-cart-decrement-icon><AppIcon name="decrement" size={16} /></template>
+<template data-cart-confirm-icon><AppIcon name="confirm" size={16} /></template>
 
 <div data-cart-backdrop class="fixed inset-0 z-40 hidden bg-overlay"></div>
 
@@ -44,6 +47,7 @@ import AppIcon from '../icons/AppIcon.astro';
 		productTitle: string;
 		imageUrl: string | null;
 		quantity: number;
+		inStock: number;
 		attributes: { key: string; value: string }[];
 	};
 
@@ -53,7 +57,22 @@ import AppIcon from '../icons/AppIcon.astro';
 	const emptyMessage = document.querySelector<HTMLElement>('[data-cart-empty]');
 	const clearWrapper = document.querySelector<HTMLElement>('[data-cart-clear-wrapper]');
 	const clearButton = document.querySelector<HTMLButtonElement>('[data-cart-clear]');
-	const removeIcon = document.querySelector<HTMLTemplateElement>('[data-cart-remove-icon]')?.content.firstElementChild;
+	const iconTemplate = (name: string) =>
+		document.querySelector<HTMLTemplateElement>(`[data-cart-${name}-icon]`)?.content.firstElementChild ?? null;
+	const removeIcon = iconTemplate('remove');
+	const incrementIcon = iconTemplate('increment');
+	const decrementIcon = iconTemplate('decrement');
+	const confirmIcon = iconTemplate('confirm');
+
+	const stepClasses =
+		'flex h-7 w-7 items-center justify-center bg-bg-subtle text-text-muted transition-colors hover:text-text focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-disabled-text';
+	// Greyed out (disabled) until the quantity changes, then accent-colored.
+	const confirmClasses = [
+		baseClasses,
+		iconOnlySizeClasses.sm,
+		variantClasses.secondary,
+		'shrink-0 enabled:border-accent enabled:text-accent-text enabled:hover:bg-accent-subtle enabled:hover:text-accent-text',
+	].join(' ');
 	const toggleButtons = document.querySelectorAll<HTMLElement>('[data-cart-toggle]');
 
 	if (sidebar && backdrop && list && emptyMessage) {
@@ -105,10 +124,62 @@ import AppIcon from '../icons/AppIcon.astro';
 					info.appendChild(variant);
 				}
 
-				const qty = document.createElement('p');
-				qty.className = 'text-text-muted';
-				qty.textContent = `Qty: ${item.quantity}`;
-				info.appendChild(qty);
+				const max = Math.max(item.inStock, 1);
+				let quantity = item.quantity;
+
+				const stepButton = (label: string, icon: Element | null) => {
+					const button = document.createElement('button');
+					button.type = 'button';
+					button.className = stepClasses;
+					button.setAttribute('aria-label', label);
+					if (icon) button.append(icon.cloneNode(true));
+					return button;
+				};
+				const decrement = stepButton(`Decrease quantity of ${item.productTitle}`, decrementIcon);
+				const increment = stepButton(`Increase quantity of ${item.productTitle}`, incrementIcon);
+
+				const count = document.createElement('span');
+				count.className = 'flex h-7 min-w-8 items-center justify-center text-sm font-semibold text-text';
+
+				const confirm = document.createElement('button');
+				confirm.type = 'button';
+				confirm.className = confirmClasses;
+				confirm.setAttribute('aria-label', `Update quantity of ${item.productTitle}`);
+				if (confirmIcon) confirm.append(confirmIcon.cloneNode(true));
+
+				const render = () => {
+					count.textContent = String(quantity);
+					decrement.disabled = quantity <= 1;
+					increment.disabled = quantity >= max;
+					confirm.disabled = quantity === item.quantity;
+				};
+				decrement.addEventListener('click', () => {
+					quantity -= 1;
+					render();
+				});
+				increment.addEventListener('click', () => {
+					quantity += 1;
+					render();
+				});
+				confirm.addEventListener('click', async () => {
+					const body = new FormData();
+					body.set('itemId', String(item.itemId));
+					body.set('quantity', String(quantity));
+					// The endpoint redirects to /cart; the update has already happened, so don't follow it.
+					await fetch('/api/cart/update', { method: 'POST', body, redirect: 'manual' });
+					loadCart();
+				});
+				render();
+
+				const stepper = document.createElement('div');
+				stepper.className =
+					'inline-flex overflow-hidden rounded-md border border-border-interactive divide-x divide-border-interactive';
+				stepper.append(decrement, count, increment);
+
+				const controls = document.createElement('div');
+				controls.className = 'mt-1 flex items-center gap-2';
+				controls.append(stepper, confirm);
+				info.appendChild(controls);
 
 				// Destructive action — error color is the conventional choice here.
 				const removeButton = document.createElement('button');

@@ -46,9 +46,9 @@ const cartItems = await getCartItems(Astro.cookies);
 											name="quantity"
 											value={item.quantity}
 											min="0"
-											class="w-16 rounded-md border border-border-interactive px-2 py-1 text-sm"
+											class="h-6 w-14 rounded-md border border-border-interactive px-2 py-0 text-xs"
 										/>
-										<Button type="submit" size="sm">Update</Button>
+										<Button type="submit" size="sm" class="h-6 py-0! text-xs!">Update</Button>
 									</form>
 
 									<form method="post" action="/api/cart/remove">

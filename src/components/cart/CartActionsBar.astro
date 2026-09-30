@@ -12,9 +12,13 @@ interface Props {
 	// Popup only: starts the clear button hidden until CartSidebar's script
 	// confirms the cart has items.
 	clearHidden?: boolean;
+	// /cart only: id of the <form> holding the quantity inputs. Renders an
+	// "Update cart" submit button (hidden until a quantity changes) that the
+	// page script swaps in for the primary action.
+	updateFormId?: string;
 }
 
-const { primaryHref, primaryLabel, clearAction, clearHidden = false } = Astro.props;
+const { primaryHref, primaryLabel, clearAction, clearHidden = false, updateFormId } = Astro.props;
 ---
 
 <div class="flex items-stretch gap-4">

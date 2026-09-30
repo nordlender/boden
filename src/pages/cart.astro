@@ -3,7 +3,6 @@ export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import CartActionsBar from '../components/cart/CartActionsBar.astro';
-import Button from '../components/ui/Button.astro';
 import ItemLine from '../components/ui/ItemLine.astro';
 import { getCartItems } from '../lib/cart';
 
@@ -12,6 +11,7 @@ const cartItems = await getCartItems(Astro.cookies);
 ---
 
 <BaseLayout title="Cart">
+	<form id="cart-form" method="post" action="/api/cart/update-all"></form>
 	<div class="mx-auto max-w-3xl px-4 py-8">
 		<h1 class="mb-6 text-2xl font-semibold tracking-tight text-text">Cart</h1>
 
@@ -35,28 +35,19 @@ const cartItems = await getCartItems(Astro.cookies);
 									<p class="text-sm text-error">Only {Math.max(item.inStock, 0)} left in stock</p>
 								)}
 								<Fragment slot="action">
-									<form method="post" action="/api/cart/update" class="flex items-center gap-2">
-										<input type="hidden" name="itemId" value={item.itemId} />
-										<label class="sr-only" for={`quantity-${item.itemId}`}>
-											Quantity for {item.productTitle}
-										</label>
-										<input
-											id={`quantity-${item.itemId}`}
-											type="number"
-											name="quantity"
-											value={item.quantity}
-											min="0"
-											class="h-6 w-14 rounded-md border border-border-interactive px-2 py-0 text-xs"
-										/>
-										<Button type="submit" size="sm" class="h-6 py-0! text-xs!">Update</Button>
-									</form>
-
-									<form method="post" action="/api/cart/remove">
-										<input type="hidden" name="itemId" value={item.itemId} />
-										<button type="submit" class="text-sm text-error hover:underline">
-											Remove
-										</button>
-									</form>
+									<label class="sr-only" for={`quantity-${item.itemId}`}>
+										Quantity for {item.productTitle} (0 removes it)
+									</label>
+									<input
+										id={`quantity-${item.itemId}`}
+										type="number"
+										name={`quantity_${item.itemId}`}
+										form="cart-form"
+										value={item.quantity}
+										min="0"
+										data-cart-quantity
+										class="h-6 w-14 shrink-0 rounded-md border border-border-interactive px-2 py-0 text-xs"
+									/>
 								</Fragment>
 							</ItemLine>
 						</div>
@@ -68,6 +59,7 @@ const cartItems = await getCartItems(Astro.cookies);
 		{
 			cartItems.length > 0 && (
 				<CartActionsBar
+					updateFormId="cart-form"
 					primaryHref="/reservation"
 					primaryLabel="Continue to reservation dates"
 					clearAction="/api/cart/clear"
@@ -76,3 +68,20 @@ const cartItems = await getCartItems(Astro.cookies);
 		}
 	</div>
 </BaseLayout>
+
+<script>
+	// Shows "Update cart" in place of the primary action as soon as any
+	// quantity differs from what the server rendered; a successful update
+	// redirects back to /cart, so the page reloads with "Review order" again.
+	const inputs = document.querySelectorAll<HTMLInputElement>('[data-cart-quantity]');
+	const update = document.querySelector<HTMLElement>('[data-cart-update]');
+	const primary = document.querySelector<HTMLElement>('[data-cart-primary]');
+
+	function sync() {
+		const dirty = [...inputs].some((input) => input.value !== input.defaultValue);
+		if (update) update.hidden = !dirty;
+		if (primary) primary.hidden = dirty;
+	}
+	inputs.forEach((input) => input.addEventListener('input', sync));
+	sync();
+</script>

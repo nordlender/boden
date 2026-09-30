@@ -3,7 +3,6 @@ export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import CartActionsBar from '../components/cart/CartActionsBar.astro';
-import Button from '../components/ui/Button.astro';
 import ItemLine from '../components/ui/ItemLine.astro';
 import { getCartItems } from '../lib/cart';
 
@@ -27,6 +26,7 @@ const cartItems = await getCartItems(Astro.cookies);
 								name={item.productTitle}
 								href={item.productSlug ? `/products/${item.productSlug}` : null}
 								attributes={item.attributes}
+								quantity={item.quantity}
 								thumbnailSize={64}
 								gap="lg"
 								class="flex-wrap"
@@ -35,23 +35,7 @@ const cartItems = await getCartItems(Astro.cookies);
 									<p class="text-sm text-error">Only {Math.max(item.inStock, 0)} left in stock</p>
 								)}
 								<Fragment slot="action">
-									<form method="post" action="/api/cart/update" class="flex items-center gap-2">
-										<input type="hidden" name="itemId" value={item.itemId} />
-										<label class="sr-only" for={`quantity-${item.itemId}`}>
-											Quantity for {item.productTitle}
-										</label>
-										<input
-											id={`quantity-${item.itemId}`}
-											type="number"
-											name="quantity"
-											value={item.quantity}
-											min="0"
-											class="h-6 w-14 rounded-md border border-border-interactive px-2 py-0 text-xs"
-										/>
-										<Button type="submit" size="sm" class="h-6 py-0! text-xs!">Update</Button>
-									</form>
-
-									<form method="post" action="/api/cart/remove">
+									<form method="post" action="/api/cart/remove" class="self-center">
 										<input type="hidden" name="itemId" value={item.itemId} />
 										<button type="submit" class="text-sm text-error hover:underline">
 											Remove

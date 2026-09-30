@@ -23,7 +23,7 @@ import CartActionsBar from './CartActionsBar.astro';
 	</div>
 
 	<div class="border-t border-border p-4">
-		<CartActionsBar primaryHref="/cart" primaryLabel="Review order" clearHidden />
+		<CartActionsBar primaryHref="/cart" primaryLabel="Review order" clearHidden withUpdate />
 	</div>
 </aside>
 
@@ -35,14 +35,17 @@ import CartActionsBar from './CartActionsBar.astro';
 	// CartSidebarRows/ItemLine markup server-side via the Container API and
 	// returns it as an HTML partial — the client just swaps it in rather
 	// than building DOM nodes by hand. Since the rows are replaced wholesale
-	// on every load, the remove button and the quantity update form are both
-	// handled by delegation on [data-cart-rows] instead of per-row listeners.
+	// on every load, quantity edits are handled by delegation on
+	// [data-cart-rows] instead of per-row listeners. There is no per-row remove:
+	// a quantity of 0 removes the line when "Update cart" is clicked.
 	const sidebar = document.querySelector<HTMLElement>('[data-cart-sidebar]');
 	const backdrop = document.querySelector<HTMLElement>('[data-cart-backdrop]');
 	const list = document.querySelector<HTMLElement>('[data-cart-list]');
 	const rows = document.querySelector<HTMLElement>('[data-cart-rows]');
 	const emptyMessage = document.querySelector<HTMLElement>('[data-cart-empty]');
 	const clearWrapper = document.querySelector<HTMLElement>('[data-cart-clear-wrapper]');
+	const updateButton = document.querySelector<HTMLButtonElement>('[data-cart-update]');
+	const primaryButton = document.querySelector<HTMLElement>('[data-cart-primary]');
 	const clearButton = document.querySelector<HTMLButtonElement>('[data-cart-clear]');
 	const toggleButtons = document.querySelectorAll<HTMLElement>('[data-cart-toggle]');
 
@@ -62,24 +65,25 @@ import CartActionsBar from './CartActionsBar.astro';
 			const hasItems = rows!.childElementCount > 0;
 			emptyMessage!.hidden = hasItems;
 			if (clearWrapper) clearWrapper.hidden = !hasItems;
+			syncUpdate();
 		}
 
-		rows.addEventListener('click', async (event) => {
-			const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-cart-remove]');
-			if (!button?.dataset.itemId) return;
-			const body = new FormData();
-			body.set('itemId', button.dataset.itemId);
-			await fetch('/api/cart/remove', { method: 'POST', body });
-			loadCart();
-		});
+		// "Update cart" replaces "Review order" while any quantity is unsaved.
+		function syncUpdate() {
+			const inputs = rows!.querySelectorAll<HTMLInputElement>('[data-cart-quantity]');
+			const dirty = [...inputs].some((input) => input.value !== input.defaultValue);
+			if (updateButton) updateButton.hidden = !dirty;
+			if (primaryButton) primaryButton.hidden = dirty;
+		}
 
-		rows.addEventListener('submit', async (event) => {
-			const form = (event.target as HTMLElement).closest<HTMLFormElement>('[data-cart-update-form]');
-			if (!form?.dataset.itemId) return;
-			event.preventDefault();
-			const body = new FormData(form);
-			body.set('itemId', form.dataset.itemId);
-			await fetch('/api/cart/update', { method: 'POST', body });
+		rows.addEventListener('input', syncUpdate);
+
+		// One bulk request, not one per row: each /api/cart/* response rewrites the
+		// whole cart cookie, so parallel per-item calls would overwrite each other.
+		updateButton?.addEventListener('click', async () => {
+			const body = new FormData();
+			rows!.querySelectorAll<HTMLInputElement>('[data-cart-quantity]').forEach((input) => body.set(input.name, input.value));
+			await fetch('/api/cart/update-all', { method: 'POST', body });
 			loadCart();
 		});
 

@@ -13,6 +13,7 @@
 import type { ShopItem } from '../../lib/shop';
 import Button from '../ui/Button.astro';
 import AppIcon from '../icons/AppIcon.astro';
+import { formatAttributes } from '../../lib/attributes';
 
 interface Props {
 	items: ShopItem[];
@@ -37,7 +38,7 @@ const initialMax = Math.max(initialItem?.inStock ?? 1, 1);
 				</label>
 				<select id="itemId" name="itemId" class="w-full rounded-md border border-border-interactive px-3 py-2 text-sm">
 					{items.map((item) => {
-						const label = item.attributes.map((a) => a.value).join(' / ') || `Option ${item.id}`;
+						const label = formatAttributes(item.attributes) || `Option ${item.id}`;
 						return (
 							<option
 								value={item.id}

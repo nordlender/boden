@@ -1,0 +1,79 @@
+---
+// Generic list for a set of individual pickup_days rows — shared by every
+// table on /moderator/pickup-days and /admin/pickup-days except the
+// recurring-rules one (see RecurringPickupDaysTable.astro, which groups by
+// rule rather than listing individual generated dates): "My pickup days"
+// (deletable, filtered to the viewer), "Other pickup days" (filtered away
+// from the viewer), "Single pickup days" (admin's unfiltered view of the
+// same single-kind rows — no userId filter, see
+// src/pages/admin/pickup-days.astro), and "All pickup days" (every kind,
+// unfiltered). Which of those a page renders is just which subset of
+// `rows` and which `deletable`/`emptyMessage` it's called with — this
+// component itself has no concept of "mine" beyond coloring each row's
+// PickupDayBubble relative to `currentUserId`.
+import { formatDateShort, formatWeekdayName } from '../../lib/dates';
+import PickupDayBubble from './PickupDayBubble.astro';
+import PickupDayDeleteButton from './PickupDayDeleteButton.astro';
+import type { PickupDayBubbleKind } from './PickupDayBubble.astro';
+import type { PickupDayRow } from '../../lib/pickupDays';
+
+interface Props {
+	rows: PickupDayRow[];
+	currentUserId: string;
+	// Only "My pickup days" sets this — every other table on either page is
+	// a read-only view of days someone else (or a recurring rule) owns.
+	deletable?: boolean;
+	emptyMessage?: string;
+}
+
+const { rows, currentUserId, deletable = false, emptyMessage = 'No pickup days yet.' } = Astro.props;
+
+const GRID = '1.25rem 4.5rem 7rem 7.5rem 1fr 5.5rem';
+
+function bubbleKind(row: PickupDayRow): PickupDayBubbleKind {
+	if (row.kind === 'recurring') return 'recurring';
+	return row.userId === currentUserId ? 'mine' : 'other';
+}
+---
+
+{
+	rows.length === 0 ? (
+		<p class="text-sm text-text-muted">{emptyMessage}</p>
+	) : (
+		<div class="overflow-hidden rounded-lg border border-border">
+			<div
+				class="grid items-center gap-3 border-b border-border bg-bg-subtle px-3 py-1.5 text-xs font-medium tracking-wide text-text-muted uppercase"
+				style={`grid-template-columns: ${GRID}`}
+			>
+				<span />
+				<span>Date</span>
+				<span>Weekday</span>
+				<span>Time</span>
+				<span>Where</span>
+				<span />
+			</div>
+			<div class="divide-y divide-border">
+				{rows.map((row) => (
+					<div data-pickup-day-row class="grid items-center gap-3 px-3 py-2 text-sm" style={`grid-template-columns: ${GRID}`}>
+						<PickupDayBubble kind={bubbleKind(row)} />
+						<span class="text-text">{formatDateShort(row.date)}</span>
+						<span class="text-text-muted">{formatWeekdayName(row.date)}</span>
+						<span class="text-text-muted">{row.startTime && row.endTime ? `${row.startTime} – ${row.endTime}` : '—'}</span>
+						<span class="truncate text-text-muted" title={row.where ?? undefined}>
+							{row.where ?? '—'}
+						</span>
+						{deletable ? (
+							<PickupDayDeleteButton
+								id={String(row.id)}
+								endpoint={`/api/moderator/pickup-days/${row.id}`}
+								title={`Delete ${formatDateShort(row.date)}?`}
+							/>
+						) : (
+							<span />
+						)}
+					</div>
+				))}
+			</div>
+		</div>
+	)
+}

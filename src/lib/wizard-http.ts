@@ -66,7 +66,7 @@ export function requireModerator(locals: APIContext['locals']): Response | null 
  * a path) still compares correctly instead of always falling back.
  *
  * Despite the "wizard" module name, this is shared by any admin form using
- * the same `redirectTo` pattern (e.g. /api/pickup-days/*) — not wizard-specific.
+ * the same `redirectTo` pattern — not wizard-specific.
  */
 export function safeRedirectTarget(form: FormData, origin: string, fallback = '/admin/items'): string {
 	const redirectTo = form.get('redirectTo');

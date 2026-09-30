@@ -1,5 +1,6 @@
 ---
 import OrdersTableRow from './OrdersTableRow.astro';
+import ItemQtyLine from '../ui/ItemQtyLine.astro';
 
 interface OrderRowItem {
 	itemName: string;
@@ -21,12 +22,6 @@ const { items, ...rowProps } = Astro.props;
 
 <OrdersTableRow {...rowProps}>
 	<ul class="flex flex-col gap-1 pl-1 text-text-muted">
-		{
-			items.map((item) => (
-				<li>
-					{item.itemName} &times; {item.requestedQuantity}
-				</li>
-			))
-		}
+		{items.map((item) => <ItemQtyLine name={item.itemName} quantity={item.requestedQuantity} />)}
 	</ul>
 </OrdersTableRow>

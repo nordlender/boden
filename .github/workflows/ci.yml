@@ -87,13 +87,13 @@ jobs:
           npx drizzle-kit migrate
 
       - name: Typecheck
-        run: npm run typecheck
+        run: npm run --ignore-scripts typecheck
 
       - name: Lint
-        run: npm run lint
+        run: npm run --ignore-scripts lint
 
       - name: Test
         run: npm test
 
       - name: Build
-        run: npm run build
+        run: npm run --ignore-scripts build

@@ -72,4 +72,7 @@ export const actionLabels: Record<ActionIconKey, string> = {
 	view: 'View',
 	save: 'Save',
 	add: 'Add',
+	message: 'Message',
+	pin: 'Pin',
+	unpin: 'Pinned',
 };

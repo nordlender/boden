@@ -1,0 +1,98 @@
+---
+// One row of <FileExplorer>'s tree. Directories are plain <details>/
+// <summary> — closed by default, children loaded lazily (see the
+// fetch-on-toggle listener below) rather than recursed into up front, so a
+// large tree costs only what's actually expanded on screen. The folder
+// icon is an animated morphicons pair (see folderToggle in icon-nodes.ts),
+// swapped by the same listener the same way Dropdown.astro animates its
+// chevron.
+import AppIcon from './icons/AppIcon.astro';
+import MorphIcon from 'morphicons/astro';
+import { folderToggle } from '../lib/icon-nodes';
+import type { FileNode } from '../lib/fileExplorer';
+
+interface Props {
+	node: FileNode;
+}
+
+const { node } = Astro.props;
+---
+{
+	node.type === 'directory' ? (
+		<li>
+			<details class="group">
+				<summary class="flex cursor-pointer list-none items-center gap-1.5 rounded py-1 text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
+					<MorphIcon icon={folderToggle.closed} size={16} class="folder-icon shrink-0 text-text-muted" />
+					<span class="truncate">{node.name}</span>
+				</summary>
+				{/* ml-[7.83px]: the guide line sits under the center of the parent
+				    row's open-folder icon (visible only while expanded, i.e. while
+				    this line shows) — that glyph's path bbox center is x=12.5 of the
+				    24-unit viewBox, landing at 12.5/24 * 16px ≈ 8.33px, not the icon
+				    box's round 8px. border-l is itself a 1px band starting at `ml`,
+				    so its own visual center is ml + 0.5px — ml is set half a pixel
+				    short of the icon's center (8.33 - 0.5) to compensate. */}
+				{node.hasChildren ? (
+					// Empty until first expanded — see the fetch-on-toggle listener
+					// below. hasChildren is a cheap existence check (see
+					// hasPublicEntry in fileExplorer.ts), not a full read, so we know
+					// to render this instead of "Empty" without paying for the read.
+					<ul class="folder-children ml-[7.83px] border-l border-border pl-3" data-path={node.path} data-loaded="false"></ul>
+				) : (
+					<p class="ml-[7.83px] border-l border-border py-1 pl-3 text-text-muted">Empty</p>
+				)}
+			</details>
+		</li>
+	) : (
+		<li class="flex items-center gap-1.5 py-1 text-text-muted" data-file-path={node.path}>
+			<AppIcon name="file" size={16} class="shrink-0" />
+			<span class="truncate">{node.name}</span>
+		</li>
+	)
+}
+
+<script>
+	// Delegated (Astro dedupes identical inline scripts across the many
+	// FileExplorerNode instances on a page, so this runs once, and capture
+	// phase catches it for rows fetched in later on demand too) — same
+	// pattern as Dropdown.astro's chevron. `toggle` doesn't bubble, so the
+	// listener has to sit on the capture phase to see it at all.
+	import type { MorphIconElement } from 'morphicons/element';
+	import { folderToggle } from '../lib/icon-nodes';
+
+	document.addEventListener(
+		'toggle',
+		(event) => {
+			const details = event.target;
+			if (!(details instanceof HTMLDetailsElement)) return;
+
+			const icon = details.querySelector<MorphIconElement>(':scope > summary > .folder-icon');
+			if (icon) icon.icon = details.open ? folderToggle.open : folderToggle.closed;
+
+			if (!details.open) return;
+			void loadChildren(details);
+		},
+		true,
+	);
+
+	// Fetches a row's children the first time it's expanded — server only
+	// ever sends one level (see buildFileTree/listChildren in
+	// fileExplorer.ts), so every deeper level is filled in here on demand.
+	// `data-loaded` is flipped before the fetch resolves so re-toggling
+	// mid-request doesn't fire a second one.
+	async function loadChildren(details: HTMLDetailsElement) {
+		const ul = details.querySelector<HTMLUListElement>(':scope > ul.folder-children');
+		if (!ul || ul.dataset.loaded === 'true') return;
+		ul.dataset.loaded = 'true';
+		ul.textContent = 'Loading…';
+
+		try {
+			const res = await fetch(`/api/file-explorer?path=${encodeURIComponent(ul.dataset.path ?? '')}`);
+			if (!res.ok) throw new Error(`${res.status}`);
+			ul.innerHTML = await res.text();
+		} catch {
+			ul.textContent = 'Failed to load';
+			ul.dataset.loaded = 'false'; // let a retry (re-close/re-open) try again
+		}
+	}
+</script>

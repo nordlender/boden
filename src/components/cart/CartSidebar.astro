@@ -27,6 +27,8 @@ import CartActionsBar from './CartActionsBar.astro';
 </aside>
 
 <script>
+	import { formatAttributes } from '../../lib/attributes';
+
 	// Pages using this sidebar (via BaseLayout) can be prerendered — see
 	// astro.config.mjs — so there is no per-request cart cookie to read
 	// server-side. It always fetches its content client-side instead, from
@@ -90,7 +92,7 @@ import CartActionsBar from './CartActionsBar.astro';
 				name.textContent = item.productTitle;
 				info.appendChild(name);
 
-				const variantLabel = item.attributes.map((a) => a.value).join(' / ');
+				const variantLabel = formatAttributes(item.attributes);
 				if (variantLabel) {
 					const variant = document.createElement('p');
 					variant.className = 'truncate text-text-muted';

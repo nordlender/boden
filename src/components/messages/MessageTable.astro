@@ -1,0 +1,37 @@
+---
+// Standardized "Messages" board — used identically by both the moderator
+// hub (read-only) and the admin hub (`editable`, with an actions slot for
+// the "New message" trigger). One shared component so the two hubs can't
+// drift into two different box layouts (see issue #151).
+import MessageTableRow from './MessageTableRow.astro';
+import type { MessageRow } from '../../lib/messages';
+
+interface Props {
+	messages: MessageRow[];
+	editable?: boolean;
+	redirectTo?: string;
+}
+
+const { messages, editable = false, redirectTo } = Astro.props;
+---
+
+<div class="flex flex-col gap-3">
+	<div class="flex items-center justify-between gap-3">
+		<h2 class="text-lg font-semibold text-text">Messages</h2>
+		<slot name="actions" />
+	</div>
+
+	<div class="rounded-lg border border-border bg-surface">
+		{
+			messages.length === 0 ? (
+				<p class="p-4 text-sm text-text-muted">No messages from admins right now.</p>
+			) : (
+				<ul class="divide-y divide-border">
+					{messages.map((message) => (
+						<MessageTableRow message={message} editable={editable} redirectTo={redirectTo} />
+					))}
+				</ul>
+			)
+		}
+	</div>
+</div>

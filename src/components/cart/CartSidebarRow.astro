@@ -1,6 +1,5 @@
 ---
 import ItemLine from '../ui/ItemLine.astro';
-import Button from '../ui/Button.astro';
 import type { CartItem } from '../../lib/cart';
 
 interface Props {
@@ -16,29 +15,16 @@ const { item } = Astro.props;
 		name={item.productTitle}
 		href={item.productSlug ? `/products/${item.productSlug}` : null}
 		attributes={item.attributes}
+		quantity={item.quantity}
 		thumbnailSize={48}
 		class="flex-wrap"
 	>
 		<Fragment slot="action">
-			<form data-cart-update-form data-item-id={item.itemId} class="flex items-center gap-2">
-				<label class="sr-only" for={`sidebar-quantity-${item.itemId}`}>
-					Quantity for {item.productTitle}
-				</label>
-				<input
-					id={`sidebar-quantity-${item.itemId}`}
-					type="number"
-					name="quantity"
-					value={item.quantity}
-					min="0"
-					class="h-6 w-14 rounded-md border border-border-interactive px-2 py-0 text-xs"
-				/>
-				<Button type="submit" size="sm" class="h-6 py-0! text-xs!">Update</Button>
-			</form>
 			<button
 				type="button"
 				data-cart-remove
 				data-item-id={item.itemId}
-				class="shrink-0 self-start text-xs text-error hover:underline"
+				class="shrink-0 self-center text-xs text-error hover:underline"
 			>
 				Remove
 			</button>

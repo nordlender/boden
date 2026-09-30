@@ -1,6 +1,10 @@
 ---
 import CartActionsBar from './CartActionsBar.astro';
+import AppIcon from '../icons/AppIcon.astro';
 ---
+
+{/* Rows are built client-side, so the remove icon is rendered here once and cloned per row. */}
+<template data-cart-remove-icon><AppIcon name="remove" size={16} /></template>
 
 <div data-cart-backdrop class="fixed inset-0 z-40 hidden bg-overlay"></div>
 
@@ -27,6 +31,8 @@ import CartActionsBar from './CartActionsBar.astro';
 </aside>
 
 <script>
+	import { baseClasses, iconOnlySizeClasses, variantClasses } from '../../lib/button-styles';
+
 	// Pages using this sidebar (via BaseLayout) can be prerendered — see
 	// astro.config.mjs — so there is no per-request cart cookie to read
 	// server-side. It always fetches its content client-side instead, from
@@ -47,6 +53,7 @@ import CartActionsBar from './CartActionsBar.astro';
 	const emptyMessage = document.querySelector<HTMLElement>('[data-cart-empty]');
 	const clearWrapper = document.querySelector<HTMLElement>('[data-cart-clear-wrapper]');
 	const clearButton = document.querySelector<HTMLButtonElement>('[data-cart-clear]');
+	const removeIcon = document.querySelector<HTMLTemplateElement>('[data-cart-remove-icon]')?.content.firstElementChild;
 	const toggleButtons = document.querySelectorAll<HTMLElement>('[data-cart-toggle]');
 
 	if (sidebar && backdrop && list && emptyMessage) {
@@ -106,8 +113,9 @@ import CartActionsBar from './CartActionsBar.astro';
 				// Destructive action — error color is the conventional choice here.
 				const removeButton = document.createElement('button');
 				removeButton.type = 'button';
-				removeButton.className = 'shrink-0 self-start text-xs text-error hover:underline';
-				removeButton.textContent = 'Remove';
+				removeButton.className = [baseClasses, iconOnlySizeClasses.sm, variantClasses.danger, 'shrink-0 self-start'].join(' ');
+				removeButton.setAttribute('aria-label', `Remove ${item.productTitle}`);
+				if (removeIcon) removeButton.append(removeIcon.cloneNode(true));
 				removeButton.addEventListener('click', async () => {
 					const body = new FormData();
 					body.set('itemId', String(item.itemId));

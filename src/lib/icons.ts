@@ -47,6 +47,9 @@ export const icons = {
 	// Product page quantity stepper (VariantPicker.astro).
 	increment: 'tabler:plus',
 	decrement: 'tabler:minus',
+	// Cart page row actions (pages/cart.astro).
+	remove: 'tabler:letter-x-small',
+	confirm: 'tabler:check',
 } as const;
 
 export type IconName = keyof typeof icons;

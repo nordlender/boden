@@ -3,7 +3,7 @@ export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import CartActionsBar from '../components/cart/CartActionsBar.astro';
-import Button from '../components/ui/Button.astro';
+import IconButton from '../components/ui/IconButton.astro';
 import { getCartItems } from '../lib/cart';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
@@ -40,7 +40,7 @@ const cartItems = await getCartItems(Astro.cookies);
 								)}
 							</div>
 
-							<form method="post" action="/api/cart/update" class="flex items-center gap-2">
+							<form method="post" action="/api/cart/update" data-cart-update-form class="flex items-center gap-2">
 								<input type="hidden" name="itemId" value={item.itemId} />
 								<label class="sr-only" for={`quantity-${item.itemId}`}>
 									Quantity for {item.productTitle}
@@ -53,7 +53,14 @@ const cartItems = await getCartItems(Astro.cookies);
 									min="0"
 									class="w-16 rounded-md border border-border-interactive px-2 py-1 text-sm"
 								/>
-								<Button type="submit" size="sm">Update</Button>
+								<IconButton
+										type="submit"
+										icon="confirm"
+										label="Update quantity"
+										size="sm"
+										disabled
+										class="enabled:border-accent enabled:text-accent-text enabled:hover:bg-accent-subtle enabled:hover:text-accent-text"
+									/>
 							</form>
 
 							<form method="post" action="/api/cart/remove">
@@ -79,3 +86,16 @@ const cartItems = await getCartItems(Astro.cookies);
 		}
 	</div>
 </BaseLayout>
+
+<script>
+	// The update button stays disabled (greyed out) until the quantity differs
+	// from what the server rendered, then turns accent-colored and clickable.
+	document.querySelectorAll<HTMLFormElement>('[data-cart-update-form]').forEach((form) => {
+		const input = form.querySelector<HTMLInputElement>('input[name="quantity"]');
+		const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+		if (!input || !button) return;
+		input.addEventListener('input', () => {
+			button.disabled = input.value === '' || input.value === input.defaultValue;
+		});
+	});
+</script>

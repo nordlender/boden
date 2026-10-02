@@ -89,7 +89,14 @@ export async function getValidSetIds(setIds: number[]): Promise<Set<number>> {
 	if (nonArchivedSetIds.length === 0) return new Set();
 
 	const childrenBySet = await getSetChildrenDetailedBulk(nonArchivedSetIds);
-	return new Set(nonArchivedSetIds.filter((id) => (childrenBySet.get(id) ?? []).every((child) => !child.archived)));
+	return new Set(
+		nonArchivedSetIds.filter((id) => {
+			const children = childrenBySet.get(id) ?? [];
+			// A set with no components at all isn't orderable either — without
+			// the length check, `[].every(...)` would make it vacuously valid.
+			return children.length > 0 && children.every((child) => !child.archived);
+		}),
+	);
 }
 
 export type ResolvableEntry = { itemId: number; quantity: number } | { setId: number; quantity: number };

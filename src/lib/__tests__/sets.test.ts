@@ -77,6 +77,9 @@ vi.mock('../../db/client', async () => {
 		{ setId: 6, itemId: 8, quantity: 1 },
 	]);
 
+	// Set 6 (id === 7): not archived, but has no components at all.
+	await db.insert(schema.sets).values({ slug: 'set-6', name: 'Set 6' }); // id === 7
+
 	return { db };
 });
 
@@ -141,6 +144,10 @@ describe('getValidSetIds', () => {
 		// orders.ts's resolveOrderableEntries already does for a plain
 		// archived item entry (drop the whole line, not a partial resolve).
 		expect(await getValidSetIds([1, 6])).toEqual(new Set([1]));
+	});
+
+	it('excludes a non-archived set that has no components at all', async () => {
+		expect(await getValidSetIds([1, 7])).toEqual(new Set([1]));
 	});
 });
 

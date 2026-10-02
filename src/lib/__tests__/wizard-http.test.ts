@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { requireAdmin, requireModerator, safeRedirectTarget, isPositiveInteger, requirePositiveIntFields } from '../wizard-http';
+import {
+  requireAdmin,
+  requireModerator,
+  safeRedirectTarget,
+  isPositiveInteger,
+  requirePositiveIntFields,
+  parseNamedEntityForm,
+} from '../wizard-http';
 
 const ORIGIN = 'https://shop.example.com';
 
@@ -114,6 +121,26 @@ describe('requirePositiveIntFields', () => {
   it('works with a subset of fields (e.g. no quantity, for a remove action)', () => {
     const form = formWithFields({ setId: '3', itemId: '7' });
     expect(requirePositiveIntFields(form, ['setId', 'itemId'] as const)).toEqual({ setId: 3, itemId: 7 });
+  });
+});
+
+describe('parseNamedEntityForm', () => {
+  it('returns the trimmed name and imageUrl', () => {
+    const form = formWithFields({ name: '  Harness M  ', imageUrl: '  /img/harness.png ' });
+    expect(parseNamedEntityForm(form)).toEqual({ name: 'Harness M', imageUrl: '/img/harness.png' });
+  });
+
+  it('returns a null imageUrl when it is missing or blank', () => {
+    expect(parseNamedEntityForm(formWithFields({ name: 'Harness M' }))).toEqual({ name: 'Harness M', imageUrl: null });
+    expect(parseNamedEntityForm(formWithFields({ name: 'Harness M', imageUrl: '   ' }))).toEqual({
+      name: 'Harness M',
+      imageUrl: null,
+    });
+  });
+
+  it('returns null when the name is missing or blank', () => {
+    expect(parseNamedEntityForm(formWithFields({ imageUrl: '/img/x.png' }))).toBeNull();
+    expect(parseNamedEntityForm(formWithFields({ name: '   ' }))).toBeNull();
   });
 });
 

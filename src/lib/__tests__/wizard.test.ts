@@ -1,16 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import Database from 'better-sqlite3';
 import { eq, inArray } from 'drizzle-orm';
-import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as schema from '../../db/schema';
+import { createTestDb } from '../../db/testDb';
 
 // wizard.ts imports `db` from '../db/client', which unconditionally opens
 // './data/rental.db'. For tests we swap in a fresh in-memory sqlite database
-// (schema applied via the real migrations, same as production) so each test
-// runs against real drizzle/better-sqlite3 behavior without touching disk.
+// (schema applied via the real migrations, same as production — see
+// createTestDb) so each test runs against real drizzle/better-sqlite3
+// behavior without touching disk.
 let testDb: BetterSQLite3Database<typeof schema>;
 
 vi.mock('../../db/client', () => ({
@@ -18,16 +16,6 @@ vi.mock('../../db/client', () => ({
 		return testDb;
 	},
 }));
-
-const migrationsFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../db/migrations');
-
-function freshDb(): BetterSQLite3Database<typeof schema> {
-	const sqlite = new Database(':memory:');
-	sqlite.pragma('foreign_keys = ON');
-	const database = drizzle(sqlite, { schema });
-	migrate(database, { migrationsFolder });
-	return database;
-}
 
 // Import after the mock is set up so wizard.ts's `import { db }` resolves to
 // the mocked module.
@@ -71,7 +59,7 @@ function attributeValues(database: BetterSQLite3Database<typeof schema>, itemId:
 
 describe('wizard', () => {
 	beforeEach(() => {
-		testDb = freshDb();
+		testDb = createTestDb();
 	});
 
 	describe('setItemsProduct', () => {

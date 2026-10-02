@@ -1,14 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
-import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as schema from '../../db/schema';
+import { createTestDb } from '../../db/testDb';
 
-// Same in-memory-db-per-test approach as wizard.test.ts — see that file's
-// comment for why.
+// A fresh in-memory db per test (via createTestDb, same as wizard.test.ts)
+// rather than one shared for the whole file — the mock below hands
+// setWizard.ts whichever one the current test's beforeEach assigned.
 let testDb: BetterSQLite3Database<typeof schema>;
 
 vi.mock('../../db/client', () => ({
@@ -16,16 +14,6 @@ vi.mock('../../db/client', () => ({
 		return testDb;
 	},
 }));
-
-const migrationsFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../db/migrations');
-
-function freshDb(): BetterSQLite3Database<typeof schema> {
-	const sqlite = new Database(':memory:');
-	sqlite.pragma('foreign_keys = ON');
-	const database = drizzle(sqlite, { schema });
-	migrate(database, { migrationsFolder });
-	return database;
-}
 
 const { setSetsProduct } = await import('../setWizard');
 
@@ -45,7 +33,7 @@ function seedSet(database: BetterSQLite3Database<typeof schema>, opts: { slug: s
 
 describe('setWizard', () => {
 	beforeEach(() => {
-		testDb = freshDb();
+		testDb = createTestDb();
 	});
 
 	describe('setSetsProduct', () => {

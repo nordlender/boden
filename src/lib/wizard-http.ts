@@ -38,6 +38,19 @@ export function requirePositiveIntFields<K extends string>(form: FormData, keys:
 }
 
 /**
+ * Parses the "create a named thing" form shared by the item and set wizards'
+ * create routes (items.ts / sets.ts) — a required `name` plus an optional
+ * `imageUrl`, both trimmed. Returns `null` when `name` is missing or blank, so
+ * the caller only has to supply its own noun for the 400 message.
+ */
+export function parseNamedEntityForm(form: FormData): { name: string; imageUrl: string | null } | null {
+	const name = form.get('name')?.toString().trim();
+	if (!name) return null;
+	const imageUrl = form.get('imageUrl')?.toString().trim() || null;
+	return { name, imageUrl };
+}
+
+/**
  * Returns a 401 Response if the current request isn't from a signed-in user,
  * or `null` if the caller may proceed.
  */

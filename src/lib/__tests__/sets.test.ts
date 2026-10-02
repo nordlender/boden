@@ -15,15 +15,9 @@ import {
 // item1..item7 (the only rows ever inserted into `items`), set1..set4
 // (`sets`) — see the comments alongside each insert below.
 vi.mock('../../db/client', async () => {
-	const { default: Database } = await import('better-sqlite3');
-	const { drizzle } = await import('drizzle-orm/better-sqlite3');
-	const { migrate } = await import('drizzle-orm/better-sqlite3/migrator');
 	const schema = await import('../../db/schema');
-
-	const sqlite = new Database(':memory:');
-	sqlite.pragma('foreign_keys = ON');
-	const db = drizzle(sqlite, { schema });
-	migrate(db, { migrationsFolder: './src/db/migrations' });
+	const { createTestDb } = await import('../../db/testDb');
+	const db = createTestDb();
 
 	await db.insert(schema.items).values({ slug: 'item-1', name: 'Item 1', stockCount: 5 });
 	await db.insert(schema.items).values({ slug: 'item-2', name: 'Item 2', stockCount: 2 });

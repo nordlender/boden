@@ -1,17 +1,14 @@
 ---
 import ImagePlaceholder from './ImagePlaceholder.astro';
-import { formatAttributes, type Attribute } from '../../lib/attributes';
 
 interface Props {
 	itemId: number;
 	productSlug: string;
 	productTitle: string;
 	imageUrl: string | null;
-	attributes: Attribute[];
 }
 
-const { itemId, productSlug, productTitle, imageUrl, attributes } = Astro.props;
-const variantLabel = formatAttributes(attributes);
+const { itemId, productSlug, productTitle, imageUrl } = Astro.props;
 ---
 
 <a
@@ -31,6 +28,5 @@ const variantLabel = formatAttributes(attributes);
 	</div>
 	<div class="flex flex-1 flex-col gap-1 p-3">
 		<h3 class="text-sm font-medium text-text">{productTitle}</h3>
-		{variantLabel && <p class="text-xs text-text-muted">{variantLabel}</p>}
 	</div>
 </a>

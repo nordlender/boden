@@ -64,3 +64,16 @@ export function formatDateShort(value: string): string {
 export function formatWeekdayName(value: string): string {
   return new Date(`${value}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
 }
+
+// Same as formatDateDisplay but for a real Date (e.g. a message's
+// createdAt) rather than a YYYY-MM-DD string — includes the time since
+// same-day posts are common on the message board.
+export function formatDateTimeDisplay(value: Date): string {
+  return value.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}

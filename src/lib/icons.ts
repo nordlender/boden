@@ -47,6 +47,9 @@ export const icons = {
 	view: 'tabler:eye',
 	layoutCompact: 'tabler:list',
 	layoutDetailed: 'tabler:layout-list',
+	// Product page quantity stepper (VariantPicker.astro).
+	increment: 'tabler:plus',
+	decrement: 'tabler:minus',
 } as const;
 
 export type IconName = keyof typeof icons;

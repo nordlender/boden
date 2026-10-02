@@ -71,6 +71,27 @@
       "when": 1790439629011,
       "tag": "0009_pickup_days_time_not_null",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1790513706633,
+      "tag": "0010_silent_prism",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1790591139399,
+      "tag": "0011_add_message_author_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1790591149060,
+      "tag": "0012_drop_message_updated_at",
+      "breakpoints": true
     }
   ]
 }

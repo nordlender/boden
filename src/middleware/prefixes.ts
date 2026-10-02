@@ -15,20 +15,30 @@
 // so this is redundant today — but it means a future route in either group
 // that forgets the inline check isn't left with zero protection.
 export const MEMBER_ROUTE_PREFIXES = ['/cart', '/checkout', '/orders', '/reservation', '/api/reservation', '/api/orders'];
-// /api/moderator is included here as defense-in-depth, same reasoning as
-// /api/wizard under ADMIN_ROUTE_PREFIXES below: every /api/moderator/*
-// write route already re-implements its own requireModerator() check
-// inline (see src/lib/wizard-http.ts), so this is redundant today — but it
+// /api/moderator and /api/messages/{add,delete} are included here as
+// defense-in-depth, same reasoning as /api/wizard under ADMIN_ROUTE_PREFIXES
+// below: every /api/moderator/* write route, plus add.ts and delete.ts,
+// already re-implements its own requireModerator() (or an inline
+// admin-or-own-message) check (see src/lib/wizard-http.ts and
+// src/pages/api/messages/delete.ts), so this is redundant today — but it
 // means a future moderator route that forgets the inline check isn't left
-// with zero protection.
-export const MOD_ROUTE_PREFIXES = ['/moderator', '/api/moderator'];
-// /api/wizard and /api/admin/pickup-days are included here as
-// defense-in-depth: their write routes each already re-implement their own
-// `requireAdmin()`/`locals.user?.role !== 'admin'` check inline (see those
-// files), so this is redundant today — but it means a future route in
-// either group that forgets the inline check isn't left with zero
-// protection.
-export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard', '/api/admin/pickup-days'];
+// with zero protection. Moderators can author and delete-their-own message
+// as of issue #225; pin/unpin stay admin-only, so those two routes stay
+// under ADMIN_ROUTE_PREFIXES below instead.
+export const MOD_ROUTE_PREFIXES = ['/moderator', '/api/moderator', '/api/messages/add', '/api/messages/delete'];
+// /api/wizard, /api/admin/pickup-days, and /api/messages/{pin,unpin} are
+// included here as defense-in-depth: their write routes each already
+// re-implement their own `requireAdmin()`/`locals.user?.role !== 'admin'`
+// check inline (see those files), so this is redundant today — but it means
+// a future route in any of the three groups that forgets the inline check
+// isn't left with zero protection.
+export const ADMIN_ROUTE_PREFIXES = [
+  '/admin',
+  '/api/wizard',
+  '/api/admin/pickup-days',
+  '/api/messages/pin',
+  '/api/messages/unpin',
+];
 
 export function matchesPrefix(routePattern: string, prefixes: string[]) {
   return prefixes.some((p) => routePattern === p || routePattern.startsWith(`${p}/`));

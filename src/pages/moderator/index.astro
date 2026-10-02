@@ -2,16 +2,23 @@
 export const prerender = false;
 
 // Moderator hub — landing page for the /moderator/* section. Gated by
-// src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator). Messages box
-// is a placeholder (see MessagesBox.astro and issue for the /admin
-// authoring side); the requests list reuses the same query/shape as
-// requests.astro via getPendingRequestRows so the two never drift apart.
+// src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator). The message
+// board is the same shared MessageTable the admin hub renders (see issue
+// #151) — moderators can now post their own messages here too, and delete
+// only the ones they authored (see issue #225); admin-authored messages,
+// and pinning, stay admin-only, enforced again server-side in
+// src/pages/api/messages/{add,delete,pin,unpin}.ts. The requests list
+// reuses the same query/shape as requests.astro via getPendingRequestRows
+// so the two never drift apart.
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
-import MessagesBox from '../../components/moderator/MessagesBox.astro';
+import MessageTable from '../../components/messages/MessageTable.astro';
 import ActionButton from '../../components/moderator/ActionButton.astro';
-import TextMorphButton from '../../components/ui/TextMorphButton.astro';
 import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
+import Modal from '../../components/ui/Modal.astro';
+import Button from '../../components/ui/Button.astro';
+import TextMorphButton from '../../components/ui/TextMorphButton.astro';
 import { getPendingRequestRows } from '../../lib/moderatorOrders';
+import { listMessages } from '../../lib/messages';
 
 // This is a preview, not the full queue (see the "See all" link to
 // /moderator/requests below) — capped and compact-only (no item contents),
@@ -22,11 +29,30 @@ import { getPendingRequestRows } from '../../lib/moderatorOrders';
 const MAX_PREVIEW_REQUESTS = 8;
 const pendingRequests = await getPendingRequestRows();
 const previewRequests = pendingRequests.slice(0, MAX_PREVIEW_REQUESTS);
+const messages = await listMessages();
+const redirectTo = Astro.url.pathname;
+const error = Astro.url.searchParams.get('error');
+const modalId = 'add-message-modal';
 ---
 
 <ModeratorLayout title="Moderator — Boden">
 	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-		<MessagesBox />
+		{
+			error === 'empty_message' && (
+				<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
+					Message can't be blank.
+				</p>
+			)
+		}
+		<MessageTable messages={messages} currentUserId={Astro.locals.user?.id ?? null} redirectTo={redirectTo}>
+			<TextMorphButton
+				slot="actions"
+				action="message"
+				variant="primary"
+				data-modal-open
+				data-modal-target={modalId}
+			/>
+		</MessageTable>
 
 		<div class="flex flex-col gap-3">
 			<div class="flex items-baseline justify-between gap-4">
@@ -75,4 +101,24 @@ const previewRequests = pendingRequests.slice(0, MAX_PREVIEW_REQUESTS);
 			/>
 		</div>
 	</div>
+
+	<Modal id={modalId} labelledBy={`${modalId}-title`}>
+		<h2 id={`${modalId}-title`} class="text-sm font-semibold text-text">
+			New message
+		</h2>
+		<form method="post" action="/api/messages/add" class="flex flex-col gap-3">
+			<input type="hidden" name="redirectTo" value={redirectTo} />
+			<textarea
+				name="content"
+				rows="4"
+				required
+				placeholder="Shift notes, stock issues, closures…"
+				class="min-w-0 rounded border border-border-interactive px-2 py-1.5 text-sm"
+			></textarea>
+			<div class="flex justify-end gap-2">
+				<Button type="button" data-modal-close>Cancel</Button>
+				<Button type="submit" variant="primary">Post</Button>
+			</div>
+		</form>
+	</Modal>
 </ModeratorLayout>

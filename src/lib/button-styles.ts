@@ -5,7 +5,7 @@
 // prior usages this was built from.
 import type { ActionIconKey } from './icon-nodes';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'danger-filled';
+export type ButtonVariant = 'primary' | 'secondary' | 'primary-outline' | 'danger' | 'danger-filled';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export const variantClasses: Record<ButtonVariant, string> = {
@@ -13,6 +13,11 @@ export const variantClasses: Record<ButtonVariant, string> = {
 		'bg-accent font-medium text-text-inverted hover:bg-accent-hover disabled:bg-disabled-bg disabled:text-disabled-text',
 	secondary:
 		'border border-border-strong text-text-muted hover:bg-bg-subtle hover:text-text disabled:text-disabled-text disabled:hover:bg-transparent',
+	// Outline counterpart of `primary` — same accent palette, not filled. For
+	// actions of equal weight to primary that shouldn't compete visually
+	// with it (e.g. a secondary call-to-action next to a primary one).
+	'primary-outline':
+		'border border-accent font-medium text-accent-text hover:bg-accent-subtle disabled:border-disabled-bg disabled:text-disabled-text disabled:hover:bg-transparent',
 	danger:
 		'border border-error-border font-medium text-error-text hover:bg-error-subtle disabled:border-disabled-bg disabled:text-disabled-text disabled:hover:bg-transparent',
 	// Solid fill instead of `danger`'s outline — for actions that actually
@@ -72,4 +77,7 @@ export const actionLabels: Record<ActionIconKey, string> = {
 	view: 'View',
 	save: 'Save',
 	add: 'Add',
+	message: 'Message',
+	pin: 'Pin',
+	unpin: 'Pinned',
 };

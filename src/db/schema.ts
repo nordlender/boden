@@ -338,6 +338,31 @@ export const pickupDays = sqliteTable('pickup_days', {
   check('pickup_days_kind_recurring_rule_consistent', sql`(${table.kind} = 'recurring') = (${table.recurringRuleId} IS NOT NULL)`),
 ]);
 
+// Admin- or moderator-authored messages shown on the moderator hub (see
+// src/components/messages/MessageTable.astro) — shift notes, stock issues,
+// closures, etc. A plain feed (newest first), no expiry or read-receipts:
+// those were open questions on issue #151, deliberately deferred rather than
+// guessed at. There's no editing (see issue #225) — a correction is just a
+// new message — so there's no updatedAt to track. authorName is a snapshot
+// of the posting user's display name at write time, same reasoning as
+// orders.contactName — there's no local users table to join against (see
+// src/lib/auth.ts), only bloc user ids. authorId is that bloc user id
+// (locals.user.id), kept alongside the display-name snapshot specifically so
+// "is this my message" can be checked reliably even if two users share a
+// display name (see issue #225) — it's nullable because rows written before
+// that column existed have no id to backfill. pinnedAt: null means not
+// pinned; a timestamp both flags a message as pinned and orders the pinned
+// group (most recently pinned first) without a separate boolean + sort
+// column.
+export const messages = sqliteTable('messages', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  content: text('content').notNull(),
+  authorName: text('author_name').notNull(),
+  authorId: text('author_id'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  pinnedAt: integer('pinned_at', { mode: 'timestamp' }),
+});
+
 export const categoriesRelations = relations(categories, ({ many }) => ({
   subcategories: many(subcategories),
   products: many(products),

@@ -49,6 +49,20 @@ describe('matchesPrefix', () => {
     expect(matchesPrefix('/api/moderator/retrieve', MOD_ROUTE_PREFIXES)).toBe(true);
     expect(matchesPrefix('/api/moderator/orders/[id]/accept', MOD_ROUTE_PREFIXES)).toBe(true);
   });
+
+  it('matches /api/messages/add and /api/messages/delete as moderator routes (issue #225)', () => {
+    expect(matchesPrefix('/api/messages/add', MOD_ROUTE_PREFIXES)).toBe(true);
+    expect(matchesPrefix('/api/messages/delete', MOD_ROUTE_PREFIXES)).toBe(true);
+    expect(matchesPrefix('/api/messages/add', ADMIN_ROUTE_PREFIXES)).toBe(false);
+    expect(matchesPrefix('/api/messages/delete', ADMIN_ROUTE_PREFIXES)).toBe(false);
+  });
+
+  it('matches /api/messages/pin and /api/messages/unpin as admin-only routes', () => {
+    expect(matchesPrefix('/api/messages/pin', ADMIN_ROUTE_PREFIXES)).toBe(true);
+    expect(matchesPrefix('/api/messages/unpin', ADMIN_ROUTE_PREFIXES)).toBe(true);
+    expect(matchesPrefix('/api/messages/pin', MOD_ROUTE_PREFIXES)).toBe(false);
+    expect(matchesPrefix('/api/messages/unpin', MOD_ROUTE_PREFIXES)).toBe(false);
+  });
 });
 
 describe('isApiRoute', () => {

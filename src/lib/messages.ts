@@ -6,8 +6,8 @@ export interface MessageRow {
 	id: number;
 	content: string;
 	authorName: string;
+	authorId: string | null;
 	createdAt: Date;
-	updatedAt: Date;
 	pinnedAt: Date | null;
 }
 
@@ -27,9 +27,10 @@ export async function listMessages(): Promise<MessageRow[]> {
 }
 
 // Used by withMessageIdAction (src/lib/messages-http.ts) to load the target
-// message before authorizing an id-based action against it (e.g. a future
-// "moderators may delete only their own message" rule needs the row's
-// author, not just its id).
+// message before authorizing an id-based action against it — e.g. the
+// "moderators may delete only their own message" rule (see
+// src/pages/api/messages/delete.ts) needs the row's authorId, not just its
+// id.
 export async function getMessageById(id: number): Promise<MessageRow | undefined> {
 	return db.query.messages.findFirst({ where: eq(messages.id, id) });
 }
@@ -43,20 +44,10 @@ function normalizeContent(content: string): string | null {
 	return trimmed || null;
 }
 
-export async function createMessage(content: string, authorName: string): Promise<boolean> {
+export async function createMessage(content: string, authorName: string, authorId: string): Promise<boolean> {
 	const trimmed = normalizeContent(content);
 	if (!trimmed) return false;
-	await db.insert(messages).values({ content: trimmed, authorName });
-	return true;
-}
-
-export async function updateMessage(id: number, content: string): Promise<boolean> {
-	const trimmed = normalizeContent(content);
-	if (!trimmed) return false;
-	await db
-		.update(messages)
-		.set({ content: trimmed, updatedAt: new Date() })
-		.where(eq(messages.id, id));
+	await db.insert(messages).values({ content: trimmed, authorName, authorId });
 	return true;
 }
 

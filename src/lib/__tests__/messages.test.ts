@@ -14,7 +14,7 @@ vi.mock('../../db/client', async () => {
 	return { db };
 });
 
-const { listMessages, createMessage, updateMessage, deleteMessage, pinMessage, unpinMessage, getMessageById } = await import(
+const { listMessages, createMessage, deleteMessage, pinMessage, unpinMessage, getMessageById } = await import(
 	'../messages'
 );
 
@@ -26,47 +26,31 @@ describe('messages', () => {
 	});
 
 	it('creating then listing round-trips, newest first', async () => {
-		await createMessage('First post', 'Admin One');
-		await createMessage('Second post', 'Admin Two');
+		await createMessage('First post', 'Admin One', 'user-1');
+		await createMessage('Second post', 'Admin Two', 'user-2');
 		const rows = await listMessages();
 		expect(rows.map((r) => r.content)).toEqual(['Second post', 'First post']);
 		expect(rows[0].authorName).toBe('Admin Two');
+		expect(rows[0].authorId).toBe('user-2');
 	});
 
 	it('trims content, and reports a blank message as not written', async () => {
-		expect(await createMessage('  padded  ', 'Admin')).toBe(true);
-		expect(await createMessage('   ', 'Admin')).toBe(false);
+		expect(await createMessage('  padded  ', 'Admin', 'user-1')).toBe(true);
+		expect(await createMessage('   ', 'Admin', 'user-1')).toBe(false);
 		const rows = await listMessages();
 		expect(rows.map((r) => r.content)).toEqual(['padded']);
 	});
 
-	it('updateMessage reports a blank message as not written, leaving the original content', async () => {
-		await createMessage('Original', 'Admin');
-		const [message] = await listMessages();
-		expect(await updateMessage(message.id, '   ')).toBe(false);
-		const [unchanged] = await listMessages();
-		expect(unchanged.content).toBe('Original');
-	});
-
-	it('updating changes the content and updatedAt', async () => {
-		await createMessage('Original', 'Admin');
-		const [message] = await listMessages();
-		await updateMessage(message.id, 'Edited');
-		const [updated] = await listMessages();
-		expect(updated.content).toBe('Edited');
-		expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(updated.createdAt.getTime());
-	});
-
 	it('deleting removes the message', async () => {
-		await createMessage('Gone soon', 'Admin');
+		await createMessage('Gone soon', 'Admin', 'user-1');
 		const [message] = await listMessages();
 		await deleteMessage(message.id);
 		expect(await listMessages()).toEqual([]);
 	});
 
 	it('pinned messages sort before unpinned ones regardless of post order', async () => {
-		await createMessage('Older, unpinned', 'Admin');
-		await createMessage('Newer, will be pinned', 'Admin');
+		await createMessage('Older, unpinned', 'Admin', 'user-1');
+		await createMessage('Newer, will be pinned', 'Admin', 'user-1');
 		const [newer] = await listMessages();
 		await pinMessage(newer.id);
 		const rows = await listMessages();
@@ -75,8 +59,8 @@ describe('messages', () => {
 	});
 
 	it('unpinning drops a message back into newest-first order', async () => {
-		await createMessage('Older', 'Admin');
-		await createMessage('Newer', 'Admin');
+		await createMessage('Older', 'Admin', 'user-1');
+		await createMessage('Newer', 'Admin', 'user-1');
 		const [, older] = await listMessages();
 		await pinMessage(older.id);
 		await unpinMessage(older.id);
@@ -86,7 +70,7 @@ describe('messages', () => {
 	});
 
 	it('getMessageById returns the matching row, or undefined when there is none', async () => {
-		await createMessage('Findable', 'Admin');
+		await createMessage('Findable', 'Admin', 'user-1');
 		const [message] = await listMessages();
 		expect((await getMessageById(message.id))?.content).toBe('Findable');
 		expect(await getMessageById(message.id + 1)).toBeUndefined();

@@ -1,18 +1,21 @@
 ---
 // Standardized "Messages" board — used identically by both the moderator
-// hub (read-only) and the admin hub (`editable`, with an actions slot for
-// the "New message" trigger). One shared component so the two hubs can't
-// drift into two different box layouts (see issue #151).
+// hub and the admin hub, so the two can't drift into two different box
+// layouts (see issue #151). `isAdmin` and `currentUserId` are forwarded to
+// each row so it can decide its own pin/delete affordances (admins may
+// pin/delete any message; moderators may delete only their own — see issue
+// #225 and MessageTableRow.astro).
 import MessageTableRow from './MessageTableRow.astro';
 import type { MessageRow } from '../../lib/messages';
 
 interface Props {
 	messages: MessageRow[];
-	editable?: boolean;
+	currentUserId?: string | null;
+	isAdmin?: boolean;
 	redirectTo?: string;
 }
 
-const { messages, editable = false, redirectTo } = Astro.props;
+const { messages, currentUserId = null, isAdmin = false, redirectTo } = Astro.props;
 ---
 
 <div class="flex flex-col gap-3">
@@ -24,11 +27,11 @@ const { messages, editable = false, redirectTo } = Astro.props;
 	<div class="rounded-lg border border-border bg-surface">
 		{
 			messages.length === 0 ? (
-				<p class="p-4 text-sm text-text-muted">No messages from admins right now.</p>
+				<p class="p-4 text-sm text-text-muted">No messages right now.</p>
 			) : (
 				<ul class="divide-y divide-border">
 					{messages.map((message) => (
-						<MessageTableRow message={message} editable={editable} redirectTo={redirectTo} />
+						<MessageTableRow message={message} currentUserId={currentUserId} isAdmin={isAdmin} redirectTo={redirectTo} />
 					))}
 				</ul>
 			)

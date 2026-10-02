@@ -1,31 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
-import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as schema from '../../db/schema';
+import { freshDb } from '../../test/testDb';
 
-// Same in-memory-db-via-mock pattern as wizard.test.ts — products.ts imports
-// `db` from '../db/client', which unconditionally opens './data/rental.db'.
 let testDb: BetterSQLite3Database<typeof schema>;
 
-vi.mock('../../db/client', () => ({
-	get db() {
-		return testDb;
-	},
-}));
-
-const migrationsFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../db/migrations');
-
-function freshDb(): BetterSQLite3Database<typeof schema> {
-	const sqlite = new Database(':memory:');
-	sqlite.pragma('foreign_keys = ON');
-	const database = drizzle(sqlite, { schema });
-	migrate(database, { migrationsFolder });
-	return database;
-}
+vi.mock('../../db/client', () => import('../../test/testDb').then((m) => m.mockedDbClient));
 
 const { createProduct, updateProduct, getProductForEdit } = await import('../products');
 

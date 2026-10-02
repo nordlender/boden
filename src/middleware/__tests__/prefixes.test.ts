@@ -18,24 +18,14 @@ describe('ADMIN_ROUTE_PREFIXES', () => {
 });
 
 describe('matchesPrefix', () => {
-  it('matches an exact prefix', () => {
-    expect(matchesPrefix('/admin', ADMIN_ROUTE_PREFIXES)).toBe(true);
-  });
-
-  it('matches /api/wizard/items (a nested wizard write route)', () => {
-    expect(matchesPrefix('/api/wizard/items', ADMIN_ROUTE_PREFIXES)).toBe(true);
-  });
-
-  it('matches /api/wizard/set-product', () => {
-    expect(matchesPrefix('/api/wizard/set-product', ADMIN_ROUTE_PREFIXES)).toBe(true);
-  });
-
-  it('matches nested route patterns like /api/wizard/attributes/bulk', () => {
-    expect(matchesPrefix('/api/wizard/attributes/bulk', ADMIN_ROUTE_PREFIXES)).toBe(true);
-  });
-
-  it('matches /api/products/[id]/update (a nested product write route)', () => {
-    expect(matchesPrefix('/api/products/[id]/update', ADMIN_ROUTE_PREFIXES)).toBe(true);
+  it.each([
+    ['/admin', 'an exact prefix'],
+    ['/api/wizard/items', 'a nested wizard write route'],
+    ['/api/wizard/set-product', 'a nested wizard write route'],
+    ['/api/wizard/attributes/bulk', 'a deeper nested wizard route'],
+    ['/api/products/[id]/update', 'a nested product write route'],
+  ])('matches %s (%s)', (route) => {
+    expect(matchesPrefix(route, ADMIN_ROUTE_PREFIXES)).toBe(true);
   });
 
   it('does not match a route that merely shares the prefix string without a boundary', () => {

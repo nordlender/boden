@@ -63,6 +63,6 @@ describe('parseProductForm', () => {
 				['categoryId', '0'],
 			]),
 		);
-		expect(invalid.ok && invalid.input.categoryId).toBe(null);
+		expect(invalid.ok && invalid.input.categoryId).toBeNull();
 	});
 });

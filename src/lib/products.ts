@@ -31,12 +31,13 @@ export async function listSubcategoryOptions(): Promise<SubcategoryOption[]> {
 }
 
 function slugify(input: string): string {
+	// Split on runs of non-alphanumerics and re-join: leading/trailing/repeated
+	// separators fall out as empty segments, so no backtracking-prone trim regex.
 	const base = input
 		.toLowerCase()
-		.trim()
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+/, '')
-		.replace(/-+$/, '');
+		.split(/[^a-z0-9]+/)
+		.filter(Boolean)
+		.join('-');
 	return base || 'product';
 }
 

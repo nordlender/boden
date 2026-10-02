@@ -1,16 +1,16 @@
 ---
 import Badge from '../ui/Badge.astro';
 import type { BadgeTone } from '../../lib/badge-styles';
+import type { OrderStatus } from '../../constants/orders';
 
 interface Props {
-	status: string;
+	status: OrderStatus;
 	class?: string;
 }
 
 const { status, class: className } = Astro.props;
 
-// src/db/schema.ts's orders.status enum: 'requested' | 'active' | 'returned' | 'rejected'.
-const toneByStatus: Record<string, BadgeTone> = {
+const toneByStatus: Record<OrderStatus, BadgeTone> = {
 	requested: 'warning',
 	active: 'success',
 	returned: 'neutral',

@@ -3,6 +3,7 @@ import { db } from '../db/client';
 import { orderItems, orders } from '../db/schema';
 import { isForeignKeyViolation } from './db-errors';
 import { getReservationAvailability } from './reservation';
+import { ACTIVE_HOLD_STATUSES, type OrderStatus } from '../constants/orders';
 
 // Moderator-side order operations — kept separate from member-side
 // src/lib/orders.ts (createOrder/createSplitOrders/deleteOrder/
@@ -33,7 +34,7 @@ export interface OrderDetail {
 	userId: string;
 	userName: string | null;
 	userEmail: string;
-	status: 'requested' | 'active' | 'returned' | 'rejected';
+	status: OrderStatus;
 	fromDate: string;
 	toDate: string;
 	note: string | null;
@@ -116,7 +117,7 @@ function toOrderDetail(order: RawOrderDetail): OrderDetail {
 export interface PendingRequestRow {
 	id: number;
 	orderCode: string;
-	status: string;
+	status: OrderStatus;
 	fromDate: string;
 	toDate: string;
 	customerName: string;
@@ -365,7 +366,7 @@ export async function getFollowingRentalWorries(orderId: number): Promise<Follow
 			.where(
 				and(
 					eq(orderItems.itemId, oi.itemId),
-					inArray(orders.status, ['requested', 'active']),
+					inArray(orders.status, ACTIVE_HOLD_STATUSES),
 					gte(orders.fromDate, order.toDate),
 					ne(orders.id, order.id),
 				),

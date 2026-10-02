@@ -273,6 +273,8 @@ const upsertSubcategory = db.prepare(
 );
 const getSubcategoryBySlug = db.prepare('SELECT id FROM subcategories WHERE category_id = ? AND slug = ?');
 
+// 'published' here must match src/constants/products.ts's PRODUCT_STATUSES —
+// left as a literal since this is a plain .mjs script (no TS import support).
 const upsertProduct = db.prepare(
   `INSERT INTO products (slug, title, description, category_id, subcategory_id, status, thumbnail_image_url)
    VALUES (@slug, @title, @description, @categoryId, @subcategoryId, 'published', @thumbnailImageUrl)

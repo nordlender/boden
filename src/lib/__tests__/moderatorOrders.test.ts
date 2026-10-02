@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { vi } from 'vitest';
+import type { OrderStatus } from '../../constants/orders';
 import {
 	acceptOrder,
 	confirmRetrieval,
@@ -68,7 +69,7 @@ async function seedOrder(opts: {
 	requestedQuantity?: number;
 	fromDate?: string;
 	toDate?: string;
-	status?: 'requested' | 'active' | 'returned' | 'rejected';
+	status?: OrderStatus;
 	acceptedAt?: Date | null;
 	rejectedAt?: Date | null;
 }) {

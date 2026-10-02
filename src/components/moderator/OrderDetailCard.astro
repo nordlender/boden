@@ -33,6 +33,17 @@ const { order, showAvailability = false, adjustableTargets = false, followingRen
 		<StatusChip label="Is member" value={order.userIsMember} goodValue={true} />
 	</div>
 
+	<p class="text-sm">
+		<span class="text-text-muted">Liability disclaimer:</span>
+		{
+			order.disclaimerAcceptedAt ? (
+				<span class="font-medium text-success-text">Accepted {order.disclaimerAcceptedAt.toLocaleString('nb-NO')}</span>
+			) : (
+				<span class="font-medium text-text-muted">Not accepted</span>
+			)
+		}
+	</p>
+
 	<SubmittedContactDetails contactName={order.contactName} />
 
 	{

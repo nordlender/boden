@@ -64,9 +64,8 @@ export type CreateOrderInput = {
   hasUnpaidFees: boolean | null;
   userIsMember: boolean | null;
   // Whether the checkout submitter checked the liability disclaimer box —
-  // see schema.ts's orders.disclaimerAcceptedAt doc comment. Only ever true
-  // today since the checkbox is only rendered for moderators/admins and is
-  // required when shown; a plain member submission always passes false.
+  // see schema.ts's orders.disclaimerAcceptedAt doc comment. Required for
+  // every submitter at the API layer, so real submissions always pass true.
   disclaimerAccepted: boolean;
 };
 

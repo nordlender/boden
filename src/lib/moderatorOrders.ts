@@ -42,6 +42,7 @@ export interface OrderDetail {
 	contactMobile: string | null;
 	hasUnpaidFees: boolean | null;
 	userIsMember: boolean | null;
+	disclaimerAcceptedAt: Date | null;
 	acceptedAt: Date | null;
 	activatedAt: Date | null;
 	returnedAt: Date | null;
@@ -93,6 +94,7 @@ function toOrderDetail(order: RawOrderDetail): OrderDetail {
 		contactMobile: order.contactMobile,
 		hasUnpaidFees: order.hasUnpaidFees,
 		userIsMember: order.userIsMember,
+		disclaimerAcceptedAt: order.disclaimerAcceptedAt,
 		acceptedAt: order.acceptedAt,
 		activatedAt: order.activatedAt,
 		returnedAt: order.returnedAt,

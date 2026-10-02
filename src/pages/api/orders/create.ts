@@ -4,7 +4,6 @@ import type { APIRoute } from 'astro';
 import { getCart, setCart } from '../../../lib/cart';
 import { createOrder, createSplitOrders } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
-import { isModerator } from '../../../lib/auth';
 
 // Maps the checkout form's readonly hasUnpaidFees/userIsMember text inputs
 // (literally "Yes" | "No" | "Unknown", see CheckoutForm.astro's yesNo()) back
@@ -56,15 +55,11 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const hasUnpaidFees = parseYesNo(form.get('hasUnpaidFees'));
   const userIsMember = parseYesNo(form.get('userIsMember'));
 
-  // The disclaimer checkbox is only rendered on the checkout form for
-  // moderators/admins (see CheckoutForm.astro) — see #134, more will roll
-  // out later. For any other role there's nothing to accept/validate, so
-  // disclaimerAccepted stays false. Re-derived from the session here rather
-  // than trusted from the form, same reasoning as every other
-  // server-enforced check in this route.
-  const disclaimerRequired = isModerator(locals.user.role);
+  // Every submitter must accept the liability disclaimer (see #134). Enforced
+  // here rather than trusting the form's `required` attribute; the acceptance
+  // timestamp is persisted on the order for moderators to see.
   const disclaimerAccepted = form.get('disclaimerAccepted') === 'on';
-  if (disclaimerRequired && !disclaimerAccepted) {
+  if (!disclaimerAccepted) {
     return redirect('/reservation?error=disclaimer_required');
   }
 

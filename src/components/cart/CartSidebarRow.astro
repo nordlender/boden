@@ -1,0 +1,36 @@
+---
+import ItemLine from '../ui/ItemLine.astro';
+import type { CartItem } from '../../lib/cart';
+
+interface Props {
+	item: CartItem;
+}
+
+const { item } = Astro.props;
+---
+
+<div data-cart-row class="py-3">
+	<ItemLine
+		imageUrl={item.imageUrl}
+		name={item.productTitle}
+		href={item.productSlug ? `/products/${item.productSlug}` : null}
+		attributes={item.attributes}
+		thumbnailSize={48}
+		class="flex-wrap"
+	>
+		<Fragment slot="action">
+			<label class="sr-only" for={`sidebar-quantity-${item.itemId}`}>
+				Quantity for {item.productTitle} (0 removes it)
+			</label>
+			<input
+				id={`sidebar-quantity-${item.itemId}`}
+				type="number"
+				name={`quantity_${item.itemId}`}
+				value={item.quantity}
+				min="0"
+				data-cart-quantity
+				class="h-6 w-14 shrink-0 rounded-md border border-border-interactive px-2 py-0 text-xs"
+			/>
+		</Fragment>
+	</ItemLine>
+</div>

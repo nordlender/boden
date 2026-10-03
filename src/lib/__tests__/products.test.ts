@@ -2,17 +2,23 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as schema from '../../db/schema';
-import { freshDb } from '../../test/testDb';
+import { createTestDb } from '../../db/testDb';
 
+// products.ts imports `db` from '../db/client', which unconditionally opens
+// './data/rental.db'; swap in a fresh in-memory db per test (see createTestDb).
 let testDb: BetterSQLite3Database<typeof schema>;
 
-vi.mock('../../db/client', () => import('../../test/testDb').then((m) => m.mockedDbClient));
+vi.mock('../../db/client', () => ({
+	get db() {
+		return testDb;
+	},
+}));
 
 const { createProduct, updateProduct, getProductForEdit, ProductInputError } = await import('../products');
 
 describe('products', () => {
 	beforeEach(() => {
-		testDb = freshDb();
+		testDb = createTestDb();
 	});
 
 	describe('createProduct', () => {

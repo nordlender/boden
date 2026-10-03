@@ -445,6 +445,46 @@ now, just recording the idea.
 disambiguate on collision) — there's no combinatorial product+option naming
 to derive it from anymore, since items are named freeform.
 
+## Schema addition: sets (rentable bundles) — PR #212
+A product's variant slot can now point to a **set** instead of an item (a
+product's variants are all items or all sets, never a mix — enforced by the
+admin wizard) — a set resolves to a bundle of real items with
+quantities, e.g. "Indoor Rope Climbing Set — M" -> Harness M + Chalk Bag +
+Singing Rock Rama Belay Device. Two new tables:
+
+- `sets` (id, productId nullable/set-null, slug, name, label nullable,
+  imageUrl, archived, createdAt) — mostly mirrors `items`, except `label`: a
+  plain, manually-typed short string (e.g. "S"/"M"/"L") the admin picks to
+  distinguish sibling sets. A set is a peer of `items` under a product, not
+  a child of it.
+- `setItems` (setId -> sets cascade, itemId -> items no-action, quantity) —
+  the bundle's composition. unique(setId, itemId).
+
+Deliberately **no** `productAttributeKeys`/`itemAttributeValues`-style
+template for sets (an earlier version of this PR added exactly that —
+`setAttributeValues` — before the addition below replaced it): a set never
+gets its own admin-entered attribute values. What a set "includes" is
+instead derived automatically at display time from its components' own
+already-existing attribute values — `src/lib/sets.ts`'s
+`getSetComponentDisplayBulk` groups components sharing an identical
+attribute-key signature (i.e. the same product template) into one shared
+table (e.g. a rack of different cam sizes); anything else — a lone
+component, or one with no attribute keys at all — renders as a plain line.
+
+Orders/rentals still always reference items, never sets (unchanged
+invariant from the top of this doc) — a set cart entry is expanded into its
+component items, merged by itemId with any other demand for the same item
+in the cart, only at checkout (`src/lib/sets.ts`'s
+`resolveEntriesToItemQuantities`, called from `src/lib/orders.ts`). Sets are
+authored under `/admin/sets` (issue #214); `scripts/seed-example-catalog.mjs`
+seeds two example sets into the dev catalogue.
+
+Note: "Set" here (a rentable bundle) is unrelated to this doc's existing
+"Set dropdown"/"Set attributes"/"Set product" wizard-UI terminology above
+(a bulk-action menu for selected items) — an unfortunate naming collision,
+not a design relationship. Worth renaming one of the two if it causes
+confusion in practice.
+
 ## Feature: homepage grid groups tiles by product, not item
 `getShopGridProducts()`/`groupShopItemsByProduct()` in `src/lib/shop.ts`
 collapse `getShopItems()`'s one-row-per-item rows into one row per product
@@ -452,8 +492,10 @@ for the homepage grid, so a product's size/color variants share a single
 tile instead of one tile each. The representative item (used for the
 tile's image and its `?item=<id>` preselect link) is the first in-stock
 item in the group, falling back to the group's first item if none are in
-stock. The tile's stock number sums `inStock` across every item in the
-group — an interim approach (issue #64 still owns the stock badge's final
+stock. A product whose variants are sets (`getShopSets()`) is grouped the
+same way and gets a `representativeSetId` with a `?set=<id>` link instead,
+plus a "Set" tag on the tile. The tile's stock number sums `inStock` across
+every variant in the group — an interim approach (issue #64 still owns the stock badge's final
 design), so it effectively reads "in stock if any item in the group is
 available." `ItemGrid.astro`/`ItemCard.astro` take product-level props now;
 `ItemCard.astro` no longer renders a per-variant attribute label, since a

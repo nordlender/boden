@@ -1,8 +1,7 @@
 ---
-import '../styles/global.css';
+import HtmlShell from './HtmlShell.astro';
 import Navbar from '../components/Navbar.astro';
 import CartSidebar from '../components/cart/CartSidebar.astro';
-import ThemeInit from '../components/ThemeInit.astro';
 
 interface Props {
 	title?: string;
@@ -11,21 +10,10 @@ interface Props {
 const { title = 'Boden' } = Astro.props;
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>{title}</title>
-		<ThemeInit />
-	</head>
-	<body class="min-h-screen bg-bg text-text">
-		<Navbar />
-		<main>
-			<slot />
-		</main>
-		<CartSidebar />
-	</body>
-</html>
+<HtmlShell title={title}>
+	<Navbar slot="navbar" />
+	<main>
+		<slot />
+	</main>
+	<CartSidebar slot="after" />
+</HtmlShell>

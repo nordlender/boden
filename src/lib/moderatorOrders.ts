@@ -1,8 +1,9 @@
-import { and, asc, eq, gte, inArray, isNull, ne } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, ne } from 'drizzle-orm';
 import { db } from '../db/client';
 import { orderItems, orders } from '../db/schema';
 import { isForeignKeyViolation } from './db-errors';
 import { getReservationAvailability } from './reservation';
+import { RESERVING_STATUSES, type OrderStatus } from './orderStatus';
 
 // Moderator-side order operations — kept separate from member-side
 // src/lib/orders.ts (createOrder/createSplitOrders/deleteOrder/
@@ -33,7 +34,7 @@ export interface OrderDetail {
 	userId: string;
 	userName: string | null;
 	userEmail: string;
-	status: 'requested' | 'scheduled' | 'active' | 'returned' | 'rejected';
+	status: OrderStatus;
 	fromDate: string;
 	toDate: string;
 	note: string | null;
@@ -129,8 +130,7 @@ export interface PendingRequestRow {
 // sync rather than drifting from two copies of this query.
 export async function getPendingRequestRows(): Promise<PendingRequestRow[]> {
 	const pendingOrders = await db.query.orders.findMany({
-		where: (t, { and: andCol, eq: eqCol, isNull: isNullCol }) =>
-			andCol(eqCol(t.status, 'requested'), isNullCol(t.acceptedAt), isNullCol(t.rejectedAt)),
+		where: (t, { eq: eqCol }) => eqCol(t.status, 'requested'),
 		// Soonest pick-up first — that's what needs reviewing soonest.
 		orderBy: (t, { asc: ascCol }) => [ascCol(t.fromDate)],
 		with: { user: true, orderItems: { with: { item: true } } },
@@ -195,14 +195,14 @@ export async function getOrderIdByCode(orderCode: string): Promise<number | null
 export type AcceptOrderResult = { ok: true } | { ok: false; error: 'not_pending_review' };
 
 // Gate shared by acceptOrder/rejectOrder: an order is pending review only
-// once (status='requested', neither accepted nor rejected yet). Re-POSTing
+// while its status is still 'requested'. Re-POSTing
 // against an order that's since moved on (accepted by another moderator tab,
 // rejected, or further along) always fails this WHERE clause, so
 // `result.changes === 0` alone (no separate pre-read) tells us whether the
 // action actually applied — same "let the WHERE clause be the check"
 // pattern as src/lib/orders.ts's deleteOrder.
 const PENDING_REVIEW_WHERE = (orderId: number) =>
-	and(eq(orders.id, orderId), eq(orders.status, 'requested'), isNull(orders.acceptedAt), isNull(orders.rejectedAt));
+	and(eq(orders.id, orderId), eq(orders.status, 'requested'));
 
 export async function acceptOrder(orderId: number): Promise<AcceptOrderResult> {
 	const result = db
@@ -273,11 +273,11 @@ export async function confirmRetrieval(
 	try {
 		db.transaction((tx) => {
 			const order = tx
-				.select({ status: orders.status, acceptedAt: orders.acceptedAt, rejectedAt: orders.rejectedAt })
+				.select({ status: orders.status })
 				.from(orders)
 				.where(eq(orders.id, orderId))
 				.get();
-			if (!order || order.status !== 'scheduled' || order.acceptedAt === null || order.rejectedAt !== null) {
+			if (!order || order.status !== 'scheduled') {
 				throw new NotAcceptableError();
 			}
 
@@ -369,7 +369,7 @@ export async function getFollowingRentalWorries(orderId: number): Promise<Follow
 			.where(
 				and(
 					eq(orderItems.itemId, oi.itemId),
-					inArray(orders.status, ['requested', 'scheduled', 'active']),
+					inArray(orders.status, RESERVING_STATUSES),
 					gte(orders.fromDate, order.toDate),
 					ne(orders.id, order.id),
 				),

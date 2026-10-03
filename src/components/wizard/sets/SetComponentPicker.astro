@@ -1,0 +1,166 @@
+---
+// "Add a component" row at the bottom of SetRow's Components section —
+// same shape as ../ItemRow.astro's "New attribute" row. Picking an item
+// already in the set isn't an error: setWizard.ts's addSetComponent bumps
+// that row's quantity instead of erroring, per the setItems unique(setId,
+// itemId) constraint.
+//
+// A search-as-you-type combobox rather than a plain <select> — with the
+// catalogue already tens of items deep, a flat dropdown gets unwieldy fast.
+// Filters entirely client-side against the `items` list passed in (small
+// enough per page load that there's no need for a server round-trip per
+// keystroke).
+//
+// No quantity field here — a component is always added at quantity 1;
+// SetComponentList's own per-row quantity field is where it's adjusted
+// afterward, so this row doesn't need to duplicate that control.
+//
+// The results list is `position: fixed`, positioned in JS from the search
+// input's own bounding rect, rather than `absolute` within this row —
+// SetPanel.astro's row-list wrapper has `overflow-hidden` (to clip row
+// backgrounds to the panel's rounded bottom corners, same as
+// ../ItemPanel.astro), and this picker lives inside one specific row's own
+// expanded details panel, not as that panel's sibling the way
+// ButtonStrip's/SetToolbar's dropdowns do — so unlike those, relying on
+// `absolute` positioning here would get clipped by that ancestor
+// regardless of z-index.
+import AppIcon from '../../icons/AppIcon.astro';
+import TextMorphButton from '../../ui/TextMorphButton.astro';
+
+interface Props {
+	setId: number;
+	items: { id: number; name: string; productTitle?: string }[];
+	redirectTo: string;
+}
+
+const { setId, items, redirectTo } = Astro.props;
+const searchableItems = items.map((item) => ({ id: item.id, label: item.productTitle ? `${item.productTitle} — ${item.name}` : item.name }));
+---
+
+<form
+	method="post"
+	action="/api/wizard/set-component-add"
+	class="set-component-picker mt-1.5 flex items-center gap-2"
+	data-items={JSON.stringify(searchableItems)}
+>
+	<input type="hidden" name="setId" value={setId} />
+	<input type="hidden" name="redirectTo" value={redirectTo} />
+	<input type="hidden" name="itemId" data-component-item-id />
+	<input type="hidden" name="quantity" value="1" />
+
+	<div class="relative min-w-0 flex-1">
+		<AppIcon name="search" size={14} class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+		<input
+			type="text"
+			placeholder="Search for a component item…"
+			autocomplete="off"
+			class="w-full rounded border border-border-interactive py-1 pl-7 pr-2 text-sm"
+			data-component-search
+		/>
+		<ul
+			class="fixed z-20 max-h-56 overflow-y-auto rounded-md border border-border bg-surface py-1 text-sm shadow-lg"
+			data-component-results
+			hidden
+		>
+		</ul>
+	</div>
+
+	<TextMorphButton type="submit" action="add" size="sm" disabled data-component-submit />
+</form>
+
+<script>
+	// One wiring pass per picker on the page (a set's expanded details panel
+	// on /admin/sets can have several, one per set) — the `data-wired` guard
+	// keeps a re-render (e.g. after an htmx-less full page reload isn't an
+	// issue, but this stays defensive the same way TextMorphButton's own
+	// script does) from double-binding.
+	document.querySelectorAll<HTMLFormElement>('.set-component-picker').forEach((form) => {
+		if (form.dataset.wired) return;
+		form.dataset.wired = 'true';
+
+		let candidates: { id: number; label: string }[] = [];
+		try {
+			candidates = JSON.parse(form.dataset.items ?? '[]');
+		} catch {
+			candidates = [];
+		}
+
+		const searchInput = form.querySelector<HTMLInputElement>('[data-component-search]');
+		const idInput = form.querySelector<HTMLInputElement>('[data-component-item-id]');
+		const results = form.querySelector<HTMLUListElement>('[data-component-results]');
+		const submitButton = form.querySelector<HTMLButtonElement>('[data-component-submit]');
+
+		function setChosen(item: { id: number; label: string } | null) {
+			if (idInput) idInput.value = item ? String(item.id) : '';
+			if (submitButton) submitButton.disabled = !item;
+		}
+
+		// Anchors the fixed-position results list under the search input —
+		// called whenever it opens, and again on scroll/resize while it's
+		// open, since `position: fixed` doesn't track the input on its own.
+		function positionResults() {
+			if (!results || !searchInput) return;
+			const rect = searchInput.getBoundingClientRect();
+			results.style.left = `${rect.left}px`;
+			results.style.top = `${rect.bottom + 4}px`;
+			results.style.width = `${rect.width}px`;
+		}
+
+		function renderResults(query: string) {
+			if (!results) return;
+			const q = query.trim().toLowerCase();
+			// Nothing typed yet: show nothing rather than the whole catalogue —
+			// this is a search box, not a scroll-and-pick list.
+			const matches = q ? candidates.filter((item) => item.label.toLowerCase().includes(q)).slice(0, 20) : [];
+
+			results.replaceChildren();
+			results.hidden = matches.length === 0;
+			if (!results.hidden) positionResults();
+			for (const item of matches) {
+				const li = document.createElement('li');
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = 'block w-full truncate px-2.5 py-1.5 text-left text-text hover:bg-bg-subtle';
+				button.textContent = item.label;
+				button.addEventListener('click', () => {
+					if (searchInput) searchInput.value = item.label;
+					setChosen(item);
+					if (results) results.hidden = true;
+				});
+				li.appendChild(button);
+				results.appendChild(li);
+			}
+		}
+
+		searchInput?.addEventListener('input', () => {
+			// Typing again invalidates whatever was previously picked — the
+			// visible text and the submitted itemId must never disagree.
+			setChosen(null);
+			renderResults(searchInput.value);
+		});
+
+		searchInput?.addEventListener('focus', () => renderResults(searchInput.value));
+
+		document.addEventListener('click', (event) => {
+			if (!results || results.hidden) return;
+			if (event.target instanceof Node && form.contains(event.target)) return;
+			results.hidden = true;
+		});
+
+		// Keep the fixed-position results list under the input if the page (or
+		// any scrollable ancestor, e.g. the details panel) scrolls or the
+		// window resizes while it's open — `capture: true` on scroll so this
+		// fires for scrolling inside a nested container too, not just the
+		// window itself.
+		window.addEventListener(
+			'scroll',
+			() => {
+				if (results && !results.hidden) positionResults();
+			},
+			true,
+		);
+		window.addEventListener('resize', () => {
+			if (results && !results.hidden) positionResults();
+		});
+	});
+</script>

@@ -1,0 +1,51 @@
+---
+// Read-only rendering of src/lib/sets.ts's getSetComponentDisplay output —
+// there is nothing here for an admin to edit (see schema.ts's `sets.label`
+// comment: a set's contents are always derived from its components' own
+// attribute values, never entered separately). Components sharing an
+// identical attribute-key signature render as one shared table; anything
+// else is a plain line.
+import type { SetComponentDisplay } from '../../../lib/sets';
+
+interface Props {
+	display: SetComponentDisplay[];
+}
+
+const { display } = Astro.props;
+---
+{display.length === 0 ? (
+	<p class="text-sm italic text-text-muted">No components yet.</p>
+) : (
+	<div class="flex flex-col gap-3">
+		{display.map((group) =>
+			group.kind === 'table' ? (
+				<table class="w-full text-sm">
+					<thead>
+						<tr class="text-left text-xs uppercase tracking-wide text-text-muted">
+							<th class="pb-1 pr-2 font-medium">Item</th>
+							{group.keys.map((key) => <th class="pb-1 pr-2 font-medium">{key}</th>)}
+							<th class="pb-1 text-right font-medium">Qty</th>
+						</tr>
+					</thead>
+					<tbody>
+						{group.rows.map((row) => (
+							<tr class="border-t border-border">
+								<td class="py-1 pr-2 text-text">{row.productTitle}</td>
+								{row.values.map((value) => <td class="py-1 pr-2 text-text-muted">{value ?? '—'}</td>)}
+								<td class="py-1 text-right tabular-nums text-text">{row.quantity}</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			) : (
+				<p class="text-sm text-text">
+					{group.productTitle}
+					{group.attributes.length > 0 && (
+						<span class="text-text-muted"> ({group.attributes.map((a) => `${a.key}: ${a.value}`).join(', ')})</span>
+					)}
+					<span class="text-text-muted"> × {group.quantity}</span>
+				</p>
+			),
+		)}
+	</div>
+)}

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { vi } from 'vitest';
+import type { OrderStatus } from '../orderStatus';
 import {
 	acceptOrder,
 	confirmRetrieval,
@@ -68,7 +69,7 @@ async function seedOrder(opts: {
 	requestedQuantity?: number;
 	fromDate?: string;
 	toDate?: string;
-	status?: 'requested' | 'scheduled' | 'active' | 'returned' | 'rejected';
+	status?: OrderStatus;
 	acceptedAt?: Date | null;
 	rejectedAt?: Date | null;
 }) {
@@ -147,7 +148,7 @@ describe('acceptOrder', () => {
 	});
 
 	it('fails with not_pending_review for an order that is already accepted', async () => {
-		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, acceptedAt: new Date() });
+		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, status: 'scheduled', acceptedAt: new Date() });
 		expect(await acceptOrder(orderId)).toEqual({ ok: false, error: 'not_pending_review' });
 	});
 
@@ -172,7 +173,7 @@ describe('rejectOrder', () => {
 	});
 
 	it('fails with not_pending_review when already reviewed', async () => {
-		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, acceptedAt: new Date() });
+		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, status: 'scheduled', acceptedAt: new Date() });
 		expect(await rejectOrder(orderId, 'too late')).toEqual({ ok: false, error: 'not_pending_review' });
 	});
 });

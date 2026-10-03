@@ -1,12 +1,19 @@
 ---
 import ItemLine from '../ui/ItemLine.astro';
-import type { CartItem } from '../../lib/cart';
+import Badge from '../ui/Badge.astro';
+import SetChildrenList from './SetChildrenList.astro';
+import type { CartLine } from '../../lib/cart';
 
 interface Props {
-	item: CartItem;
+	item: CartLine;
 }
 
 const { item } = Astro.props;
+const isSet = 'setId' in item;
+// Sidebar quantity fields are collected by name for the bulk "Update cart"
+// request (see api/cart/update-all.ts) — set lines carry a `set_` infix so
+// an item and a set sharing a numeric id can't collide.
+const inputKey = isSet ? `set_${item.setId}` : String(item.itemId);
 ---
 
 <div data-cart-row class="py-3">
@@ -14,18 +21,20 @@ const { item } = Astro.props;
 		imageUrl={item.imageUrl}
 		name={item.productTitle}
 		href={item.productSlug ? `/products/${item.productSlug}` : null}
-		attributes={item.attributes}
+		attributes={isSet ? [] : item.attributes}
+		subtitle={isSet ? item.label : null}
 		thumbnailSize={48}
 		class="flex-wrap"
 	>
+		{isSet && <Badge class="mt-0.5 inline-block">Set</Badge>}
 		<Fragment slot="action">
-			<label class="sr-only" for={`sidebar-quantity-${item.itemId}`}>
+			<label class="sr-only" for={`sidebar-quantity-${inputKey}`}>
 				Quantity for {item.productTitle} (0 removes it)
 			</label>
 			<input
-				id={`sidebar-quantity-${item.itemId}`}
+				id={`sidebar-quantity-${inputKey}`}
 				type="number"
-				name={`quantity_${item.itemId}`}
+				name={`quantity_${inputKey}`}
 				value={item.quantity}
 				min="0"
 				data-cart-quantity
@@ -33,4 +42,5 @@ const { item } = Astro.props;
 			/>
 		</Fragment>
 	</ItemLine>
+	{isSet && <SetChildrenList components={item.children} quantity={item.quantity} class="ml-[3.75rem]" />}
 </div>

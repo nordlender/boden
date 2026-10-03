@@ -8,7 +8,7 @@ let testDb: BetterSQLite3Database<typeof schema>;
 
 vi.mock('../../db/client', () => import('../../test/testDb').then((m) => m.mockedDbClient));
 
-const { createProduct, updateProduct, getProductForEdit } = await import('../products');
+const { createProduct, updateProduct, getProductForEdit, ProductInputError } = await import('../products');
 
 describe('products', () => {
 	beforeEach(() => {
@@ -82,6 +82,57 @@ describe('products', () => {
 				.all();
 
 			expect(values).toEqual([{ name: 'Color', value: '' }]);
+		});
+
+		it('gives keys added on edit distinct sortOrders after the existing ones', async () => {
+			const id = await createProduct({ title: 'Harness', links: [], attributeKeys: ['Size', 'Color'] });
+
+			await updateProduct(id, { title: 'Harness', links: [], attributeKeys: ['Size', 'Color', 'Weight', 'Length'] });
+
+			const keys = testDb
+				.select({ name: schema.productAttributeKeys.name, sortOrder: schema.productAttributeKeys.sortOrder })
+				.from(schema.productAttributeKeys)
+				.where(eq(schema.productAttributeKeys.productId, id))
+				.orderBy(schema.productAttributeKeys.sortOrder)
+				.all();
+			expect(keys).toEqual([
+				{ name: 'Size', sortOrder: 0 },
+				{ name: 'Color', sortOrder: 1 },
+				{ name: 'Weight', sortOrder: 2 },
+				{ name: 'Length', sortOrder: 3 },
+			]);
+		});
+	});
+
+	describe('classification validation', () => {
+		function seedCategories() {
+			const [protection] = testDb.insert(schema.categories).values({ name: 'Protection', slug: 'protection' }).returning({ id: schema.categories.id }).all();
+			const [apparel] = testDb.insert(schema.categories).values({ name: 'Apparel', slug: 'apparel' }).returning({ id: schema.categories.id }).all();
+			const [cams] = testDb
+				.insert(schema.subcategories)
+				.values({ categoryId: protection.id, name: 'Cams', slug: 'cams' })
+				.returning({ id: schema.subcategories.id })
+				.all();
+			return { protection: protection.id, apparel: apparel.id, cams: cams.id };
+		}
+
+		it('rejects an unknown category', async () => {
+			await expect(createProduct({ title: 'X', categoryId: 999, links: [], attributeKeys: [] })).rejects.toBeInstanceOf(ProductInputError);
+		});
+
+		it('rejects a subcategory from a different category, on create and update', async () => {
+			const ids = seedCategories();
+			const mismatched = { title: 'X', categoryId: ids.apparel, subcategoryId: ids.cams, links: [], attributeKeys: [] };
+
+			await expect(createProduct(mismatched)).rejects.toBeInstanceOf(ProductInputError);
+
+			const id = await createProduct({ title: 'X', categoryId: ids.protection, subcategoryId: ids.cams, links: [], attributeKeys: [] });
+			await expect(updateProduct(id, mismatched)).rejects.toBeInstanceOf(ProductInputError);
+		});
+
+		it('rejects a subcategory with no category', async () => {
+			const ids = seedCategories();
+			await expect(createProduct({ title: 'X', subcategoryId: ids.cams, links: [], attributeKeys: [] })).rejects.toBeInstanceOf(ProductInputError);
 		});
 	});
 });

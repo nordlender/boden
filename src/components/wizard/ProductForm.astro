@@ -209,23 +209,21 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 
 	// Sub-category options are filtered to the currently selected category —
 	// all options are rendered server-side (small table) with a
-	// data-category-id tag, this just toggles [hidden] on the ones that don't
-	// match. Runs once on load (so an edit page's pre-selected subcategory's
-	// sibling options are already filtered) and again on every category change.
+	// data-category-id tag. The list is rebuilt from a snapshot rather than
+	// toggling [hidden] on options, which Safari ignores. Runs once on load
+	// (so an edit page's pre-selected subcategory is kept) and on every
+	// category change; a selection that no longer matches resets to "None".
 	const categorySelect = document.querySelector<HTMLSelectElement>('[data-category-select]');
 	const subcategorySelect = document.querySelector<HTMLSelectElement>('[data-subcategory-select]');
+	const allSubcategoryOptions = Array.from(subcategorySelect?.querySelectorAll<HTMLOptionElement>('option[data-category-id]') ?? []);
+	const noneOption = subcategorySelect?.querySelector<HTMLOptionElement>('option:not([data-category-id])');
 
 	function filterSubcategories() {
-		if (!categorySelect || !subcategorySelect) return;
-		const categoryId = categorySelect.value;
-		let selectedStillVisible = false;
-		subcategorySelect.querySelectorAll('option[data-category-id]').forEach((option) => {
-			if (!(option instanceof HTMLOptionElement)) return;
-			const matches = option.dataset.categoryId === categoryId;
-			option.hidden = !matches;
-			if (matches && option.selected) selectedStillVisible = true;
-		});
-		if (!selectedStillVisible) subcategorySelect.value = '';
+		if (!categorySelect || !subcategorySelect || !noneOption) return;
+		const selectedId = subcategorySelect.value;
+		const matching = allSubcategoryOptions.filter((option) => option.dataset.categoryId === categorySelect.value);
+		subcategorySelect.replaceChildren(noneOption, ...matching);
+		subcategorySelect.value = matching.some((option) => option.value === selectedId) ? selectedId : '';
 	}
 
 	categorySelect?.addEventListener('change', filterSubcategories);

@@ -7,6 +7,7 @@ import type { APIRoute } from 'astro';
 import { createProduct } from '../../../lib/products';
 import { requireAdmin, safeRedirectTarget } from '../../../lib/wizard-http';
 import { parseProductForm } from '../../../lib/productForm';
+import { saveOr400 } from '../../../lib/productHttp';
 
 export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 	const forbidden = requireAdmin(locals);
@@ -18,6 +19,7 @@ export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 		return new Response(parsed.error, { status: 400 });
 	}
 
-	const id = await createProduct(parsed.input);
+	const id = await saveOr400(() => createProduct(parsed.input));
+	if (id instanceof Response) return id;
 	return redirect(safeRedirectTarget(form, url.origin, `/admin/products/${id}/edit`));
 };

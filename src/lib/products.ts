@@ -1,6 +1,6 @@
 import { db } from '../db/client';
-import { products, productLinks, productAttributeKeys, items, itemAttributeValues } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { categories, subcategories, products, productLinks, productAttributeKeys, items, itemAttributeValues } from '../db/schema';
+import { eq, max } from 'drizzle-orm';
 
 export interface CategoryOption {
 	id: number;
@@ -41,17 +41,35 @@ function slugify(input: string): string {
 	return base || 'product';
 }
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 // Same collision-avoidance shape as wizard.ts's uniqueItemSlug/setWizard.ts's
-// equivalent — small table, a loop of existence checks is fine.
-async function uniqueProductSlug(title: string, excludeId?: number): Promise<string> {
+// equivalent. Runs on the caller's transaction so the check and the write
+// that follows can't interleave with another save.
+function uniqueProductSlug(tx: Tx, title: string, excludeId?: number): string {
 	const base = slugify(title);
 	let candidate = base;
 	let suffix = 2;
 	for (;;) {
-		const existing = await db.query.products.findFirst({ where: (t, { eq }) => eq(t.slug, candidate) });
+		const existing = tx.select({ id: products.id }).from(products).where(eq(products.slug, candidate)).get();
 		if (!existing || existing.id === excludeId) return candidate;
 		candidate = `${base}-${suffix++}`;
 	}
+}
+
+// Bad user input the routes should surface as a 400, not a 500.
+export class ProductInputError extends Error {}
+
+// A subcategory only makes sense under its own category, and both ids must
+// exist — the form's client-side filter is just a convenience.
+function assertValidClassification(tx: Tx, categoryId: number | null | undefined, subcategoryId: number | null | undefined): void {
+	if (categoryId != null && !tx.select({ id: categories.id }).from(categories).where(eq(categories.id, categoryId)).get()) {
+		throw new ProductInputError('Unknown category');
+	}
+	if (subcategoryId == null) return;
+	const subcategory = tx.select({ categoryId: subcategories.categoryId }).from(subcategories).where(eq(subcategories.id, subcategoryId)).get();
+	if (!subcategory) throw new ProductInputError('Unknown sub-category');
+	if (subcategory.categoryId !== categoryId) throw new ProductInputError('Sub-category does not belong to the chosen category');
 }
 
 export interface ProductLinkInput {
@@ -73,10 +91,11 @@ export interface ProductInput {
 }
 
 export async function createProduct(input: ProductInput): Promise<number> {
-	const slug = await uniqueProductSlug(input.title);
 	const attributeKeyNames = dedupeKeyNames(input.attributeKeys);
 
 	return db.transaction((tx) => {
+		assertValidClassification(tx, input.categoryId, input.subcategoryId);
+		const slug = uniqueProductSlug(tx, input.title);
 		const created = tx
 			.insert(products)
 			.values({
@@ -105,10 +124,11 @@ export async function createProduct(input: ProductInput): Promise<number> {
 // (see PR description). New names fan a blank value out to every existing
 // item already on this product, same as getOrCreateAttributeKey.
 export async function updateProduct(id: number, input: ProductInput): Promise<void> {
-	const slug = await uniqueProductSlug(input.title, id);
 	const attributeKeyNames = dedupeKeyNames(input.attributeKeys);
 
 	db.transaction((tx) => {
+		assertValidClassification(tx, input.categoryId, input.subcategoryId);
+		const slug = uniqueProductSlug(tx, input.title, id);
 		tx.update(products)
 			.set({
 				slug,
@@ -133,7 +153,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
 			.all();
 		const existingNames = new Set(existingKeys.map((k) => k.name));
 		const newNames = attributeKeyNames.filter((name) => !existingNames.has(name));
-		insertAttributeKeysFanningToExistingItems(tx, id, newNames);
+		insertAttributeKeys(tx, id, newNames);
 	});
 }
 
@@ -149,8 +169,6 @@ function dedupeKeyNames(names: string[]): string[] {
 	return result;
 }
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
 function insertLinks(tx: Tx, productId: number, links: ProductLinkInput[]): void {
 	const rows = links
 		.map((link) => ({ label: link.label.trim(), url: link.url.trim() }))
@@ -161,29 +179,29 @@ function insertLinks(tx: Tx, productId: number, links: ProductLinkInput[]): void
 		.run();
 }
 
-// No existing items to fan out to yet on create — plain insert.
+// Appends keys after the product's current last sortOrder and, same fan-out
+// rule as wizard.ts's getOrCreateAttributeKey, gives every item already on
+// the product a blank value for each — otherwise they'd silently be missing a
+// field the template now defines. On create there are no items yet, so the
+// fan-out is a no-op.
 function insertAttributeKeys(tx: Tx, productId: number, names: string[]): void {
 	if (names.length === 0) return;
-	tx.insert(productAttributeKeys)
-		.values(names.map((name, index) => ({ productId, name, sortOrder: index })))
-		.run();
-}
 
-// Same fan-out rule as wizard.ts's getOrCreateAttributeKey: a new key on a
-// product that already has assigned items must give every one of those
-// items a blank value for it, or they'd silently be missing a field the
-// template now defines.
-function insertAttributeKeysFanningToExistingItems(tx: Tx, productId: number, names: string[]): void {
-	if (names.length === 0) return;
+	const last = tx
+		.select({ value: max(productAttributeKeys.sortOrder) })
+		.from(productAttributeKeys)
+		.where(eq(productAttributeKeys.productId, productId))
+		.get();
+	const startOrder = last?.value == null ? 0 : last.value + 1;
 
 	const created = tx
 		.insert(productAttributeKeys)
-		.values(names.map((name) => ({ productId, name })))
+		.values(names.map((name, index) => ({ productId, name, sortOrder: startOrder + index })))
 		.returning({ id: productAttributeKeys.id })
 		.all();
 
 	const siblingItems = tx.select({ id: items.id }).from(items).where(eq(items.productId, productId)).all();
-	if (siblingItems.length === 0 || created.length === 0) return;
+	if (siblingItems.length === 0) return;
 
 	tx.insert(itemAttributeValues)
 		.values(siblingItems.flatMap((item) => created.map((key) => ({ itemId: item.id, attributeId: key.id, value: '' }))))

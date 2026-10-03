@@ -13,14 +13,14 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
-import { getCartItems } from '../../lib/cart';
+import { getCartLines } from '../../lib/cart';
 import CartSidebarRows from '../../components/cart/CartSidebarRows.astro';
 
 export const GET: APIRoute = async ({ cookies }) => {
-	const cartItems = await getCartItems(cookies);
+	const cartLines = await getCartLines(cookies);
 	const container = await AstroContainer.create();
 	const html = await container.renderToString(CartSidebarRows, {
-		props: { items: cartItems },
+		props: { items: cartLines },
 	});
 	return new Response(html, {
 		headers: { 'Content-Type': 'text/html' },

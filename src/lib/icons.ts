@@ -4,6 +4,9 @@
 // through.
 export const icons = {
 	product: 'tabler:package',
+	// /admin/sets — a set is a *bundle* of items, so a distinct icon from
+	// `product`'s single package (see schema.ts's `sets` table comment).
+	set: 'tabler:box-multiple',
 	// {category_icon} / sub-category tag — both inherited from the item's
 	// product, not set per-item. Type (per-item, editable at creation) has
 	// been removed in favor of this.

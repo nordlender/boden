@@ -1,10 +1,16 @@
 ---
-// Replaces AttributesButton. Toggles the sibling `.item-details` panel
-// (bigger image, description, attributes — see ItemRow.astro) open/closed.
-// Not a native <details>/<summary> — the row also holds a SelectIcon
-// checkbox, and summary's whole-element click-to-toggle would fire on
-// every click inside it, including the checkbox. A plain button + a
-// delegated click listener (matching SelectIcon's pattern) sidesteps that.
+// Replaces AttributesButton. Toggles the sibling details panel (bigger
+// image, description, attributes/components — see ItemRow.astro and
+// sets/SetRow.astro) open/closed. Not a native <details>/<summary> — the
+// row also holds a SelectIcon checkbox, and summary's whole-element
+// click-to-toggle would fire on every click inside it, including the
+// checkbox. A plain button + a delegated click listener (matching
+// SelectIcon's pattern) sidesteps that.
+//
+// Targets the row/panel via `[data-details-row]`/`[data-details-panel]`
+// rather than hardcoded `.item-row`/`.item-details` classes, so both
+// ItemRow.astro and sets/SetRow.astro (which keep their own distinct class
+// names for styling/scoping) can share this one component and script.
 import MorphIcon from 'morphicons/astro';
 import { detailsToggle } from '../../lib/icon-nodes';
 import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
@@ -12,12 +18,14 @@ import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 interface Props {
 	label: string;
 	// docs/schema.md Work item: "UI cue for a product with no attribute
-	// template yet" — a small red hint on this button when the item's
-	// product currently defines zero productAttributeKeys.
+	// template yet" — a small red hint on this button when the row has some
+	// row-specific reason to draw attention (item: product with zero
+	// attribute keys; set: no components yet, or an archived component).
 	warning?: boolean;
+	warningLabel?: string;
 }
 
-const { label, warning = false } = Astro.props;
+const { label, warning = false, warningLabel = 'This product has no attribute template yet' } = Astro.props;
 ---
 <button type="button" class:list={['details-toggle-button relative grid place-items-center justify-self-center rounded text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]} aria-expanded="false" aria-label={label}>
 	<MorphIcon icon={detailsToggle.closed} size={triggerIconPixelSize.sm} class="details-toggle-icon" />
@@ -25,7 +33,7 @@ const { label, warning = false } = Astro.props;
 		// TODO: Style later — bg-warning only clears ~2.9:1 against the
 		// button's hover:bg-bg-subtle background, short of WCAG's 3:1 for
 		// graphical objects. Consider a ring or a darker warning shade here.
-		<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-warning" title="This product has no attribute template yet"></span>
+		<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-warning" title={warningLabel}></span>
 	)}
 </button>
 
@@ -36,8 +44,8 @@ const { label, warning = false } = Astro.props;
 	document.addEventListener('click', (event) => {
 		const button = (event.target as Element).closest<HTMLButtonElement>('.details-toggle-button');
 		if (!button) return;
-		const row = button.closest('.item-row');
-		const panel = row?.querySelector<HTMLElement>('.item-details');
+		const row = button.closest('[data-details-row]');
+		const panel = row?.querySelector<HTMLElement>('[data-details-panel]');
 		if (!panel) return;
 		const expanded = button.getAttribute('aria-expanded') !== 'true';
 		button.setAttribute('aria-expanded', String(expanded));

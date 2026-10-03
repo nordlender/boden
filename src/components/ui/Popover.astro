@@ -24,7 +24,8 @@
 //   `data-popover-container` on the element that wraps the *whole* row
 //   (e.g. the div wrapping both the Accept and Reject buttons) — not on
 //   the trigger itself, since fill-parent's point is to span siblings the
-//   trigger doesn't contain.
+//   trigger doesn't contain. Kept for future use (no callers yet, #258):
+//   meant for the reject-reason popup in #154.
 interface Props {
 	id: string;
 	placement?: 'anchor' | 'fill-parent';

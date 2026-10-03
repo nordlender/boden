@@ -9,8 +9,8 @@ export const prerender = false;
 // an order is actually created.
 
 import type { APIRoute } from 'astro';
-import { db } from '../../../db/client';
 import { addToCart } from '../../../lib/cart';
+import { findRentableItems } from '../../../lib/rentable';
 import { isSafeRedirectTarget } from '../../../lib/redirect';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
@@ -31,11 +31,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	// A shopper can only ever reach this from a rendered product page, so an
 	// itemId that doesn't resolve to a live, published-product item means a
 	// stale/tampered request, not a normal flow to redirect through.
-	const item = await db.query.items.findFirst({
-		where: (t, { eq }) => eq(t.id, itemId),
-		with: { product: true },
-	});
-	if (!item || item.archived || item.product?.status !== 'published') {
+	const [item] = await findRentableItems([itemId]);
+	if (!item) {
 		return new Response('Item not available', { status: 404 });
 	}
 

@@ -38,6 +38,8 @@ const CONTACT = {
 const ITEM_A_ID = 1;
 const ITEM_B_ID = 2;
 const ITEM_C_ID = 3;
+const HIDDEN_PRODUCT_ITEM_ID = 4;
+const ARCHIVED_ITEM_ID = 5;
 
 vi.mock('../../db/client', async () => {
 	const { createTestDb } = await import('../../db/testDb');
@@ -55,6 +57,13 @@ vi.mock('../../db/client', async () => {
 	await db.insert(schema.items).values({ productId: product.id, slug: 'item-a', name: 'Item A', stockCount: 1 });
 	await db.insert(schema.items).values({ productId: product.id, slug: 'item-b', name: 'Item B', stockCount: 5 });
 	await db.insert(schema.items).values({ productId: product.id, slug: 'item-c', name: 'Item C', stockCount: 5 });
+	// Item D: under a hidden product, so never rentable. Item E: archived.
+	const [hiddenProduct] = await db
+		.insert(schema.products)
+		.values({ slug: 'hidden-rope', title: 'Hidden Rope', categoryId: category.id, status: 'hidden' })
+		.returning();
+	await db.insert(schema.items).values({ productId: hiddenProduct.id, slug: 'item-d', name: 'Item D', stockCount: 5 });
+	await db.insert(schema.items).values({ productId: product.id, slug: 'item-e', name: 'Item E', stockCount: 5, archived: true });
 	await db.insert(schema.users).values({ id: 'member-1', name: 'Member', email: 'member@example.com' });
 	const [otherUser] = await db.insert(schema.users).values({ id: 'other-user', name: 'Other', email: 'other@example.com' }).returning();
 
@@ -69,6 +78,38 @@ vi.mock('../../db/client', async () => {
 });
 
 describe('createOrder', () => {
+	it('drops entries for hidden-product and archived items, and rejects an order with nothing rentable', async () => {
+		const mixed = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries: [
+				{ itemId: ITEM_B_ID, quantity: 1 },
+				{ itemId: HIDDEN_PRODUCT_ITEM_ID, quantity: 1 },
+				{ itemId: ARCHIVED_ITEM_ID, quantity: 1 },
+			],
+			fromDate: '2026-03-01',
+			toDate: '2026-03-05',
+			...CONTACT,
+		});
+		expect(mixed.ok).toBe(true);
+		if (!mixed.ok) return;
+		const { db } = await import('../../db/client');
+		const rows = await db.query.orderItems.findMany({
+			where: (t, { eq }) => eq(t.orderId, mixed.orderId),
+		});
+		expect(rows.map((r) => r.itemId)).toEqual([ITEM_B_ID]);
+
+		const none = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries: [{ itemId: HIDDEN_PRODUCT_ITEM_ID, quantity: 1 }],
+			fromDate: '2026-03-10',
+			toDate: '2026-03-12',
+			...CONTACT,
+		});
+		expect(none).toEqual({ ok: false, error: 'empty_cart' });
+	});
+
 	it('creates an order and returns a checkout token distinct from the order code', async () => {
 		const cartEntries: CartEntry[] = [{ itemId: ITEM_B_ID, quantity: 2 }];
 		const result = await createOrder({

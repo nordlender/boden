@@ -5,8 +5,8 @@ export const prerender = false;
 // (src/pages/api/orders/create.ts).
 
 import type { APIRoute } from 'astro';
-import { db } from '../../../db/client';
 import { updateCartQuantity } from '../../../lib/cart';
+import { findRentableItems } from '../../../lib/rentable';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	const form = await request.formData();
@@ -25,11 +25,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	// rejected (updateCartQuantity happily inserts a new line for an itemId
 	// that wasn't already in the cart).
 	if (quantity > 0) {
-		const item = await db.query.items.findFirst({
-			where: (t, { eq }) => eq(t.id, itemId),
-			with: { product: true },
-		});
-		if (!item || item.archived || item.product?.status !== 'published') {
+		const [item] = await findRentableItems([itemId]);
+		if (!item) {
 			return new Response('Item not available', { status: 404 });
 		}
 	}

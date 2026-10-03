@@ -2,6 +2,7 @@ import type { AstroCookies } from 'astro';
 import { db } from '../db/client';
 import { reservedQuantitiesByItem } from './stock';
 import { sortAttributes } from './shop';
+import { isRentable } from './rentable';
 
 export type CartEntry = { itemId: number; quantity: number };
 
@@ -94,9 +95,7 @@ export function clearCart(cookies: AstroCookies) {
 // current stock) — used by the cart sidebar's GET /api/cart endpoint and the
 // /cart review page. Entries pointing at an item that no longer exists, has
 // since been archived, or whose product is no longer published are silently
-// dropped. src/lib/orders.ts's createOrder does the same for nonexistent and
-// archived entries, but — unlike here — deliberately does NOT re-check
-// product status at checkout time; see the note on createOrder for why.
+// dropped (rule: isRentable in ./rentable.ts, also applied by createOrder).
 export async function getCartItems(cookies: AstroCookies): Promise<CartItem[]> {
 	const cart = getCart(cookies);
 	if (cart.length === 0) return [];
@@ -110,7 +109,7 @@ export async function getCartItems(cookies: AstroCookies): Promise<CartItem[]> {
 		},
 	});
 
-	const visibleRows = rows.filter((row) => !row.archived && row.product?.status === 'published');
+	const visibleRows = rows.filter(isRentable);
 	const rowsById = new Map(visibleRows.map((row) => [row.id, row]));
 	const reserved = await reservedQuantitiesByItem(visibleRows.map((row) => row.id));
 

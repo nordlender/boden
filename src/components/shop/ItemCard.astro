@@ -2,21 +2,20 @@
 import ImagePlaceholder from './ImagePlaceholder.astro';
 
 interface Props {
-	// Which product-page query param this tile preselects — see
-	// src/pages/products/[slug].astro's `?item=`/`?set=` handling.
-	kind: 'item' | 'set';
-	variantId: number;
+	// The grid tile is one per product (see lib/shop.ts's ShopGridProduct);
+	// exactly one of these is non-null — the representative variant, used for
+	// the `?item=<id>` / `?set=<id>` link that preselects it on
+	// /products/[slug] (see VariantPicker.astro).
+	itemId: number | null;
+	setId: number | null;
 	productSlug: string;
 	productTitle: string;
 	imageUrl: string | null;
-	// Already-formatted per-kind subtitle — an item's joined attribute
-	// values, or a set's own manually-typed label — computed by the caller
-	// (ItemGrid) since an item and a set derive it differently.
-	variantLabel: string | null;
 }
 
-const { kind, variantId, productSlug, productTitle, imageUrl, variantLabel } = Astro.props;
-const href = `/products/${productSlug}?${kind}=${variantId}`;
+const { itemId, setId, productSlug, productTitle, imageUrl } = Astro.props;
+const isSet = setId !== null;
+const href = `/products/${productSlug}?${isSet ? `set=${setId}` : `item=${itemId}`}`;
 ---
 
 <a
@@ -25,7 +24,7 @@ const href = `/products/${productSlug}?${kind}=${variantId}`;
 >
 	<div class="relative aspect-square overflow-hidden bg-bg-subtle">
 		{
-			kind === 'set' && (
+			isSet && (
 				<span class="absolute left-2 top-2 rounded-full bg-surface px-2 py-0.5 text-[10px] font-medium text-text-muted shadow-sm">
 					Set
 				</span>
@@ -43,6 +42,5 @@ const href = `/products/${productSlug}?${kind}=${variantId}`;
 	</div>
 	<div class="flex flex-1 flex-col gap-1 p-3">
 		<h3 class="text-sm font-medium text-text">{productTitle}</h3>
-		{variantLabel && <p class="text-xs text-text-muted">{variantLabel}</p>}
 	</div>
 </a>

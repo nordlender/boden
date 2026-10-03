@@ -4,7 +4,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { removeFromCart } from '../../../lib/cart';
-import { parseCartEntryKind } from '../../../lib/cart-http';
+import { cartEntryRef, parseCartEntryKind } from '../../../lib/cart-http';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	const form = await request.formData();
@@ -21,6 +21,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 		return new Response(kind === 'item' ? 'Invalid item' : 'Invalid set', { status: 400 });
 	}
 
-	removeFromCart(cookies, kind === 'item' ? { itemId: id } : { setId: id });
+	removeFromCart(cookies, cartEntryRef(kind, id));
 	return redirect('/cart');
 };

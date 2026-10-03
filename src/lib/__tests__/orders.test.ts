@@ -43,8 +43,9 @@ const SET_X_ID = 1;
 const SET_Y_ID = 2; // contains only item D, which is archived
 
 vi.mock('../../db/client', async () => {
-	const schema = await import('../../db/schema');
 	const { createTestDb } = await import('../../db/testDb');
+	const schema = await import('../../db/schema');
+
 	const db = createTestDb();
 
 	const [category] = await db.insert(schema.categories).values({ name: 'Ropes', slug: 'ropes' }).returning();

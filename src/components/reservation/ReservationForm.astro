@@ -3,6 +3,7 @@ import ReservationCalendar from './ReservationCalendar.astro';
 import ReservationItemRow from './ReservationItemRow.astro';
 import CheckoutForm from '../cart/CheckoutForm.astro';
 import { entryKey, type CartLine } from '../../lib/cart';
+import { formatAttributes } from '../../lib/attributes';
 import type { ReservationCartLineRef } from './reservationFormState';
 
 interface Props {
@@ -26,25 +27,25 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 
 <div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} class="flex flex-col gap-8">
 	<section>
-		<h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase">1. Pick-up &amp; return dates</h2>
+		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">1. Pick-up &amp; return dates</h2>
 		<ReservationCalendar availablePickupDates={availablePickupDates} />
 	</section>
 
 	<section>
-		<h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase">2. Your items</h2>
+		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">2. Your items</h2>
 
 		<p
 			data-mixed-availability-warning
 			hidden
-			class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
+			class="mb-4 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-warning-text"
 		>
 			At least one of the items is not available in this timeframe. You can set up a separate order by clicking the
 			split icon next to each item.
 		</p>
 
-		<p data-availability-loading hidden class="mb-4 text-sm text-gray-500">Checking availability…</p>
+		<p data-availability-loading hidden class="mb-4 text-sm text-text-muted">Checking availability…</p>
 
-		<div class="divide-y divide-gray-200 border-y border-gray-200">
+		<div class="divide-y divide-border border-y border-border">
 			{
 				cartLines.map((line) =>
 					'setId' in line ? (
@@ -56,7 +57,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 							imageUrl={line.imageUrl}
 							quantity={line.quantity}
 							subtitle={line.label}
-							children={line.children}
+							components={line.children}
 						/>
 					) : (
 						<ReservationItemRow
@@ -66,7 +67,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 							productTitle={line.productTitle}
 							imageUrl={line.imageUrl}
 							quantity={line.quantity}
-							subtitle={line.attributes.map((a) => a.value).join(' / ')}
+							subtitle={formatAttributes(line.attributes)}
 						/>
 					),
 				)
@@ -75,9 +76,9 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 	</section>
 
 	<section>
-		<h2 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase">3. Your details</h2>
+		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">3. Your details</h2>
 		<CheckoutForm name={name} email={email} mobile={mobile} hasUnpaidFees={hasUnpaidFees} userIsMember={userIsMember} />
-		<p data-submit-hint class="mt-2 text-sm text-gray-500">Select your pick-up and return dates above to continue.</p>
+		<p data-submit-hint class="mt-2 text-sm text-text-muted">Select your pick-up and return dates above to continue.</p>
 	</section>
 </div>
 

@@ -59,11 +59,6 @@ export interface ShopSet {
 	componentDisplay: SetComponentDisplay[];
 }
 
-// A product's variant slot resolves to either an item or a set — see
-// src/db/schema.ts's `sets` comment. Used by the shop grid, which lists one
-// tile per variant (item or set) across every product, not one per product.
-export type ShopVariant = ({ kind: 'item' } & ShopItem) | ({ kind: 'set' } & ShopSet);
-
 export interface ShopProductLink {
 	id: number;
 	label: string;
@@ -213,12 +208,96 @@ export async function getShopSets(): Promise<ShopSet[]> {
 	);
 }
 
-// The shop grid's data source: every item and set variant across every
-// published product, combined — see ShopVariant's comment for why the grid
-// isn't grouped by product.
-export async function getShopVariants(): Promise<ShopVariant[]> {
+export interface ShopGridProduct {
+	productId: number;
+	productSlug: string;
+	productTitle: string;
+	// Representative item's image/id — see groupShopItemsByProduct for how
+	// it's picked. Used for the tile's image and the `?item=<id>` link that
+	// preselects a variant on /products/[slug].
+	representativeItemId: number | null;
+	// Set only for a product whose variants are sets (a product's variants are
+	// all items or all sets, never a mix — see VariantPicker.astro). Exactly
+	// one of representativeItemId / representativeSetId is non-null.
+	representativeSetId: number | null;
+	imageUrl: string | null;
+	categoryName: string | null;
+	subcategoryName: string | null;
+	// Sum of every sibling variant's inStock — interim approach (issue #64
+	// still owns the stock badge's final design), so this effectively reads
+	// "in stock if any variant in the group is available."
+	inStock: number;
+}
+
+// What both an item and a set variant provide to the grid — ShopItem and
+// ShopSet each satisfy this structurally, so one grouping routine serves both.
+type GridVariant = Pick<
+	ShopItem,
+	'id' | 'productId' | 'productSlug' | 'productTitle' | 'imageUrl' | 'categoryName' | 'subcategoryName' | 'inStock'
+>;
+
+// Collapses one-row-per-variant rows into one row per product, for the
+// homepage grid — a product with N size/color variants should render as one
+// tile, not N. Preserves the input's ordering (first occurrence of each
+// productId), since getShopItems/getShopSets already order by id ascending.
+function groupVariantsByProduct(
+	variants: GridVariant[],
+): (Omit<ShopGridProduct, 'representativeItemId' | 'representativeSetId'> & { representativeId: number })[] {
+	const order: number[] = [];
+	const groups = new Map<number, GridVariant[]>();
+	for (const variant of variants) {
+		if (!groups.has(variant.productId)) {
+			order.push(variant.productId);
+			groups.set(variant.productId, []);
+		}
+		groups.get(variant.productId)!.push(variant);
+	}
+
+	return order.map((productId) => {
+		const group = groups.get(productId)!;
+		// Representative = first in-stock variant, falling back to the first
+		// variant in the group if none are in stock.
+		const representative = group.find((variant) => variant.inStock > 0) ?? group[0];
+		return {
+			productId,
+			productSlug: representative.productSlug,
+			productTitle: representative.productTitle,
+			representativeId: representative.id,
+			imageUrl: representative.imageUrl,
+			categoryName: representative.categoryName,
+			subcategoryName: representative.subcategoryName,
+			inStock: group.reduce((sum, variant) => sum + variant.inStock, 0),
+		};
+	});
+}
+
+export function groupShopItemsByProduct(items: ShopItem[]): ShopGridProduct[] {
+	return groupVariantsByProduct(items).map(({ representativeId, ...tile }) => ({
+		...tile,
+		representativeItemId: representativeId,
+		representativeSetId: null,
+	}));
+}
+
+export function groupShopSetsByProduct(sets: ShopSet[]): ShopGridProduct[] {
+	return groupVariantsByProduct(sets).map(({ representativeId, ...tile }) => ({
+		...tile,
+		representativeItemId: null,
+		representativeSetId: representativeId,
+	}));
+}
+
+// The homepage grid's data source: one row per published product,
+// collapsing its variants into a single representative tile. Item products
+// first (by item id), then set-only products (by set id). A product that
+// somehow has both is shown as an item product — the same "items unless
+// there are none" rule VariantPicker.astro applies.
+export async function getShopGridProducts(): Promise<ShopGridProduct[]> {
 	const [items, sets] = await Promise.all([getShopItems(), getShopSets()]);
-	return [...items.map((item): ShopVariant => ({ kind: 'item', ...item })), ...sets.map((set): ShopVariant => ({ kind: 'set', ...set }))];
+	const itemTiles = groupShopItemsByProduct(items);
+	const itemProductIds = new Set(itemTiles.map((tile) => tile.productId));
+	const setTiles = groupShopSetsByProduct(sets).filter((tile) => !itemProductIds.has(tile.productId));
+	return [...itemTiles, ...setTiles];
 }
 
 // Every published product's slug with at least a wizard-created row —

@@ -16,6 +16,12 @@ export function parseCartEntryKind(rawItemId: FormDataEntryValue | null, rawSetI
 	return null;
 }
 
+// The cart.ts `{ itemId } | { setId }` ref for a parsed kind + id — what
+// addToCart/updateCartQuantity/removeFromCart key a line by.
+export function cartEntryRef(kind: CartEntryKind, id: number): { itemId: number } | { setId: number } {
+	return kind === 'item' ? { itemId: id } : { setId: id };
+}
+
 // True when the given item/set is a live row belonging to a published
 // product, not archived — i.e. actually addable to a cart right now. Used
 // by add.ts unconditionally, and by update.ts only for a quantity > 0

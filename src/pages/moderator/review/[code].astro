@@ -9,13 +9,12 @@ import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro
 import BackLink from '../../../components/moderator/BackLink.astro';
 import Button from '../../../components/ui/Button.astro';
 import TextMorphButton from '../../../components/ui/TextMorphButton.astro';
-import { getOrderDetail } from '../../../lib/moderatorOrders';
-import { isPositiveInteger } from '../../../lib/wizard-http';
+import { getOrderDetailByCode } from '../../../lib/moderatorOrders';
 
-const idParam = Number(Astro.params.id);
-const order = isPositiveInteger(idParam) ? await getOrderDetail(idParam) : null;
+const codeParam = Astro.params.code;
+const order = codeParam ? await getOrderDetailByCode(codeParam) : null;
 
-// An id that doesn't resolve to a real order (bad bookmark, typo, deleted
+// A code that doesn't resolve to a real order (bad bookmark, typo, deleted
 // row) has nowhere sensible to land but back at the requests queue.
 if (!order) {
 	return Astro.redirect('/moderator/requests');

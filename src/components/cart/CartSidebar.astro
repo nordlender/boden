@@ -17,12 +17,13 @@ import CartActionsBar from './CartActionsBar.astro';
 		</button>
 	</div>
 
-	<div data-cart-list class="flex-1 divide-y divide-border overflow-y-auto px-4">
+	<div data-cart-list class="flex-1 overflow-y-auto px-4">
 		<p data-cart-empty class="py-6 text-sm text-text-muted">Your cart is empty.</p>
+		<div data-cart-rows class="divide-y divide-border"></div>
 	</div>
 
 	<div class="border-t border-border p-4">
-		<CartActionsBar primaryHref="/cart" primaryLabel="Review order" clearHidden />
+		<CartActionsBar primaryHref="/cart" primaryLabel="Review order" clearHidden withUpdate />
 	</div>
 </aside>
 
@@ -30,130 +31,61 @@ import CartActionsBar from './CartActionsBar.astro';
 	// Pages using this sidebar (via BaseLayout) can be prerendered — see
 	// astro.config.mjs — so there is no per-request cart cookie to read
 	// server-side. It always fetches its content client-side instead, from
-	// GET /api/cart (src/pages/api/cart.ts), which wraps
-	// src/lib/cart.ts's getCartLines.
-	type CartApiLine =
-		| {
-				itemId: number;
-				productSlug: string | null;
-				productTitle: string;
-				imageUrl: string | null;
-				quantity: number;
-				attributes: { key: string; value: string }[];
-			}
-		| {
-				setId: number;
-				productSlug: string | null;
-				productTitle: string;
-				imageUrl: string | null;
-				quantity: number;
-				// No attribute template of its own — a set's subtitle is the
-				// admin's manually-typed label (e.g. "S"), not an attribute list.
-				label: string | null;
-				children: { itemId: number; productTitle: string; quantityPerSet: number }[];
-			};
-
+	// GET /api/cart (src/pages/api/cart.ts), which renders the
+	// CartSidebarRows/ItemLine markup server-side via the Container API and
+	// returns it as an HTML partial — the client just swaps it in rather
+	// than building DOM nodes by hand. Since the rows are replaced wholesale
+	// on every load, quantity edits are handled by delegation on
+	// [data-cart-rows] instead of per-row listeners. There is no per-row remove:
+	// a quantity of 0 removes the line when "Update cart" is clicked.
 	const sidebar = document.querySelector<HTMLElement>('[data-cart-sidebar]');
 	const backdrop = document.querySelector<HTMLElement>('[data-cart-backdrop]');
 	const list = document.querySelector<HTMLElement>('[data-cart-list]');
+	const rows = document.querySelector<HTMLElement>('[data-cart-rows]');
 	const emptyMessage = document.querySelector<HTMLElement>('[data-cart-empty]');
 	const clearWrapper = document.querySelector<HTMLElement>('[data-cart-clear-wrapper]');
+	const updateButton = document.querySelector<HTMLButtonElement>('[data-cart-update]');
+	const primaryButton = document.querySelector<HTMLElement>('[data-cart-primary]');
 	const clearButton = document.querySelector<HTMLButtonElement>('[data-cart-clear]');
 	const toggleButtons = document.querySelectorAll<HTMLElement>('[data-cart-toggle]');
 
-	if (sidebar && backdrop && list && emptyMessage) {
+	if (sidebar && backdrop && list && rows && emptyMessage) {
 		const isOpen = () => !sidebar.classList.contains('translate-x-full');
 
 		async function loadCart() {
-			let cartLines: CartApiLine[] = [];
+			let html = '';
 			try {
 				const res = await fetch('/api/cart');
-				cartLines = await res.json();
+				html = await res.text();
 			} catch {
 				return;
 			}
 
-			list?.querySelectorAll('[data-cart-row]').forEach((row) => row.remove());
-
-			if (cartLines.length === 0) {
-				emptyMessage!.hidden = false;
-				if (clearWrapper) clearWrapper.hidden = true;
-				return;
-			}
-			emptyMessage!.hidden = true;
-			if (clearWrapper) clearWrapper.hidden = false;
-
-			for (const line of cartLines) {
-				const isSet = 'setId' in line;
-				const lineIdField = isSet ? 'setId' : 'itemId';
-				const lineId = isSet ? line.setId : line.itemId;
-
-				const wrapper = document.createElement('div');
-				wrapper.dataset.cartRow = '';
-				wrapper.className = 'py-3';
-
-				const row = document.createElement('div');
-				row.className = 'flex items-center gap-3';
-
-				const img = document.createElement('img');
-				img.src = line.imageUrl ?? '/favicon.svg';
-				img.alt = line.productTitle;
-				img.className = 'h-12 w-12 shrink-0 rounded object-cover bg-bg-subtle';
-
-				const info = document.createElement('div');
-				info.className = 'min-w-0 flex-1 text-sm';
-
-				const name = document.createElement('a');
-				name.href = line.productSlug ? `/products/${line.productSlug}` : '/cart';
-				name.className = 'block truncate font-medium text-text hover:underline';
-				name.textContent = isSet ? `Set — ${line.productTitle}` : line.productTitle;
-				info.appendChild(name);
-
-				const variantLabel = isSet ? (line.label ?? '') : line.attributes.map((a) => a.value).join(' / ');
-				if (variantLabel) {
-					const variant = document.createElement('p');
-					variant.className = 'truncate text-text-muted';
-					variant.textContent = variantLabel;
-					info.appendChild(variant);
-				}
-
-				const qty = document.createElement('p');
-				qty.className = 'text-text-muted';
-				qty.textContent = `Qty: ${line.quantity}`;
-				info.appendChild(qty);
-
-				// Destructive action — error color is the conventional choice here.
-				const removeButton = document.createElement('button');
-				removeButton.type = 'button';
-				removeButton.className = 'shrink-0 self-start text-xs text-error hover:underline';
-				removeButton.textContent = 'Remove';
-				removeButton.addEventListener('click', async () => {
-					const body = new FormData();
-					body.set(lineIdField, String(lineId));
-					await fetch('/api/cart/remove', { method: 'POST', body });
-					loadCart();
-				});
-
-				row.append(img, info, removeButton);
-				wrapper.appendChild(row);
-
-				// Read-only breakdown of what the set resolves into — indented and
-				// smaller than the set's own row, same as /cart's review page.
-				if (isSet && line.children.length > 0) {
-					const childList = document.createElement('ul');
-					childList.className = 'mt-2 ml-[3.75rem] flex flex-col gap-0.5 border-l border-border pl-3 text-xs text-text-muted';
-					for (const child of line.children) {
-						const totalQuantity = child.quantityPerSet * line.quantity;
-						const li = document.createElement('li');
-						li.textContent = totalQuantity > 1 ? `${totalQuantity}× ${child.productTitle}` : child.productTitle;
-						childList.appendChild(li);
-					}
-					wrapper.appendChild(childList);
-				}
-
-				list?.appendChild(wrapper);
-			}
+			rows!.innerHTML = html;
+			const hasItems = rows!.childElementCount > 0;
+			emptyMessage!.hidden = hasItems;
+			if (clearWrapper) clearWrapper.hidden = !hasItems;
+			syncUpdate();
 		}
+
+		// "Update cart" replaces "Review order" while any quantity is unsaved.
+		function syncUpdate() {
+			const inputs = rows!.querySelectorAll<HTMLInputElement>('[data-cart-quantity]');
+			const dirty = [...inputs].some((input) => input.value !== input.defaultValue);
+			if (updateButton) updateButton.hidden = !dirty;
+			if (primaryButton) primaryButton.hidden = dirty;
+		}
+
+		rows.addEventListener('input', syncUpdate);
+
+		// One bulk request, not one per row: each /api/cart/* response rewrites the
+		// whole cart cookie, so parallel per-item calls would overwrite each other.
+		updateButton?.addEventListener('click', async () => {
+			const body = new FormData();
+			rows!.querySelectorAll<HTMLInputElement>('[data-cart-quantity]').forEach((input) => body.set(input.name, input.value));
+			await fetch('/api/cart/update-all', { method: 'POST', body });
+			loadCart();
+		});
 
 		function setOpen(open: boolean) {
 			sidebar!.classList.toggle('translate-x-full', !open);

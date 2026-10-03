@@ -73,7 +73,7 @@ const RETRIEVE_FORM_ID = 'retrieve-items-form';
 			<Fragment slot="actions">
 				{
 					notYetReviewed && (
-						<Button href={`/moderator/review/${order.id}`} variant="primary" size="lg">
+						<Button href={`/moderator/review/${order.orderCode}`} variant="primary" size="lg">
 							Review order
 						</Button>
 					)

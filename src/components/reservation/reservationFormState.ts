@@ -97,6 +97,7 @@ export function initReservationForm(cartLines: ReservationCartLineRef[]): void {
 				return;
 			}
 			({ availabilities } = await res.json());
+			if (token !== requestToken) return;
 		} catch {
 			if (token === requestToken) loadingIndicator?.setAttribute('hidden', '');
 			return;

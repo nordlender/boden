@@ -20,11 +20,6 @@ const rows: OrdersTableRow[] = pendingRequests.map((order) => ({
 	customerName: order.customerName,
 	items: order.items,
 }));
-
-// OrdersTable's viewHref callback is keyed by orderCode (see OrdersTable.astro),
-// but the review page lives at a numeric id — build a lookup from the same
-// query result rather than a second query.
-const idByCode = new Map(pendingRequests.map((order) => [order.orderCode, order.id]));
 ---
 
 <ModeratorLayout title="Order requests — Moderator">
@@ -36,7 +31,7 @@ const idByCode = new Map(pendingRequests.map((order) => [order.orderCode, order.
 
 		<OrdersTable
 			orders={rows}
-			viewHref={(code: string) => `/moderator/review/${idByCode.get(code)}`}
+			viewHref={(code: string) => `/moderator/review/${code}`}
 			emptyMessage="No orders are waiting for review."
 		/>
 	</div>

@@ -1,0 +1,17 @@
+---
+// Generic status pill — pass `tone` instead of hand-rolling the
+// rounded-full/border/subtle-bg class combo per call site (see
+// src/lib/badge-styles.ts).
+import { badgeBaseClasses, badgeToneClasses, type BadgeTone } from '../../lib/badge-styles';
+
+interface Props {
+	tone?: BadgeTone;
+	class?: string;
+}
+
+const { tone = 'neutral', class: className } = Astro.props;
+---
+
+<span class:list={[badgeBaseClasses, badgeToneClasses[tone], className]}>
+	<slot />
+</span>

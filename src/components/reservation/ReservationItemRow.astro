@@ -1,5 +1,8 @@
 ---
+import ItemLine from '../ui/ItemLine.astro';
+import Badge from '../ui/Badge.astro';
 import AppIcon from '../icons/AppIcon.astro';
+import SetChildrenList from '../cart/SetChildrenList.astro';
 
 interface Props {
 	kind: 'item' | 'set';
@@ -16,58 +19,46 @@ interface Props {
 	// Only for a set row — its resolved components, shown indented and
 	// smaller underneath, read-only (never independently split/removed —
 	// see cart.ts's CartSetChild).
-	children?: { productTitle: string; quantityPerSet: number }[];
+	components?: { productTitle: string; quantityPerSet: number }[];
 }
 
-const { kind, id, productSlug, productTitle, imageUrl, quantity, subtitle, children = [] } = Astro.props;
+const { kind, id, productSlug, productTitle, imageUrl, quantity, subtitle, components = [] } = Astro.props;
 const lineKey = `${kind}:${id}`;
 ---
 
 <div data-reservation-row data-line-key={lineKey} class="py-4">
-	<div class="flex flex-wrap items-center gap-4">
-		<div class="h-16 w-16 shrink-0 overflow-hidden rounded bg-bg-subtle">
-			{imageUrl && <img src={imageUrl} alt={productTitle} class="h-full w-full object-cover" />}
-		</div>
+	<ItemLine
+		imageUrl={imageUrl}
+		name={productTitle}
+		href={productSlug ? `/products/${productSlug}` : null}
+		subtitle={subtitle}
+		quantity={quantity}
+		thumbnailSize={64}
+		gap="lg"
+		class="flex-wrap"
+	>
+		{kind === 'set' && <Badge class="mt-0.5 inline-block">Set</Badge>}
+		<Fragment slot="badge">
+			<p data-availability-badge hidden class="rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"></p>
 
-		<div class="min-w-0 flex-1">
-			<a href={productSlug ? `/products/${productSlug}` : '#'} class="font-medium text-text hover:underline">
-				{productTitle}
-			</a>
-			{kind === 'set' && <span class="ml-2 rounded-full bg-bg-subtle px-2 py-0.5 text-[10px] font-medium text-text-muted">Set</span>}
-			{subtitle && <p class="text-sm text-text-muted">{subtitle}</p>}
-			<p class="text-sm text-text-muted">Qty: {quantity}</p>
-		</div>
+			<p data-split-tag hidden class="rounded-full bg-selected px-2 py-0.5 text-xs font-medium text-text-inverted">
+				Separate order
+			</p>
+		</Fragment>
 
-		<p data-availability-badge class="hidden rounded-full px-2 py-0.5 text-xs font-medium"></p>
-
-		<p data-split-tag hidden class="rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-text-inverted">
-			Separate order
-		</p>
-
-		<button
-			type="button"
-			data-split-order-button
-			hidden
-			aria-pressed="false"
-			title="Move this item to a separate order"
-			class="shrink-0 rounded-md border border-border-strong p-1.5 text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-text-inverted"
-		>
-			<AppIcon name="splitOrder" size={16} />
-			<span class="sr-only">Move {productTitle} to a separate order</span>
-		</button>
-	</div>
-
-	{kind === 'set' && children.length > 0 && (
-		<ul class="mt-3 ml-20 flex flex-col gap-0.5 border-l border-border pl-3 text-xs text-text-muted">
-			{children.map((child) => {
-				const totalQuantity = child.quantityPerSet * quantity;
-				return (
-					<li>
-						{totalQuantity > 1 ? `${totalQuantity}× ` : ''}
-						{child.productTitle}
-					</li>
-				);
-			})}
-		</ul>
-	)}
+		<Fragment slot="action">
+			<button
+				type="button"
+				data-split-order-button
+				hidden
+				aria-pressed="false"
+				title="Move this item to a separate order"
+				class="shrink-0 rounded-md border border-border-strong p-1.5 text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-selected aria-pressed:bg-selected aria-pressed:text-text-inverted"
+			>
+				<AppIcon name="splitOrder" size={16} />
+				<span class="sr-only">Move {productTitle} to a separate order</span>
+			</button>
+		</Fragment>
+	</ItemLine>
+	{kind === 'set' && <SetChildrenList components={components} quantity={quantity} class="ml-20" />}
 </div>

@@ -3,7 +3,10 @@ export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import CartActionsBar from '../components/cart/CartActionsBar.astro';
+import SetChildrenList from '../components/cart/SetChildrenList.astro';
+import Badge from '../components/ui/Badge.astro';
 import Button from '../components/ui/Button.astro';
+import ItemLine from '../components/ui/ItemLine.astro';
 import { getCartLines } from '../lib/cart';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
@@ -21,75 +24,52 @@ const cartLines = await getCartLines(Astro.cookies);
 				<div class="mb-8 divide-y divide-border border-y border-border">
 					{cartLines.map((line) => {
 						const isSet = 'setId' in line;
+						// The update/remove forms below post whichever of itemId/setId
+						// this line is (see api/cart/{update,remove}.ts).
 						const lineIdField = isSet ? 'setId' : 'itemId';
 						const lineId = isSet ? line.setId : line.itemId;
-						// A set has no attribute template of its own — its subtitle is
-						// the admin's manually-typed label (e.g. "S"), not a joined
-						// attribute list (see cart.ts's CartSetLine comment).
-						const subtitle = isSet ? line.label : line.attributes.map((a) => a.value).join(' / ');
 						return (
 							<div class="py-4">
-								<div class="flex flex-wrap items-center gap-4">
-									<div class="h-16 w-16 shrink-0 overflow-hidden rounded bg-bg-subtle">
-										{line.imageUrl && <img src={line.imageUrl} alt={line.productTitle} class="h-full w-full object-cover" />}
-									</div>
+								<ItemLine
+									imageUrl={line.imageUrl}
+									name={line.productTitle}
+									href={line.productSlug ? `/products/${line.productSlug}` : null}
+									attributes={isSet ? [] : line.attributes}
+									subtitle={isSet ? line.label : null}
+									thumbnailSize={64}
+									gap="lg"
+									class="flex-wrap"
+								>
+									{isSet && <Badge class="mt-0.5 inline-block">Set</Badge>}
+									{line.quantity > line.inStock && (
+										<p class="text-sm text-error">Only {Math.max(line.inStock, 0)} left in stock</p>
+									)}
+									<Fragment slot="action">
+										<form method="post" action="/api/cart/update" class="flex items-center gap-2">
+											<input type="hidden" name={lineIdField} value={lineId} />
+											<label class="sr-only" for={`quantity-${lineIdField}-${lineId}`}>
+												Quantity for {line.productTitle}
+											</label>
+											<input
+												id={`quantity-${lineIdField}-${lineId}`}
+												type="number"
+												name="quantity"
+												value={line.quantity}
+												min="0"
+												class="w-16 rounded-md border border-border-interactive px-2 py-1 text-sm"
+											/>
+											<Button type="submit" size="sm">Update</Button>
+										</form>
 
-									<div class="min-w-0 flex-1">
-										<a href={line.productSlug ? `/products/${line.productSlug}` : '#'} class="font-medium text-text hover:underline">
-											{line.productTitle}
-										</a>
-										{isSet && (
-											<span class="ml-2 rounded-full bg-bg-subtle px-2 py-0.5 text-[10px] font-medium text-text-muted">Set</span>
-										)}
-										{subtitle && <p class="text-sm text-text-muted">{subtitle}</p>}
-										{line.quantity > line.inStock && (
-											// TODO: Style later, warning? — low-stock notice, not necessarily an error.
-											<p class="text-sm text-error">Only {Math.max(line.inStock, 0)} left in stock</p>
-										)}
-									</div>
-
-									<form method="post" action="/api/cart/update" class="flex items-center gap-2">
-										<input type="hidden" name={lineIdField} value={lineId} />
-										<label class="sr-only" for={`quantity-${lineIdField}-${lineId}`}>
-											Quantity for {line.productTitle}
-										</label>
-										<input
-											id={`quantity-${lineIdField}-${lineId}`}
-											type="number"
-											name="quantity"
-											value={line.quantity}
-											min="0"
-											class="w-16 rounded-md border border-border-interactive px-2 py-1 text-sm"
-										/>
-										<Button type="submit" size="sm">
-											Update
-										</Button>
-									</form>
-
-									<form method="post" action="/api/cart/remove">
-										<input type="hidden" name={lineIdField} value={lineId} />
-										<button type="submit" class="text-sm text-error hover:underline">
-											Remove
-										</button>
-									</form>
-								</div>
-
-								{isSet && line.children.length > 0 && (
-									// Read-only breakdown of what the set resolves into — indented
-									// and smaller than the set's own row, never independently
-									// addable/removable (see cart.ts's CartSetChild).
-									<ul class="mt-3 ml-20 flex flex-col gap-0.5 border-l border-border pl-3 text-xs text-text-muted">
-										{line.children.map((child) => {
-											const totalQuantity = child.quantityPerSet * line.quantity;
-											return (
-												<li>
-													{totalQuantity > 1 ? `${totalQuantity}× ` : ''}
-													{child.productTitle}
-												</li>
-											);
-										})}
-									</ul>
-								)}
+										<form method="post" action="/api/cart/remove">
+											<input type="hidden" name={lineIdField} value={lineId} />
+											<button type="submit" class="text-sm text-error hover:underline">
+												Remove
+											</button>
+										</form>
+									</Fragment>
+								</ItemLine>
+								{isSet && <SetChildrenList components={line.children} quantity={line.quantity} class="ml-20" />}
 							</div>
 						);
 					})}

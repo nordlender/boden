@@ -10,20 +10,20 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { addToCart } from '../../../lib/cart';
-import { isCartEntryAvailable, parseCartEntryKind } from '../../../lib/cart-http';
+import { cartEntryRef, isCartEntryAvailable, parseCartEntryKind } from '../../../lib/cart-http';
 import { isSafeRedirectTarget } from '../../../lib/redirect';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	const form = await request.formData();
-	// A product's variant picker submits exactly one of these — see
-	// src/pages/products/[slug].astro, which names its option values
-	// `item:<id>` / `set:<id>` and splits them apart before building this
-	// form's hidden itemId/setId input, same as this route reads it back.
+	// A product's variant picker (VariantPicker.astro) submits exactly one of
+	// these, toggling which hidden input is enabled as the selected variant
+	// changes between an item and a set.
 	const rawItemId = form.get('itemId');
 	const rawSetId = form.get('setId');
-	// `required` on the product page's quantity input stops a real browser
-	// from ever submitting this empty — but that's client-side only, so an
-	// emptied field is still treated as "missing" here, not as invalid input.
+	// The product page's quantity is a hidden input driven by its +/- stepper
+	// (VariantPicker.astro), always carrying a valid value from real use — but
+	// that's client-side only, so an empty/tampered value is still handled
+	// here rather than trusted.
 	const rawQuantity = form.get('quantity');
 	const quantity = rawQuantity === null || rawQuantity === '' ? 1 : Number(rawQuantity);
 	const redirectTo = form.get('redirect');
@@ -49,7 +49,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 		return new Response(kind === 'item' ? 'Item not available' : 'Set not available', { status: 404 });
 	}
 
-	addToCart(cookies, kind === 'item' ? { itemId: id, quantity } : { setId: id, quantity });
+	addToCart(cookies, { ...cartEntryRef(kind, id), quantity });
 
 	const target = isSafeRedirectTarget(redirectTo) ? redirectTo : '/';
 	// Read by CartSidebar.astro's script to auto-open the sidebar after the

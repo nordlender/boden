@@ -1,0 +1,66 @@
+---
+export const prerender = false;
+
+// Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
+// reached only when logged in with role === 'admin'. Read-only for now
+// (see the admin hub's "Products" tile) — create/edit of product rows
+// still goes through the wizard flow (/admin/items); a dedicated
+// create/edit UI for this page is a separate, larger piece of work.
+import '../../styles/global.css';
+import ThemeInit from '../../components/ThemeInit.astro';
+import AdminNavbar from '../../components/AdminNavbar.astro';
+import { db } from '../../db/client';
+
+const products = await db.query.products.findMany({
+	orderBy: (t, { asc }) => [asc(t.title)],
+	with: { category: true, subcategory: true },
+});
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Products</title>
+		<ThemeInit />
+	</head>
+	<body class="min-h-screen bg-bg-subtle">
+		<AdminNavbar />
+		<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+			<div>
+				<h1 class="text-xl font-semibold text-text">Products</h1>
+				<p class="mt-1 text-sm text-text-muted">All product listings, alphabetical by title.</p>
+			</div>
+
+			{
+				products.length === 0 ? (
+					<p class="text-sm text-text-muted">No products yet.</p>
+				) : (
+					<div class="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
+						{products.map((product) => (
+							<div class="flex items-center justify-between gap-4 px-4 py-3">
+								<div class="flex flex-col">
+									<span class="text-sm font-medium text-text">{product.title}</span>
+									<span class="text-xs text-text-muted">
+										{product.category?.name}
+										{product.subcategory ? ` → ${product.subcategory.name}` : ''}
+									</span>
+								</div>
+								<span
+									class:list={[
+										'rounded-full border px-3 py-1 text-xs font-medium capitalize',
+										product.status === 'published'
+											? 'border-success-border bg-success-subtle text-success-text'
+											: 'border-border text-text-muted',
+									]}
+								>
+									{product.status}
+								</span>
+							</div>
+						))}
+					</div>
+				)
+			}
+		</div>
+	</body>
+</html>

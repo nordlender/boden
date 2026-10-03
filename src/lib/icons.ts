@@ -37,6 +37,9 @@ export const icons = {
 	// an order mixes available and unavailable items for the chosen date
 	// range: lets the member split that one item out into its own order.
 	splitOrder: 'tabler:arrows-split-2',
+	// {folder_icon} is gone from here — animated with morphicons now (see
+	// folderToggle in src/lib/icon-nodes.ts), used by FileExplorerNode.astro.
+	file: 'tabler:file',
 	// Navbar Account button. A plain static icon on purpose — not morphicons
 	// (see icon-nodes.ts) — since a client-rendered custom element there would
 	// interfere with Astro's prefetch of the link it sits on.
@@ -47,6 +50,9 @@ export const icons = {
 	view: 'tabler:eye',
 	layoutCompact: 'tabler:list',
 	layoutDetailed: 'tabler:layout-list',
+	// Product page quantity stepper (VariantPicker.astro).
+	increment: 'tabler:plus',
+	decrement: 'tabler:minus',
 } as const;
 
 export type IconName = keyof typeof icons;

@@ -1,29 +1,26 @@
 ---
 import ItemCard from './ItemCard.astro';
-import type { ShopVariant } from '../../lib/shop';
+import type { ShopGridProduct } from '../../lib/shop';
 
 interface Props {
-	// One tile per variant — an item or a set — across every published
-	// product, not grouped by product. See lib/shop.ts's ShopVariant.
-	variants: ShopVariant[];
+	products: ShopGridProduct[];
 }
 
-const { variants } = Astro.props;
+const { products } = Astro.props;
 ---
 
 {
-	variants.length === 0 ? (
+	products.length === 0 ? (
 		<p class="text-sm text-text-muted">No items available.</p>
 	) : (
 		<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-			{variants.map((variant) => (
+			{products.map((product) => (
 				<ItemCard
-					kind={variant.kind}
-					variantId={variant.id}
-					productSlug={variant.productSlug}
-					productTitle={variant.productTitle}
-					imageUrl={variant.imageUrl}
-					variantLabel={variant.kind === 'item' ? variant.attributes.map((a) => a.value).join(' / ') : variant.label}
+					itemId={product.representativeItemId}
+					setId={product.representativeSetId}
+					productSlug={product.productSlug}
+					productTitle={product.productTitle}
+					imageUrl={product.imageUrl}
 				/>
 			))}
 		</div>

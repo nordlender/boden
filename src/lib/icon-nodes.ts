@@ -69,6 +69,19 @@ export const navMenu = {
 
 // The item row's expand/collapse toggle: list-details when collapsed,
 // circle-chevron-up once the details box is open.
+// FileExplorerNode.astro's directory row icon.
+export const folderToggle = {
+	closed: [['path', { d: 'M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2' }]] satisfies IconNode,
+	open: [
+		[
+			'path',
+			{
+				d: 'M5 19l2.757 -7.351a1 1 0 0 1 .936 -.649h12.307a1 1 0 0 1 .986 1.164l-.996 5.211a2 2 0 0 1 -1.964 1.625h-14.026a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2h4l3 3h7a2 2 0 0 1 2 2v2',
+			},
+		],
+	] satisfies IconNode,
+};
+
 export const detailsToggle = {
 	closed: [
 		['path', { d: 'M13 5h8m-8 4h5m-5 6h8m-8 4h5M3 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zm0 10a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z' }],
@@ -143,6 +156,48 @@ const addIcon = {
 	hover: [['path', { d: 'M5 12l5 5l10-10' }]] satisfies IconNode,
 };
 
+// message-plus -> plus: the admin hub's "New message" trigger.
+const messageIcon = {
+	default: [
+		['path', { d: 'M8 9h8' }],
+		['path', { d: 'M8 13h6' }],
+		['path', { d: 'M12.01 18.594l-4.01 2.406v-3h-2a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v5.5' }],
+		['path', { d: 'M16 19h6' }],
+		['path', { d: 'M19 16v6' }],
+	] satisfies IconNode,
+	hover: [
+		['path', { d: 'M12 5l0 14' }],
+		['path', { d: 'M5 12l14 0' }],
+	] satisfies IconNode,
+};
+
+// Unpinned message row's pin hint: pin outline morphs to a checkmark on
+// hover, confirming what clicking it does.
+const pinIcon = {
+	default: [
+		['path', { d: 'M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5-1.5l1.5-4l4-4' }],
+		['path', { d: 'M9 15l-4.5 4.5' }],
+		['path', { d: 'M14.5 4l5.5 5.5' }],
+	] satisfies IconNode,
+	hover: [['path', { d: 'M5 12l5 5l10-10' }]] satisfies IconNode,
+};
+
+// Pinned message row's "Pinned" hint: filled/standing pin morphs to a
+// crossed-out pin on hover, confirming that clicking it unpins.
+const unpinIcon = {
+	default: [
+		['path', { d: 'M9 4v6l-2 4v2h10v-2l-2-4v-6' }],
+		['path', { d: 'M12 16l0 5' }],
+		['path', { d: 'M8 4l8 0' }],
+	] satisfies IconNode,
+	hover: [
+		['path', { d: 'M3 3l18 18' }],
+		['path', { d: 'M15 4.5l-3.249 3.249m-2.57 1.433l-2.181 .818l-1.5 1.5l7 7l1.5-1.5l.82-2.186m1.43-2.563l3.25-3.251' }],
+		['path', { d: 'M9 15l-4.5 4.5' }],
+		['path', { d: 'M14.5 4l5.5 5.5' }],
+	] satisfies IconNode,
+};
+
 export const actionIcons = {
 	accept: acceptIcon,
 	cancel: cancelIcon,
@@ -153,6 +208,9 @@ export const actionIcons = {
 	view: viewIcon,
 	save: saveIcon,
 	add: addIcon,
+	message: messageIcon,
+	pin: pinIcon,
+	unpin: unpinIcon,
 } as const;
 
 export type ActionIconKey = keyof typeof actionIcons;
@@ -201,3 +259,59 @@ export const moderatorActionIcons = {
 		] satisfies IconNode,
 	},
 } satisfies Record<string, { default: IconNode; hover: IconNode }>;
+// The three large tiles on the admin index page (components/admin/ActionButton.astro),
+// same pull-from-@iconify-json/tabler approach as moderatorActionIcons above.
+export const adminActionIcons = {
+	items: {
+		// cube
+		default: [
+			[
+				'path',
+				{
+					d: 'M21 16.008V7.99a1.98 1.98 0 0 0-1-1.717l-7-4.008a2.02 2.02 0 0 0-2 0L4 6.273c-.619.355-1 1.01-1 1.718v8.018c0 .709.381 1.363 1 1.717l7 4.008a2.02 2.02 0 0 0 2 0l7-4.008c.619-.355 1-1.01 1-1.718M12 22V12m0 0l8.73-5.04m-17.46 0L12 12',
+				},
+			],
+		] satisfies IconNode,
+		// cube-3d-sphere
+		hover: [
+			[
+				'path',
+				{
+					d: 'm6 17.6l-2-1.1V14m0-4V7.5l2-1.1m4-2.3L12 3l2 1.1m4 2.3l2 1.1V10m0 4v2.5l-2 1.12m-4 2.28L12 21l-2-1.1m2-7.9l2-1.1m4-2.3l2-1.1M12 12v2.5m0 4V21m0-9l-2-1.12M6 8.6L4 7.5',
+				},
+			],
+		] satisfies IconNode,
+	},
+	products: {
+		// package
+		default: [
+			[
+				'path',
+				{ d: 'm12 3l8 4.5v9L12 21l-8-4.5v-9zm0 9l8-4.5M12 12v9m0-9L4 7.5m12-2.25l-8 4.5' },
+			],
+		] satisfies IconNode,
+		// cube-3d-sphere
+		hover: [
+			[
+				'path',
+				{
+					d: 'm6 17.6l-2-1.1V14m0-4V7.5l2-1.1m4-2.3L12 3l2 1.1m4 2.3l2 1.1V10m0 4v2.5l-2 1.12m-4 2.28L12 21l-2-1.1m2-7.9l2-1.1m4-2.3l2-1.1M12 12v2.5m0 4V21m0-9l-2-1.12M6 8.6L4 7.5',
+				},
+			],
+		] satisfies IconNode,
+	},
+	orders: {
+		// clipboard-text
+		default: [
+			['path', { d: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2' }],
+			['path', { d: 'M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2m0 7h6m-6 4h6' }],
+		] satisfies IconNode,
+		// clipboard-smile
+		hover: [
+			['path', { d: 'M10 13h.01M14 13h.01M10 16a3.5 3.5 0 0 0 4 0' }],
+			['path', { d: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2' }],
+			['path', { d: 'M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2' }],
+		] satisfies IconNode,
+	},
+} satisfies Record<string, { default: IconNode; hover: IconNode }>;
+

@@ -1,0 +1,50 @@
+---
+// One of the admin index page's large action tiles (Items / Products /
+// Orders) — mirrors components/moderator/ActionButton.astro's plain-link
+// tile pattern (see that file for the full rationale). The icon morphs to
+// its "hover" shape (see adminActionIcons in icon-nodes.ts) on pointer
+// hover, keyboard focus, or touch — the shared <script> below covers all
+// three so a tap gets the same feedback as a mouse hover.
+import MorphIcon from 'morphicons/astro';
+import { adminActionIcons } from '../../lib/icon-nodes';
+
+interface Props {
+	href: string;
+	label: string;
+	description: string;
+	iconKey: keyof typeof adminActionIcons;
+}
+
+const { href, label, description, iconKey } = Astro.props;
+const icon = adminActionIcons[iconKey];
+---
+
+<a
+	href={href}
+	data-admin-action-icon={iconKey}
+	class="admin-action-tile flex flex-1 flex-col items-center gap-2 rounded-lg border border-border bg-surface px-5 py-6 text-center transition-colors hover:border-accent hover:bg-bg-subtle sm:items-start sm:text-left"
+>
+	<MorphIcon icon={icon.default} size={36} class="admin-action-tile-icon text-text" />
+	<span class="text-lg font-semibold text-text">{label}</span>
+	<span class="text-sm text-text-muted">{description}</span>
+</a>
+
+<script>
+	import type { MorphIconElement } from 'morphicons/element';
+	import { adminActionIcons } from '../../lib/icon-nodes';
+
+	function setState(tile: Element, state: 'default' | 'hover') {
+		const key = tile.getAttribute('data-admin-action-icon') as keyof typeof adminActionIcons | null;
+		const icons = key && adminActionIcons[key];
+		if (!icons) return;
+		const icon = tile.querySelector<MorphIconElement>('.admin-action-tile-icon');
+		if (icon) icon.icon = icons[state];
+	}
+
+	document.querySelectorAll<HTMLElement>('.admin-action-tile').forEach((tile) => {
+		tile.addEventListener('pointerenter', () => setState(tile, 'hover'));
+		tile.addEventListener('pointerleave', () => setState(tile, 'default'));
+		tile.addEventListener('focus', () => setState(tile, 'hover'));
+		tile.addEventListener('blur', () => setState(tile, 'default'));
+	});
+</script>

@@ -4,6 +4,7 @@
 // tracking, and never queries the document outside the element(s) passed in.
 // See reservationFormState.ts for the fetch/state logic that decides *what*
 // to render and calls these.
+import { badgeBaseClasses, badgeToneClasses } from '../../lib/badge-styles';
 
 // A row is either a plain item or a set (see cart.ts's CartLine) — this
 // module doesn't care which, it only ever paints `available`.
@@ -24,10 +25,10 @@ export function renderRow(row: Element, availability: LineAvailability, pressed:
 	badge.hidden = false;
 	if (availability.available) {
 		badge.textContent = 'Available';
-		badge.className = 'rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700';
+		badge.className = `${badgeBaseClasses} ${badgeToneClasses.success}`;
 	} else {
 		badge.textContent = 'Not available';
-		badge.className = 'rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700';
+		badge.className = `${badgeBaseClasses} ${badgeToneClasses.error}`;
 	}
 
 	if (splitButton instanceof HTMLButtonElement) {

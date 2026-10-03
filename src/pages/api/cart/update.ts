@@ -6,7 +6,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { updateCartQuantity } from '../../../lib/cart';
-import { isCartEntryAvailable, parseCartEntryKind } from '../../../lib/cart-http';
+import { cartEntryRef, isCartEntryAvailable, parseCartEntryKind } from '../../../lib/cart-http';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	const form = await request.formData();
@@ -39,6 +39,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 		return new Response(kind === 'item' ? 'Item not available' : 'Set not available', { status: 404 });
 	}
 
-	updateCartQuantity(cookies, kind === 'item' ? { itemId: id } : { setId: id }, quantity);
+	updateCartQuantity(cookies, cartEntryRef(kind, id), quantity);
 	return redirect('/cart');
 };

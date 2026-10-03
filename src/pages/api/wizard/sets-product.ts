@@ -3,7 +3,7 @@ export const prerender = false;
 // Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES — see items.ts.
 
 import type { APIRoute } from 'astro';
-import { setSetsProduct } from '../../../lib/setWizard';
+import { ProductHasItemsError, setSetsProduct } from '../../../lib/setWizard';
 import { requireAdmin, safeRedirectTarget, isPositiveInteger } from '../../../lib/wizard-http';
 
 export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
@@ -23,11 +23,23 @@ export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 		return new Response('Select at least one set and a product', { status: 400 });
 	}
 
+	const target = safeRedirectTarget(form, url.origin, '/admin/sets');
+
 	try {
 		await setSetsProduct(setIds, productId);
-	} catch {
-		return new Response('Could not assign product', { status: 400 });
+	} catch (error) {
+		if (!(error instanceof ProductHasItemsError)) {
+			return new Response('Could not assign product', { status: 400 });
+		}
+		// Back to the page with a reason code — SetToolbar.astro turns it into a
+		// warning popover on the Assign button. `panel` says which of the two
+		// toolbars (unassigned/assigned) the failed attempt came from.
+		const back = new URL(target, url.origin);
+		back.searchParams.set('assignError', 'product_has_items');
+		const panel = form.get('panel');
+		if (typeof panel === 'string' && panel) back.searchParams.set('assignPanel', panel);
+		return redirect(back.pathname + back.search + back.hash);
 	}
 
-	return redirect(safeRedirectTarget(form, url.origin, '/admin/sets'));
+	return redirect(target);
 };

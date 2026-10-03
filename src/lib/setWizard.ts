@@ -135,6 +135,16 @@ export async function setSetsImage(setIds: number[], imageUrl: string): Promise<
 	await db.update(sets).set({ imageUrl }).where(inArray(sets.id, setIds));
 }
 
+// Thrown by setSetsProduct when the target product already has items — a
+// distinct type so the route can show the admin that specific reason (a
+// warning popover) rather than a generic "could not assign" 400.
+export class ProductHasItemsError extends Error {
+	constructor() {
+		super('This product already has items assigned — a product cannot mix item and set variants.');
+		this.name = 'ProductHasItemsError';
+	}
+}
+
 // No attribute fan-out to worry about on reassignment (unlike
 // wizard.ts's setItemsProduct) — sets don't own attribute values.
 export async function setSetsProduct(setIds: number[], productId: number): Promise<void> {
@@ -148,7 +158,7 @@ export async function setSetsProduct(setIds: number[], productId: number): Promi
 		where: (t, { eq: eqCol, and: andCol }) => andCol(eqCol(t.productId, productId), eqCol(t.archived, false)),
 	});
 	if (existingItem) {
-		throw new Error('This product already has items assigned — a product cannot mix item and set variants.');
+		throw new ProductHasItemsError();
 	}
 
 	await db.update(sets).set({ productId }).where(inArray(sets.id, setIds));

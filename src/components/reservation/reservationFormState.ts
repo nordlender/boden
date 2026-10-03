@@ -131,7 +131,7 @@ export function initReservationForm(initialCartItems: ReservationCartItemRef[]):
 			window.location.href = '/cart';
 			return;
 		}
-		refreshAvailability(lastFrom, lastTo);
+		await refreshAvailability(lastFrom, lastTo);
 	}
 
 	document.addEventListener('reservation-range-change', (event) => {

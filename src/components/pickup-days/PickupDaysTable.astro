@@ -28,7 +28,12 @@ interface Props {
 
 const { rows, currentUserId, deletable = false, emptyMessage = 'No pickup days yet.' } = Astro.props;
 
-const GRID = '1.25rem 4.5rem 7rem 7.5rem 1fr 5.5rem';
+// Columns: bubble | date | weekday | time | where | delete. Below `sm` each
+// row stacks into two lines instead — bubble, date, weekday, delete on top,
+// time and where underneath (explicit max-sm: placements below; DOM order,
+// and so focus order, is unchanged) — and the header row is hidden.
+const GRID_STYLE = '--grid-cols: 1.25rem auto 1fr auto; --grid-cols-sm: 1.25rem 4.5rem 7rem 7.5rem 1fr 5.5rem';
+const GRID_CLASS = 'grid grid-cols-(--grid-cols) sm:grid-cols-(--grid-cols-sm)';
 
 function bubbleKind(row: PickupDayRow): PickupDayBubbleKind {
 	if (row.kind === 'recurring') return 'recurring';
@@ -42,8 +47,8 @@ function bubbleKind(row: PickupDayRow): PickupDayBubbleKind {
 	) : (
 		<div class="overflow-hidden rounded-lg border border-border">
 			<div
-				class="grid items-center gap-3 border-b border-border bg-bg-subtle px-3 py-1.5 text-xs font-medium tracking-wide text-text-muted uppercase"
-				style={`grid-template-columns: ${GRID}`}
+				class:list={[GRID_CLASS, 'items-center gap-3 border-b border-border bg-bg-subtle px-3 py-1.5 text-xs font-medium tracking-wide text-text-muted uppercase max-sm:hidden']}
+				style={GRID_STYLE}
 			>
 				<span />
 				<span>Date</span>
@@ -54,23 +59,23 @@ function bubbleKind(row: PickupDayRow): PickupDayBubbleKind {
 			</div>
 			<div class="divide-y divide-border">
 				{rows.map((row) => (
-					<div data-pickup-day-row class="grid items-center gap-3 px-3 py-2 text-sm" style={`grid-template-columns: ${GRID}`}>
+					<div data-pickup-day-row class:list={[GRID_CLASS, 'items-center gap-x-3 gap-y-1 px-3 py-2 text-sm']} style={GRID_STYLE}>
 						<PickupDayBubble kind={bubbleKind(row)} />
 						<span class="text-text">{formatDateShort(row.date)}</span>
 						<span class="text-text-muted">{formatWeekdayName(row.date)}</span>
-						<span class="text-text-muted">{row.startTime && row.endTime ? `${row.startTime} – ${row.endTime}` : '—'}</span>
-						<span class="truncate text-text-muted" title={row.where ?? undefined}>
+						<span class="text-text-muted max-sm:col-start-2">{row.startTime && row.endTime ? `${row.startTime} – ${row.endTime}` : '—'}</span>
+						<span class="truncate text-text-muted max-sm:col-span-2" title={row.where ?? undefined}>
 							{row.where ?? '—'}
 						</span>
-						{deletable ? (
-							<PickupDayDeleteButton
-								id={String(row.id)}
-								endpoint={`/api/moderator/pickup-days/${row.id}`}
-								title={`Delete ${formatDateShort(row.date)}?`}
-							/>
-						) : (
-							<span />
-						)}
+						<div class="justify-self-end max-sm:col-start-4 max-sm:row-start-1">
+							{deletable && (
+								<PickupDayDeleteButton
+									id={String(row.id)}
+									endpoint={`/api/moderator/pickup-days/${row.id}`}
+									title={`Delete ${formatDateShort(row.date)}?`}
+								/>
+							)}
+						</div>
 					</div>
 				))}
 			</div>

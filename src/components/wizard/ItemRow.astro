@@ -7,7 +7,7 @@ import StockIndicator from './StockIndicator.astro';
 import DetailsToggle from './DetailsToggle.astro';
 import AppIcon from '../icons/AppIcon.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
-import { GRID_TEMPLATE, type PanelVariant } from './grid';
+import { DESKTOP_ONLY_CLASS, GRID_COLUMNS_CLASS, gridColumnsStyle, type PanelVariant } from './grid';
 
 interface AttributeEntry {
 	key: string;
@@ -51,17 +51,19 @@ const {
 ---
 <div class="item-row border-b border-border last:border-b-0">
 	<div
-		class:list={["grid items-center gap-3 px-3 py-2 hover:bg-bg-subtle", selected && 'bg-selected-subtle/60 hover:bg-selected-subtle']}
-		style={`grid-template-columns: ${GRID_TEMPLATE[variant]}`}
+		class:list={['grid items-center gap-3 px-3 py-2 hover:bg-bg-subtle', GRID_COLUMNS_CLASS, selected && 'bg-selected-subtle/60 hover:bg-selected-subtle']}
+		style={gridColumnsStyle(variant)}
 	>
 		<SelectIcon itemId={itemId} formId={formId} checked={selected} label={`Select ${name}`} />
 		<Thumbnail src={image} alt={name} />
 		<div class="min-w-0">
 			<p class="truncate text-sm font-medium text-text">{name}</p>
 			<p class="font-mono text-xs text-text-muted">#{itemId}</p>
+			{/* The product column is hidden below sm — show the product here instead. */}
+			{variant === 'assigned' && product && <p class="truncate text-xs text-text-muted sm:hidden">{product}</p>}
 		</div>
-		{variant === 'assigned' && (subCategory ? <SubCategoryTag name={subCategory} /> : <span></span>)}
-		{variant === 'assigned' && product && <ProductTag name={product} />}
+		{variant === 'assigned' && <div class:list={[DESKTOP_ONLY_CLASS, 'min-w-0']}>{subCategory && <SubCategoryTag name={subCategory} />}</div>}
+		{variant === 'assigned' && <div class:list={[DESKTOP_ONLY_CLASS, 'min-w-0']}>{product && <ProductTag name={product} />}</div>}
 		<StockIndicator inStock={inStock} total={totalStock} />
 		<DetailsToggle label={`Show details for ${name}`} warning={missingAttributeTemplate} />
 	</div>

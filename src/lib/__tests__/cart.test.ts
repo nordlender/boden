@@ -84,6 +84,14 @@ vi.mock('../../db/client', async () => {
   ]);
   await db.insert(schema.sets).values({ productId: product.id, slug: 'archived-set', name: 'Archived Set', archived: true });
   await db.insert(schema.sets).values({ productId: hiddenProduct.id, slug: 'hidden-product-set', name: 'Hidden Product Set' });
+  // emptySet.id === 4 (no components); archivedComponentSet.id === 5 (its
+  // only component is the archived item 3) — both visible but unorderable.
+  await db.insert(schema.sets).values({ productId: product.id, slug: 'empty-set', name: 'Empty Set' });
+  const [archivedComponentSet] = await db
+    .insert(schema.sets)
+    .values({ productId: product.id, slug: 'archived-component-set', name: 'Archived Component Set' })
+    .returning();
+  await db.insert(schema.setItems).values({ setId: archivedComponentSet.id, itemId: 3, quantity: 1 });
 
   return { db };
 });
@@ -380,6 +388,18 @@ describe('getCartLines', () => {
   it('drops set entries whose product has since been unpublished', async () => {
     setCart(cookies, [{ setId: 3, quantity: 1 }]);
     expect(await getCartLines(cookies)).toEqual([]);
+  });
+
+  it('reports a set with no components as having nothing in stock', async () => {
+    setCart(cookies, [{ setId: 4, quantity: 1 }]);
+    const [line] = await getCartLines(cookies);
+    expect(line).toMatchObject({ setId: 4, stockCount: 0, inStock: 0 });
+  });
+
+  it('reports a set with an archived component as having nothing in stock', async () => {
+    setCart(cookies, [{ setId: 5, quantity: 1 }]);
+    const [line] = await getCartLines(cookies);
+    expect(line).toMatchObject({ setId: 5, stockCount: 0, inStock: 0 });
   });
 
   it('preserves cart order when items and sets are mixed', async () => {

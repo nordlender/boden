@@ -198,7 +198,12 @@ async function buildSetLines(entries: { setId: number; quantity: number }[]): Pr
 			const row = rowsById.get(entry.setId);
 			if (!row) return null;
 			const children = childrenBySet.get(row.id) ?? [];
-			const { stockCount, inStock } = computeSetAvailability(children, reserved);
+			// Same rule as sets.ts's getValidSetIds: a set with no components, or
+			// an archived one, is dropped at checkout — so report it as having
+			// nothing in stock here (the cart page then flags it) instead of
+			// offering a line the order flow would silently discard.
+			const orderable = children.length > 0 && children.every((child) => !child.archived);
+			const { stockCount, inStock } = orderable ? computeSetAvailability(children, reserved) : { stockCount: 0, inStock: 0 };
 			return {
 				setId: row.id,
 				productSlug: row.product?.slug ?? null,

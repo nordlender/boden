@@ -15,7 +15,7 @@ vi.mock('../../db/client', () => ({
 	},
 }));
 
-const { setSetsProduct } = await import('../setWizard');
+const { setSetsProduct, addSetComponent } = await import('../setWizard');
 
 function seedProduct(database: BetterSQLite3Database<typeof schema>, slug: string) {
 	const [product] = database.insert(schema.products).values({ slug, title: slug }).returning({ id: schema.products.id }).all();
@@ -67,6 +67,36 @@ describe('setWizard', () => {
 
 			const [row] = testDb.select({ productId: schema.sets.productId }).from(schema.sets).where(eq(schema.sets.id, setId)).all();
 			expect(row.productId).toBe(productId);
+		});
+	});
+
+	describe('addSetComponent', () => {
+		it('adds an item, then bumps its quantity when added again', async () => {
+			const [item] = testDb.insert(schema.items).values({ slug: 'item-1', name: 'Item 1' }).returning({ id: schema.items.id }).all();
+			const setId = seedSet(testDb, { slug: 'set-1' });
+
+			await addSetComponent(setId, item.id, 1);
+			await addSetComponent(setId, item.id, 2);
+
+			const rows = testDb.select({ quantity: schema.setItems.quantity }).from(schema.setItems).where(eq(schema.setItems.setId, setId)).all();
+			expect(rows).toEqual([{ quantity: 3 }]);
+		});
+
+		it('rejects an archived item', async () => {
+			const [item] = testDb
+				.insert(schema.items)
+				.values({ slug: 'item-1', name: 'Item 1', archived: true })
+				.returning({ id: schema.items.id })
+				.all();
+			const setId = seedSet(testDb, { slug: 'set-1' });
+
+			await expect(addSetComponent(setId, item.id, 1)).rejects.toThrow();
+			expect(testDb.select().from(schema.setItems).all()).toEqual([]);
+		});
+
+		it('rejects an item that does not exist', async () => {
+			const setId = seedSet(testDb, { slug: 'set-1' });
+			await expect(addSetComponent(setId, 999, 1)).rejects.toThrow();
 		});
 	});
 });

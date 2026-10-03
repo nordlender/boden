@@ -166,7 +166,14 @@ export async function setSetLabel(setId: number, label: string): Promise<void> {
 // part of the set, rather than erroring or creating a second row — the
 // unique(setId, itemId) index means this is the only valid way to add an
 // already-present item again.
+//
+// Rejects an archived or nonexistent item: the admin picker already filters
+// archived items out, but a direct POST could still add one, and a set
+// containing an archived component is invalid (sets.ts's getValidSetIds) —
+// it would silently become unorderable.
 export async function addSetComponent(setId: number, itemId: number, quantity: number): Promise<void> {
+	const item = await db.query.items.findFirst({ where: (t, { eq }) => eq(t.id, itemId) });
+	if (!item || item.archived) throw new Error(`Item ${itemId} is missing or archived`);
 	await db
 		.insert(setItems)
 		.values({ setId, itemId, quantity })

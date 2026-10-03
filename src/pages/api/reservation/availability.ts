@@ -6,6 +6,19 @@ export const prerender = false;
 
 type LineInput = { key: string; itemId: number; quantity: number } | { key: string; setId: number; quantity: number };
 
+function isPositiveInt(value: unknown): value is number {
+	return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+// The body is untrusted JSON, so a `lines` entry has to be proven to be one
+// of the two shapes before anything dereferences it.
+function isLineInput(line: unknown): line is LineInput {
+	if (typeof line !== 'object' || line === null) return false;
+	const { key, quantity, itemId, setId } = line as Record<string, unknown>;
+	if (typeof key !== 'string' || !isPositiveInt(quantity)) return false;
+	return isPositiveInt(itemId) !== isPositiveInt(setId);
+}
+
 // An archived set, or one with an archived component, resolves to no
 // requirements at all — getCartLineAvailability already reports an
 // empty-requirements line as unavailable, matching what checkout would
@@ -39,15 +52,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		return new Response('Unauthorized', { status: 401 });
 	}
 
-	let body: { from?: string; to?: string; lines?: LineInput[] };
+	let body: { from?: string; to?: string; lines?: unknown[] };
 	try {
 		body = await request.json();
 	} catch {
 		return new Response(JSON.stringify({ error: 'invalid_json' }), { status: 400 });
 	}
 
-	const lineInputs = body.lines ?? [];
-	if (!isValidDateRange({ from: body.from, to: body.to }) || lineInputs.length === 0) {
+	const rawLines = typeof body === 'object' && body !== null && Array.isArray(body.lines) ? body.lines : [];
+	const lineInputs = rawLines.filter(isLineInput);
+	// Any malformed entry rejects the whole request, rather than being
+	// dropped — a silently shorter result would misalign with the caller's lines.
+	if (!isValidDateRange({ from: body.from, to: body.to }) || lineInputs.length === 0 || lineInputs.length !== rawLines.length) {
 		return new Response(JSON.stringify({ error: 'invalid_request' }), { status: 400 });
 	}
 

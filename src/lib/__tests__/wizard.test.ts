@@ -237,5 +237,24 @@ describe('wizard', () => {
 			const { unassigned } = await getWizardItems();
 			expect(unassigned).toEqual([expect.objectContaining({ id: itemId, inStock: 8, totalStock: 10 })]);
 		});
+
+		it('reports requested + scheduled quantities as reserved', async () => {
+			testDb.insert(schema.users).values({ id: 'member-1', name: 'Member', email: 'member@example.com' }).run();
+			const itemId = seedItem(testDb, { slug: 'item-1', name: 'Item 1' });
+			const idleItemId = seedItem(testDb, { slug: 'item-2', name: 'Item 2' });
+
+			seedOrder(testDb, { code: 'REQ1', status: 'requested', itemId, requestedQuantity: 1 });
+			seedOrder(testDb, { code: 'SCHED1', status: 'scheduled', itemId, requestedQuantity: 4 });
+			// Already handed out / finished — not "reserved".
+			seedOrder(testDb, { code: 'ACTIVE1', status: 'active', itemId, requestedQuantity: 3, retrievedQuantity: 3 });
+			seedOrder(testDb, { code: 'RET1', status: 'returned', itemId, requestedQuantity: 5, retrievedQuantity: 5 });
+			seedOrder(testDb, { code: 'REJ1', status: 'rejected', itemId, requestedQuantity: 5 });
+
+			const { unassigned } = await getWizardItems();
+			expect(unassigned).toEqual([
+				expect.objectContaining({ id: itemId, reserved: 5 }),
+				expect.objectContaining({ id: idleItemId, reserved: 0 }),
+			]);
+		});
 	});
 });

@@ -25,6 +25,8 @@ interface Props {
 	product?: string;
 	inStock: number;
 	totalStock: number;
+	// On requested/scheduled orders — not yet handed out, so not in inStock.
+	reserved: number;
 	// Description and attributes are inherited from the item's product, so
 	// both are absent until the item is assigned — see docs/wizard.md's
 	// "What's inherited from the product" notes.
@@ -44,6 +46,7 @@ const {
 	product,
 	inStock,
 	totalStock,
+	reserved,
 	description,
 	attributes = [],
 	missingAttributeTemplate = false,
@@ -63,6 +66,7 @@ const {
 		{variant === 'assigned' && (subCategory ? <SubCategoryTag name={subCategory} /> : <span></span>)}
 		{variant === 'assigned' && product && <ProductTag name={product} />}
 		<StockIndicator inStock={inStock} total={totalStock} />
+		<span class:list={["tabular-nums text-sm text-right", reserved > 0 ? 'font-medium text-text' : 'text-text-muted']}>{reserved}</span>
 		<DetailsToggle label={`Show details for ${name}`} warning={missingAttributeTemplate} />
 	</div>
 	<div class="item-details hidden border-t border-border bg-bg-subtle/60 px-4 py-4">

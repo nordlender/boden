@@ -1,6 +1,7 @@
 import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 import { db } from '../db/client';
 import { items, orderItems, orders } from '../db/schema';
+import { RESERVING_STATUSES } from './orderStatus';
 import { getMaxRentalDays } from './rental-policy';
 import { todayIsoInOslo } from './dates';
 
@@ -96,7 +97,7 @@ export function getReservationAvailability(
 		.where(
 			and(
 				inArray(orderItems.itemId, itemIds),
-				inArray(orders.status, ['requested', 'scheduled', 'active']),
+				inArray(orders.status, RESERVING_STATUSES),
 				lte(orders.fromDate, range.to),
 				gte(orders.toDate, range.from),
 			),

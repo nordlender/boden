@@ -1,7 +1,7 @@
 import { db } from '../db/client';
 import { items, productAttributeKeys, itemAttributeValues } from '../db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
-import { checkedOutQuantitiesByItem } from './stock';
+import { checkedOutQuantitiesByItem, reservedQuantitiesByItem } from './stock';
 
 export interface WizardAttribute {
 	key: string;
@@ -16,6 +16,9 @@ export interface WizardItem {
 	// orders. Future requested/scheduled orders don't reduce it.
 	inStock: number;
 	totalStock: number;
+	// Quantity on requested/scheduled orders — claimed but not yet handed
+	// out, so not yet subtracted from inStock.
+	reserved: number;
 	productId: number | null;
 	productTitle?: string;
 	subCategory?: string;
@@ -64,7 +67,11 @@ export async function getWizardItems(): Promise<{ unassigned: WizardItem[]; assi
 		},
 	});
 
-	const checkedOut = await checkedOutQuantitiesByItem(rows.map((row) => row.id));
+	const itemIds = rows.map((row) => row.id);
+	const [checkedOut, reserved] = await Promise.all([
+		checkedOutQuantitiesByItem(itemIds),
+		reservedQuantitiesByItem(itemIds, ['requested', 'scheduled']),
+	]);
 
 	const wizardItems: WizardItem[] = rows.map((row) => ({
 		id: row.id,
@@ -72,6 +79,7 @@ export async function getWizardItems(): Promise<{ unassigned: WizardItem[]; assi
 		imageUrl: row.imageUrl,
 		inStock: row.stockCount - (checkedOut.get(row.id) ?? 0),
 		totalStock: row.stockCount,
+		reserved: reserved.get(row.id) ?? 0,
 		productId: row.productId,
 		productTitle: row.product?.title,
 		subCategory: row.product?.subcategory?.name,

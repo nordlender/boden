@@ -679,6 +679,8 @@ Daily database backup:
 0 3 * * * sqlite3 /path/to/data/rental.db ".backup /backups/rental-$(date +\%F).db"
 ```
 
+Admin-uploaded images live in `data/uploads/` (served at `/media/*`, not from `public/`, so they work without a rebuild). Back that directory up alongside the database, e.g. `rsync -a /path/to/data/uploads/ /backups/uploads/`.
+
 ---
 
 ## 15. Auth provider notes

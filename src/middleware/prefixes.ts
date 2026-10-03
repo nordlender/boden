@@ -37,6 +37,7 @@ export const ADMIN_ROUTE_PREFIXES = [
   '/api/wizard',
   '/api/products',
   '/api/admin/pickup-days',
+  '/api/admin/images',
   '/api/messages/pin',
   '/api/messages/unpin',
 ];

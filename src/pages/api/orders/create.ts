@@ -55,6 +55,14 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const hasUnpaidFees = parseYesNo(form.get('hasUnpaidFees'));
   const userIsMember = parseYesNo(form.get('userIsMember'));
 
+  // Every submitter must accept the liability disclaimer (see #134). Enforced
+  // here rather than trusting the form's `required` attribute; the acceptance
+  // timestamp is persisted on the order for moderators to see.
+  const disclaimerAccepted = form.get('disclaimerAccepted') === 'on';
+  if (!disclaimerAccepted) {
+    return redirect('/reservation?error=disclaimer_required');
+  }
+
   // Populated by the reservation page's split-order action when the member
   // moves one or more mixed-availability lines (items or sets) into their
   // own order — see ReservationForm.astro and
@@ -80,6 +88,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           contactMobile,
           hasUnpaidFees,
           userIsMember,
+          disclaimerAccepted,
         })
       : await createOrder({
           userId: locals.user!.id,
@@ -93,6 +102,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           contactMobile,
           hasUnpaidFees,
           userIsMember,
+          disclaimerAccepted,
         });
   if (!result.ok) {
     // 'unavailable': re-checked at insert time (see orders.ts's insertOrder)

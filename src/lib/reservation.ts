@@ -170,12 +170,3 @@ function dayAfter(date: string): string {
 	d.setUTCDate(d.getUTCDate() + 1);
 	return d.toISOString().slice(0, 10);
 }
-
-// True when some (but not all) items are unavailable for their requested
-// quantity in the chosen range — the trigger for the mixed-availability
-// warning banner and the per-item "split into a separate order" action.
-export function hasMixedAvailability(availabilities: ReservationAvailability[]): boolean {
-	const someAvailable = availabilities.some((a) => a.available);
-	const someUnavailable = availabilities.some((a) => !a.available);
-	return someAvailable && someUnavailable;
-}

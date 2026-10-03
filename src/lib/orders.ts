@@ -6,19 +6,6 @@ import type { Role } from './auth';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
 
-// Only used for the checkout token, which isn't read aloud but shares the
-// alphabet for consistency. The order code itself has its own fixed-format
-// alphabet — see generateOrderCode below.
-const RANDOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-function generateRandomCode(length: number): string {
-  let code = '';
-  for (let i = 0; i < length; i++) {
-    code += RANDOM_CODE_ALPHABET[Math.floor(Math.random() * RANDOM_CODE_ALPHABET.length)];
-  }
-  return code;
-}
-
 // NNAAX: two digits, two free letters, one role letter.
 export const ORDER_CODE_LENGTH = 5;
 const MAX_ORDER_CODE_ATTEMPTS = 5;
@@ -62,22 +49,9 @@ export function generateOrderCode(role: Role = 'member'): string {
   );
 }
 
-// Shared by every order created from one checkout submission (split or
-// not) — see schema.ts's orders.checkoutToken doc comment. Longer than an
-// order code since it isn't read aloud, and deliberately not
-// collision-checked against other rows: two different checkout submissions
-// colliding is astronomically unlikely at this length, and the confirmation
-// page also scopes its lookup to the signed-in user, so a collision could
-// only ever surface a viewer's own past orders, never another member's.
-const CHECKOUT_TOKEN_LENGTH = 10;
-
-function generateCheckoutToken(): string {
-  return generateRandomCode(CHECKOUT_TOKEN_LENGTH);
-}
-
 // Thrown by insertOrder to abort (and roll back) the transaction when an
 // item's availability was re-checked at insert time and found wanting —
-// caught by createOrder/createSplitOrders and turned into an `unavailable`
+// caught by createOrder and turned into an `unavailable`
 // result rather than a 500.
 class UnavailableItemsError extends Error {
   constructor(public itemIds: number[]) {
@@ -106,7 +80,7 @@ export type CreateOrderInput = {
 };
 
 export type CreateOrderResult =
-  | { ok: true; orderId: number; orderCode: string; checkoutToken: string }
+  | { ok: true; orderId: number; orderCode: string }
   | { ok: false; error: 'empty_cart' }
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
   | { ok: false; error: 'user_not_found' };
@@ -119,7 +93,6 @@ function insertOrder(
     note: string | null;
     fromDate: string;
     toDate: string;
-    checkoutToken: string;
     entries: CartEntry[];
     contactName: string;
     contactEmail: string;
@@ -153,7 +126,6 @@ function insertOrder(
         .insert(orders)
         .values({
           orderCode,
-          checkoutToken: input.checkoutToken,
           userId: input.userId,
           note: input.note,
           fromDate: input.fromDate,
@@ -188,7 +160,7 @@ function insertOrder(
   throw new Error('Failed to generate a unique order code');
 }
 
-// Shared by createOrder/createSplitOrders: drops cart entries pointing at
+// Used by createOrder: drops cart entries pointing at
 // items that no longer exist or were archived — stock shortfall itself is
 // resolved later by the moderator at the confirm step (see
 // orderItems.retrievedQuantity), not here.
@@ -220,7 +192,6 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     return { ok: false, error: 'empty_cart' };
   }
 
-  const checkoutToken = generateCheckoutToken();
   try {
     const result = db.transaction((tx) =>
       insertOrder(tx, {
@@ -229,7 +200,6 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         note: input.note,
         fromDate: input.fromDate,
         toDate: input.toDate,
-        checkoutToken,
         entries: entriesToOrder,
         contactName: input.contactName,
         contactEmail: input.contactEmail,
@@ -238,7 +208,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         userIsMember: input.userIsMember,
       }),
     );
-    return { ok: true, orderId: result.id, orderCode: result.orderCode, checkoutToken };
+    return { ok: true, orderId: result.id, orderCode: result.orderCode };
   } catch (err) {
     if (err instanceof UnavailableItemsError) {
       return { ok: false, error: 'unavailable', unavailableItemIds: err.itemIds };
@@ -246,82 +216,6 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     // orders.userId is a FK sourced from the checkout route's ambient
     // session id (locals.user!.id) rather than a freshly-looked-up row —
     // same defensive-only case as moderatorOrders.ts's confirmRetrieval.
-    if (isForeignKeyViolation(err)) {
-      return { ok: false, error: 'user_not_found' };
-    }
-    throw err;
-  }
-}
-
-export type CreateSplitOrdersInput = {
-  userId: string;
-  role: Role;
-  note: string | null;
-  cartEntries: CartEntry[];
-  fromDate: string;
-  toDate: string;
-  // itemIds the member chose to move into their own order via the
-  // reservation page's split-order action — see TASKS.md's Reservation
-  // section on why this isn't offered for a line requesting more than one of
-  // the same item.
-  splitItemIds: number[];
-  contactName: string;
-  contactEmail: string;
-  contactMobile: string | null;
-  hasUnpaidFees: boolean | null;
-  userIsMember: boolean | null;
-};
-
-export type CreateSplitOrdersResult =
-  | { ok: true; orders: { orderId: number; orderCode: string }[]; checkoutToken: string }
-  | { ok: false; error: 'empty_cart' }
-  | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
-  | { ok: false; error: 'user_not_found' };
-
-// Same validation/entry-filtering as createOrder, but partitions the
-// resulting entries into up to two orders sharing the same date range: one
-// for the split-out items, one for the rest. Falls back to a single order
-// when nothing (or everything) was split — e.g. splitItemIds is empty, or
-// names every item still in the cart.
-export async function createSplitOrders(input: CreateSplitOrdersInput): Promise<CreateSplitOrdersResult> {
-  const entriesToOrder = await resolveOrderableEntries(input.cartEntries);
-  if (entriesToOrder.length === 0) {
-    return { ok: false, error: 'empty_cart' };
-  }
-
-  const splitIds = new Set(input.splitItemIds);
-  const splitGroup = entriesToOrder.filter((e) => splitIds.has(e.itemId));
-  const mainGroup = entriesToOrder.filter((e) => !splitIds.has(e.itemId));
-  const groups = [mainGroup, splitGroup].filter((g) => g.length > 0);
-
-  const checkoutToken = generateCheckoutToken();
-  try {
-    // One transaction for every group: if either group's items turn out to
-    // be unavailable, the whole submission rolls back rather than leaving
-    // one half of a split checkout placed and the other silently dropped.
-    const created = db.transaction((tx) =>
-      groups.map((entries) =>
-        insertOrder(tx, {
-          userId: input.userId,
-          role: input.role,
-          note: input.note,
-          fromDate: input.fromDate,
-          toDate: input.toDate,
-          checkoutToken,
-          entries,
-          contactName: input.contactName,
-          contactEmail: input.contactEmail,
-          contactMobile: input.contactMobile,
-          hasUnpaidFees: input.hasUnpaidFees,
-          userIsMember: input.userIsMember,
-        }),
-      ),
-    );
-    return { ok: true, orders: created.map((o) => ({ orderId: o.id, orderCode: o.orderCode })), checkoutToken };
-  } catch (err) {
-    if (err instanceof UnavailableItemsError) {
-      return { ok: false, error: 'unavailable', unavailableItemIds: err.itemIds };
-    }
     if (isForeignKeyViolation(err)) {
       return { ok: false, error: 'user_not_found' };
     }

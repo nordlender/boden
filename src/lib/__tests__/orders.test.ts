@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { createOrder, createSplitOrders, deleteOrder, generateOrderCode, rescheduleOrder } from '../orders';
+import { createOrder, deleteOrder, generateOrderCode, rescheduleOrder } from '../orders';
 import type { CartEntry } from '../cart';
 
 // rescheduleOrder calls isValidDateRange (src/lib/reservation.ts), which
@@ -37,7 +37,6 @@ const CONTACT = {
 // per in-memory db instance).
 const ITEM_A_ID = 1;
 const ITEM_B_ID = 2;
-const ITEM_C_ID = 3;
 
 vi.mock('../../db/client', async () => {
 	const { createTestDb } = await import('../../db/testDb');
@@ -61,7 +60,7 @@ vi.mock('../../db/client', async () => {
 	// An existing order fully books item A for 2026-01-05..2026-01-10.
 	const [existingOrder] = await db
 		.insert(schema.orders)
-		.values({ orderCode: 'AAAAAA', checkoutToken: 'EXISTINGTK', userId: otherUser.id, fromDate: '2026-01-05', toDate: '2026-01-10' })
+		.values({ orderCode: 'AAAAAA', userId: otherUser.id, fromDate: '2026-01-05', toDate: '2026-01-10' })
 		.returning();
 	await db.insert(schema.orderItems).values({ orderId: existingOrder.id, itemId: 1, requestedQuantity: 1 }); // item A
 
@@ -69,7 +68,7 @@ vi.mock('../../db/client', async () => {
 });
 
 describe('createOrder', () => {
-	it('creates an order and returns a checkout token distinct from the order code', async () => {
+	it('creates an order with an NNAAX order code', async () => {
 		const cartEntries: CartEntry[] = [{ itemId: ITEM_B_ID, quantity: 2 }];
 		const result = await createOrder({
 			userId: 'member-1',
@@ -84,8 +83,6 @@ describe('createOrder', () => {
 		if (!result.ok) return;
 		// NNAAX format (issue #155): two digits, two free letters, a role letter.
 		expect(result.orderCode).toMatch(/^\d{2}[A-Z]{2}[ABIM]$/);
-		expect(result.checkoutToken).toHaveLength(10);
-		expect(result.checkoutToken).not.toBe(result.orderCode);
 	});
 
 	it('rejects with "unavailable" instead of creating an order when an item is already fully booked', async () => {
@@ -119,100 +116,28 @@ describe('createOrder', () => {
 	});
 });
 
-describe('createSplitOrders', () => {
-	it('gives every order from the same submission the same checkout token', async () => {
-		const cartEntries: CartEntry[] = [
-			{ itemId: ITEM_B_ID, quantity: 1 },
-			{ itemId: ITEM_C_ID, quantity: 1 },
-		];
-		// Both items are available for this range — split item C out into its
-		// own order and confirm both resulting orders carry the same token.
-		const result = await createSplitOrders({
-			userId: 'member-1',
-			note: null,
-			cartEntries,
-			fromDate: '2026-04-01',
-			toDate: '2026-04-05',
-			splitItemIds: [ITEM_C_ID],
-			...CONTACT,
-		});
-
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
-		expect(result.orders).toHaveLength(2);
-		expect(result.orders[0].orderCode).not.toBe(result.orders[1].orderCode);
-
-		const { db } = await import('../../db/client');
-		const [orderA, orderB] = await Promise.all(
-			result.orders.map((o) => db.query.orders.findFirst({ where: (t, { eq }) => eq(t.id, o.orderId) })),
-		);
-		expect(orderA?.checkoutToken).toBe(result.checkoutToken);
-		expect(orderB?.checkoutToken).toBe(result.checkoutToken);
-	});
-
-	it('rejects the whole submission when the split-out group is still unavailable', async () => {
-		const cartEntries: CartEntry[] = [
-			{ itemId: ITEM_A_ID, quantity: 1 },
-			{ itemId: ITEM_B_ID, quantity: 1 },
-		];
-		// Item A is unavailable for this range (booked 01-05..01-10), item B is
-		// free — split item A out into its own order.
-		const result = await createSplitOrders({
-			userId: 'member-1',
-			note: null,
-			cartEntries,
-			fromDate: '2026-01-06',
-			toDate: '2026-01-08',
-			splitItemIds: [ITEM_A_ID],
-			...CONTACT,
-		});
-
-		// The split-out group (item A) is still unavailable on its own — the
-		// whole submission is rejected rather than silently placing only the
-		// available half.
-		expect(result).toEqual({ ok: false, error: 'unavailable', unavailableItemIds: [ITEM_A_ID] });
-	});
-
-	it('rolls back the whole submission (not just the unavailable group) on rejection', async () => {
+describe('createOrder with mixed availability', () => {
+	it('rejects the whole order, creating nothing, when one of several items is unavailable', async () => {
 		const { db } = await import('../../db/client');
 		const schema = await import('../../db/schema');
 		const before = await db.select().from(schema.orders);
 
-		const cartEntries: CartEntry[] = [
-			{ itemId: ITEM_A_ID, quantity: 1 },
-			{ itemId: ITEM_B_ID, quantity: 1 },
-		];
-		await createSplitOrders({
+		// Item A is booked 01-05..01-10, item B is free for the same range.
+		const result = await createOrder({
 			userId: 'member-1',
 			note: null,
-			cartEntries,
+			cartEntries: [
+				{ itemId: ITEM_A_ID, quantity: 1 },
+				{ itemId: ITEM_B_ID, quantity: 1 },
+			],
 			fromDate: '2026-01-06',
 			toDate: '2026-01-08',
-			splitItemIds: [ITEM_A_ID],
 			...CONTACT,
 		});
 
+		expect(result).toEqual({ ok: false, error: 'unavailable', unavailableItemIds: [ITEM_A_ID] });
 		const after = await db.select().from(schema.orders);
-		// Neither the main group (item B, available) nor the split group
-		// (item A, unavailable) should have been committed.
 		expect(after.length).toBe(before.length);
-	});
-
-	it('falls back to a single order (still carrying a checkout token) when nothing was split', async () => {
-		const result = await createSplitOrders({
-			userId: 'member-1',
-			note: null,
-			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
-			fromDate: '2026-03-01',
-			toDate: '2026-03-02',
-			splitItemIds: [],
-			...CONTACT,
-		});
-
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
-		expect(result.orders).toHaveLength(1);
-		expect(result.checkoutToken).toHaveLength(10);
 	});
 });
 

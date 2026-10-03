@@ -119,7 +119,7 @@ export function jsonError(code: string, status: number): Response {
  * existing query string and hash. Returns a path, safe to hand to `redirect()`.
  */
 export function redirectWithError(target: string, code: string): string {
-	const url = new URL(target, 'http://internal');
+	const url = new URL(target, 'https://internal');
 	url.searchParams.set('error', code);
 	return `${url.pathname}${url.search}${url.hash}`;
 }

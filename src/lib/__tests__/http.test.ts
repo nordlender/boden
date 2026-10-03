@@ -194,7 +194,7 @@ describe('parseIdParam', () => {
 });
 
 describe('readJson', () => {
-  const req = (body: string | null) => new Request('http://x/', { method: 'POST', body });
+  const req = (body: string | null) => new Request('https://x/', { method: 'POST', body });
 
   it('returns the parsed object', async () => {
     expect(await readJson(req('{"a":1}'))).toEqual({ a: 1 });

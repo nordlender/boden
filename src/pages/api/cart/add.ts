@@ -42,7 +42,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect, url: requestU
 	// redirect lands, then stripped from the URL — see that component. Parsed
 	// as a URL (against a dummy base, since target is always relative) so the
 	// marker lands in the query string even when target has a #fragment.
-	const url = new URL(target, 'http://internal');
+	const url = new URL(target, 'https://internal');
 	url.searchParams.set('cartOpen', '1');
 	return redirect(`${url.pathname}${url.search}${url.hash}`);
 };

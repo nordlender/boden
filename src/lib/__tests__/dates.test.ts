@@ -38,12 +38,16 @@ describe('daysInclusive', () => {
 	});
 });
 
+// nb-NO output can contain NBSP/narrow spaces; normalize before comparing.
+const norm = (v: string) => v.replace(/[\s\u00a0\u202f]+/g, ' ');
+
 describe('display formatting', () => {
 	it('formats bare dates with a fixed locale', () => {
-		expect(formatDateDisplay('2026-10-03')).toBe('3 Oct 2026');
+		expect(norm(formatDateDisplay('2026-10-03'))).toBe('3. okt. 2026');
+		expect(norm(formatDateDisplay('2026-10-03', { weekday: true }))).toBe('lør. 3. okt. 2026');
 	});
 	it('formats date-times in Europe/Oslo regardless of host timezone', () => {
-		expect(formatDateTimeDisplay(new Date('2026-07-01T10:30:00Z'))).toBe('1 Jul 2026, 12:30');
-		expect(formatDateTimeDisplay(new Date('2026-01-01T10:30:00Z'))).toBe('1 Jan 2026, 11:30');
+		expect(norm(formatDateTimeDisplay(new Date('2026-07-01T10:30:00Z')))).toBe('1. juli 2026, 12:30');
+		expect(norm(formatDateTimeDisplay(new Date('2026-01-01T10:30:00Z')))).toBe('1. jan. 2026, 11:30');
 	});
 });

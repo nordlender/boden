@@ -2,9 +2,8 @@
 // client-side scripts (ReservationCalendar.astro) — plain Date/Intl usage,
 // no server-only dependency, so it works in either context unchanged.
 //
-// Display helpers use a fixed locale (the UI is English; en-GB gives
-// "3 Oct 2026" and 24h times) so server and client render identically.
-const DISPLAY_LOCALE = 'en-GB';
+// Display helpers use a fixed locale (Norwegian site; the UI text stays English)
+const DISPLAY_LOCALE = 'nb-NO';
 const SHOP_TIME_ZONE = 'Europe/Oslo';
 
 const ISO_DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;

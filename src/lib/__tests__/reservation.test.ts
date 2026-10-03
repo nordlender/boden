@@ -53,6 +53,25 @@ vi.mock('../../db/client', async () => {
 		.returning();
 	await db.insert(schema.orderItems).values({ orderId: adjacentOrder.id, itemId: 1, requestedQuantity: 1 });
 
+	// A moderator-accepted ('scheduled') order holds 3x item B for
+	// 2026-02-01..2026-02-05 — item B is otherwise never reserved, so this is
+	// what exercises 'scheduled' orders still counting toward peak demand
+	// (accept moves an order from 'requested' to 'scheduled', not out of the
+	// reserved set — see src/lib/moderatorOrders.ts's acceptOrder).
+	const [scheduledOrder] = await db
+		.insert(schema.orders)
+		.values({
+			orderCode: 'DDDDDD',
+			checkoutToken: 'TESTTOKEN3',
+			userId: user.id,
+			fromDate: '2026-02-01',
+			toDate: '2026-02-05',
+			status: 'scheduled',
+			acceptedAt: new Date(),
+		})
+		.returning();
+	await db.insert(schema.orderItems).values({ orderId: scheduledOrder.id, itemId: 2, requestedQuantity: 3 });
+
 	return { db };
 });
 
@@ -140,5 +159,16 @@ describe('getReservationAvailability', () => {
 		]);
 		expect(availability.peakReserved).toBe(1);
 		expect(availability.available).toBe(true);
+	});
+
+	it('counts a scheduled (moderator-accepted) order toward peak demand, same as requested/active', () => {
+		// Item B has 5 in stock, 3 already held by a 'scheduled' order over
+		// 2026-02-01..2026-02-05 — requesting 3 more during an overlapping
+		// range only leaves 2 free.
+		const [availability] = getReservationAvailability({ from: '2026-02-02', to: '2026-02-03' }, [
+			{ itemId: ITEM_B_ID, quantity: 3 },
+		]);
+		expect(availability.peakReserved).toBe(3);
+		expect(availability.available).toBe(false);
 	});
 });

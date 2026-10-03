@@ -5,7 +5,7 @@ import { orderItems, orders } from '../db/schema';
 // Shared by src/lib/shop.ts, src/lib/cart.ts, and src/lib/wizard.ts. "In
 // stock right now" is never stored: it's always stockCount minus quantities
 // tied up in orders whose status still holds a claim on the item
-// (requested/active).
+// (requested/scheduled/active).
 export async function reservedQuantitiesByItem(itemIds: number[]): Promise<Map<number, number>> {
 	if (itemIds.length === 0) return new Map();
 	const rows = await db
@@ -15,7 +15,7 @@ export async function reservedQuantitiesByItem(itemIds: number[]): Promise<Map<n
 		})
 		.from(orderItems)
 		.innerJoin(orders, eq(orderItems.orderId, orders.id))
-		.where(and(inArray(orderItems.itemId, itemIds), inArray(orders.status, ['requested', 'active'])))
+		.where(and(inArray(orderItems.itemId, itemIds), inArray(orders.status, ['requested', 'scheduled', 'active'])))
 		.groupBy(orderItems.itemId);
 	return new Map(rows.map((row) => [row.itemId, row.reserved]));
 }

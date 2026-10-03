@@ -2,7 +2,7 @@ import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 import { db } from '../db/client';
 import { items, orderItems, orders } from '../db/schema';
 import { getMaxRentalDays } from './rental-policy';
-import { todayIsoInOslo } from './dates';
+import { addDaysIso, daysInclusive, isIsoDate, todayIsoInOslo } from './dates';
 
 // Reservation page backend (docs/TASKS.md "Reservation"). Orders carry a
 // date range (src/db/schema.ts's orders.fromDate/toDate, both YYYY-MM-DD,
@@ -27,7 +27,7 @@ export interface ReservationDateRange {
 
 export function isValidDateRange(range: Partial<ReservationDateRange>): range is ReservationDateRange {
 	if (!range.from || !range.to) return false;
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(range.from) || !/^\d{4}-\d{2}-\d{2}$/.test(range.to)) return false;
+	if (!isIsoDate(range.from) || !isIsoDate(range.to)) return false;
 	// The calendar's `min` attribute (ReservationCalendar.astro) only stops a
 	// past date client-side — this is the server-side backstop against a
 	// direct POST bypassing it. "Today" is always Europe/Oslo's today (the
@@ -39,15 +39,7 @@ export function isValidDateRange(range: Partial<ReservationDateRange>): range is
 	// Single gate shared by order creation, split-order creation, the
 	// reservation-availability preview, and reschedule — so the max rental
 	// duration cap (src/lib/rental-policy.ts) applies everywhere at once.
-	return rangeLengthDays(range.from, range.to) <= getMaxRentalDays();
-}
-
-// Inclusive day count between two YYYY-MM-DD dates (e.g. the same day is a
-// 1-day rental, not 0) — UTC-based, same convention as dayAfter() below.
-function rangeLengthDays(from: string, to: string): number {
-	const fromMs = new Date(`${from}T00:00:00Z`).getTime();
-	const toMs = new Date(`${to}T00:00:00Z`).getTime();
-	return Math.round((toMs - fromMs) / 86_400_000) + 1;
+	return daysInclusive(range.from, range.to) <= getMaxRentalDays();
 }
 
 // For each requested item, finds the peak quantity of that item already
@@ -140,7 +132,7 @@ function peakConcurrentQuantity(intervals: { start: string; end: string; quantit
 	const events: Event[] = [];
 	for (const { start, end, quantity } of intervals) {
 		events.push({ date: start, delta: quantity });
-		events.push({ date: dayAfter(end), delta: -quantity });
+		events.push({ date: addDaysIso(end, 1), delta: -quantity });
 	}
 	// On a tie, process decrements (an interval ending) before increments (one
 	// starting) — otherwise two back-to-back, non-overlapping reservations can
@@ -156,19 +148,6 @@ function peakConcurrentQuantity(intervals: { start: string; end: string; quantit
 		if (running > peak) peak = running;
 	}
 	return peak;
-}
-
-// UTC-based day arithmetic on an already-normalized YYYY-MM-DD string, not a
-// "what day is it right now" read — there's no viewer/server timezone to get
-// wrong here, so this intentionally does NOT go through dates.ts's
-// Oslo-anchored helpers (todayIsoInOslo/dateToIsoInOslo). Constructing with a
-// literal "T00:00:00Z" and stepping with setUTCDate keeps every date in this
-// function on the UTC calendar consistently, which is all that's needed to
-// add one calendar day to a date string.
-function dayAfter(date: string): string {
-	const d = new Date(`${date}T00:00:00Z`);
-	d.setUTCDate(d.getUTCDate() + 1);
-	return d.toISOString().slice(0, 10);
 }
 
 // True when some (but not all) items are unavailable for their requested

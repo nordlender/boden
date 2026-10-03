@@ -14,6 +14,8 @@ export const icons = {
 	// state) — see detailsToggle in icon-nodes.ts, used by DetailsToggle.astro.
 	attribute: 'tabler:list-details',
 	image: 'tabler:photo',
+	// ImageMenu's "Add image" (upload) button.
+	upload: 'tabler:upload',
 	// `{dropdown_icon}` and `{select_icon}` are gone from here — both are
 	// animated with morphicons now (see src/lib/icon-nodes.ts), which needs
 	// IconNode data, not an iconify name. Dropdown.astro and SelectIcon.astro

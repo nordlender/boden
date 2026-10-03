@@ -160,7 +160,7 @@ boden/
 │   │   ├── reservation.ts                   # Date-range validation + availability queries
 │   │   ├── shop.ts                          # Customer-facing catalogue/product queries
 │   │   ├── stock.ts                         # reservedQuantitiesByItem — "in stock now" derivation
-│   │   ├── pickupDays.ts, wizard.ts, wizard-http.ts, upsertUser.ts, icons.ts, ...
+│   │   ├── pickupDays.ts, wizard.ts, http.ts, upsertUser.ts, icons.ts, ...
 │   │
 │   ├── middleware/
 │   │   ├── index.ts                         # Auth + role gate — §9

@@ -19,7 +19,7 @@ export const MEMBER_ROUTE_PREFIXES = ['/cart', '/checkout', '/orders', '/reserva
 // defense-in-depth, same reasoning as /api/wizard under ADMIN_ROUTE_PREFIXES
 // below: every /api/moderator/* write route, plus add.ts and delete.ts,
 // already re-implements its own requireModerator() (or an inline
-// admin-or-own-message) check (see src/lib/wizard-http.ts and
+// admin-or-own-message) check (see src/lib/http.ts and
 // src/pages/api/messages/delete.ts), so this is redundant today — but it
 // means a future moderator route that forgets the inline check isn't left
 // with zero protection. Moderators can author and delete-their-own message

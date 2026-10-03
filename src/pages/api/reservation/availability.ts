@@ -1,32 +1,41 @@
 import type { APIRoute } from 'astro';
+import { jsonError, json, isPositiveInteger, readJson, requireUser } from '../../../lib/http';
 import { getReservationAvailability, isValidDateRange } from '../../../lib/reservation';
 
 export const prerender = false;
+
+function isValidItem(value: unknown): value is { itemId: number; quantity: number } {
+	if (!value || typeof value !== 'object') return false;
+	const { itemId, quantity } = value as Record<string, unknown>;
+	return (
+		typeof itemId === 'number' && isPositiveInteger(itemId) && typeof quantity === 'number' && isPositiveInteger(quantity)
+	);
+}
 
 // Per-item, date- and quantity-aware availability for a chosen [from, to]
 // range — see src/lib/reservation.ts's getReservationAvailability. Requires
 // auth: this queries other members' orders (indirectly, via aggregated
 // quantities only — no order details are returned).
 export const POST: APIRoute = async ({ request, locals }) => {
-	if (!locals.user) {
-		return new Response('Unauthorized', { status: 401 });
+	const authError = requireUser(locals);
+	if (authError) return authError;
+
+	const body = await readJson(request);
+	if (!body) return jsonError('invalid_json', 400);
+
+	const { from, to, items } = body;
+	if (
+		typeof from !== 'string' ||
+		typeof to !== 'string' ||
+		!isValidDateRange({ from, to }) ||
+		!Array.isArray(items) ||
+		items.length === 0 ||
+		!items.every(isValidItem)
+	) {
+		return jsonError('invalid_request', 400);
 	}
 
-	let body: { from?: string; to?: string; items?: { itemId: number; quantity: number }[] };
-	try {
-		body = await request.json();
-	} catch {
-		return new Response(JSON.stringify({ error: 'invalid_json' }), { status: 400 });
-	}
+	const availabilities = getReservationAvailability({ from, to }, items);
 
-	const items = body.items ?? [];
-	if (!isValidDateRange({ from: body.from, to: body.to }) || items.length === 0) {
-		return new Response(JSON.stringify({ error: 'invalid_request' }), { status: 400 });
-	}
-
-	const availabilities = getReservationAvailability({ from: body.from!, to: body.to! }, items);
-
-	return new Response(JSON.stringify({ availabilities }), {
-		headers: { 'Content-Type': 'application/json' },
-	});
+	return json({ availabilities });
 };

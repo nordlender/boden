@@ -6,16 +6,17 @@
 // to render and calls these.
 import { badgeBaseClasses, badgeToneClasses } from '../../lib/badge-styles';
 
-export interface ItemAvailability {
-	itemId: number;
+// A row is either a plain item or a set (see cart.ts's CartLine) — this
+// module doesn't care which, it only ever paints `available`.
+export interface LineAvailability {
+	key: string;
 	available: boolean;
-	requestedQuantity: number;
 }
 
 // Renders one row's availability badge, split-order button and split tag.
 // `pressed`/`splitOfferable` are already-decided by the caller — this only
 // paints them.
-export function renderRow(row: Element, availability: ItemAvailability, pressed: boolean, splitOfferable: boolean): void {
+export function renderRow(row: Element, availability: LineAvailability, pressed: boolean, splitOfferable: boolean): void {
 	const badge = row.querySelector('[data-availability-badge]');
 	const splitButton = row.querySelector('[data-split-order-button]');
 	const splitTag = row.querySelector('[data-split-tag]');

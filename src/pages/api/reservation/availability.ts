@@ -1,8 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getReservationAvailability, isValidDateRange } from '../../../lib/reservation';
 
-export const prerender = false;
-
 // Per-item, date- and quantity-aware availability for a chosen [from, to]
 // range — see src/lib/reservation.ts's getReservationAvailability. Requires
 // auth: this queries other members' orders (indirectly, via aggregated

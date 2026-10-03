@@ -6,9 +6,7 @@ export const prerender = false;
 // (see the admin hub's "Products" tile) — create/edit of product rows
 // still goes through the wizard flow (/admin/items); a dedicated
 // create/edit UI for this page is a separate, larger piece of work.
-import '../../styles/global.css';
-import ThemeInit from '../../components/ThemeInit.astro';
-import AdminNavbar from '../../components/AdminNavbar.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
 import { db } from '../../db/client';
 
 const products = await db.query.products.findMany({
@@ -17,15 +15,7 @@ const products = await db.query.products.findMany({
 });
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<title>Products</title>
-		<ThemeInit />
-	</head>
-	<body class="min-h-screen bg-bg-subtle">
-		<AdminNavbar />
+<AdminLayout title="Products">
 		<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
 			<div>
 				<h1 class="text-xl font-semibold text-text">Products</h1>
@@ -62,5 +52,4 @@ const products = await db.query.products.findMany({
 				)
 			}
 		</div>
-	</body>
-</html>
+</AdminLayout>

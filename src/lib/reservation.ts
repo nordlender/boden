@@ -1,7 +1,5 @@
-import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 import { db } from '../db/client';
-import { items, orderItems, orders } from '../db/schema';
-import { RESERVING_STATUSES } from './orderStatus';
+import { daysInclusive, getAvailableForRange, getStockCounts, type QueryExecutor } from './availability';
 import { getMaxRentalDays } from './rental-policy';
 import { todayIsoInOslo } from './dates';
 
@@ -40,32 +38,17 @@ export function isValidDateRange(range: Partial<ReservationDateRange>): range is
 	// Single gate shared by order creation, split-order creation, the
 	// reservation-availability preview, and reschedule — so the max rental
 	// duration cap (src/lib/rental-policy.ts) applies everywhere at once.
-	return rangeLengthDays(range.from, range.to) <= getMaxRentalDays();
+	return daysInclusive(range.from, range.to) <= getMaxRentalDays();
 }
 
-// Inclusive day count between two YYYY-MM-DD dates (e.g. the same day is a
-// 1-day rental, not 0) — UTC-based, same convention as dayAfter() below.
-function rangeLengthDays(from: string, to: string): number {
-	const fromMs = new Date(`${from}T00:00:00Z`).getTime();
-	const toMs = new Date(`${to}T00:00:00Z`).getTime();
-	return Math.round((toMs - fromMs) / 86_400_000) + 1;
-}
-
-// For each requested item, finds the peak quantity of that item already
-// reserved (by other requested/active orders) at any single point in time
-// within [from, to], via a sweep line over the overlapping orders' date
-// ranges. Two requests for the same item at different quantities can come
-// back with different `available` verdicts for the same range — the whole
-// point of tracking peak concurrent demand rather than just "is there any
-// order at all in this range".
-// `executor` defaults to the top-level `db` (used by the live-preview API
-// route), but callers that must check availability atomically alongside an
-// insert (src/lib/orders.ts) pass the transaction handle instead. Both
-// support the same synchronous `.all()` call — the better-sqlite3 driver
-// executes queries synchronously regardless of `await`, and a transaction's
-// callback here must stay synchronous (see insertOrder's comment).
-type QueryExecutor = Pick<typeof db, 'select'>;
-
+// For each requested item: is `quantity` free on every day of [from, to]?
+// Delegates to src/lib/availability.ts (the one availability model — see
+// there for what an order occupies, including the overdue rule).
+// `peakReserved` is the most units occupied by other orders on any single
+// day in the range. `executor` defaults to the top-level `db` (the live
+// preview), but callers that must check atomically alongside an insert
+// (src/lib/orders.ts) pass the transaction handle — everything stays
+// synchronous for that reason (see insertOrder's comment).
 export function getReservationAvailability(
 	range: ReservationDateRange,
 	requestedItems: { itemId: number; quantity: number }[],
@@ -74,102 +57,20 @@ export function getReservationAvailability(
 ): ReservationAvailability[] {
 	if (requestedItems.length === 0) return [];
 	const itemIds = requestedItems.map((entry) => entry.itemId);
-
-	const itemRows = executor
-		.select({ id: items.id, stockCount: items.stockCount })
-		.from(items)
-		.where(inArray(items.id, itemIds))
-		.all();
-	const stockById = new Map(itemRows.map((row) => [row.id, row.stockCount]));
-
-	// Overlap test on two inclusive ranges [a.from, a.to] and [b.from, b.to]:
-	// a.from <= b.to AND a.to >= b.from.
-	const overlapping = executor
-		.select({
-			itemId: orderItems.itemId,
-			quantity: orderItems.requestedQuantity,
-			fromDate: orders.fromDate,
-			toDate: orders.toDate,
-			orderId: orders.id,
-		})
-		.from(orderItems)
-		.innerJoin(orders, eq(orderItems.orderId, orders.id))
-		.where(
-			and(
-				inArray(orderItems.itemId, itemIds),
-				inArray(orders.status, RESERVING_STATUSES),
-				lte(orders.fromDate, range.to),
-				gte(orders.toDate, range.from),
-			),
-		)
-		.all();
-
-	const intervalsByItem = new Map<number, { start: string; end: string; quantity: number }[]>();
-	for (const row of overlapping) {
-		if (excludeOrderId !== undefined && row.orderId === excludeOrderId) continue;
-		const list = intervalsByItem.get(row.itemId) ?? [];
-		// Clamp to the requested range — only the overlap matters for the sweep.
-		list.push({
-			start: row.fromDate > range.from ? row.fromDate : range.from,
-			end: row.toDate < range.to ? row.toDate : range.to,
-			quantity: row.quantity,
-		});
-		intervalsByItem.set(row.itemId, list);
-	}
+	const stock = getStockCounts(itemIds, executor);
+	const availableByItem = getAvailableForRange(itemIds, range.from, range.to, { excludeOrderId, executor });
 
 	return requestedItems.map(({ itemId, quantity }) => {
-		const stockCount = stockById.get(itemId) ?? 0;
-		const peakReserved = peakConcurrentQuantity(intervalsByItem.get(itemId) ?? []);
+		const stockCount = stock.get(itemId) ?? 0;
+		const availableQuantity = availableByItem.get(itemId) ?? 0;
 		return {
 			itemId,
 			requestedQuantity: quantity,
-			peakReserved,
+			peakReserved: stockCount - availableQuantity,
 			stockCount,
-			available: stockCount - peakReserved >= quantity,
+			available: availableQuantity >= quantity,
 		};
 	});
-}
-
-// Sweep-line over [start, end] date intervals (inclusive), each carrying a
-// quantity, and returns the highest sum of concurrently-active quantities at
-// any point. A "day after end" sentinel is used for the end event so an
-// interval ending on day D still counts as active on day D itself.
-function peakConcurrentQuantity(intervals: { start: string; end: string; quantity: number }[]): number {
-	if (intervals.length === 0) return 0;
-
-	type Event = { date: string; delta: number };
-	const events: Event[] = [];
-	for (const { start, end, quantity } of intervals) {
-		events.push({ date: start, delta: quantity });
-		events.push({ date: dayAfter(end), delta: -quantity });
-	}
-	// On a tie, process decrements (an interval ending) before increments (one
-	// starting) — otherwise two back-to-back, non-overlapping reservations can
-	// transiently sum together depending on incidental row order, since a
-	// start event and another interval's day-after-end sentinel can land on
-	// the same date.
-	events.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.delta - b.delta));
-
-	let running = 0;
-	let peak = 0;
-	for (const event of events) {
-		running += event.delta;
-		if (running > peak) peak = running;
-	}
-	return peak;
-}
-
-// UTC-based day arithmetic on an already-normalized YYYY-MM-DD string, not a
-// "what day is it right now" read — there's no viewer/server timezone to get
-// wrong here, so this intentionally does NOT go through dates.ts's
-// Oslo-anchored helpers (todayIsoInOslo/dateToIsoInOslo). Constructing with a
-// literal "T00:00:00Z" and stepping with setUTCDate keeps every date in this
-// function on the UTC calendar consistently, which is all that's needed to
-// add one calendar day to a date string.
-function dayAfter(date: string): string {
-	const d = new Date(`${date}T00:00:00Z`);
-	d.setUTCDate(d.getUTCDate() + 1);
-	return d.toISOString().slice(0, 10);
 }
 
 // True when some (but not all) items are unavailable for their requested

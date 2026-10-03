@@ -1,6 +1,6 @@
 import type { AstroCookies } from 'astro';
 import { db } from '../db/client';
-import { reservedQuantitiesByItem } from './stock';
+import { getOccupiedToday } from './availability';
 import { sortAttributes } from './shop';
 import { computeSetAvailability, getSetChildrenDetailedBulk } from './sets';
 
@@ -37,9 +37,9 @@ export interface CartItemLine {
 	imageUrl: string | null;
 	quantity: number;
 	stockCount: number;
-	// stockCount minus what's currently tied up in other requested/active
-	// orders — see src/lib/stock.ts. Lets the cart/UI flag a line item whose
-	// quantity now exceeds what's actually available.
+	// Units available today (stockCount minus what today's orders occupy —
+	// see src/lib/availability.ts). Lets the cart/UI flag a line item whose
+	// quantity exceeds what's available right now.
 	inStock: number;
 	attributes: CartItemAttribute[];
 }
@@ -156,7 +156,7 @@ async function buildItemLines(entries: { itemId: number; quantity: number }[]): 
 
 	const visibleRows = rows.filter((row) => !row.archived && row.product?.status === 'published');
 	const rowsById = new Map(visibleRows.map((row) => [row.id, row]));
-	const reserved = await reservedQuantitiesByItem(visibleRows.map((row) => row.id));
+	const reserved = getOccupiedToday(visibleRows.map((row) => row.id));
 
 	return entries
 		.map((entry): CartItemLine | null => {
@@ -191,7 +191,7 @@ async function buildSetLines(entries: { setId: number; quantity: number }[]): Pr
 
 	const childrenBySet = await getSetChildrenDetailedBulk(visibleRows.map((row) => row.id));
 	const allChildItemIds = [...new Set([...childrenBySet.values()].flat().map((child) => child.itemId))];
-	const reserved = await reservedQuantitiesByItem(allChildItemIds);
+	const reserved = getOccupiedToday(allChildItemIds);
 
 	return entries
 		.map((entry): CartSetLine | null => {

@@ -11,12 +11,12 @@ import { getReservationAvailability, isValidDateRange } from './reservation';
 // alphabet — see generateOrderCode below.
 const RANDOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
+function randomChar(alphabet: string): string {
+  return alphabet[Math.floor(Math.random() * alphabet.length)];
+}
+
 function generateRandomCode(length: number): string {
-  let code = '';
-  for (let i = 0; i < length; i++) {
-    code += RANDOM_CODE_ALPHABET[Math.floor(Math.random() * RANDOM_CODE_ALPHABET.length)];
-  }
-  return code;
+  return Array.from({ length }, () => randomChar(RANDOM_CODE_ALPHABET)).join('');
 }
 
 // NNAAX: two digits, two free letters, one role letter.
@@ -41,10 +41,6 @@ const ORDER_CODE_ROLE_LETTERS: Record<Role, string> = {
   moderator: 'I', // instructor
   member: 'M',
 };
-
-function randomChar(alphabet: string): string {
-  return alphabet[Math.floor(Math.random() * alphabet.length)];
-}
 
 // Order code format is `NNAAX` (see issue #155, revised): two digits, two
 // free letters, then a role-flag letter always drawn from

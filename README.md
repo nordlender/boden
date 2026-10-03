@@ -68,6 +68,7 @@ yet).
 |---|---|
 | `npm run dev-setup` | Copy `.env` from the main checkout, run migrations, seed the example catalog |
 | `npm run dev` | Start the dev server |
+| `npm run dev-setup` | Bootstrap a fresh worktree: copy `.env` from main, migrate, seed |
 | `npm run build` | Build for production |
 | `npm run preview` | Preview a production build locally |
 | `npm test` | Run the test suite once |
@@ -110,3 +111,6 @@ src/
 - [`docs/schema-legacy-fixes.md`](docs/schema-legacy-fixes.md) — historical, superseded by `docs/schema.md`; kept because a few decisions in it are still cited by number elsewhere.
 
 For agent-specific workflow notes (dev server conventions, worktree etiquette), see [`AGENTS.md`](AGENTS.md).
+
+## License
+This software is licensed under The Prosperity Public License 3.0.0, permitting non-commercial use, or a trial for commercial users. Please read the full terms under `LICENSE.md`, or at [Prosperity Public License](https://prosperitylicense.com/versions/3.0.0).

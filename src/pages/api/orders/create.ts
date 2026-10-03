@@ -4,6 +4,7 @@ import type { APIRoute } from 'astro';
 import { getCart, setCart } from '../../../lib/cart';
 import { createOrder, createSplitOrders } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
+import { requireUser } from '../../../lib/wizard-http';
 
 // Maps the checkout form's readonly hasUnpaidFees/userIsMember text inputs
 // (literally "Yes" | "No" | "Unknown", see CheckoutForm.astro's yesNo()) back
@@ -21,9 +22,8 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   // Not covered by src/middleware/index.ts's route-prefix gate (that only
   // matches /cart, /checkout, /orders — not /api/...), so check auth here,
   // same as docs/rental-shop.md §9's confirm.ts/return.ts examples.
-  if (!locals.user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  const authError = requireUser(locals);
+  if (authError) return authError;
 
   const cart = getCart(cookies);
   if (cart.length === 0) {
@@ -64,22 +64,25 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   }
 
   // Populated by the reservation page's split-order action when the member
-  // moves one or more mixed-availability items into their own order — see
-  // ReservationForm.astro and src/lib/orders.ts's createSplitOrders.
-  const splitItemIds = (form.get('splitItemIds')?.toString() ?? '')
+  // moves one or more mixed-availability lines (items or sets) into their
+  // own order — see ReservationForm.astro and
+  // src/lib/orders.ts's createSplitOrders. Each key is cart.ts's
+  // entryKey format ('item:<id>' or 'set:<id>').
+  const splitLineKeys = (form.get('splitLineKeys')?.toString() ?? '')
     .split(',')
-    .map((s) => Number(s.trim()))
-    .filter((n) => Number.isInteger(n));
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
 
   const result =
-    splitItemIds.length > 0
+    splitLineKeys.length > 0
       ? await createSplitOrders({
-          userId: locals.user.id,
+          userId: locals.user!.id,
+          role: locals.user!.role,
           note,
           cartEntries: cart,
           fromDate,
           toDate,
-          splitItemIds,
+          splitLineKeys,
           contactName,
           contactEmail,
           contactMobile,
@@ -88,7 +91,8 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           disclaimerAccepted,
         })
       : await createOrder({
-          userId: locals.user.id,
+          userId: locals.user!.id,
+          role: locals.user!.role,
           note,
           cartEntries: cart,
           fromDate,

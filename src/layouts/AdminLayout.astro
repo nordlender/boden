@@ -1,0 +1,15 @@
+---
+import HtmlShell from './HtmlShell.astro';
+import AdminNavbar from '../components/AdminNavbar.astro';
+
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<HtmlShell title={title} bodyClass="min-h-screen bg-bg-subtle">
+	<AdminNavbar slot="navbar" />
+	<slot />
+</HtmlShell>

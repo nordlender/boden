@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "e8f6867c-bfd2-4848-b858-079ca5d11b4b",
+  "id": "25d98026-2b26-4d44-9493-3ccf315a91a7",
   "prevId": "f2c6f563-7b64-48cc-a292-73ccea20f1eb",
   "tables": {
     "categories": {
@@ -488,13 +488,6 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "disclaimer_accepted_at": {
-          "name": "disclaimer_accepted_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         }
       },
       "indexes": {
@@ -584,31 +577,6 @@
           "value": "\"orders\".\"to_date\" >= \"orders\".\"from_date\""
         }
       }
-    },
-    "pickup_available_days": {
-      "name": "pickup_available_days",
-      "columns": {
-        "date": {
-          "name": "date",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
     },
     "product_attribute_keys": {
       "name": "product_attribute_keys",

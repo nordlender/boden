@@ -9,36 +9,47 @@ export const prerender = false;
 // an order is actually created.
 
 import type { APIRoute } from 'astro';
-import { db } from '../../../db/client';
 import { addToCart } from '../../../lib/cart';
+import { cartEntryRef, isCartEntryAvailable, parseCartEntryKind } from '../../../lib/cart-http';
 import { isSafeRedirectTarget } from '../../../lib/redirect';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	const form = await request.formData();
-	const itemId = Number(form.get('itemId'));
-	// `required` on the product page's quantity input stops a real browser
-	// from ever submitting this empty — but that's client-side only, so an
-	// emptied field is still treated as "missing" here, not as invalid input.
+	// A product's variant picker (VariantPicker.astro) submits exactly one of
+	// these, toggling which hidden input is enabled as the selected variant
+	// changes between an item and a set.
+	const rawItemId = form.get('itemId');
+	const rawSetId = form.get('setId');
+	// The product page's quantity is a hidden input driven by its +/- stepper
+	// (VariantPicker.astro), always carrying a valid value from real use — but
+	// that's client-side only, so an empty/tampered value is still handled
+	// here rather than trusted.
 	const rawQuantity = form.get('quantity');
 	const quantity = rawQuantity === null || rawQuantity === '' ? 1 : Number(rawQuantity);
 	const redirectTo = form.get('redirect');
 
-	if (!Number.isInteger(itemId) || itemId <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
-		return new Response('Invalid item or quantity', { status: 400 });
+	if (!Number.isInteger(quantity) || quantity <= 0) {
+		return new Response('Invalid quantity', { status: 400 });
+	}
+
+	const kind = parseCartEntryKind(rawItemId, rawSetId);
+	if (!kind) {
+		return new Response('Missing item or set', { status: 400 });
+	}
+
+	const id = Number(kind === 'item' ? rawItemId : rawSetId);
+	if (!Number.isInteger(id) || id <= 0) {
+		return new Response(kind === 'item' ? 'Invalid item' : 'Invalid set', { status: 400 });
 	}
 
 	// A shopper can only ever reach this from a rendered product page, so an
-	// itemId that doesn't resolve to a live, published-product item means a
+	// id that doesn't resolve to a live, published-product row means a
 	// stale/tampered request, not a normal flow to redirect through.
-	const item = await db.query.items.findFirst({
-		where: (t, { eq }) => eq(t.id, itemId),
-		with: { product: true },
-	});
-	if (!item || item.archived || item.product?.status !== 'published') {
-		return new Response('Item not available', { status: 404 });
+	if (!(await isCartEntryAvailable(kind, id))) {
+		return new Response(kind === 'item' ? 'Item not available' : 'Set not available', { status: 404 });
 	}
 
-	addToCart(cookies, itemId, quantity);
+	addToCart(cookies, { ...cartEntryRef(kind, id), quantity });
 
 	const target = isSafeRedirectTarget(redirectTo) ? redirectTo : '/';
 	// Read by CartSidebar.astro's script to auto-open the sidebar after the

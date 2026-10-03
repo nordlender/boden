@@ -1,12 +1,12 @@
 ---
 import SelectIcon from './SelectIcon.astro';
-import Thumbnail from './Thumbnail.astro';
+import Thumbnail from '../ui/Thumbnail.astro';
 import SubCategoryTag from './SubCategoryTag.astro';
 import ProductTag from './ProductTag.astro';
 import StockIndicator from './StockIndicator.astro';
 import DetailsToggle from './DetailsToggle.astro';
 import AppIcon from '../icons/AppIcon.astro';
-import Button from '../ui/Button.astro';
+import TextMorphButton from '../ui/TextMorphButton.astro';
 import { GRID_TEMPLATE, type PanelVariant } from './grid';
 
 interface AttributeEntry {
@@ -49,7 +49,7 @@ const {
 	missingAttributeTemplate = false,
 } = Astro.props;
 ---
-<div class="item-row border-b border-border last:border-b-0">
+<div class="item-row border-b border-border last:border-b-0" data-details-row>
 	<div
 		class:list={["grid items-center gap-3 px-3 py-2 hover:bg-bg-subtle", selected && 'bg-selected-subtle/60 hover:bg-selected-subtle']}
 		style={`grid-template-columns: ${GRID_TEMPLATE[variant]}`}
@@ -65,7 +65,7 @@ const {
 		<StockIndicator inStock={inStock} total={totalStock} />
 		<DetailsToggle label={`Show details for ${name}`} warning={missingAttributeTemplate} />
 	</div>
-	<div class="item-details hidden border-t border-border bg-bg-subtle/60 px-4 py-4">
+	<div class="item-details hidden border-t border-border bg-bg-subtle/60 px-4 py-4" data-details-panel>
 		<div class="flex gap-4">
 			<Thumbnail src={image} alt={name} size={112} />
 			<div class="min-w-0 flex-1">
@@ -97,7 +97,7 @@ const {
 										value={attribute.value}
 										class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm"
 									/>
-									<Button type="submit" size="sm">Save</Button>
+									<TextMorphButton type="submit" action="save" size="sm" />
 								</form>
 							</details>
 						))}
@@ -116,7 +116,7 @@ const {
 								placeholder="Value"
 								class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm"
 							/>
-							<Button type="submit" size="sm">Add</Button>
+							<TextMorphButton type="submit" action="add" size="sm" />
 						</form>
 					</div>
 				) : (

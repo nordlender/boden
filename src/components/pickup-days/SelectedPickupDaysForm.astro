@@ -1,0 +1,255 @@
+---
+// Hidden "Selected days" table underneath PickupDaysCalendar.astro: shows
+// once at least one day is selected, with a start/end time and a "Where"
+// field to fill in per row before submitting. Not shown at all while the
+// selection is empty. Rows are built client-side by cloning the <template>
+// below (so the real PickupDayBubble/MorphButton markup is used rather than
+// hand-built HTML strings), and this table — not the calendar — is the
+// source of truth for what gets submitted: a moderator can offer more than
+// one time window on the same day (e.g. 12:00-14:00 and 18:00-20:00), so a
+// date can have several rows here even though the calendar only tracks it
+// as a single selected/unselected day. The calendar's selection is kept in
+// sync as a *derived* reflection of "does this date still have at least one
+// row" — see the script below for exactly which side drives which.
+import PickupDayBubble from './PickupDayBubble.astro';
+import MorphButton from '../ui/MorphButton.astro';
+import Button from '../ui/Button.astro';
+
+const GRID = '1.25rem 4.5rem 7rem 6rem 6rem 1fr 4.5rem';
+---
+
+<div data-selected-pickup-days hidden class="flex flex-col gap-2">
+	<h2 class="text-sm font-semibold text-text">Selected days</h2>
+
+	<div class="overflow-hidden rounded-lg border border-border">
+		<div
+			class="grid items-center gap-3 border-b border-border bg-bg-subtle px-3 py-1.5 text-xs font-medium tracking-wide text-text-muted uppercase"
+			style={`grid-template-columns: ${GRID}`}
+		>
+			<span />
+			<span>Date</span>
+			<span>Weekday</span>
+			<span style="grid-column: span 2;">Time</span>
+			<span>Where</span>
+			<span />
+		</div>
+		<div data-selected-pickup-days-rows class="divide-y divide-border" />
+	</div>
+
+	<p data-selected-pickup-days-error hidden class="text-sm text-error-text" />
+
+	<div>
+		<Button type="button" variant="primary" data-selected-pickup-days-submit>
+			Submit
+		</Button>
+	</div>
+</div>
+
+<template data-selected-pickup-day-row-template>
+	<div data-pickup-day-row class="grid items-center gap-3 px-3 py-2 text-sm" style={`grid-template-columns: ${GRID}`}>
+		<PickupDayBubble kind="mine" />
+		<span data-field="date-display" class="text-text"></span>
+		<span data-field="weekday-display" class="text-text-muted"></span>
+		{/* lang="en-GB" forces the native time picker to 24h — a bare type="time" instead follows the browser/OS locale, which shows AM/PM on a US-locale Chrome. */}
+		<input
+			type="time"
+			required
+			lang="en-GB"
+			data-field="startTime"
+			class="w-full rounded border border-border-interactive px-1.5 py-1 text-xs"
+		/>
+		<input
+			type="time"
+			required
+			lang="en-GB"
+			data-field="endTime"
+			class="w-full rounded border border-border-interactive px-1.5 py-1 text-xs"
+		/>
+		<input
+			type="text"
+			required
+			placeholder='Ex. "In the reception at SiO Athletica Blindern" or "At Vulkan"'
+			data-field="where"
+			class="w-full rounded border border-border-interactive px-1.5 py-1 text-xs"
+		/>
+		<div class="flex items-center justify-end gap-1">
+			<MorphButton action="add" size="sm" label="Add another time for this day" data-add-another-time />
+			<MorphButton action="delete" variant="danger" size="sm" label="Remove this time" data-remove-selected-day />
+		</div>
+	</div>
+</template>
+
+<script>
+	import { formatDateShort, formatWeekdayName } from '../../lib/dates';
+	import { actionIcons, type ActionIconKey } from '../../lib/icon-nodes';
+	import type { MorphIconElement } from 'morphicons/element';
+
+	type MultiCalendar = HTMLElement & { value?: string };
+
+	interface SelectedRow {
+		key: string;
+		date: string;
+		startTime: string;
+		endTime: string;
+		where: string;
+	}
+
+	// MorphButton.astro's own <script> only wires `.morph-action` elements
+	// present in the DOM at initial page load (see its
+	// `:not([data-morph-wired])` sweep) — rows cloned from the <template>
+	// below are added long after that, and a <template>'s inert content is
+	// never part of a `document.querySelectorAll` match anyway. Re-running
+	// the exact same hover/focus -> icon-swap wiring here per clone keeps the
+	// icon's morph animation working for every dynamically added row.
+	function wireMorphAction(el: Element | null, action: ActionIconKey) {
+		if (!el) return;
+		const setState = (state: 'default' | 'hover') => {
+			const icon = el.querySelector<MorphIconElement>('.morph-action-icon');
+			if (icon) icon.icon = actionIcons[action][state];
+		};
+		el.addEventListener('pointerenter', () => setState('hover'));
+		el.addEventListener('pointerleave', () => setState('default'));
+		el.addEventListener('focus', () => setState('hover'));
+		el.addEventListener('blur', () => setState('default'));
+	}
+
+	const calendar = document.querySelector<MultiCalendar>('[data-pickup-days-calendar]');
+	const container = document.querySelector<HTMLElement>('[data-selected-pickup-days]');
+	const rowsEl = document.querySelector<HTMLElement>('[data-selected-pickup-days-rows]');
+	const template = document.querySelector<HTMLTemplateElement>('[data-selected-pickup-day-row-template]');
+	const submitButton = document.querySelector<HTMLButtonElement>('[data-selected-pickup-days-submit]');
+	const errorEl = document.querySelector<HTMLElement>('[data-selected-pickup-days-error]');
+
+	if (calendar && container && rowsEl && template && submitButton) {
+		// This array is the source of truth for what gets submitted — not the
+		// calendar's `.value` (which can only represent one selected/unselected
+		// state per date, not "how many rows"). The calendar is kept in sync
+		// as a derived reflection of "does this date still have >=1 row" by
+		// removeRow() below, whenever a row's removal empties out its date.
+		let rows: SelectedRow[] = [];
+		let nextKey = 0;
+
+		function distinctDates(): string[] {
+			return [...new Set(rows.map((row) => row.date))];
+		}
+
+		function readRowFromDom(key: string) {
+			const row = rowsEl!.querySelector<HTMLElement>(`[data-row-key="${key}"]`);
+			const state = rows.find((r) => r.key === key);
+			if (!row || !state) return;
+			state.startTime = row.querySelector<HTMLInputElement>('[data-field="startTime"]')?.value ?? '';
+			state.endTime = row.querySelector<HTMLInputElement>('[data-field="endTime"]')?.value ?? '';
+			state.where = row.querySelector<HTMLInputElement>('[data-field="where"]')?.value ?? '';
+		}
+
+		function render() {
+			// Preserve whatever's currently typed before wiping the DOM and
+			// rebuilding it — render() runs on every change, not just additions,
+			// so a mid-edit value for a row that's staying must survive the
+			// rebuild.
+			rowsEl!.querySelectorAll<HTMLElement>('[data-row-key]').forEach((row) => readRowFromDom(row.dataset.rowKey!));
+
+			// Array#sort is stable, so multiple rows sharing a date keep their
+			// relative (insertion) order instead of being shuffled on every render.
+			rows.sort((a, b) => a.date.localeCompare(b.date));
+
+			rowsEl!.innerHTML = '';
+			for (const state of rows) {
+				const fragment = template!.content.cloneNode(true) as DocumentFragment;
+				const row = fragment.querySelector<HTMLElement>('[data-pickup-day-row]')!;
+				row.dataset.rowKey = state.key;
+				row.dataset.date = state.date;
+				row.querySelector('[data-field="date-display"]')!.textContent = formatDateShort(state.date);
+				row.querySelector('[data-field="weekday-display"]')!.textContent = formatWeekdayName(state.date);
+				(row.querySelector('[data-field="startTime"]') as HTMLInputElement).value = state.startTime;
+				(row.querySelector('[data-field="endTime"]') as HTMLInputElement).value = state.endTime;
+				(row.querySelector('[data-field="where"]') as HTMLInputElement).value = state.where;
+
+				const addButton = row.querySelector('[data-add-another-time]');
+				addButton?.addEventListener('click', () => addAnotherTime(state.date));
+				wireMorphAction(addButton, 'add');
+
+				const removeButton = row.querySelector('[data-remove-selected-day]');
+				removeButton?.addEventListener('click', () => removeRow(state.key));
+				wireMorphAction(removeButton, 'delete');
+
+				rowsEl!.appendChild(row);
+			}
+
+			container!.toggleAttribute('hidden', rows.length === 0);
+			errorEl?.setAttribute('hidden', '');
+		}
+
+		function addAnotherTime(date: string) {
+			rows.push({ key: `row-${nextKey++}`, date, startTime: '', endTime: '', where: '' });
+			render();
+		}
+
+		function removeRow(key: string) {
+			const removed = rows.find((r) => r.key === key);
+			rows = rows.filter((r) => r.key !== key);
+			// Only deselect the date on the calendar once its last row is gone —
+			// other rows for the same date (a second time window) keep it selected.
+			if (removed && !rows.some((r) => r.date === removed.date)) {
+				calendar!.value = distinctDates().sort().join(' ');
+			}
+			render();
+		}
+
+		// Fires when the *user* clicks a day on the calendar — either
+		// selecting a previously-bare date (add its first row here) or
+		// deselecting one (drop every row on that date, including any extra
+		// time windows added via "Add another time").
+		calendar.addEventListener('change', () => {
+			const selected = new Set((calendar!.value ?? '').split(/\s+/).filter(Boolean));
+			const current = new Set(distinctDates());
+
+			for (const date of selected) {
+				if (!current.has(date)) rows.push({ key: `row-${nextKey++}`, date, startTime: '', endTime: '', where: '' });
+			}
+			rows = rows.filter((row) => selected.has(row.date));
+
+			render();
+		});
+
+		submitButton.addEventListener('click', async () => {
+			rowsEl!.querySelectorAll<HTMLElement>('[data-row-key]').forEach((row) => readRowFromDom(row.dataset.rowKey!));
+
+			const days = rows.map(({ date, startTime, endTime, where }) => ({ date, startTime, endTime, where }));
+			const invalid = days.some((day) => !day.startTime || !day.endTime || !day.where.trim() || day.endTime <= day.startTime);
+			if (invalid) {
+				if (errorEl) {
+					errorEl.textContent = 'Fill in a valid time range (end after start) and a "Where" for every selected day.';
+					errorEl.removeAttribute('hidden');
+				}
+				return;
+			}
+
+			submitButton.disabled = true;
+			errorEl?.setAttribute('hidden', '');
+
+			try {
+				const res = await fetch('/api/moderator/pickup-days', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ days }),
+				});
+				if (res.ok) {
+					window.location.reload();
+					return;
+				}
+				if (errorEl) {
+					errorEl.textContent = 'Something went wrong submitting your pickup days. Please try again.';
+					errorEl.removeAttribute('hidden');
+				}
+			} catch {
+				if (errorEl) {
+					errorEl.textContent = 'Something went wrong submitting your pickup days. Please try again.';
+					errorEl.removeAttribute('hidden');
+				}
+			} finally {
+				submitButton.disabled = false;
+			}
+		});
+	}
+</script>

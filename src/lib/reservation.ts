@@ -1,7 +1,9 @@
 import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 import { db } from '../db/client';
 import { items, orderItems, orders } from '../db/schema';
+import { RESERVING_STATUSES } from './orderStatus';
 import { getMaxRentalDays } from './rental-policy';
+import { addDaysIso, daysInclusive, isIsoDate, todayIsoInOslo } from './dates';
 
 // Reservation page backend (docs/TASKS.md "Reservation"). Orders carry a
 // date range (src/db/schema.ts's orders.fromDate/toDate, both YYYY-MM-DD,
@@ -26,25 +28,19 @@ export interface ReservationDateRange {
 
 export function isValidDateRange(range: Partial<ReservationDateRange>): range is ReservationDateRange {
 	if (!range.from || !range.to) return false;
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(range.from) || !/^\d{4}-\d{2}-\d{2}$/.test(range.to)) return false;
+	if (!isIsoDate(range.from) || !isIsoDate(range.to)) return false;
 	// The calendar's `min` attribute (ReservationCalendar.astro) only stops a
 	// past date client-side — this is the server-side backstop against a
-	// direct POST bypassing it.
-	const todayIso = new Date().toISOString().slice(0, 10);
+	// direct POST bypassing it. "Today" is always Europe/Oslo's today (the
+	// shop's timezone), not the server host's or a UTC-shifted one — see
+	// src/lib/dates.ts.
+	const todayIso = todayIsoInOslo();
 	if (range.from < todayIso) return false;
 	if (range.from > range.to) return false;
 	// Single gate shared by order creation, split-order creation, the
 	// reservation-availability preview, and reschedule — so the max rental
 	// duration cap (src/lib/rental-policy.ts) applies everywhere at once.
-	return rangeLengthDays(range.from, range.to) <= getMaxRentalDays();
-}
-
-// Inclusive day count between two YYYY-MM-DD dates (e.g. the same day is a
-// 1-day rental, not 0) — UTC-based, same convention as dayAfter() below.
-function rangeLengthDays(from: string, to: string): number {
-	const fromMs = new Date(`${from}T00:00:00Z`).getTime();
-	const toMs = new Date(`${to}T00:00:00Z`).getTime();
-	return Math.round((toMs - fromMs) / 86_400_000) + 1;
+	return daysInclusive(range.from, range.to) <= getMaxRentalDays();
 }
 
 // For each requested item, finds the peak quantity of that item already
@@ -93,7 +89,7 @@ export function getReservationAvailability(
 		.where(
 			and(
 				inArray(orderItems.itemId, itemIds),
-				inArray(orders.status, ['requested', 'active']),
+				inArray(orders.status, RESERVING_STATUSES),
 				lte(orders.fromDate, range.to),
 				gte(orders.toDate, range.from),
 			),
@@ -137,7 +133,7 @@ function peakConcurrentQuantity(intervals: { start: string; end: string; quantit
 	const events: Event[] = [];
 	for (const { start, end, quantity } of intervals) {
 		events.push({ date: start, delta: quantity });
-		events.push({ date: dayAfter(end), delta: -quantity });
+		events.push({ date: addDaysIso(end, 1), delta: -quantity });
 	}
 	// On a tie, process decrements (an interval ending) before increments (one
 	// starting) — otherwise two back-to-back, non-overlapping reservations can
@@ -155,12 +151,6 @@ function peakConcurrentQuantity(intervals: { start: string; end: string; quantit
 	return peak;
 }
 
-function dayAfter(date: string): string {
-	const d = new Date(`${date}T00:00:00Z`);
-	d.setUTCDate(d.getUTCDate() + 1);
-	return d.toISOString().slice(0, 10);
-}
-
 // True when some (but not all) items are unavailable for their requested
 // quantity in the chosen range — the trigger for the mixed-availability
 // warning banner and the per-item "split into a separate order" action.
@@ -168,4 +158,50 @@ export function hasMixedAvailability(availabilities: ReservationAvailability[]):
 	const someAvailable = availabilities.some((a) => a.available);
 	const someUnavailable = availabilities.some((a) => !a.available);
 	return someAvailable && someUnavailable;
+}
+
+// A cart line (see cart.ts's CartLine) at the granularity the reservation
+// page actually renders — a plain item line's itemRequirements is just
+// itself; a set line's is its components, already expanded (quantity
+// multiplied by however many of the set are requested) by whoever built
+// this — see sets.ts's resolveEntriesToItemQuantities/getSetChildrenBulk.
+export interface ReservationLine {
+	key: string; // cart.ts's entryKey — 'item:<id>' or 'set:<id>'
+	itemRequirements: { itemId: number; quantity: number }[];
+}
+
+export interface ReservationLineAvailability {
+	key: string;
+	available: boolean;
+}
+
+// Rolls per-item availability (getReservationAvailability) up to the
+// cart-line granularity the reservation page renders. A plain item line is
+// available iff its own item is; a set line is available iff *every* one of
+// its components is. Every line's demand for a given item is merged into
+// one quantity before checking — the whole point being that a component
+// shared by two different lines (the same chalk bag sold loose and inside a
+// set, say) is checked once against its real combined demand, not
+// independently per line against the same stock.
+export function getCartLineAvailability(
+	range: ReservationDateRange,
+	lines: ReservationLine[],
+	excludeOrderId?: number,
+	executor: QueryExecutor = db,
+): ReservationLineAvailability[] {
+	const totals = new Map<number, number>();
+	for (const line of lines) {
+		for (const req of line.itemRequirements) {
+			totals.set(req.itemId, (totals.get(req.itemId) ?? 0) + req.quantity);
+		}
+	}
+	const merged = Array.from(totals, ([itemId, quantity]) => ({ itemId, quantity }));
+	const availableByItem = new Map(
+		getReservationAvailability(range, merged, excludeOrderId, executor).map((a) => [a.itemId, a.available]),
+	);
+
+	return lines.map((line) => ({
+		key: line.key,
+		available: line.itemRequirements.length > 0 && line.itemRequirements.every((req) => availableByItem.get(req.itemId) ?? false),
+	}));
 }

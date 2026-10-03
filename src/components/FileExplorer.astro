@@ -1,0 +1,32 @@
+---
+// Browses a fixed directory as a collapsible tree — closed by default,
+// contents indented under their parent when a directory is expanded.
+//
+// `root` is a key into FILE_ROOTS (../lib/fileExplorer.ts), not a path —
+// the lazy-load API route only accepts those same keys, so nothing a
+// client sends can point the listing at any other directory. Only "public"
+// entries (not dotfiles/dotdirs) are listed, and symlinks that resolve
+// outside the root are dropped.
+//
+// File rows are buttons carrying `data-file-url` (the URL the file is
+// served at) — a host like ImageMenu.astro listens for clicks on them to
+// pick a file; on their own they do nothing.
+import FileExplorerNode from './FileExplorerNode.astro';
+import { buildFileTree, getFileRoot, type FileRootKey } from '../lib/fileExplorer';
+
+interface Props {
+	root: FileRootKey;
+	label?: string;
+	emptyMessage?: string;
+}
+
+const { root, label, emptyMessage = 'Empty' } = Astro.props;
+const { dir, filter } = getFileRoot(root);
+const tree = buildFileTree(dir, filter);
+---
+<div class="file-explorer text-sm" data-file-explorer={root}>
+	{label && <p class="mb-1.5 font-medium text-text">{label}</p>}
+	<ul class="file-explorer-tree" data-root={root} data-path="" data-empty-message={emptyMessage}>
+		{tree.length > 0 ? tree.map((node) => <FileExplorerNode node={node} root={root} />) : <li class="py-1 text-text-muted">{emptyMessage}</li>}
+	</ul>
+</div>

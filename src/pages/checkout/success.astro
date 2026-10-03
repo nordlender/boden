@@ -56,7 +56,9 @@ const orderedOrders = [...foundOrders].sort((a, b) => a.id - b.id);
 					items={order.orderItems.map((oi) => ({
 						itemName: oi.item.name,
 						requestedQuantity: oi.requestedQuantity,
+						itemImageUrl: oi.item.imageUrl,
 					}))}
+					showImages
 				/>
 				<Button variant="primary" size="lg" href={`/orders/${order.orderCode}`} class="self-start">
 					View or manage this order

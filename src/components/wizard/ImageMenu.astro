@@ -1,0 +1,136 @@
+---
+// The wizard Set menu's "Set image" section (#97): pick an image for the
+// selected items by uploading a new one, choosing one in the file explorer,
+// or pasting a link.
+//
+//   [Add image]            <- uploads via POST /api/admin/images
+//   ┌ Uploaded images ┐    <- scrollable; grows with expanded folders up to
+//   │ Site images     │       a viewport-relative cap, then scrolls
+//   └─────────────────┘
+//   [preview] [url…] [Apply]
+//
+// Everything funnels into the one `imageUrl` text field (submitted with the
+// panel's selection form via `form={formId}`): clicking a file or finishing
+// an upload fills it in, and it can still be edited by hand for an external
+// link. Several menus can share a page (one per wizard panel), so the script
+// scopes everything to each `[data-image-menu]` instead of using ids.
+import Button from '../ui/Button.astro';
+import TextIconButton from '../ui/TextIconButton.astro';
+import FileExplorer from '../FileExplorer.astro';
+import { IMAGE_CONTENT_TYPES, MAX_UPLOAD_BYTES } from '../../lib/uploads';
+
+interface Props {
+	formId: string;
+}
+
+const { formId } = Astro.props;
+const accept = Object.values(IMAGE_CONTENT_TYPES).join(',');
+---
+<div class="flex flex-col gap-2" data-image-menu data-max-bytes={MAX_UPLOAD_BYTES}>
+	<div class="flex flex-wrap items-center gap-2">
+		<TextIconButton icon="upload" size="sm" data-image-upload-trigger>Add image</TextIconButton>
+		<input type="file" accept={accept} hidden data-image-upload-input aria-label="Image file to upload" />
+		<p class="min-w-0 flex-1 text-xs text-text-muted" data-image-upload-status aria-live="polite">PNG, JPEG, GIF, WebP or AVIF, up to {MAX_UPLOAD_BYTES / 1024 / 1024} MB.</p>
+	</div>
+
+	<div class="max-h-[min(20rem,45vh)] min-h-24 overflow-y-auto overscroll-contain rounded border border-border p-2">
+		<div class="flex flex-col gap-3">
+			<FileExplorer root="uploads" label="Uploaded images" emptyMessage="No uploads yet." />
+			<FileExplorer root="site-images" label="Site images" />
+		</div>
+	</div>
+
+	<div class="flex items-center gap-2">
+		<div class="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-bg-subtle">
+			<img data-image-preview alt="" class="size-full object-cover" hidden />
+		</div>
+		<input
+			type="text"
+			name="imageUrl"
+			form={formId}
+			placeholder="Pick an image or paste a link"
+			aria-label="Image URL"
+			class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm"
+			data-image-url-input
+		/>
+		<Button type="submit" size="sm" form={formId} formaction="/api/wizard/set-image" class="shrink-0">Apply</Button>
+	</div>
+</div>
+
+<script>
+	const ERROR_MESSAGES: Record<string, string> = {
+		too_large: 'That file is too large.',
+		unsupported_type: 'Only PNG, JPEG, GIF, WebP or AVIF images can be uploaded.',
+		empty: 'That file is empty.',
+	};
+
+	function initImageMenu(menu: HTMLElement) {
+		const urlInput = menu.querySelector<HTMLInputElement>('[data-image-url-input]')!;
+		const preview = menu.querySelector<HTMLImageElement>('[data-image-preview]')!;
+		const fileInput = menu.querySelector<HTMLInputElement>('[data-image-upload-input]')!;
+		const status = menu.querySelector<HTMLElement>('[data-image-upload-status]')!;
+		const defaultStatus = status.textContent ?? '';
+		const maxBytes = Number(menu.dataset.maxBytes);
+
+		function showPreview(url: string) {
+			preview.hidden = !url;
+			if (url) preview.src = url;
+			menu.querySelectorAll<HTMLElement>('[data-file-url]').forEach((button) => {
+				button.setAttribute('aria-pressed', String(button.dataset.fileUrl === url));
+			});
+		}
+
+		function select(url: string) {
+			urlInput.value = url;
+			showPreview(url);
+		}
+
+		preview.addEventListener('error', () => (preview.hidden = true));
+		urlInput.addEventListener('input', () => showPreview(urlInput.value.trim()));
+
+		// Delegated: file rows inside lazily loaded folders are added later.
+		menu.addEventListener('click', (event) => {
+			const button = (event.target as Element).closest<HTMLElement>('[data-file-url]');
+			if (button && menu.contains(button)) select(button.dataset.fileUrl!);
+		});
+
+		menu.querySelector('[data-image-upload-trigger]')?.addEventListener('click', () => fileInput.click());
+
+		fileInput.addEventListener('change', async () => {
+			const file = fileInput.files?.[0];
+			fileInput.value = '';
+			if (!file) return;
+			if (file.size > maxBytes) {
+				status.textContent = ERROR_MESSAGES.too_large;
+				return;
+			}
+
+			status.textContent = `Uploading ${file.name}…`;
+			const body = new FormData();
+			body.append('file', file);
+			try {
+				const res = await fetch('/api/admin/images', { method: 'POST', body });
+				const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+				if (!res.ok || !data.url) {
+					status.textContent = ERROR_MESSAGES[data.error ?? ''] ?? 'Upload failed. Please try again.';
+					return;
+				}
+				await refreshUploads();
+				select(data.url);
+				status.textContent = defaultStatus;
+			} catch {
+				status.textContent = 'Upload failed. Please try again.';
+			}
+		});
+
+		// Re-lists the uploads root so the new file shows up in the explorer.
+		async function refreshUploads() {
+			const list = menu.querySelector<HTMLElement>('ul[data-root="uploads"][data-path=""]');
+			if (!list) return;
+			const res = await fetch('/api/file-explorer?root=uploads&path=');
+			if (res.ok) list.innerHTML = await res.text();
+		}
+	}
+
+	document.querySelectorAll<HTMLElement>('[data-image-menu]').forEach(initImageMenu);
+</script>

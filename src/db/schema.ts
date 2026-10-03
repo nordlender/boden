@@ -116,10 +116,10 @@ export const items = sqliteTable('items', {
   name: text('name').notNull(),
   imageUrl: text('image_url'),
   // Total owned. "In stock right now" is never stored — it's always
-  // computed as stockCount minus quantities on currently active/requested
-  // rentals (see docs/schema-legacy-fixes.md's original `available` derivation,
-  // carried forward unchanged): a stored second number can only drift out
-  // of sync.
+  // computed as stockCount minus quantities on currently active/scheduled/
+  // requested rentals (see docs/schema-legacy-fixes.md's original `available`
+  // derivation, carried forward unchanged): a stored second number can only
+  // drift out of sync.
   stockCount: integer('stock_count').notNull().default(1),
   // Soft delete: items referenced by orderItems can't be hard-deleted.
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
@@ -154,6 +154,70 @@ export const itemAttributeValues = sqliteTable('item_attribute_values', {
   index('item_attribute_values_attribute_id_idx').on(table.attributeId),
 ]);
 
+// ---------------------------------------------------------------------------
+// Sets — an alternative to `items` for a product's variant slot. A product
+// points to an item OR a set for each of its variants (schema-v3 already
+// lets a product have several items as its variants, e.g. Size/Color; a set
+// is the same idea, except that variant resolves to a *bundle* of items
+// rather than one physical item — e.g. "Indoor Rope Climbing Set" comes in
+// S/M/L, each a `sets` row, each resolving via `setItems` to a harness of
+// that size plus a chalk bag and a belay device). Mirrors `items` in shape
+// (productId, slug, name, imageUrl, archived) so the two behave the same way
+// everywhere a product lists its variants.
+// ---------------------------------------------------------------------------
+
+export const sets = sqliteTable('sets', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  // Nullable/set-null, same rationale as items.productId: a set can exist
+  // unassigned, and deleting a product must never delete (or orphan the
+  // meaning of) a set that past orders' resolved items still reference.
+  productId: integer('product_id').references(() => products.id, { onDelete: 'set null' }),
+  slug: text('slug').notNull().unique(),
+  // Internal/admin-only label, same as items.name — never shown to customers.
+  name: text('name').notNull(),
+  // Short customer-facing text distinguishing this set from its siblings
+  // under the same product (e.g. "S"/"M"/"L") — typed directly by the admin
+  // when creating the set, same as any other manually-entered field. There
+  // is deliberately no attribute-key/value template for sets (unlike items'
+  // productAttributeKeys/itemAttributeValues split): a set's *contents* are
+  // shown automatically, derived from its components' own attribute values
+  // (see src/lib/sets.ts's getSetComponentDisplayBulk), but a set's own
+  // identity/label is not derived — the admin creates each variant by hand.
+  label: text('label'),
+  imageUrl: text('image_url'),
+  // Soft delete: a set that's ever been ordered has its resolved items
+  // living on in orderItems, independent of this row — same rationale as
+  // items.archived.
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index('sets_product_id_idx').on(table.productId),
+]);
+
+// ---------------------------------------------------------------------------
+// Set items — the bundle a set resolves into. A rental/order never
+// references a set directly (see orderItems above); at the moment an order
+// is placed, each cart line for a set is expanded into its setItems rows
+// (quantity multiplied by however many of the set were requested) and
+// inserted as ordinary orderItems rows. Kept here purely so a set's
+// composition — and therefore its availability, computed from its
+// components' stock same as any other item — can be looked up.
+// ---------------------------------------------------------------------------
+
+export const setItems = sqliteTable('set_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  setId: integer('set_id').notNull().references(() => sets.id, { onDelete: 'cascade' }),
+  // No onDelete: a component item can't be hard-deleted out from under a
+  // set that still resolves to it — same convention as orderItems.itemId.
+  itemId: integer('item_id').notNull().references(() => items.id),
+  quantity: integer('quantity').notNull().default(1),
+}, (table) => [
+  uniqueIndex('set_items_set_item_unique').on(table.setId, table.itemId),
+  index('set_items_set_id_idx').on(table.setId),
+  index('set_items_item_id_idx').on(table.itemId),
+  check('set_items_quantity_positive', sql`${table.quantity} > 0`),
+]);
+
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(), // ID from external OAuth provider
   // WARNING: this UNIQUE constraint assumes bloc never reports the same
@@ -177,8 +241,11 @@ export const users = sqliteTable('users', {
 // One order = one rental request, potentially covering multiple items
 export const orders = sqliteTable('orders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  // Short random alphanumeric code (6 chars, excludes ambiguous 0/O, 1/I) — this is
-  // what members read aloud to moderators and what appears in the retrieve-order URL.
+  // `NNAAX` format — two digits, two free letters, then a letter flagging
+  // the creating member's role: A=admin, B=board member, I=instructor
+  // (moderator), M=member — always one of these four — see
+  // src/lib/orders.ts's generateOrderCode. This is what members read aloud
+  // to moderators and what appears in the retrieve-order URL.
   orderCode: text('order_code').notNull().unique(),
   // Shared by every order created from one checkout submission (split or
   // not) — the confirmation page looks orders up by this instead of by
@@ -188,13 +255,13 @@ export const orders = sqliteTable('orders', {
   checkoutToken: text('checkout_token').notNull(),
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', {
-    enum: ['requested', 'active', 'returned', 'rejected'],
+    enum: ['requested', 'scheduled', 'active', 'returned', 'rejected'],
   }).notNull().default('requested'),
   // Reservation date range (YYYY-MM-DD, inclusive on both ends) chosen on the
   // /reservation page — the whole order (all its orderItems) shares one
   // range. fromDate is the pick-up day, toDate the return day (see
-  // pickupAvailableDays below for which pick-up days have a moderator
-  // confirmed available to hand out the order). Availability for a range is
+  // pickupDays below for which pick-up days have a moderator confirmed
+  // available to hand out the order). Availability for a range is
   // computed from other requested/active orders whose range overlaps this
   // one — see src/lib/reservation.ts.
   fromDate: text('from_date').notNull(),
@@ -222,9 +289,9 @@ export const orders = sqliteTable('orders', {
   returnedByUserId: text('returned_by_user_id').references(() => users.id),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   // Set when a moderator accepts the order on the review step, ahead of
-  // retrieval — deliberately not a 5th `status` value: accept leaves
-  // `status: 'requested'` unchanged (see docs/moderator-review.md), it just
-  // gates whether the order is eligible for the retrieve/confirm flow yet.
+  // retrieval — accept also moves `status` to 'scheduled' (see
+  // src/lib/moderatorOrders.ts's acceptOrder), so acceptedAt is redundant
+  // with that for gating purposes but kept as the accountability timestamp.
   acceptedAt: integer('accepted_at', { mode: 'timestamp' }),
   activatedAt: integer('activated_at', { mode: 'timestamp' }), // set when moderator confirms
   returnedAt: integer('returned_at', { mode: 'timestamp' }), // set when moderator marks returned
@@ -260,16 +327,110 @@ export const orderItems = sqliteTable('order_items', {
   check('retrieved_quantity_non_negative', sql`${table.retrievedQuantity} IS NULL OR ${table.retrievedQuantity} >= 0`),
 ]);
 
-// Which pick-up days (orders.fromDate) have a moderator confirmed available
-// to hand out orders — maintained by an admin (see /admin/pickup-days,
-// src/lib/pickupDays.ts) and expected to change often as moderator
-// availability is confirmed week to week. Existence of a row is the only
-// signal: a date with no row here just means nobody's confirmed a moderator
-// for it yet, not that pick-up is refused — the reservation page shows it
-// as "request pick up" rather than disallowing it.
-export const pickupAvailableDays = sqliteTable('pickup_available_days', {
-  date: text('date').primaryKey(), // YYYY-MM-DD
+// A recurring rule an admin sets up (see /admin/pickup-days): "every
+// Monday, 18:00-20:00, between these two dates". This row exists purely for
+// display (docs/schema.md / the admin UI collapse every date the rule
+// generated back into one line, e.g. "21/09 - 10/12 | Monday | 18:00 -
+// 20:00") — the rule is never re-evaluated at read time. The individual
+// dates it covers are generated once, up front, as ordinary rows in
+// `pickupDays` below (kind: 'recurring', recurringRuleId: this row's id).
+// Deleting a rule cascades to those generated rows (onDelete: 'cascade' on
+// pickupDays.recurringRuleId).
+export const pickupRecurringRules = sqliteTable('pickup_recurring_rules', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
+  // 0 (Sunday) - 6 (Saturday), matching JS Date#getDay().
+  weekday: integer('weekday').notNull(),
+  startTime: text('start_time').notNull(), // HH:MM, 24h
+  endTime: text('end_time').notNull(), // HH:MM, 24h
+  startDate: text('start_date').notNull(), // YYYY-MM-DD, inclusive
+  endDate: text('end_date').notNull(), // YYYY-MM-DD, inclusive
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index('pickup_recurring_rules_created_by_user_id_idx').on(table.createdByUserId),
+  check('pickup_recurring_rules_weekday_valid', sql`${table.weekday} BETWEEN 0 AND 6`),
+  check('pickup_recurring_rules_date_range_valid', sql`${table.endDate} >= ${table.startDate}`),
+]);
+
+// One row per individual pick-up day, of either origin:
+//
+// - 'single': a moderator (or admin) registering their own ad-hoc
+//   availability via the calendar on /moderator/pickup-days or
+//   /admin/pickup-days — userId is whoever submitted it, recurringRuleId is
+//   null. Deletable only by its owner (see deleteSingleDay in
+//   src/lib/pickupDays.ts, which enforces that in the WHERE clause itself,
+//   not just a check before calling — a lesson carried over from the
+//   ownership bug flagged in the abandoned PR #112).
+// - 'recurring': one of the individual dates generated from a
+//   pickupRecurringRules row at creation time — userId is that rule's
+//   creator (an admin), recurringRuleId points back to it.
+//
+// Every row (of either kind) is a real pick-up day: /reservation reads the
+// union of both to color its calendar, exactly like the old
+// pickupAvailableDays table's rows did — see getUpcomingAvailablePickupDates.
+export const pickupDays = sqliteTable('pickup_days', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull(), // YYYY-MM-DD
+  // HH:MM, 24h — NOT NULL: every real caller already requires a window
+  // (the moderator API validates it before calling createSingleDays;
+  // createRecurringRule always copies it from the rule). Kept NOT NULL
+  // deliberately, not just by convention: pickup_days_single_user_date_time_unique
+  // below is scoped to (date, startTime, endTime), and SQLite treats NULL as
+  // distinct from NULL in a unique index — nullable columns here would have
+  // silently let two null-time single days for the same user/date past that
+  // constraint.
+  startTime: text('start_time').notNull(),
+  endTime: text('end_time').notNull(),
+  // Free-text meeting point ("At Vulkan", "In the reception at SiO Athletica
+  // Blindern") — moderator-submitted single days only; recurring rows leave
+  // this null (the recurring form never collects one).
+  where: text('where'),
+  userId: text('user_id').notNull().references(() => users.id),
+  kind: text('kind', { enum: ['single', 'recurring'] }).notNull().default('single'),
+  recurringRuleId: integer('recurring_rule_id').references(() => pickupRecurringRules.id, { onDelete: 'cascade' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index('pickup_days_date_idx').on(table.date),
+  index('pickup_days_user_id_idx').on(table.userId),
+  index('pickup_days_recurring_rule_id_idx').on(table.recurringRuleId),
+  // A moderator can offer more than one window on the same day (e.g.
+  // 12:00-14:00 and 18:00-20:00) — so uniqueness is scoped to a distinct
+  // (date, startTime, endTime) per moderator, not just (date), and only
+  // blocks submitting the exact same window twice. Overlapping-but-not-
+  // identical windows on the same day aren't rejected — not asked for, and
+  // detecting real overlap would need interval comparison this doesn't do.
+  // Scoped to kind = 'single' only: a recurring rule may legitimately
+  // generate the same date twice if two separate rules overlap (e.g. two
+  // different training rules both landing on the same Monday).
+  uniqueIndex('pickup_days_single_user_date_time_unique')
+    .on(table.userId, table.date, table.startTime, table.endTime)
+    .where(sql`${table.kind} = 'single'`),
+  check('pickup_days_kind_recurring_rule_consistent', sql`(${table.kind} = 'recurring') = (${table.recurringRuleId} IS NOT NULL)`),
+]);
+
+// Admin- or moderator-authored messages shown on the moderator hub (see
+// src/components/messages/MessageTable.astro) — shift notes, stock issues,
+// closures, etc. A plain feed (newest first), no expiry or read-receipts:
+// those were open questions on issue #151, deliberately deferred rather than
+// guessed at. There's no editing (see issue #225) — a correction is just a
+// new message — so there's no updatedAt to track. authorName is a snapshot
+// of the posting user's display name at write time, same reasoning as
+// orders.contactName — there's no local users table to join against (see
+// src/lib/auth.ts), only bloc user ids. authorId is that bloc user id
+// (locals.user.id), kept alongside the display-name snapshot specifically so
+// "is this my message" can be checked reliably even if two users share a
+// display name (see issue #225) — it's nullable because rows written before
+// that column existed have no id to backfill. pinnedAt: null means not
+// pinned; a timestamp both flags a message as pinned and orders the pinned
+// group (most recently pinned first) without a separate boolean + sort
+// column.
+export const messages = sqliteTable('messages', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  content: text('content').notNull(),
+  authorName: text('author_name').notNull(),
+  authorId: text('author_id'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  pinnedAt: integer('pinned_at', { mode: 'timestamp' }),
 });
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
@@ -299,6 +460,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   // Convenience relation only — no real FK column on `products` (same
   // pattern as usersRelations' `many(orders)` below).
   items: many(items),
+  sets: many(sets),
 }));
 
 export const productLinksRelations = relations(productLinks, ({ one }) => ({
@@ -323,6 +485,7 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   }),
   attributeValues: many(itemAttributeValues),
   orderItems: many(orderItems),
+  setItems: many(setItems),
 }));
 
 export const itemAttributeValuesRelations = relations(itemAttributeValues, ({ one }) => ({
@@ -333,6 +496,25 @@ export const itemAttributeValuesRelations = relations(itemAttributeValues, ({ on
   attribute: one(productAttributeKeys, {
     fields: [itemAttributeValues.attributeId],
     references: [productAttributeKeys.id],
+  }),
+}));
+
+export const setsRelations = relations(sets, ({ one, many }) => ({
+  product: one(products, {
+    fields: [sets.productId],
+    references: [products.id],
+  }),
+  setItems: many(setItems),
+}));
+
+export const setItemsRelations = relations(setItems, ({ one }) => ({
+  set: one(sets, {
+    fields: [setItems.setId],
+    references: [sets.id],
+  }),
+  item: one(items, {
+    fields: [setItems.itemId],
+    references: [items.id],
   }),
 }));
 
@@ -356,5 +538,24 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   item: one(items, {
     fields: [orderItems.itemId],
     references: [items.id],
+  }),
+}));
+
+export const pickupRecurringRulesRelations = relations(pickupRecurringRules, ({ one, many }) => ({
+  createdBy: one(users, {
+    fields: [pickupRecurringRules.createdByUserId],
+    references: [users.id],
+  }),
+  generatedDays: many(pickupDays),
+}));
+
+export const pickupDaysRelations = relations(pickupDays, ({ one }) => ({
+  user: one(users, {
+    fields: [pickupDays.userId],
+    references: [users.id],
+  }),
+  recurringRule: one(pickupRecurringRules, {
+    fields: [pickupDays.recurringRuleId],
+    references: [pickupRecurringRules.id],
   }),
 }));

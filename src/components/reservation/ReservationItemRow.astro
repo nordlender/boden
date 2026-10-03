@@ -1,46 +1,64 @@
 ---
+import ItemLine from '../ui/ItemLine.astro';
+import Badge from '../ui/Badge.astro';
 import AppIcon from '../icons/AppIcon.astro';
+import SetChildrenList from '../cart/SetChildrenList.astro';
 
 interface Props {
-	itemId: number;
+	kind: 'item' | 'set';
+	id: number;
 	productSlug: string | null;
 	productTitle: string;
 	imageUrl: string | null;
 	quantity: number;
-	attributes: { key: string; value: string }[];
+	// Already-formatted per-kind subtitle text, computed by the caller — an
+	// item's joined attribute values, or a set's own manually-typed label
+	// (see cart.ts's CartSetLine comment on why a set has no attributes of
+	// its own to join).
+	subtitle: string | null;
+	// Only for a set row — its resolved components, shown indented and
+	// smaller underneath, read-only (never independently split/removed —
+	// see cart.ts's CartSetChild).
+	components?: { productTitle: string; quantityPerSet: number }[];
 }
 
-const { itemId, productSlug, productTitle, imageUrl, quantity, attributes } = Astro.props;
+const { kind, id, productSlug, productTitle, imageUrl, quantity, subtitle, components = [] } = Astro.props;
+const lineKey = `${kind}:${id}`;
 ---
 
-<div data-reservation-row data-item-id={itemId} class="flex flex-wrap items-center gap-4 py-4">
-	<div class="h-16 w-16 shrink-0 overflow-hidden rounded bg-gray-100">
-		{imageUrl && <img src={imageUrl} alt={productTitle} class="h-full w-full object-cover" />}
-	</div>
-
-	<div class="min-w-0 flex-1">
-		<a href={productSlug ? `/products/${productSlug}` : '#'} class="font-medium text-gray-900 hover:underline">
-			{productTitle}
-		</a>
-		{attributes.length > 0 && <p class="text-sm text-gray-500">{attributes.map((a) => a.value).join(' / ')}</p>}
-		<p class="text-sm text-gray-500">Qty: {quantity}</p>
-	</div>
-
-	<p data-availability-badge class="hidden rounded-full px-2 py-0.5 text-xs font-medium"></p>
-
-	<p data-split-tag hidden class="rounded-full bg-gray-900 px-2 py-0.5 text-xs font-medium text-white">
-		Separate order
-	</p>
-
-	<button
-		type="button"
-		data-split-order-button
-		hidden
-		aria-pressed="false"
-		title="Move this item to a separate order"
-		class="shrink-0 rounded-md border border-gray-300 p-1.5 text-gray-500 hover:bg-gray-50 hover:text-gray-900 aria-pressed:border-gray-900 aria-pressed:bg-gray-900 aria-pressed:text-white"
+<div data-reservation-row data-line-key={lineKey} class="py-4">
+	<ItemLine
+		imageUrl={imageUrl}
+		name={productTitle}
+		href={productSlug ? `/products/${productSlug}` : null}
+		subtitle={subtitle}
+		quantity={quantity}
+		thumbnailSize={64}
+		gap="lg"
+		class="flex-wrap"
 	>
-		<AppIcon name="splitOrder" size={16} />
-		<span class="sr-only">Move {productTitle} to a separate order</span>
-	</button>
+		{kind === 'set' && <Badge class="mt-0.5 inline-block">Set</Badge>}
+		<Fragment slot="badge">
+			<p data-availability-badge hidden class="rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"></p>
+
+			<p data-split-tag hidden class="rounded-full bg-selected px-2 py-0.5 text-xs font-medium text-text-inverted">
+				Separate order
+			</p>
+		</Fragment>
+
+		<Fragment slot="action">
+			<button
+				type="button"
+				data-split-order-button
+				hidden
+				aria-pressed="false"
+				title="Move this item to a separate order"
+				class="shrink-0 rounded-md border border-border-strong p-1.5 text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-selected aria-pressed:bg-selected aria-pressed:text-text-inverted"
+			>
+				<AppIcon name="splitOrder" size={16} />
+				<span class="sr-only">Move {productTitle} to a separate order</span>
+			</button>
+		</Fragment>
+	</ItemLine>
+	{kind === 'set' && <SetChildrenList components={components} quantity={quantity} class="ml-20" />}
 </div>

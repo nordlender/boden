@@ -1,0 +1,60 @@
+---
+// One message in MessageTable.astro's list. Read-only unless the viewer may
+// act on this particular row: `isAdmin` shows a pin/unpin hint (pinning
+// stays admin-only — see issue #225) and a delete control for every row;
+// otherwise a delete control still shows, but only on the row the viewer
+// authored themselves (`currentUserId === message.authorId`), enforced
+// again server-side in src/pages/api/messages/delete.ts. There is no
+// editing — a correction is just a new message (see issue #225).
+import MorphButton from '../ui/MorphButton.astro';
+import TextMorphButton from '../ui/TextMorphButton.astro';
+import type { MessageRow } from '../../lib/messages';
+import { formatDateTimeDisplay } from '../../lib/dates';
+
+interface Props {
+	message: MessageRow;
+	currentUserId?: string | null;
+	isAdmin?: boolean;
+	redirectTo?: string;
+}
+
+const { message, currentUserId = null, isAdmin = false, redirectTo } = Astro.props;
+
+const canPin = isAdmin;
+const canDelete = isAdmin || (currentUserId !== null && message.authorId === currentUserId);
+---
+
+<li class="px-4 py-3">
+	<div class="flex items-start justify-between gap-3">
+		<div class="min-w-0">
+			<p class="whitespace-pre-wrap text-sm text-text">{message.content}</p>
+			<p class="mt-1 text-xs text-text-muted">
+				{message.authorName} &middot; {formatDateTimeDisplay(message.createdAt)}
+			</p>
+		</div>
+		{
+			(canPin || canDelete) && (
+				<div class="flex shrink-0 items-center gap-1">
+					{canPin && (
+						<form method="post" action={message.pinnedAt ? '/api/messages/unpin' : '/api/messages/pin'}>
+							<input type="hidden" name="id" value={message.id} />
+							<input type="hidden" name="redirectTo" value={redirectTo} />
+							{message.pinnedAt ? (
+								<TextMorphButton action="unpin" size="sm" type="submit" />
+							) : (
+								<MorphButton action="pin" size="sm" type="submit" />
+							)}
+						</form>
+					)}
+					{canDelete && (
+						<form method="post" action="/api/messages/delete">
+							<input type="hidden" name="id" value={message.id} />
+							<input type="hidden" name="redirectTo" value={redirectTo} />
+							<MorphButton action="delete" size="sm" type="submit" />
+						</form>
+					)}
+				</div>
+			)
+		}
+	</div>
+</li>

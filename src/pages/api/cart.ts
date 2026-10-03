@@ -1,17 +1,28 @@
 export const prerender = false;
 
-// JSON read model for CartSidebar.astro's script. The catalogue/product
+// HTML read model for CartSidebar.astro's script. The catalogue/product
 // pages that render the sidebar are prerendered (static output — see
 // astro.config.mjs), so they have no per-request access to the cart cookie
 // at render time; the sidebar instead fetches this endpoint client-side
-// whenever it opens.
+// whenever it opens and swaps the response straight into the DOM.
+//
+// It renders CartSidebarRows (which uses the ui/ItemLine primitive) via the
+// Container API rather than returning JSON for the client to build DOM nodes
+// from by hand — ItemLine is an Astro component, so it only renders
+// server-side.
 
 import type { APIRoute } from 'astro';
-import { getCartItems } from '../../lib/cart';
+import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+import { getCartLines } from '../../lib/cart';
+import CartSidebarRows from '../../components/cart/CartSidebarRows.astro';
 
 export const GET: APIRoute = async ({ cookies }) => {
-	const cartItems = await getCartItems(cookies);
-	return new Response(JSON.stringify(cartItems), {
-		headers: { 'Content-Type': 'application/json' },
+	const cartLines = await getCartLines(cookies);
+	const container = await AstroContainer.create();
+	const html = await container.renderToString(CartSidebarRows, {
+		props: { items: cartLines },
+	});
+	return new Response(html, {
+		headers: { 'Content-Type': 'text/html' },
 	});
 };

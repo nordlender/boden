@@ -5,6 +5,7 @@ import OrderContents from './OrderContents.astro';
 interface OrderItemView {
 	itemName: string;
 	requestedQuantity: number;
+	itemImageUrl?: string | null;
 }
 
 interface Props {
@@ -14,12 +15,13 @@ interface Props {
 	toDate: string;
 	note: string | null;
 	items: OrderItemView[];
+	showImages?: boolean;
 }
 
-const { orderCode, status, fromDate, toDate, note, items } = Astro.props;
+const { orderCode, status, fromDate, toDate, note, items, showImages = false } = Astro.props;
 ---
 
 <section class="order-summary flex flex-col gap-4">
 	<OrderCodeHeader orderCode={orderCode} status={status} fromDate={fromDate} toDate={toDate} />
-	<OrderContents items={items} note={note} />
+	<OrderContents items={items} note={note} showImages={showImages} />
 </section>

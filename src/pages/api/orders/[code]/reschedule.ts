@@ -2,14 +2,14 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { rescheduleOrder } from '../../../../lib/orders';
+import { requireUser } from '../../../../lib/wizard-http';
 
 export const PATCH: APIRoute = async ({ params, request, locals }) => {
   // Not covered by src/middleware/index.ts's route-prefix gate (that only
   // matches page routes, not /api/...), so check auth here, same as
   // src/pages/api/orders/create.ts.
-  if (!locals.user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  const authError = requireUser(locals);
+  if (authError) return authError;
 
   const code = params.code;
   if (!code) {
@@ -29,7 +29,7 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
 
   const result = await rescheduleOrder({
     orderCode: code,
-    userId: locals.user.id,
+    userId: locals.user!.id,
     fromDate: body.fromDate,
     toDate: body.toDate,
   });

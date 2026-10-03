@@ -11,11 +11,16 @@ interface Props {
 	type?: 'button' | 'submit' | 'reset';
 	href?: string;
 	disabled?: boolean;
+	hidden?: boolean;
 	class?: string;
 	// Lets a button submit a different <form> than the one it's nested in
 	// (wizard's ButtonStrip targets a form elsewhere in the DOM).
 	form?: string;
 	formaction?: string;
+	// Native Popover API triggers — lets a Button open/close a Popover.astro
+	// instance without a script (see ActionPopover.astro).
+	popovertarget?: string;
+	popovertargetaction?: 'show' | 'hide' | 'toggle';
 }
 
 const { variant = 'secondary', size = 'md', type = 'button', href, disabled = false, class: className, ...rest } = Astro.props;

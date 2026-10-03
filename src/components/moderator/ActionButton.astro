@@ -7,6 +7,7 @@
 // covers all three so a tap gets the same feedback as a mouse hover.
 import MorphIcon from 'morphicons/astro';
 import { moderatorActionIcons } from '../../lib/icon-nodes';
+import { actionTileIconPixelSize } from '../../lib/icon-sizes';
 
 interface Props {
 	href: string;
@@ -24,7 +25,7 @@ const icon = moderatorActionIcons[iconKey];
 	data-action-icon={iconKey}
 	class="action-tile flex flex-1 flex-col items-center gap-2 rounded-lg border border-border bg-surface px-5 py-6 text-center transition-colors hover:border-accent hover:bg-bg-subtle sm:items-start sm:text-left"
 >
-	<MorphIcon icon={icon.default} size={36} class="action-tile-icon text-text" />
+	<MorphIcon icon={icon.default} size={actionTileIconPixelSize} class="action-tile-icon text-text" />
 	<span class="text-lg font-semibold text-text">{label}</span>
 	<span class="text-sm text-text-muted">{description}</span>
 </a>

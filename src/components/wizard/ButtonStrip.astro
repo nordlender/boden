@@ -13,7 +13,10 @@ import MorphIcon from 'morphicons/astro';
 import { dropdownChevron } from '../../lib/icon-nodes';
 import AppIcon from '../icons/AppIcon.astro';
 import Button from '../ui/Button.astro';
-import TextIconButton from '../ui/TextIconButton.astro';
+import Callout from '../ui/Callout.astro';
+import Popover from '../ui/Popover.astro';
+import TextMorphButton from '../ui/TextMorphButton.astro';
+import ImageMenu from './ImageMenu.astro';
 import type { PanelVariant } from './grid';
 
 interface Props {
@@ -24,6 +27,8 @@ interface Props {
 }
 
 const { variant, formId, products, redirectTo } = Astro.props;
+
+const archiveHintId = `archive-hint-${formId}`;
 ---
 <div class="flex items-center gap-2 border-b border-border bg-bg-subtle px-3 py-2">
 	<details class="set-dropdown relative inline-block">
@@ -31,18 +36,16 @@ const { variant, formId, products, redirectTo } = Astro.props;
 			<span>Set</span>
 			<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
 		</summary>
-		<div class="absolute left-0 z-10 mt-1 w-80 rounded-md border border-border bg-surface p-3 shadow-lg">
+		{/* Width tracks the viewport (never wider than the screen minus the
+		    page gutter); height is left to the content — ImageMenu's explorer
+		    box caps and scrolls itself as folders expand. */}
+		<div class="absolute left-0 z-10 mt-1 w-[min(26rem,calc(100vw-2rem))] rounded-md border border-border bg-surface p-3 shadow-lg">
 			<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
 			<section class="border-b border-border pb-3">
 				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
 					<AppIcon name="image" size={13} /> Set image
 				</p>
-				<div class="flex items-center gap-2">
-					<input type="text" name="imageUrl" form={formId} placeholder="https://…" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm" />
-					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/set-image" class="shrink-0">
-						Apply
-					</Button>
-				</div>
+				<ImageMenu formId={formId} />
 			</section>
 
 			<section class="py-3">
@@ -68,14 +71,29 @@ const { variant, formId, products, redirectTo } = Astro.props;
 	<div class="flex-1"></div>
 
 	{variant === 'unassigned' && (
-		<Button variant="primary" href="#add-item-name">
+		<TextMorphButton variant="primary" action="add" href="#add-item-name" data-expand-open="add-item-panel">
 			Add item
-		</Button>
+		</TextMorphButton>
 	)}
-	<TextIconButton variant="danger-filled" icon="trash" type="submit" form={formId} formaction="/api/wizard/archive">
+	<TextMorphButton
+		variant="danger-filled"
+		action="delete"
+		type="submit"
+		form={formId}
+		formaction="/api/wizard/archive"
+		data-archive-trigger={formId}
+	>
 		Delete <span class="selected-count" data-form-id={formId}>0</span> item(s)
-	</TextIconButton>
+	</TextMorphButton>
 </div>
+
+{/* No `popovertarget` invoker element points at this — the archive button below
+	must stay a plain submit button (see the click handler) — so it's shown via
+	`showPopover()` and positioned manually in the click handler rather than by
+	Popover.astro's own trigger-lookup script. */}
+<Popover id={archiveHintId} placement="anchor" side="bottom" class="p-0 shadow-lg">
+	<Callout variant="warning">Select at least one item to delete.</Callout>
+</Popover>
 
 <script>
 	// Same chevron-morph pattern as Dropdown.astro, duplicated rather than
@@ -95,6 +113,10 @@ const { variant, formId, products, redirectTo } = Astro.props;
 		true,
 	);
 
+	function countSelected(formId: string) {
+		return document.querySelectorAll(`input.select-checkbox-input[form="${formId}"]:checked`).length;
+	}
+
 	// Selection is client-only state (nothing persists it across the
 	// full-page reload every wizard action does), so this count starts at 0
 	// on every render and stays live via delegated `change` events rather
@@ -104,9 +126,41 @@ const { variant, formId, products, redirectTo } = Astro.props;
 		if (!(input instanceof HTMLInputElement) || !input.classList.contains('select-checkbox-input')) return;
 		const formId = input.getAttribute('form');
 		if (!formId) return;
-		const count = document.querySelectorAll(`input.select-checkbox-input[form="${formId}"]:checked`).length;
+		const count = countSelected(formId);
 		document.querySelectorAll(`.selected-count[data-form-id="${formId}"]`).forEach((el) => {
 			el.textContent = String(count);
+		});
+		// The hint is only relevant while the selection is empty — dismiss it
+		// as soon as the user checks an item, per HintPopover.astro's guidance
+		// for hints shown in response to a transient condition.
+		if (count > 0) {
+			document.getElementById(`archive-hint-${formId}`)?.hidePopover();
+		}
+	});
+
+	// Guard against archiving with nothing selected — without this the form
+	// still submits to /api/wizard/archive with an empty selection, which
+	// just redirects back with no visible effect (see issue #200). The
+	// trigger stays a plain `type="submit"` button (no `popovertarget`) so it
+	// still submits natively if this script fails to run; when it does run,
+	// it takes over entirely so the hint popover can intercept the empty case.
+	document.querySelectorAll<HTMLElement>('[data-archive-trigger]').forEach((trigger) => {
+		trigger.addEventListener('click', (event) => {
+			const formId = trigger.getAttribute('data-archive-trigger');
+			if (!formId) return;
+			event.preventDefault();
+
+			if (countSelected(formId) === 0) {
+				const hint = document.getElementById(`archive-hint-${formId}`);
+				if (hint) {
+					const rect = trigger.getBoundingClientRect();
+					hint.style.left = `${rect.left}px`;
+					hint.style.top = `${rect.bottom + 8}px`;
+					hint.showPopover();
+				}
+				return;
+			}
+			(document.getElementById(formId) as HTMLFormElement | null)?.requestSubmit(trigger as HTMLButtonElement);
 		});
 	});
 </script>

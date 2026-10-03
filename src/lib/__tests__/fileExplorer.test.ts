@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildFileTree, listChildren } from '../fileExplorer';
+import { buildFileTree, fileUrl, isFileRootKey, listChildren } from '../fileExplorer';
 
 describe('buildFileTree', () => {
   let root: string;
@@ -143,5 +143,28 @@ describe('listChildren', () => {
     writeFileSync(join(root, 'a.txt'), '');
 
     expect(listChildren(root, '')).toEqual([{ name: 'a.txt', path: 'a.txt', type: 'file' }]);
+  });
+
+  it('lists only image files (but every directory) with imagesOnly', () => {
+    writeFileSync(join(root, 'notes.txt'), '');
+    writeFileSync(join(root, 'photo.JPG'), '');
+    writeFileSync(join(root, 'logo.svg'), '');
+    mkdirSync(join(root, 'sub'));
+
+    expect(listChildren(root, '', { imagesOnly: true }).map((n) => n.name)).toEqual(['sub', 'logo.svg', 'photo.JPG']);
+  });
+});
+
+describe('FILE_ROOTS', () => {
+  it('only accepts known root keys', () => {
+    expect(isFileRootKey('uploads')).toBe(true);
+    expect(isFileRootKey('site-images')).toBe(true);
+    expect(isFileRootKey('../etc')).toBe(false);
+    expect(isFileRootKey('constructor')).toBe(false);
+  });
+
+  it('builds served URLs from a root-relative path', () => {
+    expect(fileUrl('uploads', 'rope 60m.png')).toBe('/media/rope%2060m.png');
+    expect(fileUrl('site-images', 'product/dragon1.webp')).toBe('/product/dragon1.webp');
   });
 });

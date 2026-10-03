@@ -6,11 +6,11 @@ export const prerender = false;
 //
 // Manual test page for <FileExplorer> (#96) — browses the project's
 // `public/` directory (the only thing genuinely "public" to show here).
-// #97 will replace this with the wizard's Set-image picker; this page is
-// just for eyeballing the component in isolation until then.
+// The component's real use is the wizard's image menu
+// (components/wizard/ImageMenu.astro); this page is just for eyeballing it
+// in isolation.
 import '../../styles/global.css';
 import FileExplorer from '../../components/FileExplorer.astro';
-import { PUBLIC_ROOT } from '../../lib/fileExplorer';
 ---
 <html lang="en">
 	<head>
@@ -22,7 +22,7 @@ import { PUBLIC_ROOT } from '../../lib/fileExplorer';
 		<div class="mx-auto flex max-w-md flex-col gap-4">
 			<h1 class="text-xl font-semibold text-text">File explorer</h1>
 			<div class="rounded-lg border border-border bg-surface p-4">
-				<FileExplorer root={PUBLIC_ROOT} label="public/" />
+				<FileExplorer root="public" label="public/" />
 			</div>
 		</div>
 	</body>

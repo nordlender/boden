@@ -17,6 +17,7 @@ const { products } = Astro.props;
 			{products.map((product) => (
 				<ItemCard
 					itemId={product.representativeItemId}
+					setId={product.representativeSetId}
 					productSlug={product.productSlug}
 					productTitle={product.productTitle}
 					imageUrl={product.imageUrl}

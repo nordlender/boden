@@ -1,0 +1,38 @@
+---
+// The single <html> document shell every page renders through (directly or
+// via BaseLayout / AdminLayout / ModeratorLayout): head (global.css,
+// favicons, meta, ThemeInit so no page flashes the wrong theme) and body
+// tokens. Section layouts differ only in the navbar slot, body classes and
+// any trailing slot content.
+//
+// Slots: `navbar` (before content), default (page content), `after`
+// (after content, e.g. CartSidebar), `head` (extra <head> elements).
+import '../styles/global.css';
+import ThemeInit from '../components/ThemeInit.astro';
+
+interface Props {
+	title: string;
+	bodyClass?: string;
+	bodyAttrs?: Record<string, string>;
+}
+
+const { title, bodyClass = 'min-h-screen bg-bg text-text', bodyAttrs = {} } = Astro.props;
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+		<ThemeInit />
+		<slot name="head" />
+	</head>
+	<body class={bodyClass} {...bodyAttrs}>
+		<slot name="navbar" />
+		<slot />
+		<slot name="after" />
+	</body>
+</html>

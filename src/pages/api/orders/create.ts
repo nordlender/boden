@@ -56,15 +56,17 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const userIsMember = parseYesNo(form.get('userIsMember'));
 
   // Populated by the reservation page's split-order action when the member
-  // moves one or more mixed-availability items into their own order — see
-  // ReservationForm.astro and src/lib/orders.ts's createSplitOrders.
-  const splitItemIds = (form.get('splitItemIds')?.toString() ?? '')
+  // moves one or more mixed-availability lines (items or sets) into their
+  // own order — see ReservationForm.astro and
+  // src/lib/orders.ts's createSplitOrders. Each key is cart.ts's
+  // entryKey format ('item:<id>' or 'set:<id>').
+  const splitLineKeys = (form.get('splitLineKeys')?.toString() ?? '')
     .split(',')
-    .map((s) => Number(s.trim()))
-    .filter((n) => Number.isInteger(n));
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
 
   const result =
-    splitItemIds.length > 0
+    splitLineKeys.length > 0
       ? await createSplitOrders({
           userId: locals.user!.id,
           role: locals.user!.role,
@@ -72,7 +74,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           cartEntries: cart,
           fromDate,
           toDate,
-          splitItemIds,
+          splitLineKeys,
           contactName,
           contactEmail,
           contactMobile,

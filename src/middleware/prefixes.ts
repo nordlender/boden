@@ -25,7 +25,9 @@ export interface RouteRule {
 export const ROUTE_RULES: RouteRule[] = [
   { prefix: '/admin', minRole: 'admin' },
   { prefix: '/api/wizard', minRole: 'admin' },
+  { prefix: '/api/products', minRole: 'admin' },
   { prefix: '/api/admin/pickup-days', minRole: 'admin' },
+  { prefix: '/api/admin/images', minRole: 'admin' },
   { prefix: '/api/messages/pin', minRole: 'admin' },
   { prefix: '/api/messages/unpin', minRole: 'admin' },
   { prefix: '/moderator', minRole: 'moderator' },

@@ -23,7 +23,7 @@ if (!order) {
 // Defensive against a stale bookmark/back-button after this order has
 // already been accepted or rejected (by this moderator or another one, in
 // another tab).
-const alreadyReviewed = order.acceptedAt !== null || order.rejectedAt !== null;
+const alreadyReviewed = order.status !== 'requested';
 const error = Astro.url.searchParams.get('error');
 ---
 
@@ -39,7 +39,7 @@ const error = Astro.url.searchParams.get('error');
 						// lookup (see requests.astro) — there's no per-id retrieval route
 						// to link to. Rejected orders have nothing further to review, so
 						// no link is shown for them at all.
-						order.acceptedAt !== null && (
+						order.status === 'scheduled' && (
 							<Button href="/moderator/retrieve">
 								Retrieve order
 							</Button>

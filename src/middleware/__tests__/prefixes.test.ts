@@ -2,9 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { requiredRole, matchesPrefix, isApiRoute } from '../prefixes';
 
 describe('matchesPrefix', () => {
-  it('matches an exact prefix and nested routes', () => {
-    expect(matchesPrefix('/admin', '/admin')).toBe(true);
-    expect(matchesPrefix('/api/wizard/items', '/api/wizard')).toBe(true);
+  it.each([
+    ['/admin', '/admin', 'an exact prefix'],
+    ['/api/wizard/items', '/api/wizard', 'a nested wizard write route'],
+    ['/api/products/[id]/update', '/api/products', 'a nested product write route'],
+  ])('matches %s against %s (%s)', (route, prefix) => {
+    expect(matchesPrefix(route, prefix)).toBe(true);
   });
 
   it('does not match a route that merely shares the prefix string without a boundary', () => {
@@ -17,6 +20,9 @@ describe('requiredRole', () => {
     expect(requiredRole('/admin')).toBe('admin');
     expect(requiredRole('/api/wizard/items')).toBe('admin');
     expect(requiredRole('/api/admin/pickup-days')).toBe('admin');
+    expect(requiredRole('/api/admin/images')).toBe('admin');
+    expect(requiredRole('/api/products/create')).toBe('admin');
+    expect(requiredRole('/api/products/[id]/update')).toBe('admin');
   });
 
   it('requires moderator for moderator routes, incl. messages add/delete (#225)', () => {

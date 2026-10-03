@@ -16,7 +16,7 @@ const order = Number.isInteger(idParam) ? await getOrderDetail(idParam) : null;
 if (!order) {
 	return Astro.redirect('/moderator/retrieve');
 }
-if (order.acceptedAt === null || order.status !== 'requested') {
+if (order.status !== 'scheduled') {
 	return Astro.redirect(`/moderator/retrieve/${order.id}`);
 }
 

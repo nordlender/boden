@@ -23,11 +23,10 @@ if (!product) {
 
 // This page is prerendered (static output, see astro.config.mjs), so
 // Astro.url.searchParams reflects the build-time request, not a real
-// visitor's URL — a `?item=` variant preselect is applied client-side
-// instead (see VariantPicker's script). Server-side, just default to the
-// first item.
-const initialItem = product.items[0] ?? null;
-const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? null;
+// visitor's URL — a `?item=`/`?set=` variant preselect is applied
+// client-side instead (see VariantPicker's script). Server-side, just
+// default to the first item, or the first set if the product has no items.
+const initialImageUrl = (product.items[0]?.imageUrl ?? product.sets[0]?.imageUrl) ?? product.thumbnailImageUrl ?? null;
 ---
 
 <BaseLayout title={product.title}>
@@ -65,11 +64,12 @@ const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? nu
 			{product.description && <p class="text-sm text-text-muted">{product.description}</p>}
 
 			{
-				product.items.length === 0 ? (
+				product.items.length === 0 && product.sets.length === 0 ? (
 					<p class="text-sm text-error-text">No items available for this product yet.</p>
 				) : (
 					<VariantPicker
 						items={product.items}
+						sets={product.sets}
 						productSlug={product.slug}
 						thumbnailImageUrl={product.thumbnailImageUrl}
 						attributeKeyOrder={product.attributeKeyOrder}

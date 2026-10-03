@@ -17,6 +17,40 @@ export function isPositiveInteger(value: number): boolean {
 }
 
 /**
+ * Parses and validates a set of required positive-integer form fields in one
+ * call — replaces each caller re-deriving the same `Number(form.get(...))` +
+ * `isPositiveInteger` check (and usually the same error message) for its own
+ * id/quantity fields, which had already drifted into copy-pasted duplicates
+ * across a few src/pages/api/wizard/set-component-*.ts routes.
+ *
+ * Returns `null` — not a partial object — the moment any named field is
+ * missing or not a positive integer, so a caller only has one thing to check
+ * before using every field.
+ */
+export function requirePositiveIntFields<K extends string>(form: FormData, keys: readonly K[]): Record<K, number> | null {
+	const result = {} as Record<K, number>;
+	for (const key of keys) {
+		const value = Number(form.get(key));
+		if (!isPositiveInteger(value)) return null;
+		result[key] = value;
+	}
+	return result;
+}
+
+/**
+ * Parses the "create a named thing" form shared by the item and set wizards'
+ * create routes (items.ts / sets.ts) — a required `name` plus an optional
+ * `imageUrl`, both trimmed. Returns `null` when `name` is missing or blank, so
+ * the caller only has to supply its own noun for the 400 message.
+ */
+export function parseNamedEntityForm(form: FormData): { name: string; imageUrl: string | null } | null {
+	const name = form.get('name')?.toString().trim();
+	if (!name) return null;
+	const imageUrl = form.get('imageUrl')?.toString().trim() || null;
+	return { name, imageUrl };
+}
+
+/**
  * Returns a 401 Response if the current request isn't from a signed-in user,
  * or `null` if the caller may proceed.
  */

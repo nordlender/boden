@@ -1,0 +1,66 @@
+---
+// Sets' equivalent of ../ItemPanel.astro.
+import SetToolbar from './SetToolbar.astro';
+import SetTableHeader from './SetTableHeader.astro';
+import SetRow from './SetRow.astro';
+import type { SetPanelVariant } from './grid';
+import type { WizardSetComponent } from '../../../lib/setWizard';
+import type { SetComponentDisplay } from '../../../lib/sets';
+
+export interface SetView {
+	setId: number;
+	name: string;
+	label: string | null;
+	image?: string | null;
+	product?: string;
+	inStock: number;
+	totalStock: number;
+	components: WizardSetComponent[];
+	includes: SetComponentDisplay[];
+	needsAttention: boolean;
+}
+
+interface Props {
+	variant: SetPanelVariant;
+	title: string;
+	sets: SetView[];
+	products: { id: number; title: string }[];
+	componentItemOptions: { id: number; name: string; productTitle?: string }[];
+	redirectTo: string;
+}
+
+const { variant, title, sets, products, componentItemOptions, redirectTo } = Astro.props;
+// Same "bare contentless form, everything targets it by id" pattern as
+// ../ItemPanel.astro — see that file's comment for why.
+const formId = `set-wizard-${variant}-form`;
+---
+<section class="rounded-lg border border-border bg-surface">
+	<h2 class="border-b border-border px-3 py-2 text-sm font-semibold text-text">{title}</h2>
+	<form id={formId} method="post" action="/api/wizard/sets-archive"></form>
+	<SetToolbar variant={variant} formId={formId} products={products} redirectTo={redirectTo} />
+	<SetTableHeader variant={variant} formId={formId} />
+	{sets.length === 0 ? (
+		<p class="px-3 py-8 text-center text-sm text-text-muted">No sets yet.</p>
+	) : (
+		<div class="overflow-hidden rounded-b-lg">
+			{sets.map((set) => (
+				<SetRow
+					variant={variant}
+					formId={formId}
+					setId={set.setId}
+					image={set.image}
+					name={set.name}
+					label={set.label}
+					product={set.product}
+					inStock={set.inStock}
+					totalStock={set.totalStock}
+					components={set.components}
+					includes={set.includes}
+					componentItemOptions={componentItemOptions}
+					needsAttention={set.needsAttention}
+					redirectTo={redirectTo}
+				/>
+			))}
+		</div>
+	)}
+</section>

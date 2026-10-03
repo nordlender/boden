@@ -1,0 +1,21 @@
+---
+export const prerender = false;
+
+// Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin).
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import ProductForm from '../../../components/wizard/ProductForm.astro';
+import { listCategoryOptions, listSubcategoryOptions } from '../../../lib/products';
+
+const [categories, subcategories] = await Promise.all([listCategoryOptions(), listSubcategoryOptions()]);
+---
+
+<AdminLayout title="New product">
+	<div class="mx-auto flex max-w-2xl flex-col gap-6 p-8">
+		<div>
+			<h1 class="text-xl font-semibold text-text">New product</h1>
+			<p class="mt-1 text-sm text-text-muted">Items get assigned to this product afterward, from /admin/items.</p>
+		</div>
+
+		<ProductForm mode="create" categories={categories} subcategories={subcategories} redirectTo="/admin/products" />
+	</div>
+</AdminLayout>

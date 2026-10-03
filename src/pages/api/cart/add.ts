@@ -1,5 +1,3 @@
-export const prerender = false;
-
 // Not covered by src/middleware/index.ts's route-prefix gate (that only
 // matches /cart, /checkout, /orders, /moderator, /admin — not /api/...),
 // same as src/pages/api/orders/create.ts and the wizard API routes. Adding

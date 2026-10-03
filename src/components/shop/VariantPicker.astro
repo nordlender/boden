@@ -117,8 +117,7 @@ const initialMax = Math.max(initialItem?.inStock ?? 1, 1);
 <script>
 	// Keeps the image, stock message, quantity cap, and attribute list in
 	// sync with whichever variant is selected — including a `?item=<id>`
-	// preselect from an ItemCard link, applied here rather than server-side
-	// since the product page is prerendered.
+	// preselect from an ItemCard link.
 	const select = document.querySelector<HTMLSelectElement>('select[name="itemId"]');
 	const image = document.querySelector<HTMLImageElement>('[data-product-image]');
 	const imagePlaceholder = document.querySelector<HTMLElement>('[data-product-image-placeholder]');

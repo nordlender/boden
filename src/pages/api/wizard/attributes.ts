@@ -1,5 +1,3 @@
-export const prerender = false;
-
 // Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES — see items.ts.
 // Single-item attribute edit — docs/schema.md's "attribute editing entry
 // points" (single-item half), submitted from the small per-attribute form

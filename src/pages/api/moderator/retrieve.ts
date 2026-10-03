@@ -1,5 +1,3 @@
-export const prerender = false;
-
 // Also gated by src/middleware/index.ts's MOD_ROUTE_PREFIXES ('/api/moderator'),
 // but that's defense-in-depth — keep this inline check too (see prefixes.ts).
 

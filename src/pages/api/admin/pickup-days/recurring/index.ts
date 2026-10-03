@@ -1,5 +1,3 @@
-export const prerender = false;
-
 // Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES
 // ('/api/admin/pickup-days') — defense-in-depth, keep this inline check too.
 

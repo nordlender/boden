@@ -7,25 +7,20 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ImagePlaceholder from '../../components/shop/ImagePlaceholder.astro';
 import VariantPicker from '../../components/shop/VariantPicker.astro';
-import { getPublishedProductSlugs, getShopProductBySlug } from '../../lib/shop';
-
-export async function getStaticPaths() {
-	const slugs = await getPublishedProductSlugs();
-	return slugs.map((slug) => ({ params: { slug } }));
-}
+import { getShopProductBySlug } from '../../lib/shop';
 
 const { slug } = Astro.params;
 const product = await getShopProductBySlug(slug!);
 
 if (!product) {
-	return Astro.redirect('/404');
+	// An empty-bodied 404 makes Astro serve src/pages/404.astro with the
+	// right status. (Astro.rewrite('/404') isn't allowed here: 404.astro is
+	// prerendered, and an on-demand route can't rewrite to a static one.)
+	return new Response(null, { status: 404 });
 }
 
-// This page is prerendered (static output, see astro.config.mjs), so
-// Astro.url.searchParams reflects the build-time request, not a real
-// visitor's URL — a `?item=` variant preselect is applied client-side
-// instead (see VariantPicker's script). Server-side, just default to the
-// first item.
+// A `?item=` variant preselect is applied client-side by VariantPicker's
+// script; server-side, just default to the first item.
 const initialItem = product.items[0] ?? null;
 const initialImageUrl = initialItem?.imageUrl ?? product.thumbnailImageUrl ?? null;
 ---

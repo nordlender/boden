@@ -41,8 +41,12 @@ const cartLines = await getCartLines(Astro.cookies);
 									class="flex-wrap"
 								>
 									{isSet && <Badge class="mt-0.5 inline-block">Set</Badge>}
-									{line.quantity > line.inStock && (
-										<p class="text-sm text-error">Only {Math.max(line.inStock, 0)} left in stock</p>
+									{line.quantity > line.stockCount ? (
+										<p class="text-sm text-error-text">We only have {line.stockCount}</p>
+									) : (
+										line.quantity > line.inStock && (
+											<p class="text-sm text-text-muted">Booked today — you'll pick dates when it's free</p>
+										)
 									)}
 									<Fragment slot="action">
 										<form method="post" action="/api/cart/update" class="flex items-center gap-2">

@@ -6,7 +6,9 @@ import ReservationForm from '../components/reservation/ReservationForm.astro';
 import { getCartLines } from '../lib/cart';
 import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
 import { getMaxRentalDays } from '../lib/rental-policy';
-import { todayIsoInOslo } from '../lib/dates';
+import { todayIsoInOslo, formatDateDisplay } from '../lib/dates';
+import { addDaysIso, getUnmetDays } from '../lib/availability';
+import { resolveEntriesToItemQuantities } from '../lib/sets';
 import { getSession } from 'auth-astro/server';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
@@ -20,6 +22,19 @@ if (cartLines.length === 0) {
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
 const todayIso = todayIsoInOslo();
 const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
+
+// Days the cart as a whole can't be reserved for, over the next few months —
+// greyed out and unselectable in the calendar. Lets a member reserve items
+// that are out today for a later date when they're back (see
+// src/lib/availability.ts). The per-line check after picking dates still
+// catches a range that spans one of these days.
+const UNAVAILABLE_HORIZON_DAYS = 120;
+const requirements = await resolveEntriesToItemQuantities(
+	cartLines.map((line) => ('setId' in line ? { setId: line.setId, quantity: line.quantity } : { itemId: line.itemId, quantity: line.quantity })),
+);
+const unavailableDates = getUnmetDays(requirements, todayIso, UNAVAILABLE_HORIZON_DAYS, { today: todayIso });
+const unavailableSet = new Set(unavailableDates);
+const firstAvailable = Array.from({ length: UNAVAILABLE_HORIZON_DAYS }, (_, i) => addDaysIso(todayIso, i)).find((date) => !unavailableSet.has(date));
 
 // Surfaces the two error redirects /api/orders/create can send back here
 // (invalid_dates, unavailable) — previously the form just silently
@@ -38,11 +53,24 @@ const errorMessage =
 		<h1 class="mb-2 text-2xl font-semibold tracking-tight text-text">Reserve your items</h1>
 		<p class="mb-6 text-sm text-text-muted">Choose your dates, then review your items and submit your request.</p>
 
+		{
+			unavailableDates.length > 0 && (
+				<p class="mb-6 text-sm text-text-muted">
+					{firstAvailable
+						? firstAvailable === todayIso
+							? "Greyed-out days are ones where something in your cart is already booked."
+							: `Something in your cart is booked until then — the earliest day everything is available is ${formatDateDisplay(firstAvailable, { weekday: true })}.`
+						: "Something in your cart is booked for the next few months — remove it or reduce its quantity to reserve the rest."}
+				</p>
+			)
+		}
+
 		{errorMessage && <p class="mb-6 rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">{errorMessage}</p>}
 
 		<ReservationForm
 			cartLines={cartLines}
 			availablePickupDates={availablePickupDates}
+			unavailableDates={unavailableDates}
 			name={session?.user?.name ?? null}
 			email={session?.user?.email ?? null}
 			mobile={session?.bloc?.mobile ?? null}

@@ -172,6 +172,31 @@ export function getOccupiedToday(itemIds: number[], executor?: QueryExecutor): M
 }
 
 /**
+ * The days in [from, from + days) on which `requirements` (summed item
+ * quantities, e.g. a whole cart) can't all be met at once — for marking
+ * dates a reservation can't include.
+ */
+export function getUnmetDays(
+	requirements: { itemId: number; quantity: number }[],
+	from: string,
+	days: number,
+	options: { excludeOrderId?: number; executor?: QueryExecutor; today?: string } = {},
+): string[] {
+	if (requirements.length === 0) return [];
+	const daily = getDailyAvailability(
+		requirements.map((r) => r.itemId),
+		from,
+		days,
+		options,
+	);
+	const unmet: string[] = [];
+	for (let i = 0; i < days; i++) {
+		if (requirements.some((r) => (daily.get(r.itemId)?.[i] ?? 0) < r.quantity)) unmet.push(addDaysIso(from, i));
+	}
+	return unmet;
+}
+
+/**
  * How many whole sets fit each day, given its components' per-day item
  * availability: the scarcest component (available / quantity per set)
  * decides. A set with no components fits zero.

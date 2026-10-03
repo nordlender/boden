@@ -19,7 +19,11 @@ interface Props {
 
 const { rules, deletable = false, emptyMessage = 'No recurring pickup days yet.' } = Astro.props;
 
-const GRID = '1.25rem 9rem 7rem 7.5rem 5.5rem';
+// Columns: bubble | date range | weekday | time | delete. Below `sm` each row
+// stacks into two lines (time moves under the dates) and the header row is
+// hidden — same approach as PickupDaysTable.astro.
+const GRID_STYLE = '--grid-cols: 1.25rem auto 1fr auto; --grid-cols-sm: 1.25rem 9rem 7rem 7.5rem 5.5rem';
+const GRID_CLASS = 'grid grid-cols-(--grid-cols) sm:grid-cols-(--grid-cols-sm)';
 ---
 
 {
@@ -28,8 +32,8 @@ const GRID = '1.25rem 9rem 7rem 7.5rem 5.5rem';
 	) : (
 		<div class="overflow-hidden rounded-lg border border-border">
 			<div
-				class="grid items-center gap-3 border-b border-border bg-bg-subtle px-3 py-1.5 text-xs font-medium tracking-wide text-text-muted uppercase"
-				style={`grid-template-columns: ${GRID}`}
+				class:list={[GRID_CLASS, 'items-center gap-3 border-b border-border bg-bg-subtle px-3 py-1.5 text-xs font-medium tracking-wide text-text-muted uppercase max-sm:hidden']}
+				style={GRID_STYLE}
 			>
 				<span />
 				<span>Date</span>
@@ -39,23 +43,23 @@ const GRID = '1.25rem 9rem 7rem 7.5rem 5.5rem';
 			</div>
 			<div class="divide-y divide-border">
 				{rules.map((rule) => (
-					<div data-pickup-day-row class="grid items-center gap-3 px-3 py-2 text-sm" style={`grid-template-columns: ${GRID}`}>
+					<div data-pickup-day-row class:list={[GRID_CLASS, 'items-center gap-x-3 gap-y-1 px-3 py-2 text-sm']} style={GRID_STYLE}>
 						<PickupDayBubble kind="recurring" />
 						<span class="text-text">
 							{formatDateShort(rule.startDate)} - {formatDateShort(rule.endDate)}
 						</span>
 						<span class="text-text-muted">{WEEKDAY_NAMES[rule.weekday]}</span>
-						<span class="text-text-muted">{`${rule.startTime} – ${rule.endTime}`}</span>
-						{deletable ? (
-							<PickupDayDeleteButton
-								id={String(rule.id)}
-								endpoint={`/api/admin/pickup-days/recurring/${rule.id}`}
-								title={`Delete this recurring rule?`}
-								body="Every date it generated will be removed from the pickup calendar too. This cannot be undone."
-							/>
-						) : (
-							<span />
-						)}
+						<span class="text-text-muted max-sm:col-span-2 max-sm:col-start-2">{`${rule.startTime} – ${rule.endTime}`}</span>
+						<div class="justify-self-end max-sm:col-start-4 max-sm:row-start-1">
+							{deletable && (
+								<PickupDayDeleteButton
+									id={String(rule.id)}
+									endpoint={`/api/admin/pickup-days/recurring/${rule.id}`}
+									title={`Delete this recurring rule?`}
+									body="Every date it generated will be removed from the pickup calendar too. This cannot be undone."
+								/>
+							)}
+						</div>
 					</div>
 				))}
 			</div>

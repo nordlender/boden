@@ -3,7 +3,7 @@
 
 import type { APIRoute } from 'astro';
 import { getOrderIdByCode } from '../../../lib/moderatorOrders';
-import { requireModerator } from '../../../lib/wizard-http';
+import { requireModerator, withErrorParam } from '../../../lib/http';
 
 export const POST: APIRoute = async ({ request, redirect, locals }) => {
 	const forbidden = requireModerator(locals);
@@ -22,12 +22,8 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
 
 	const orderId = code ? await getOrderIdByCode(code) : null;
 	if (!orderId) {
-		return redirect('/moderator/retrieve?error=not_found', 303);
+		return redirect(withErrorParam('/moderator/retrieve', 'not_found'), 303);
 	}
 
-	// Target route (/moderator/retrieve/[id]) is added by sibling PR #136
-	// (worktree-moderator-flow-wi2-hub), not yet merged as of this PR — if
-	// this PR merges/deploys first, a successful lookup 404s here until #136
-	// lands too. Merge #136 before or together with this PR.
 	return redirect(`/moderator/retrieve/${orderId}`, 303);
 };

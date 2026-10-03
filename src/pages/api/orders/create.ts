@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { getCart, setCart } from '../../../lib/cart';
 import { createOrder, createSplitOrders } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
-import { requireUser } from '../../../lib/wizard-http';
+import { requireUser } from '../../../lib/http';
 
 // Maps the checkout form's readonly hasUnpaidFees/userIsMember text inputs
 // (literally "Yes" | "No" | "Unknown", see CheckoutForm.astro's yesNo()) back
@@ -17,9 +17,8 @@ function parseYesNo(value: FormDataEntryValue | null): boolean | null {
 }
 
 export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => {
-  // Not covered by src/middleware/index.ts's route-prefix gate (that only
-  // matches /cart, /checkout, /orders — not /api/...), so check auth here,
-  // same as docs/rental-shop.md §9's confirm.ts/return.ts examples.
+  // Also gated by src/middleware/index.ts's MEMBER_ROUTE_PREFIXES
+  // ('/api/orders') — defense-in-depth, keep this inline check too.
   const authError = requireUser(locals);
   if (authError) return authError;
 

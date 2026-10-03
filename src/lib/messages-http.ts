@@ -5,27 +5,24 @@
 // rather than silently no-op'ing, so they don't fit this shape.
 import type { APIContext, APIRoute } from 'astro';
 import { getMessageById, type MessageRow } from './messages';
-import { isPositiveInteger, safeRedirectTarget } from './wizard-http';
+import { isPositiveInteger, safeRedirectTarget } from './http';
 
 /**
  * Returns a 403 Response if `locals`/`message` fail the route's
  * authorization rule, or `null` if the caller may proceed. Takes the loaded
- * message (not just `locals`) so a future per-message rule — e.g. "a
- * moderator may delete only their own message," which needs a stable
- * author id this table doesn't have yet (see issue #225) — can be added
- * at the call site without reshaping withMessageIdAction. Every call site
- * today is admin-only and ignores `message`.
+ * message (not just `locals`) so per-message rules — e.g. delete.ts's "a
+ * moderator may delete only their own message" — can be expressed at the
+ * call site.
  */
 export type AuthorizeMessageAction = (locals: APIContext['locals'], message: MessageRow) => Response | null;
 
 /**
- * Builds a POST APIRoute for an admin (today) action keyed by a message id:
+ * Builds a POST APIRoute for an action keyed by a message id:
  * parses `id` from the submitted form, loads that message, checks
  * `authorize`, runs `action(id)` if authorized, and redirects to the form's
  * `redirectTo` (falling back to `/admin`) either way. A missing/invalid id
  * or a message that no longer exists just redirects without running the
- * action or the authorization check — same "tampered form is a silent
- * no-op" handling as e.g. src/pages/api/pickup-days/remove.ts.
+ * action or the authorization check — a tampered form is a silent no-op.
  */
 export function withMessageIdAction(action: (id: number) => Promise<void>, authorize: AuthorizeMessageAction): APIRoute {
 	return async ({ request, locals, redirect, url }) => {

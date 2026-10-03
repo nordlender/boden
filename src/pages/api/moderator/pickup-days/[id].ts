@@ -3,25 +3,21 @@
 
 import type { APIRoute } from 'astro';
 import { deleteSingleDay } from '../../../../lib/pickupDays';
-import { requireModerator, isPositiveInteger } from '../../../../lib/wizard-http';
+import { json, jsonError, parseIdParam, requireModerator } from '../../../../lib/http';
 
 export const DELETE: APIRoute = async ({ params, locals }) => {
 	const forbidden = requireModerator(locals);
 	if (forbidden) return forbidden;
 
-	const id = Number(params.id);
-	if (!isPositiveInteger(id)) {
-		return new Response(JSON.stringify({ error: 'invalid_id' }), { status: 400 });
-	}
+	const id = parseIdParam(params.id);
+	if (id === null) return jsonError('invalid_id', 400);
 
 	// Ownership (and kind: 'single') is enforced inside deleteSingleDay's own
 	// WHERE clause, not just checked here — a moderator can never delete
 	// another moderator's offer or a recurring-generated day by id, even if
 	// they know/guess it.
 	const deleted = await deleteSingleDay(id, locals.user!.id);
-	if (!deleted) {
-		return new Response(JSON.stringify({ error: 'not_found' }), { status: 404 });
-	}
+	if (!deleted) return jsonError('not_found', 404);
 
-	return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+	return json({ ok: true });
 };

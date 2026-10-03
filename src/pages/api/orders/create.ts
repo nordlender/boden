@@ -2,7 +2,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { getCart, setCart } from '../../../lib/cart';
-import { createOrder, createSplitOrders } from '../../../lib/orders';
+import { createOrder } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
 import { requireUser } from '../../../lib/wizard-http';
 
@@ -55,43 +55,19 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const hasUnpaidFees = parseYesNo(form.get('hasUnpaidFees'));
   const userIsMember = parseYesNo(form.get('userIsMember'));
 
-  // Populated by the reservation page's split-order action when the member
-  // moves one or more mixed-availability items into their own order — see
-  // ReservationForm.astro and src/lib/orders.ts's createSplitOrders.
-  const splitItemIds = (form.get('splitItemIds')?.toString() ?? '')
-    .split(',')
-    .map((s) => Number(s.trim()))
-    .filter((n) => Number.isInteger(n));
-
-  const result =
-    splitItemIds.length > 0
-      ? await createSplitOrders({
-          userId: locals.user!.id,
-          role: locals.user!.role,
-          note,
-          cartEntries: cart,
-          fromDate,
-          toDate,
-          splitItemIds,
-          contactName,
-          contactEmail,
-          contactMobile,
-          hasUnpaidFees,
-          userIsMember,
-        })
-      : await createOrder({
-          userId: locals.user!.id,
-          role: locals.user!.role,
-          note,
-          cartEntries: cart,
-          fromDate,
-          toDate,
-          contactName,
-          contactEmail,
-          contactMobile,
-          hasUnpaidFees,
-          userIsMember,
-        });
+  const result = await createOrder({
+    userId: locals.user!.id,
+    role: locals.user!.role,
+    note,
+    cartEntries: cart,
+    fromDate,
+    toDate,
+    contactName,
+    contactEmail,
+    contactMobile,
+    hasUnpaidFees,
+    userIsMember,
+  });
   if (!result.ok) {
     // 'unavailable': re-checked at insert time (see orders.ts's insertOrder)
     // and found the member's cart/dates changed since the last availability
@@ -101,7 +77,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     }
     // 'user_not_found': defense-in-depth only — orders.userId's FK didn't
     // resolve for locals.user.id, which upsertUser guarantees exists in
-    // normal operation. See orders.ts's createOrder/createSplitOrders.
+    // normal operation. See orders.ts's createOrder.
     if (result.error === 'user_not_found') {
       return redirect('/cart?error=account_not_found');
     }
@@ -109,5 +85,5 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   }
 
   setCart(cookies, []);
-  return redirect(`/checkout/success?receipt=${result.checkoutToken}`, 303);
+  return redirect(`/checkout/success?order=${result.orderCode}`, 303);
 };

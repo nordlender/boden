@@ -1,6 +1,5 @@
 ---
 import ItemLine from '../ui/ItemLine.astro';
-import AppIcon from '../icons/AppIcon.astro';
 
 interface Props {
 	itemId: number;
@@ -27,23 +26,18 @@ const { itemId, productSlug, productTitle, imageUrl, quantity, attributes } = As
 	>
 		<Fragment slot="badge">
 			<p data-availability-badge hidden class="rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"></p>
-
-			<p data-split-tag hidden class="rounded-full bg-selected px-2 py-0.5 text-xs font-medium text-text-inverted">
-				Separate order
-			</p>
 		</Fragment>
 
 		<Fragment slot="action">
 			<button
 				type="button"
-				data-split-order-button
+				data-remove-item-button
 				hidden
-				aria-pressed="false"
-				title="Move this item to a separate order"
-				class="shrink-0 rounded-md border border-border-strong p-1.5 text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-selected aria-pressed:bg-selected aria-pressed:text-text-inverted"
+				title="Remove this item from your cart"
+				class="shrink-0 rounded-md border border-border-strong px-2 py-1 text-sm text-text-muted hover:bg-bg-subtle hover:text-text"
 			>
-				<AppIcon name="splitOrder" size={16} />
-				<span class="sr-only">Move {productTitle} to a separate order</span>
+				Remove
+				<span class="sr-only">{productTitle} from your cart</span>
 			</button>
 		</Fragment>
 	</ItemLine>

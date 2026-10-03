@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { requireAdmin, requireModerator, safeRedirectTarget, isPositiveInteger } from '../wizard-http';
+import {
+  requireAdmin,
+  requireModerator,
+  requireUser,
+  safeRedirectTarget,
+  isPositiveInteger,
+  json,
+  jsonError,
+  redirectWithError,
+  parseIdParam,
+  readJson,
+} from '../http';
 
 const ORIGIN = 'https://shop.example.com';
 
@@ -87,10 +98,10 @@ describe('requireAdmin', () => {
     expect(requireAdmin({ user: { id: '1', email: 'a@b.com', name: null, role: 'admin' } } as never)).toBeNull();
   });
 
-  it('returns a 403 Response when there is no user', () => {
+  it('returns a 401 Response when there is no user', () => {
     const res = requireAdmin({ user: null } as never);
     expect(res).toBeInstanceOf(Response);
-    expect(res?.status).toBe(403);
+    expect(res?.status).toBe(401);
   });
 
   it('returns a 403 Response when the user is not an admin', () => {
@@ -111,15 +122,98 @@ describe('requireModerator', () => {
     expect(requireModerator({ user: { id: '1', email: 'a@b.com', name: null, role: 'admin' } } as never)).toBeNull();
   });
 
-  it('returns a 403 Response when there is no user', () => {
+  it('returns a 401 Response when there is no user', () => {
     const res = requireModerator({ user: null } as never);
     expect(res).toBeInstanceOf(Response);
-    expect(res?.status).toBe(403);
+    expect(res?.status).toBe(401);
   });
 
   it('returns a 403 Response when the user is a plain member', () => {
     const res = requireModerator({ user: { id: '1', email: 'a@b.com', name: null, role: 'member' } } as never);
     expect(res).toBeInstanceOf(Response);
     expect(res?.status).toBe(403);
+  });
+});
+
+describe('requireUser', () => {
+  it('returns a 401 Response when there is no user', () => {
+    expect(requireUser({ user: null } as never)?.status).toBe(401);
+  });
+
+  it('returns null for a signed-in user', () => {
+    expect(requireUser({ user: { id: '1', email: 'a@b.com', name: null, role: 'member' } } as never)).toBeNull();
+  });
+});
+
+describe('json / jsonError', () => {
+  it('sets status 200 and a JSON Content-Type by default', async () => {
+    const res = json({ ok: true });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('application/json');
+    expect(await res.json()).toEqual({ ok: true });
+  });
+
+  it('uses the given status', () => {
+    expect(json({ a: 1 }, 201).status).toBe(201);
+  });
+
+  it('jsonError wraps the code as { error } with the status', async () => {
+    const res = jsonError('invalid_id', 400);
+    expect(res.status).toBe(400);
+    expect(res.headers.get('Content-Type')).toBe('application/json');
+    expect(await res.json()).toEqual({ error: 'invalid_id' });
+  });
+});
+
+describe('redirectWithError', () => {
+  it('appends ?error= to a plain path', () => {
+    expect(redirectWithError('/cart', 'empty_cart')).toBe('/cart?error=empty_cart');
+  });
+
+  it('preserves an existing query string', () => {
+    expect(redirectWithError('/admin?tab=a', 'oops')).toBe('/admin?tab=a&error=oops');
+  });
+
+  it('replaces an existing error param and keeps the hash', () => {
+    expect(redirectWithError('/admin?error=old#x', 'new')).toBe('/admin?error=new#x');
+  });
+
+  it('url-encodes the code', () => {
+    expect(redirectWithError('/a', 'a b')).toBe('/a?error=a+b');
+  });
+});
+
+describe('parseIdParam', () => {
+  it('parses a positive integer string', () => {
+    expect(parseIdParam('42')).toBe(42);
+  });
+
+  it.each([undefined, null, '', '0', '-1', '1.5', 'abc', '12abc', ' 1', '1e3'])('returns null for %j', (v) => {
+    expect(parseIdParam(v as string | undefined)).toBeNull();
+  });
+});
+
+describe('readJson', () => {
+  const req = (body: string | null) => new Request('http://x/', { method: 'POST', body });
+
+  it('returns the parsed object', async () => {
+    expect(await readJson(req('{"a":1}'))).toEqual({ a: 1 });
+  });
+
+  it('returns null for malformed JSON', async () => {
+    expect(await readJson(req('{nope'))).toBeNull();
+  });
+
+  it('returns null for an empty body', async () => {
+    expect(await readJson(req(null))).toBeNull();
+  });
+
+  it('returns null for a literal null body', async () => {
+    expect(await readJson(req('null'))).toBeNull();
+  });
+
+  it('returns null for non-object JSON (array, number)', async () => {
+    expect(await readJson(req('[1]'))).toBeNull();
+    expect(await readJson(req('5'))).toBeNull();
   });
 });

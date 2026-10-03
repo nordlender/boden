@@ -5,7 +5,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { getOrderIdByCode } from '../../../lib/moderatorOrders';
-import { requireModerator } from '../../../lib/wizard-http';
+import { requireModerator } from '../../../lib/http';
 
 export const POST: APIRoute = async ({ request, redirect, locals }) => {
 	const forbidden = requireModerator(locals);

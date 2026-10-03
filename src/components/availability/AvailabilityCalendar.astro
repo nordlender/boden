@@ -1,0 +1,54 @@
+---
+// Four-week availability strip: one cell per day, starting today, laid out
+// under Monday–Sunday column headers. Each cell shows how many are
+// available that day instead of a date (the date is in the cell's
+// tooltip/accessible label). Purely presentational — data comes from
+// src/lib/availabilityCalendar.ts.
+import { addDaysIso } from '../../lib/availability';
+import { formatDateDisplay } from '../../lib/dates';
+
+interface Props {
+	start: string; // YYYY-MM-DD, the first cell
+	daily: number[];
+	total: number;
+	// e.g. "sets" — used in the accessible labels ("3 of 4 sets available").
+	unit?: string;
+	class?: string;
+}
+
+const { start, daily, total, unit, class: className } = Astro.props;
+
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// Monday-based column of the first day (getUTCDay: Sunday = 0).
+const leadingBlanks = (new Date(`${start}T00:00:00Z`).getUTCDay() + 6) % 7;
+
+function tone(count: number): string {
+	if (count <= 0) return 'bg-error-subtle text-error-text';
+	if (count < total) return 'bg-warning-subtle text-warning-text';
+	return 'bg-success-subtle text-success-text';
+}
+
+const days = daily.map((count, i) => {
+	const date = addDaysIso(start, i);
+	const label = `${formatDateDisplay(date, { weekday: true })}${i === 0 ? ' (today)' : ''}: ${count} of ${total}${unit ? ` ${unit}` : ''} available`;
+	return { date, count, label, today: i === 0 };
+});
+---
+<div class:list={['flex flex-col gap-1.5', className]}>
+	<div class="grid grid-cols-7 gap-1 text-center text-xs text-text-muted" aria-hidden="true">
+		{WEEKDAYS.map((day) => <span>{day}</span>)}
+	</div>
+	<ol class="grid grid-cols-7 gap-1" aria-label="Availability for the next four weeks">
+		{Array.from({ length: leadingBlanks }, () => <li aria-hidden="true" />)}
+		{days.map((day) => (
+			<li
+				class:list={['flex h-8 items-center justify-center rounded text-sm font-medium tabular-nums', tone(day.count), day.today && 'ring-2 ring-accent ring-offset-1 ring-offset-surface']}
+				title={day.label}
+			>
+				<span aria-hidden="true">{day.count}</span>
+				<span class="sr-only">{day.label}</span>
+			</li>
+		))}
+	</ol>
+	<p class="text-xs text-text-muted">Each day shows how many are available. Today is outlined.</p>
+</div>

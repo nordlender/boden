@@ -7,6 +7,7 @@ import StockIndicator from './StockIndicator.astro';
 import DetailsToggle from './DetailsToggle.astro';
 import AppIcon from '../icons/AppIcon.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
+import AvailabilityCalendar from '../availability/AvailabilityCalendar.astro';
 import { GRID_TEMPLATE, type PanelVariant } from './grid';
 
 interface AttributeEntry {
@@ -31,6 +32,8 @@ interface Props {
 	description?: string | null;
 	attributes?: AttributeEntry[];
 	missingAttributeTemplate?: boolean;
+	// Per-day availability for the next four weeks (src/lib/availability.ts).
+	availability?: { start: string; daily: number[] };
 }
 
 const {
@@ -47,6 +50,7 @@ const {
 	description,
 	attributes = [],
 	missingAttributeTemplate = false,
+	availability,
 } = Astro.props;
 ---
 <div class="item-row border-b border-border last:border-b-0" data-details-row>
@@ -121,6 +125,12 @@ const {
 					</div>
 				) : (
 					<p class="mt-1 text-sm italic text-text-muted">No attributes yet — inherited from the assigned product.</p>
+				)}
+				{availability && (
+					<>
+						<p class="mt-4 mb-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">Availability</p>
+						<AvailabilityCalendar start={availability.start} daily={availability.daily.map((n) => Math.max(0, n))} total={totalStock} class="max-w-sm" />
+					</>
 				)}
 			</div>
 		</div>

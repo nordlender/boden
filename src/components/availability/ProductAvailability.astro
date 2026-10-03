@@ -1,0 +1,39 @@
+---
+// The product page's "Availability" section — rendered as a server island
+// (`<ProductAvailability server:defer>` in src/pages/products/[slug].astro)
+// so the counts are always live even though the page around it is built
+// ahead of time.
+//
+// One calendar per variant is rendered; only the selected one shows. The
+// page wrapper carries `data-selected-variant="item-<id>"`/"set-<id>" (set
+// server-side to the first variant, kept current by VariantPicker's
+// script), and the <style> below shows the calendar whose
+// `data-availability-variant` matches — plain CSS, so it works no matter
+// when this island's HTML arrives relative to the picker's script.
+import AvailabilityCalendar from './AvailabilityCalendar.astro';
+import { getProductVariantCalendars } from '../../lib/availabilityCalendar';
+
+interface Props {
+	productId: number;
+}
+
+const { productId } = Astro.props;
+const { start, calendars } = await getProductVariantCalendars(productId);
+const unit = calendars.some((c) => c.key.startsWith('set-')) ? 'sets' : undefined;
+const visibilityCss = calendars
+	.map(({ key }) => `[data-selected-variant="${key}"] [data-availability-variant="${key}"]{display:block}`)
+	.join('');
+---
+{
+	calendars.length > 0 && (
+		<section class="flex flex-col gap-2 border-t border-border pt-4" aria-labelledby="availability-heading">
+			<h2 id="availability-heading" class="text-sm font-medium text-text">Availability</h2>
+			<style is:inline set:html={`[data-availability-variant]{display:none}${visibilityCss}`} />
+			{calendars.map((calendar) => (
+				<div data-availability-variant={calendar.key}>
+					<AvailabilityCalendar start={start} daily={calendar.daily} total={calendar.total} unit={unit} />
+				</div>
+			))}
+		</section>
+	)
+}

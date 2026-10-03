@@ -7,6 +7,9 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ImagePlaceholder from '../../components/shop/ImagePlaceholder.astro';
 import VariantPicker from '../../components/shop/VariantPicker.astro';
+import ProductAvailability from '../../components/availability/ProductAvailability.astro';
+import AvailabilityCalendarSkeleton from '../../components/availability/AvailabilityCalendarSkeleton.astro';
+import { variantKey } from '../../lib/availabilityCalendar';
 import { getPublishedProductSlugs, getShopProductBySlug } from '../../lib/shop';
 
 export async function getStaticPaths() {
@@ -27,6 +30,9 @@ if (!product) {
 // client-side instead (see VariantPicker's script). Server-side, just
 // default to the first item, or the first set if the product has no items.
 const initialImageUrl = (product.items[0]?.imageUrl ?? product.sets[0]?.imageUrl) ?? product.thumbnailImageUrl ?? null;
+// Which variant's availability calendar shows (see ProductAvailability.astro);
+// VariantPicker's script keeps it in sync with the selection.
+const initialVariantKey = product.items[0] ? variantKey('item', product.items[0].id) : product.sets[0] ? variantKey('set', product.sets[0].id) : '';
 ---
 
 <BaseLayout title={product.title}>
@@ -55,7 +61,7 @@ const initialImageUrl = (product.items[0]?.imageUrl ?? product.sets[0]?.imageUrl
 			</div>
 		</div>
 
-		<div class="flex flex-col gap-4">
+		<div class="flex flex-col gap-4" data-selected-variant={initialVariantKey}>
 			<div>
 				{product.subcategoryName && <p class="text-xs uppercase tracking-wide text-text-muted">{product.subcategoryName}</p>}
 				<h1 class="text-2xl font-semibold tracking-tight text-text">{product.title}</h1>
@@ -74,6 +80,14 @@ const initialImageUrl = (product.items[0]?.imageUrl ?? product.sets[0]?.imageUrl
 						thumbnailImageUrl={product.thumbnailImageUrl}
 						attributeKeyOrder={product.attributeKeyOrder}
 					/>
+				)
+			}
+
+			{
+				initialVariantKey && (
+					<ProductAvailability server:defer productId={product.id}>
+						<AvailabilityCalendarSkeleton slot="fallback" />
+					</ProductAvailability>
 				)
 			}
 

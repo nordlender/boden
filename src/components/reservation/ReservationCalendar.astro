@@ -174,7 +174,7 @@ const todayIso = todayIsoInOslo();
 
 <script>
 	import 'cally';
-	import { formatDateDisplay, dateToIsoInOslo } from '../../lib/dates';
+	import { formatDateDisplay, dateToIsoInOslo, addDaysIso } from '../../lib/dates';
 
 	type RangeCalendar = HTMLElement & {
 		value?: string;
@@ -201,17 +201,6 @@ const todayIso = todayIsoInOslo();
 		// (also Oslo-anchored — see src/lib/pickupDays.ts) regardless of the
 		// viewer's own device timezone.
 		calendar.getDayParts = (date) => (availableDates.has(dateToIsoInOslo(date)) ? 'pickup-available' : '');
-	}
-
-	// Adds `days - 1` to `from` (inclusive range: a 1-day cap means from===to).
-	// UTC day arithmetic on an already-normalized YYYY-MM-DD string, not a
-	// "what day is it now" read — no viewer-timezone bug here, so this
-	// intentionally doesn't go through dates.ts's Oslo-anchored helpers (see
-	// dayAfter()'s comment in src/lib/reservation.ts for the same reasoning).
-	function addDaysIso(date: string, days: number) {
-		const d = new Date(`${date}T00:00:00Z`);
-		d.setUTCDate(d.getUTCDate() + days);
-		return d.toISOString().slice(0, 10);
 	}
 
 	// Fires once the calendar first upgrades even with a preselected `value`

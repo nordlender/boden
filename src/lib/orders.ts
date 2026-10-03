@@ -1,10 +1,11 @@
 import { db } from '../db/client';
-import { items, orders, orderItems } from '../db/schema';
-import { and, eq, inArray } from 'drizzle-orm';
+import { orders, orderItems } from '../db/schema';
+import { and, eq } from 'drizzle-orm';
 import type { CartEntry } from './cart';
 import type { Role } from './auth';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
+import { findRentableItems } from './rentable';
 
 // Only used for the checkout token, which isn't read aloud but shares the
 // alphabet for consistency. The order code itself has its own fixed-format
@@ -189,27 +190,13 @@ function insertOrder(
 }
 
 // Shared by createOrder/createSplitOrders: drops cart entries pointing at
-// items that no longer exist or were archived — stock shortfall itself is
-// resolved later by the moderator at the confirm step (see
-// orderItems.retrievedQuantity), not here.
-//
-// Deliberately not checked here: item.product.status. Unlike getCartItems
-// (src/lib/cart.ts), this doesn't drop an entry whose product was
-// unpublished after it was added to the cart — so a stale/tampered cart can
-// still produce an orderItems row for it. Accepted for now rather than fixed
-// here: the not-yet-built moderator hand-out flow is expected to (a) warn
-// when an order contains an item that's since become archived/unpublished,
-// and (b) let the moderator hand out only a subset of an order's items, so
-// they can simply decline to hand out that one instead of it being a hard
-// failure. See the moderator-workflow-deferred memory.
+// items that aren't rentable (see isRentable in ./rentable.ts: missing,
+// archived, or not under a published product) — same rule as the cart, so a
+// stale/tampered cart can't produce an orderItems row for them. Stock
+// shortfall itself is resolved later by the moderator at the confirm step
+// (see orderItems.retrievedQuantity), not here.
 async function resolveOrderableEntries(cartEntries: CartEntry[]): Promise<CartEntry[]> {
-  const itemIds = cartEntries.map((e) => e.itemId);
-  const validItems = itemIds.length
-    ? await db
-        .select({ id: items.id })
-        .from(items)
-        .where(and(inArray(items.id, itemIds), eq(items.archived, false)))
-    : [];
+  const validItems = await findRentableItems(cartEntries.map((e) => e.itemId));
   const validItemIds = new Set(validItems.map((i) => i.id));
   return cartEntries.filter((e) => validItemIds.has(e.itemId));
 }

@@ -3,6 +3,7 @@ import { db } from '../db/client';
 import { orderItems, orders } from '../db/schema';
 import { isForeignKeyViolation } from './db-errors';
 import { getReservationAvailability } from './reservation';
+import { isRentable } from './rentable';
 
 // Moderator-side order operations — kept separate from member-side
 // src/lib/orders.ts (createOrder/createSplitOrders/deleteOrder/
@@ -107,7 +108,7 @@ function toOrderDetail(order: RawOrderDetail): OrderDetail {
 			itemImageUrl: oi.item.imageUrl,
 			requestedQuantity: oi.requestedQuantity,
 			retrievedQuantity: oi.retrievedQuantity,
-			archived: oi.item.archived || oi.item.product?.status !== 'published',
+			archived: !isRentable(oi.item),
 			doubleBooked: !(availableByItemId.get(oi.itemId) ?? true),
 		})),
 	};

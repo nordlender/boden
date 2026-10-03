@@ -7,8 +7,8 @@ export const prerender = false;
 // archived can't block the rest of the update.
 
 import type { APIRoute } from 'astro';
-import { db } from '../../../db/client';
 import { getCart, updateCartQuantity } from '../../../lib/cart';
+import { findRentableItems } from '../../../lib/rentable';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	const form = await request.formData();
@@ -26,15 +26,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 		if (current.get(itemId) !== quantity) updates.push({ itemId, quantity });
 	}
 
-	for (const { itemId, quantity } of updates) {
-		if (quantity <= 0) continue;
-		const item = await db.query.items.findFirst({
-			where: (t, { eq }) => eq(t.id, itemId),
-			with: { product: true },
-		});
-		if (!item || item.archived || item.product?.status !== 'published') {
-			return new Response('Item not available', { status: 404 });
-		}
+	const idsToCheck = updates.filter((u) => u.quantity > 0).map((u) => u.itemId);
+	const rentableIds = new Set((await findRentableItems(idsToCheck)).map((i) => i.id));
+	if (idsToCheck.some((id) => !rentableIds.has(id))) {
+		return new Response('Item not available', { status: 404 });
 	}
 
 	for (const { itemId, quantity } of updates) updateCartQuantity(cookies, itemId, quantity);

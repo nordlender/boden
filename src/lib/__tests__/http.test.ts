@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { requireAdmin, requireModerator, safeRedirectTarget, isPositiveInteger } from '../wizard-http';
+import {
+  requireAdmin,
+  requireModerator,
+  safeRedirectTarget,
+  isPositiveInteger,
+  parseIdParam,
+  withQueryParam,
+  withErrorParam,
+  json,
+  jsonError,
+  readJsonObject,
+} from '../http';
 
 const ORIGIN = 'https://shop.example.com';
 
@@ -87,10 +98,10 @@ describe('requireAdmin', () => {
     expect(requireAdmin({ user: { id: '1', email: 'a@b.com', name: null, role: 'admin' } } as never)).toBeNull();
   });
 
-  it('returns a 403 Response when there is no user', () => {
+  it('returns a 401 Response when there is no user', () => {
     const res = requireAdmin({ user: null } as never);
     expect(res).toBeInstanceOf(Response);
-    expect(res?.status).toBe(403);
+    expect(res?.status).toBe(401);
   });
 
   it('returns a 403 Response when the user is not an admin', () => {
@@ -111,15 +122,70 @@ describe('requireModerator', () => {
     expect(requireModerator({ user: { id: '1', email: 'a@b.com', name: null, role: 'admin' } } as never)).toBeNull();
   });
 
-  it('returns a 403 Response when there is no user', () => {
+  it('returns a 401 Response when there is no user', () => {
     const res = requireModerator({ user: null } as never);
     expect(res).toBeInstanceOf(Response);
-    expect(res?.status).toBe(403);
+    expect(res?.status).toBe(401);
   });
 
   it('returns a 403 Response when the user is a plain member', () => {
     const res = requireModerator({ user: { id: '1', email: 'a@b.com', name: null, role: 'member' } } as never);
     expect(res).toBeInstanceOf(Response);
     expect(res?.status).toBe(403);
+  });
+});
+
+describe('parseIdParam', () => {
+  it('parses a positive integer id', () => {
+    expect(parseIdParam('42')).toBe(42);
+  });
+
+  it('returns null for missing, zero, negative, fractional or non-numeric ids', () => {
+    for (const value of [undefined, '', '0', '-3', '1.5', 'abc']) {
+      expect(parseIdParam(value)).toBeNull();
+    }
+  });
+});
+
+describe('withQueryParam / withErrorParam', () => {
+  it('adds a param to a bare path', () => {
+    expect(withErrorParam('/admin', 'empty_message')).toBe('/admin?error=empty_message');
+  });
+
+  it('keeps an existing query string and fragment', () => {
+    expect(withQueryParam('/products/rope?item=3#top', 'cartOpen', '1')).toBe('/products/rope?item=3&cartOpen=1#top');
+  });
+
+  it('replaces an existing value for the same key', () => {
+    expect(withErrorParam('/admin?error=old', 'new')).toBe('/admin?error=new');
+  });
+});
+
+describe('json / jsonError', () => {
+  it('serializes data with a JSON content type and default 200 status', async () => {
+    const res = json({ ok: true });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('application/json');
+    expect(await res.json()).toEqual({ ok: true });
+  });
+
+  it('wraps an error code', async () => {
+    const res = jsonError('not_found', 404);
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'not_found' });
+  });
+});
+
+describe('readJsonObject', () => {
+  const req = (body: string) => new Request('https://x.test', { method: 'POST', body });
+
+  it('returns a parsed JSON object', async () => {
+    expect(await readJsonObject(req('{"a":1}'))).toEqual({ a: 1 });
+  });
+
+  it('returns null for malformed JSON and for non-object JSON values', async () => {
+    for (const body of ['{oops', 'null', '[1,2]', '"text"', '3']) {
+      expect(await readJsonObject(req(body))).toBeNull();
+    }
   });
 });

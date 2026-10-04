@@ -23,15 +23,10 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const leadingBlanks = (new Date(`${start}T00:00:00Z`).getUTCDay() + 6) % 7;
 
 // Five-step scale from red (none available) through yellow to green (4+
-// available) — the availability-* tokens in global.css. Written out in full
+// available) — the semi-transparent availability-* tokens in global.css.
+// The count itself always uses the normal text colour. Written out in full
 // so Tailwind sees every class.
-const TONES = [
-	'bg-availability-0 text-availability-0-text',
-	'bg-availability-1 text-availability-1-text',
-	'bg-availability-2 text-availability-2-text',
-	'bg-availability-3 text-availability-3-text',
-	'bg-availability-4 text-availability-4-text',
-];
+const TONES = ['bg-availability-0', 'bg-availability-1', 'bg-availability-2', 'bg-availability-3', 'bg-availability-4'];
 
 // Fixed counts, not a share of stock: red = none, orange = 1, yellow = 2,
 // lime = 3, green = 4 or more available.
@@ -53,7 +48,7 @@ const days = daily.map((count, i) => {
 		{Array.from({ length: leadingBlanks }, () => <li aria-hidden="true" />)}
 		{days.map((day) => (
 			<li
-				class:list={['flex h-8 items-center justify-center rounded text-sm font-medium tabular-nums', tone(day.count), day.today && 'ring-2 ring-accent ring-offset-1 ring-offset-surface']}
+				class:list={['flex h-8 items-center justify-center rounded text-sm font-medium tabular-nums text-text', tone(day.count), day.today && 'ring-2 ring-accent ring-offset-1 ring-offset-surface']}
 				title={day.label}
 			>
 				<span aria-hidden="true">{day.count}</span>

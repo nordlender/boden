@@ -33,7 +33,7 @@ to dark mode.
 | Brand/primary action | `accent`, `accent-hover`, `accent-subtle`, `accent-text`, `focus-ring` | `bg-accent`, `text-accent-text` |
 | "This is selected" (wizard rows, calendar days) | `selected`, `selected-subtle`, `selected-border`, `selected-text` | `bg-selected`, `border-selected-border` |
 | Success / in-stock | `success`, `success-subtle`, `success-border`, `success-text` | `bg-success-subtle`, `text-success-text` |
-| Availability scale (AvailabilityCalendar): units available that day, 0 … 4+ | `availability-0` … `availability-4`, each with `-text` | `bg-availability-2`, `text-availability-2-text` |
+| Availability scale (AvailabilityCalendar): units available that day, 0 … 4+ (semi-transparent; text on top stays `text-text`) | `availability-0` … `availability-4` | `bg-availability-2` |
 | Informational | `info`, `info-subtle`, `info-border`, `info-text` | `bg-info-subtle`, `text-info-text` |
 | Warning | `warning`, `warning-subtle`, `warning-border`, `warning-text` | `bg-warning-subtle`, `text-warning-text` |
 | Error | `error`, `error-subtle`, `error-border`, `error-text` | `bg-error-subtle`, `text-error-text` |

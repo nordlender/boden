@@ -52,6 +52,17 @@
 	--ui-success-subtle: var(--color-emerald-50);
 	--ui-success-border: var(--color-emerald-200);
 	--ui-success-text: var(--color-emerald-800);
+	/* Availability scale (AvailabilityCalendar): 0 = none available (red) … 4 = all available (green). */
+	--ui-availability-0: var(--color-red-100);
+	--ui-availability-0-text: var(--color-red-800);
+	--ui-availability-1: var(--color-orange-100);
+	--ui-availability-1-text: var(--color-orange-800);
+	--ui-availability-2: var(--color-yellow-100);
+	--ui-availability-2-text: var(--color-yellow-800);
+	--ui-availability-3: var(--color-lime-100);
+	--ui-availability-3-text: var(--color-lime-800);
+	--ui-availability-4: var(--color-green-100);
+	--ui-availability-4-text: var(--color-green-800);
 
 	--ui-info: var(--color-blue-600);
 	--ui-info-subtle: var(--color-blue-50);
@@ -107,6 +118,17 @@
 		--ui-success-subtle: var(--color-emerald-950);
 		--ui-success-border: var(--color-emerald-800);
 		--ui-success-text: var(--color-emerald-200);
+		/* Availability scale — see :root. */
+		--ui-availability-0: var(--color-red-950);
+		--ui-availability-0-text: var(--color-red-300);
+		--ui-availability-1: var(--color-orange-950);
+		--ui-availability-1-text: var(--color-orange-300);
+		--ui-availability-2: var(--color-yellow-950);
+		--ui-availability-2-text: var(--color-yellow-300);
+		--ui-availability-3: var(--color-lime-950);
+		--ui-availability-3-text: var(--color-lime-300);
+		--ui-availability-4: var(--color-green-950);
+		--ui-availability-4-text: var(--color-green-300);
 
 		--ui-info: var(--color-blue-500);
 		--ui-info-subtle: var(--color-blue-950);
@@ -168,6 +190,17 @@
 	--ui-success-subtle: var(--color-emerald-950);
 	--ui-success-border: var(--color-emerald-800);
 	--ui-success-text: var(--color-emerald-200);
+	/* Availability scale — see :root. */
+	--ui-availability-0: var(--color-red-950);
+	--ui-availability-0-text: var(--color-red-300);
+	--ui-availability-1: var(--color-orange-950);
+	--ui-availability-1-text: var(--color-orange-300);
+	--ui-availability-2: var(--color-yellow-950);
+	--ui-availability-2-text: var(--color-yellow-300);
+	--ui-availability-3: var(--color-lime-950);
+	--ui-availability-3-text: var(--color-lime-300);
+	--ui-availability-4: var(--color-green-950);
+	--ui-availability-4-text: var(--color-green-300);
 
 	--ui-info: var(--color-blue-500);
 	--ui-info-subtle: var(--color-blue-950);
@@ -222,6 +255,16 @@
 	--color-success-subtle: var(--ui-success-subtle);
 	--color-success-border: var(--ui-success-border);
 	--color-success-text: var(--ui-success-text);
+	--color-availability-0: var(--ui-availability-0);
+	--color-availability-0-text: var(--ui-availability-0-text);
+	--color-availability-1: var(--ui-availability-1);
+	--color-availability-1-text: var(--ui-availability-1-text);
+	--color-availability-2: var(--ui-availability-2);
+	--color-availability-2-text: var(--ui-availability-2-text);
+	--color-availability-3: var(--ui-availability-3);
+	--color-availability-3-text: var(--ui-availability-3-text);
+	--color-availability-4: var(--ui-availability-4);
+	--color-availability-4-text: var(--ui-availability-4-text);
 
 	--color-info: var(--ui-info);
 	--color-info-subtle: var(--ui-info-subtle);

@@ -2,7 +2,6 @@ import type { APIRoute } from 'astro';
 import { getCartLineAvailability, isValidDateRange, type ReservationLine } from '../../../lib/reservation';
 import { getSetChildrenBulk, getValidSetIds, type SetChild } from '../../../lib/sets';
 
-export const prerender = false;
 
 type LineInput = { key: string; itemId: number; quantity: number } | { key: string; setId: number; quantity: number };
 

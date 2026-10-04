@@ -1,5 +1,3 @@
-export const prerender = false;
-
 import type { APIRoute } from 'astro';
 import { rescheduleOrder } from '../../../../lib/orders';
 import { requireUser } from '../../../../lib/wizard-http';

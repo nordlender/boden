@@ -2,8 +2,6 @@ import type { APIRoute } from 'astro';
 import { getToken } from '@auth/core/jwt';
 import { callBlocAsSelf } from '../../../lib/blocDebug';
 
-export const prerender = false;
-
 // Profile/GetPage's route was previously deleted because it takes an
 // arbitrary `userId` param — wrapping it verbatim would let any signed-in
 // caller pull another member's PII just by guessing/knowing their id (see

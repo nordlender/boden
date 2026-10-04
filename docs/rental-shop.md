@@ -201,9 +201,10 @@ import auth from 'auth-astro';
 import icon from 'astro-icon';
 
 export default defineConfig({
-  // Static by default (catalogue + product pages are pre-rendered at build time).
-  // Every other route opts into per-request rendering with `export const prerender = false`.
-  output: 'static',
+  // Rendered per request by default; the shop grid shell, login and 404
+  // opt into build-time rendering with `export const prerender = true`.
+  output: 'server',
+  redirects: { '/moderator/review': '/moderator/requests' },
   adapter: node({ mode: 'standalone' }),
   integrations: [auth({ configFile: './src/auth.ts' }), icon()],
   vite: {
@@ -213,7 +214,7 @@ export default defineConfig({
 });
 ```
 
-`output: 'static'` is the key setting: `/` and `/products/[slug]` are pre-rendered at build time, served from disk with no database round-trip per visitor. Every other route is marked `export const prerender = false` and rendered on the server per-request.
+`output: 'server'` renders every route per request (SQLite is local, so a catalogue query costs well under a millisecond). Only pages with nothing per-request are prerendered: `/auth/login`, `404`, and the shell of `/`. The shop grid on `/` is a server island (`<ShopGrid server:defer>`): the prerendered page ships a build-time snapshot of the grid as fallback, and the island swaps in live data on load — instant first paint without a stale catalogue.
 
 ---
 
@@ -623,7 +624,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
 ---
 
-## 11. Product detail page (static)
+## 11. Product detail page
 
 ```astro
 ---
@@ -631,23 +632,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
 // Route is "/products/[slug]", not "/items/[slug]": a slug-routable,
 // customer-facing page is a product (title/description/attribute
 // template), with items as its unlabeled variants underneath.
-import { getPublishedProductSlugs, getShopProductBySlug } from '../../lib/shop';
-
-export async function getStaticPaths() {
-  const slugs = await getPublishedProductSlugs();
-  return slugs.map((slug) => ({ params: { slug } }));
-}
+import { getShopProductBySlug } from '../../lib/shop';
 
 const product = await getShopProductBySlug(Astro.params.slug!);
-if (!product) return Astro.redirect('/404');
+if (!product) return new Response(null, { status: 404 }); // serves 404.astro
 ---
 <!-- variant <select> (one option per item, disabled when inStock <= 0),
      image + ImagePlaceholder fallback, attribute list, quantity input
      capped at inStock, "Add to cart" POSTing to /api/cart/add.
      A client-side <script> keeps image/stock/attributes/quantity-cap in
      sync on variant change (including a ?item=<id> preselect from an
-     ItemCard link) — this page is prerendered, so there's no per-request
-     server render to do it there. -->
+     ItemCard link). -->
 ```
 
 ---

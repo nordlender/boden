@@ -1,5 +1,3 @@
-export const prerender = false;
-
 // Also gated by src/middleware/prefixes.ts's ROUTE_RULES — defense-in-depth.
 
 import type { APIRoute } from 'astro';

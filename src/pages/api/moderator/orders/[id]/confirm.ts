@@ -1,5 +1,3 @@
-export const prerender = false;
-
 import type { APIRoute } from 'astro';
 import { confirmRetrieval, getOrderDetail } from '../../../../../lib/moderatorOrders';
 import { requireModerator } from '../../../../../lib/wizard-http';

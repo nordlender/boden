@@ -1,5 +1,3 @@
-export const prerender = false;
-
 import type { APIRoute } from 'astro';
 import { getCart, setCart } from '../../../lib/cart';
 import { createOrder, createSplitOrders } from '../../../lib/orders';

@@ -2,8 +2,6 @@ import { hasRole } from '../../../lib/auth';
 import { deleteMessage } from '../../../lib/messages';
 import { withMessageIdAction } from '../../../lib/messages-http';
 
-export const prerender = false;
-
 // An admin may delete any message; a moderator may delete only their own
 // (matched on authorId, not the display-name snapshot in authorName — see
 // issue #225 and the messages.authorId comment in src/db/schema.ts). A

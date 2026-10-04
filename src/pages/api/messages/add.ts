@@ -2,8 +2,6 @@ import type { APIRoute } from 'astro';
 import { createMessage } from '../../../lib/messages';
 import { requireModerator, safeRedirectTarget } from '../../../lib/wizard-http';
 
-export const prerender = false;
-
 export const POST: APIRoute = async ({ request, locals, redirect, url }) => {
 	// Defense-in-depth: /api/messages/add is also in
 	// src/middleware/prefixes.ts's ROUTE_RULES, but this inline check

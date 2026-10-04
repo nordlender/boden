@@ -209,9 +209,7 @@ function optionLabel(variant: Variant): string {
 <script>
 	// Keeps the image, stock message, quantity cap, attribute list, and
 	// "Includes" breakdown in sync with whichever variant is selected —
-	// including a `?item=<id>`/`?set=<id>` preselect from an ItemCard link,
-	// applied here rather than server-side since the product page is
-	// prerendered.
+	// including a `?item=<id>`/`?set=<id>` preselect from an ItemCard link.
 	interface SetComponentTableRow {
 		productTitle: string;
 		quantity: number;

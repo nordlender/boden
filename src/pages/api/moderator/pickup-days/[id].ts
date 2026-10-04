@@ -1,5 +1,3 @@
-export const prerender = false;
-
 // Also gated by src/middleware/prefixes.ts's ROUTE_RULES — see index.ts's
 // sibling route for why this inline check stays anyway.
 

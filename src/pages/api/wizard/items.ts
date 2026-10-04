@@ -1,5 +1,3 @@
-export const prerender = false;
-
 // Also gated by src/middleware/prefixes.ts's ROUTE_RULES ('/api/wizard'),
 // but that's defense-in-depth — keep this inline check too (see prefixes.ts).
 

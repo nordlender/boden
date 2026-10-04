@@ -9,7 +9,7 @@ import { RESERVING_STATUSES, type OrderStatus } from './orderStatus';
 // src/lib/orders.ts (createOrder/createSplitOrders/deleteOrder/
 // rescheduleOrder), which only ever acts on an order its caller owns.
 // Everything here acts across all members' orders, gated by
-// requireModerator() (src/lib/wizard-http.ts) at the API-route layer.
+// requireModerator() (src/lib/http.ts) at the API-route layer.
 
 export interface OrderDetailItem {
 	orderItemId: number;

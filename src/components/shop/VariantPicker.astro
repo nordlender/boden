@@ -60,7 +60,7 @@ function optionLabel(variant: Variant): string {
 ---
 
 <form action="/api/cart/add" method="post" class="flex flex-col gap-4 border-t border-border pt-4">
-	<input type="hidden" name="redirect" value={`/products/${productSlug}`} />
+	<input type="hidden" name="redirectTo" value={`/products/${productSlug}`} />
 	<!--
 		Exactly one of these is ever actually submitted — a disabled input is
 		left out of FormData entirely, so the script below toggles `disabled`

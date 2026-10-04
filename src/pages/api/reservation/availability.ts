@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { isPositiveInteger, json, jsonError, readJson, requireUser } from '../../../lib/http';
 import { getCartLineAvailability, isValidDateRange, type ReservationLine } from '../../../lib/reservation';
 import { getSetChildrenBulk, getValidSetIds, type SetChild } from '../../../lib/sets';
 
@@ -6,7 +7,7 @@ import { getSetChildrenBulk, getValidSetIds, type SetChild } from '../../../lib/
 type LineInput = { key: string; itemId: number; quantity: number } | { key: string; setId: number; quantity: number };
 
 function isPositiveInt(value: unknown): value is number {
-	return typeof value === 'number' && Number.isInteger(value) && value > 0;
+	return typeof value === 'number' && isPositiveInteger(value);
 }
 
 // The body is untrusted JSON, so a `lines` entry has to be proven to be one
@@ -47,23 +48,25 @@ function resolveItemRequirements(
 // orders (indirectly, via aggregated quantities only — no order details are
 // returned).
 export const POST: APIRoute = async ({ request, locals }) => {
-	if (!locals.user) {
-		return new Response('Unauthorized', { status: 401 });
-	}
+	const authError = requireUser(locals);
+	if (authError) return authError;
 
-	let body: { from?: string; to?: string; lines?: unknown[] };
-	try {
-		body = await request.json();
-	} catch {
-		return new Response(JSON.stringify({ error: 'invalid_json' }), { status: 400 });
-	}
+	const body = await readJson(request);
+	if (!body) return jsonError('invalid_json', 400);
 
-	const rawLines = typeof body === 'object' && body !== null && Array.isArray(body.lines) ? body.lines : [];
+	const { from, to } = body;
+	const rawLines = Array.isArray(body.lines) ? body.lines : [];
 	const lineInputs = rawLines.filter(isLineInput);
 	// Any malformed entry rejects the whole request, rather than being
 	// dropped — a silently shorter result would misalign with the caller's lines.
-	if (!isValidDateRange({ from: body.from, to: body.to }) || lineInputs.length === 0 || lineInputs.length !== rawLines.length) {
-		return new Response(JSON.stringify({ error: 'invalid_request' }), { status: 400 });
+	if (
+		typeof from !== 'string' ||
+		typeof to !== 'string' ||
+		!isValidDateRange({ from, to }) ||
+		lineInputs.length === 0 ||
+		lineInputs.length !== rawLines.length
+	) {
+		return jsonError('invalid_request', 400);
 	}
 
 	const setIds = lineInputs
@@ -76,9 +79,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 		itemRequirements: resolveItemRequirements(line, childrenBySet, validSetIds),
 	}));
 
-	const availabilities = getCartLineAvailability({ from: body.from!, to: body.to! }, lines);
+	const availabilities = getCartLineAvailability({ from, to }, lines);
 
-	return new Response(JSON.stringify({ availabilities }), {
-		headers: { 'Content-Type': 'application/json' },
-	});
+	return json({ availabilities });
 };

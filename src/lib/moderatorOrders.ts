@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, ne } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, ne, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { orderItems, orders } from '../db/schema';
 import { isForeignKeyViolation } from './db-errors';
@@ -74,7 +74,9 @@ type RawOrderDetail = NonNullable<Awaited<ReturnType<typeof queryOrderDetailById
 function toOrderDetail(order: RawOrderDetail): OrderDetail {
 	const availabilities = getReservationAvailability(
 		{ from: order.fromDate, to: order.toDate },
-		order.orderItems.map((oi) => ({ itemId: oi.itemId, quantity: oi.requestedQuantity })),
+		// Same occupancy rule as availability.ts: a line holds what was actually
+		// handed out once retrieved, otherwise what was requested.
+		order.orderItems.map((oi) => ({ itemId: oi.itemId, quantity: oi.retrievedQuantity ?? oi.requestedQuantity })),
 		order.id,
 	);
 	const availableByItemId = new Map(availabilities.map((a) => [a.itemId, a.available]));
@@ -362,7 +364,8 @@ export async function getFollowingRentalWorries(orderId: number): Promise<Follow
 				orderCode: orders.orderCode,
 				fromDate: orders.fromDate,
 				toDate: orders.toDate,
-				quantity: orderItems.requestedQuantity,
+				// Matches availability.ts: retrieved quantity once handed out.
+				quantity: sql<number>`coalesce(${orderItems.retrievedQuantity}, ${orderItems.requestedQuantity})`,
 			})
 			.from(orderItems)
 			.innerJoin(orders, eq(orderItems.orderId, orders.id))

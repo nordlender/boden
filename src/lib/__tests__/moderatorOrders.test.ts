@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { vi } from 'vitest';
 import type { OrderStatus } from '../orderStatus';
 import {
@@ -11,6 +11,18 @@ import {
 	rejectOrder,
 } from '../moderatorOrders';
 
+// Availability treats an active order past its toDate as overdue and extends
+// it week by week up to "today" (src/lib/availability.ts), so pin the clock
+// before every fixture date below — otherwise results would drift as real
+// time passes. Only Date is faked; timers stay real.
+beforeAll(() => {
+	vi.useFakeTimers({ toFake: ['Date'] });
+	vi.setSystemTime(new Date('2026-05-01T12:00:00Z'));
+});
+afterAll(() => {
+	vi.useRealTimers();
+});
+
 // Deterministic ids from the seed below (sqlite autoincrement starts at 1
 // per table per in-memory db instance, same convention as orders.test.ts):
 const ITEM_AVAILABLE_ID = 1;
@@ -18,6 +30,8 @@ const ITEM_ARCHIVED_ID = 2;
 const ITEM_HIDDEN_PRODUCT_ID = 3;
 const ITEM_DOUBLE_BOOK_ID = 4;
 const ITEM_FOLLOWING_ID = 5;
+const ITEM_PARTIAL_ID = 6;
+const ITEM_PARTIAL_FOLLOWING_ID = 7;
 
 vi.mock('../../db/client', async () => {
 	const { createTestDb } = await import('../../db/testDb');
@@ -40,6 +54,8 @@ vi.mock('../../db/client', async () => {
 	await db.insert(schema.items).values({ productId: productHidden.id, slug: 'hidden-product-item', name: 'Hidden Product Item', stockCount: 5, archived: false });
 	await db.insert(schema.items).values({ productId: productPublished.id, slug: 'double-book', name: 'Double Book Item', stockCount: 1, archived: false });
 	await db.insert(schema.items).values({ productId: productPublished.id, slug: 'following', name: 'Following Item', stockCount: 1, archived: false });
+	await db.insert(schema.items).values({ productId: productPublished.id, slug: 'partial', name: 'Partial Item', stockCount: 3, archived: false });
+	await db.insert(schema.items).values({ productId: productPublished.id, slug: 'partial-following', name: 'Partial Following Item', stockCount: 3, archived: false });
 
 	await db.insert(schema.users).values({ id: 'member-1', name: 'Member', email: 'member@example.com' });
 	await db.insert(schema.users).values({ id: 'moderator-1', name: 'Moderator', email: 'moderator@example.com' });
@@ -67,6 +83,7 @@ const CONTACT = { contactName: 'Test Member', contactEmail: 'member@example.com'
 async function seedOrder(opts: {
 	itemId: number;
 	requestedQuantity?: number;
+	retrievedQuantity?: number | null;
 	fromDate?: string;
 	toDate?: string;
 	status?: OrderStatus;
@@ -92,7 +109,7 @@ async function seedOrder(opts: {
 		.returning();
 	const [orderItem] = await db
 		.insert(schema.orderItems)
-		.values({ orderId: order.id, itemId: opts.itemId, requestedQuantity: opts.requestedQuantity ?? 1 })
+		.values({ orderId: order.id, itemId: opts.itemId, requestedQuantity: opts.requestedQuantity ?? 1, retrievedQuantity: opts.retrievedQuantity ?? null })
 		.returning();
 	return { orderId: order.id, orderItemId: orderItem.id, orderCode: order.orderCode };
 }
@@ -116,6 +133,16 @@ describe('getOrderDetail — availability flags', () => {
 		const detail = await getOrderDetail(orderId);
 		expect(detail?.items[0].doubleBooked).toBe(true);
 		expect(detail?.items[0].archived).toBe(false);
+	});
+
+	it('counts a partially handed-out line by its retrieved quantity, not its requested one', async () => {
+		// Stock 3: this active order requested 3 but only 1 was handed out, and
+		// another order holds 2 on the same days — 1 + 2 fits, so not overbooked.
+		const range = { fromDate: '2026-07-01', toDate: '2026-07-05' };
+		const { orderId } = await seedOrder({ itemId: ITEM_PARTIAL_ID, requestedQuantity: 3, retrievedQuantity: 1, status: 'active', acceptedAt: new Date(), ...range });
+		await seedOrder({ itemId: ITEM_PARTIAL_ID, requestedQuantity: 2, status: 'scheduled', acceptedAt: new Date(), ...range });
+		const detail = await getOrderDetail(orderId);
+		expect(detail?.items[0].doubleBooked).toBe(false);
 	});
 
 	it('flags neither for an available, published, non-competing item', async () => {
@@ -252,6 +279,16 @@ describe('getFollowingRentalWorries', () => {
 		expect(warnings).toEqual([
 			expect.objectContaining({ itemId: ITEM_FOLLOWING_ID, followingOrderCode: 'FOLLOW1', followingFromDate: '2026-05-05' }),
 		]);
+	});
+
+	it('counts a later partially handed-out order by its retrieved quantity', async () => {
+		// Stock 3: this order holds 2 through 2026-08-05; the following active
+		// order requested 3 but only 1 was handed out — 2 + 1 fits, no warning.
+		// Own item so the (overdue) active order from the getOrderDetail case
+		// above can't spill into these dates.
+		const { orderId } = await seedOrder({ itemId: ITEM_PARTIAL_FOLLOWING_ID, requestedQuantity: 2, fromDate: '2026-08-01', toDate: '2026-08-05' });
+		await seedOrder({ itemId: ITEM_PARTIAL_FOLLOWING_ID, requestedQuantity: 3, retrievedQuantity: 1, status: 'active', acceptedAt: new Date(), fromDate: '2026-08-05', toDate: '2026-08-10' });
+		expect(await getFollowingRentalWorries(orderId)).toEqual([]);
 	});
 
 	it('returns no warnings when no later order is affected', async () => {

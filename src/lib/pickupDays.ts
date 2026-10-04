@@ -125,7 +125,7 @@ export interface NewRecurringRule {
 // Every date in [startDate, endDate] (inclusive both ends) that falls on
 // `weekday`. Walked in UTC (matching the "YYYY-MM-DD as a bare calendar
 // date, not a moment in time" treatment the rest of this app gives
-// date-only columns — see ReservationCalendar.astro's addDaysIso) so a
+// date-only columns — see addDaysIso in src/lib/dates.ts) so a
 // server running in a non-UTC timezone can't shift a date across midnight.
 function datesForWeekday(startDate: string, endDate: string, weekday: number): string[] {
 	const dates: string[] = [];

@@ -1,0 +1,25 @@
+---
+// Column labels, sharing SetRow's exact grid — see ../TableHeader.astro
+// (items) for the identical pattern.
+import SelectMenu from '../SelectMenu.astro';
+import { SET_GRID_TEMPLATE, type SetPanelVariant } from './grid';
+
+interface Props {
+	variant: SetPanelVariant;
+	formId: string;
+}
+
+const { variant, formId } = Astro.props;
+---
+<div
+	class="grid items-center gap-3 border-b border-border px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-text-muted"
+	style={`grid-template-columns: ${SET_GRID_TEMPLATE[variant]}`}
+>
+	<SelectMenu formId={formId} />
+	<span></span>
+	<span>Set</span>
+	<span>Label</span>
+	{variant === 'assigned' && <span>Product</span>}
+	<span class="text-right">Stock</span>
+	<span></span>
+</div>

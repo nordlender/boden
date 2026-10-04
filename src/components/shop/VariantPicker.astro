@@ -1,68 +1,121 @@
 ---
-// Owns the "choose a variant, add to cart" form on the product page:
-// item select (when a product has more than one item), the resulting
-// attribute list, stock message, quantity cap, and add-to-cart button — plus
-// the client-side script that keeps all of those (and the product image
-// rendered by the page above this form) in sync as the selected item
-// changes, including a `?item=<id>` preselect from an ItemCard link.
+// Owns the "choose a variant, add to cart" form on the product page: the
+// variant select (when the product has more than one), the resulting
+// attribute list (items only), a set's automatically-derived "Includes"
+// breakdown, stock message, quantity cap, and add-to-cart button — plus the
+// client-side script that keeps all of those (and the product image
+// rendered by the page above this form) in sync as the selected variant
+// changes, including a `?item=<id>`/`?set=<id>` preselect from an ItemCard
+// link.
+//
+// A product's variant slot is an item OR a set (src/db/schema.ts's `sets`
+// comment), and the two are assumed mutually exclusive per product — a
+// product's variants are all items, or all sets, never a mix. This picker
+// enforces that assumption itself rather than trusting callers/data to hold
+// it: it picks exactly one kind (items, unless there are none) and never
+// shows a set as an option alongside an item, or vice versa.
+//
+// A set has no attribute template of its own — a set's "Includes" content
+// is derived automatically from its components' own real attribute values
+// (src/lib/sets.ts's getSetComponentDisplayBulk), and its picker option
+// text is the admin's own manually-typed `label` (e.g. "S"), not anything
+// joined from attributes.
 //
 // The product image lives in the page, not here (it's rendered above this
 // form in a separate grid column) — the script below reaches it via the
 // same `[data-product-image]`/`[data-product-image-placeholder]` selectors
 // the page renders, rather than this component owning that markup too.
-import type { ShopItem } from '../../lib/shop';
+import type { ShopItem, ShopSet } from '../../lib/shop';
+import type { SetComponentDisplay } from '../../lib/sets';
 import Button from '../ui/Button.astro';
 import AppIcon from '../icons/AppIcon.astro';
 import { formatAttributes } from '../../lib/attributes';
 
 interface Props {
 	items: ShopItem[];
+	sets: ShopSet[];
 	productSlug: string;
 	thumbnailImageUrl: string | null;
 	attributeKeyOrder: string[];
 }
 
-const { items, productSlug, thumbnailImageUrl, attributeKeyOrder } = Astro.props;
-const initialItem = items[0] ?? null;
-const initialMax = Math.max(initialItem?.inStock ?? 1, 1);
+const { items, sets, productSlug, thumbnailImageUrl, attributeKeyOrder } = Astro.props;
+
+type Variant =
+	| { kind: 'item'; id: number; imageUrl: string | null; inStock: number; attributes: { key: string; value: string }[] }
+	| { kind: 'set'; id: number; imageUrl: string | null; inStock: number; label: string | null; componentDisplay: SetComponentDisplay[] };
+
+const variantKind: 'item' | 'set' = items.length > 0 ? 'item' : 'set';
+const variants: Variant[] =
+	variantKind === 'item'
+		? items.map((item): Variant => ({ kind: 'item', id: item.id, imageUrl: item.imageUrl, inStock: item.inStock, attributes: item.attributes }))
+		: sets.map((set): Variant => ({ kind: 'set', id: set.id, imageUrl: set.imageUrl, inStock: set.inStock, label: set.label, componentDisplay: set.componentDisplay }));
+const initialVariant = variants[0] ?? null;
+const initialMax = Math.max(initialVariant?.inStock ?? 1, 1);
+
+function optionLabel(variant: Variant): string {
+	const text = variant.kind === 'item' ? formatAttributes(variant.attributes) : variant.label;
+	return text || `Option ${variant.id}`;
+}
 ---
 
 <form action="/api/cart/add" method="post" class="flex flex-col gap-4 border-t border-border pt-4">
 	<input type="hidden" name="redirectTo" value={`/products/${productSlug}`} />
+	<!--
+		Exactly one of these is ever actually submitted — a disabled input is
+		left out of FormData entirely, so the script below toggles `disabled`
+		alongside `value` whenever the selected variant's kind changes, rather
+		than this form ever sending both an itemId and a setId.
+	-->
+	<input
+		type="hidden"
+		name="itemId"
+		data-variant-item-id
+		value={initialVariant?.kind === 'item' ? String(initialVariant.id) : ''}
+		disabled={initialVariant?.kind !== 'item'}
+	/>
+	<input
+		type="hidden"
+		name="setId"
+		data-variant-set-id
+		value={initialVariant?.kind === 'set' ? String(initialVariant.id) : ''}
+		disabled={initialVariant?.kind !== 'set'}
+	/>
 
 	{
-		items.length > 1 ? (
+		variants.length > 1 && (
 			<div>
-				<label class="mb-2 block text-sm font-medium text-text" for="itemId">
+				<label class="mb-2 block text-sm font-medium text-text" for="variant">
 					Choose a variant
 				</label>
-				<select id="itemId" name="itemId" class="w-full rounded-md border border-border-interactive px-3 py-2 text-sm">
-					{items.map((item) => {
-						const label = formatAttributes(item.attributes) || `Option ${item.id}`;
+				<select id="variant" data-variant-select class="w-full rounded-md border border-border-interactive px-3 py-2 text-sm">
+					{variants.map((variant) => {
+						const label = optionLabel(variant);
 						return (
 							<option
-								value={item.id}
-								selected={item.id === initialItem?.id}
-								disabled={item.inStock <= 0}
-								data-image={item.imageUrl ?? thumbnailImageUrl ?? ''}
-								data-stock={item.inStock}
-								data-attributes={JSON.stringify(item.attributes)}
+								value={`${variant.kind}:${variant.id}`}
+								selected={variant.kind === initialVariant?.kind && variant.id === initialVariant?.id}
+								disabled={variant.inStock <= 0}
+								data-kind={variant.kind}
+								data-id={variant.id}
+								data-image={variant.imageUrl ?? thumbnailImageUrl ?? ''}
+								data-stock={variant.inStock}
+								data-attributes={variant.kind === 'item' ? JSON.stringify(variant.attributes) : '[]'}
+								data-component-display={variant.kind === 'set' ? JSON.stringify(variant.componentDisplay) : '[]'}
 							>
-								{label}
-								{item.inStock <= 0 ? ' (out of stock)' : ''}
+								{variant.kind === 'set' ? `Set — ${label}` : label}
+								{variant.inStock <= 0 ? ' (out of stock)' : ''}
 							</option>
 						);
 					})}
 				</select>
 			</div>
-		) : (
-			<input type="hidden" name="itemId" value={items[0].id} />
 		)
 	}
 
-	{attributeKeyOrder.length > 0 && (
+	{variantKind === 'item' && attributeKeyOrder.length > 0 && (
 		<dl data-item-attributes class="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-sm">
-			{(initialItem?.attributes ?? []).map((attribute) => (
+			{(initialVariant?.kind === 'item' ? initialVariant.attributes : []).map((attribute) => (
 				<div class="contents">
 					<dt class="text-text-muted">{attribute.key}</dt>
 					<dd class="text-text">{attribute.value}</dd>
@@ -71,12 +124,51 @@ const initialMax = Math.max(initialItem?.inStock ?? 1, 1);
 		</dl>
 	)}
 
+	<div data-set-includes hidden={variantKind !== 'set'} class="border-t border-border pt-4 text-sm">
+		<p class="mb-2 font-medium text-text">Attributes</p>
+		<div data-set-includes-content class="flex flex-col gap-3">
+			{(initialVariant?.kind === 'set' ? initialVariant.componentDisplay : []).map((group) =>
+				group.kind === 'table' ? (
+					<table class="w-full border-collapse text-xs">
+						<thead>
+							<tr class="border-b border-border text-left text-text-muted">
+								<th class="py-1 pr-3 font-medium">Component</th>
+								{group.keys.map((key) => (
+									<th class="py-1 pr-3 font-medium">{key}</th>
+								))}
+							</tr>
+						</thead>
+						<tbody>
+							{group.rows.map((row) => (
+								<tr class="border-b border-border last:border-0">
+									<td class="py-1 pr-3 text-text">
+										{row.productTitle}
+										{row.quantity > 1 && ` (×${row.quantity})`}
+									</td>
+									{row.values.map((value) => (
+										<td class="py-1 pr-3 text-text-muted">{value ?? '—'}</td>
+									))}
+								</tr>
+							))}
+						</tbody>
+					</table>
+				) : (
+					<p class="text-text-muted">
+						{group.quantity > 1 ? `${group.quantity}× ` : ''}
+						<span class="text-text">{group.productTitle}</span>
+						{group.attributes.length > 0 && ` — ${group.attributes.map((a) => `${a.key}: ${a.value}`).join(', ')}`}
+					</p>
+				),
+			)}
+		</div>
+	</div>
+
 	{/* TODO: Style later, warning? — is "out of stock" an error or a warning state? */}
 	<p
 		data-stock-message
-		class={`text-sm font-medium ${(initialItem?.inStock ?? 0) > 0 ? 'text-success-text' : 'text-error-text'}`}
+		class={`text-sm font-medium ${(initialVariant?.inStock ?? 0) > 0 ? 'text-success-text' : 'text-error-text'}`}
 	>
-		{(initialItem?.inStock ?? 0) > 0 ? `${initialItem?.inStock} in stock` : 'Out of stock'}
+		{(initialVariant?.inStock ?? 0) > 0 ? `${initialVariant?.inStock} in stock` : 'Out of stock'}
 	</p>
 
 	<div class="flex items-center gap-3">
@@ -108,17 +200,35 @@ const initialMax = Math.max(initialItem?.inStock ?? 1, 1);
 			</button>
 		</div>
 		<input type="hidden" name="quantity" value="1" data-quantity-input data-max={initialMax} />
-		<Button type="submit" variant="primary" size="lg" data-add-to-cart disabled={(initialItem?.inStock ?? 0) <= 0}>
+		<Button type="submit" variant="primary" size="lg" data-add-to-cart disabled={(initialVariant?.inStock ?? 0) <= 0}>
 			Add to cart
 		</Button>
 	</div>
 </form>
 
 <script>
-	// Keeps the image, stock message, quantity cap, and attribute list in
-	// sync with whichever variant is selected — including a `?item=<id>`
-	// preselect from an ItemCard link.
-	const select = document.querySelector<HTMLSelectElement>('select[name="itemId"]');
+	// Keeps the image, stock message, quantity cap, attribute list, and
+	// "Includes" breakdown in sync with whichever variant is selected —
+	// including a `?item=<id>`/`?set=<id>` preselect from an ItemCard link.
+	interface SetComponentTableRow {
+		productTitle: string;
+		quantity: number;
+		values: (string | null)[];
+	}
+	interface SetComponentTable {
+		kind: 'table';
+		keys: string[];
+		rows: SetComponentTableRow[];
+	}
+	interface SetComponentLine {
+		kind: 'line';
+		productTitle: string;
+		quantity: number;
+		attributes: { key: string; value: string }[];
+	}
+	type SetComponentDisplay = SetComponentTable | SetComponentLine;
+
+	const select = document.querySelector<HTMLSelectElement>('[data-variant-select]');
 	const image = document.querySelector<HTMLImageElement>('[data-product-image]');
 	const imagePlaceholder = document.querySelector<HTMLElement>('[data-product-image-placeholder]');
 	const stockMessage = document.querySelector<HTMLElement>('[data-stock-message]');
@@ -128,6 +238,10 @@ const initialMax = Math.max(initialItem?.inStock ?? 1, 1);
 	const quantityDecrement = document.querySelector<HTMLButtonElement>('[data-quantity-decrement]');
 	const submitButton = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
 	const attributesList = document.querySelector<HTMLElement>('[data-item-attributes]');
+	const itemIdInput = document.querySelector<HTMLInputElement>('[data-variant-item-id]');
+	const setIdInput = document.querySelector<HTMLInputElement>('[data-variant-set-id]');
+	const setIncludes = document.querySelector<HTMLElement>('[data-set-includes]');
+	const setIncludesContent = document.querySelector<HTMLElement>('[data-set-includes-content]');
 
 	function setQuantity(value: number) {
 		if (!quantityInput) return;
@@ -169,9 +283,89 @@ const initialMax = Math.max(initialItem?.inStock ?? 1, 1);
 		}
 	}
 
+	function renderComponentTable(group: SetComponentTable): HTMLTableElement {
+		const table = document.createElement('table');
+		table.className = 'w-full border-collapse text-xs';
+
+		const thead = document.createElement('thead');
+		const headRow = document.createElement('tr');
+		headRow.className = 'border-b border-border text-left text-text-muted';
+		const componentHeader = document.createElement('th');
+		componentHeader.className = 'py-1 pr-3 font-medium';
+		componentHeader.textContent = 'Component';
+		headRow.appendChild(componentHeader);
+		for (const key of group.keys) {
+			const th = document.createElement('th');
+			th.className = 'py-1 pr-3 font-medium';
+			th.textContent = key;
+			headRow.appendChild(th);
+		}
+		thead.appendChild(headRow);
+		table.appendChild(thead);
+
+		const tbody = document.createElement('tbody');
+		for (const row of group.rows) {
+			const tr = document.createElement('tr');
+			tr.className = 'border-b border-border last:border-0';
+
+			const nameCell = document.createElement('td');
+			nameCell.className = 'py-1 pr-3 text-text';
+			nameCell.textContent = row.quantity > 1 ? `${row.productTitle} (×${row.quantity})` : row.productTitle;
+			tr.appendChild(nameCell);
+
+			for (const value of row.values) {
+				const td = document.createElement('td');
+				td.className = 'py-1 pr-3 text-text-muted';
+				td.textContent = value ?? '—';
+				tr.appendChild(td);
+			}
+			tbody.appendChild(tr);
+		}
+		table.appendChild(tbody);
+
+		return table;
+	}
+
+	function renderComponentLine(group: SetComponentLine): HTMLParagraphElement {
+		const p = document.createElement('p');
+		p.className = 'text-text-muted';
+
+		const prefix = group.quantity > 1 ? `${group.quantity}× ` : '';
+		const nameSpan = document.createElement('span');
+		nameSpan.className = 'text-text';
+		nameSpan.textContent = group.productTitle;
+
+		const attributeText =
+			group.attributes.length > 0 ? ` — ${group.attributes.map((a) => `${a.key}: ${a.value}`).join(', ')}` : '';
+
+		p.append(prefix, nameSpan, attributeText);
+		return p;
+	}
+
+	function renderSetIncludes(kind: string | undefined, json: string | undefined) {
+		if (!setIncludes || !setIncludesContent) return;
+		const isSet = kind === 'set';
+		setIncludes.hidden = !isSet;
+		if (!isSet) return;
+
+		let groups: SetComponentDisplay[];
+		try {
+			groups = json ? JSON.parse(json) : [];
+		} catch {
+			groups = [];
+		}
+
+		setIncludesContent.replaceChildren();
+		for (const group of groups) {
+			setIncludesContent.appendChild(group.kind === 'table' ? renderComponentTable(group) : renderComponentLine(group));
+		}
+	}
+
 	function applyOption(option: HTMLOptionElement) {
 		const stock = Number(option.dataset.stock ?? '0');
 		const imageUrl = option.dataset.image ?? '';
+		const kind = option.dataset.kind;
+		const id = option.dataset.id ?? '';
 
 		if (image) {
 			if (imageUrl) {
@@ -197,13 +391,26 @@ const initialMax = Math.max(initialItem?.inStock ?? 1, 1);
 		}
 		if (submitButton) submitButton.disabled = stock <= 0;
 
+		if (itemIdInput) {
+			itemIdInput.disabled = kind !== 'item';
+			itemIdInput.value = kind === 'item' ? id : '';
+		}
+		if (setIdInput) {
+			setIdInput.disabled = kind !== 'set';
+			setIdInput.value = kind === 'set' ? id : '';
+		}
+
 		renderAttributes(option.dataset.attributes);
+		renderSetIncludes(kind, option.dataset.componentDisplay);
 	}
 
 	if (select) {
-		const preselect = new URLSearchParams(location.search).get('item');
-		if (preselect && select.querySelector(`option[value="${CSS.escape(preselect)}"]`)) {
-			select.value = preselect;
+		const params = new URLSearchParams(location.search);
+		const presetKind = params.has('set') ? 'set' : params.has('item') ? 'item' : null;
+		const presetId = presetKind ? params.get(presetKind) : null;
+		if (presetKind && presetId) {
+			const match = select.querySelector(`option[data-kind="${presetKind}"][data-id="${CSS.escape(presetId)}"]`);
+			if (match instanceof HTMLOptionElement) select.value = match.value;
 		}
 
 		select.addEventListener('change', () => {

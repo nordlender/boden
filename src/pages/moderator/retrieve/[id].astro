@@ -20,8 +20,8 @@ if (!order) {
 	return Astro.redirect('/moderator/retrieve');
 }
 
-const notYetReviewed = order.acceptedAt === null && order.rejectedAt === null;
-const acceptedNotRetrieved = order.acceptedAt !== null && order.status === 'requested';
+const notYetReviewed = order.status === 'requested';
+const acceptedNotRetrieved = order.status === 'scheduled';
 
 // getFollowingRentalWorries does its own DB round-trips per item — only
 // worth calling in the one state where the warning is actionable (the

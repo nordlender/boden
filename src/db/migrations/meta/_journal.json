@@ -92,6 +92,20 @@
       "when": 1790591149060,
       "tag": "0012_drop_message_updated_at",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1791036648290,
+      "tag": "0013_add_sets",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1791068660336,
+      "tag": "0014_add_disclaimer_accepted_at",
+      "breakpoints": true
     }
   ]
 }

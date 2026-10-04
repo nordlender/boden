@@ -52,16 +52,26 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const hasUnpaidFees = parseYesNo(form.get('hasUnpaidFees'));
   const userIsMember = parseYesNo(form.get('userIsMember'));
 
+  // Every submitter must accept the liability disclaimer (see #134). Enforced
+  // here rather than trusting the form's `required` attribute; the acceptance
+  // timestamp is persisted on the order for moderators to see.
+  const disclaimerAccepted = form.get('disclaimerAccepted') === 'on';
+  if (!disclaimerAccepted) {
+    return redirect('/reservation?error=disclaimer_required');
+  }
+
   // Populated by the reservation page's split-order action when the member
-  // moves one or more mixed-availability items into their own order — see
-  // ReservationForm.astro and src/lib/orders.ts's createSplitOrders.
-  const splitItemIds = (form.get('splitItemIds')?.toString() ?? '')
+  // moves one or more mixed-availability lines (items or sets) into their
+  // own order — see ReservationForm.astro and
+  // src/lib/orders.ts's createSplitOrders. Each key is cart.ts's
+  // entryKey format ('item:<id>' or 'set:<id>').
+  const splitLineKeys = (form.get('splitLineKeys')?.toString() ?? '')
     .split(',')
-    .map((s) => Number(s.trim()))
-    .filter((n) => Number.isInteger(n));
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
 
   const result =
-    splitItemIds.length > 0
+    splitLineKeys.length > 0
       ? await createSplitOrders({
           userId: locals.user!.id,
           role: locals.user!.role,
@@ -69,12 +79,13 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           cartEntries: cart,
           fromDate,
           toDate,
-          splitItemIds,
+          splitLineKeys,
           contactName,
           contactEmail,
           contactMobile,
           hasUnpaidFees,
           userIsMember,
+          disclaimerAccepted,
         })
       : await createOrder({
           userId: locals.user!.id,
@@ -88,6 +99,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
           contactMobile,
           hasUnpaidFees,
           userIsMember,
+          disclaimerAccepted,
         });
   if (!result.ok) {
     // 'unavailable': re-checked at insert time (see orders.ts's insertOrder)

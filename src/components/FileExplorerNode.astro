@@ -9,13 +9,14 @@
 import AppIcon from './icons/AppIcon.astro';
 import MorphIcon from 'morphicons/astro';
 import { folderToggle } from '../lib/icon-nodes';
-import type { FileNode } from '../lib/fileExplorer';
+import { fileUrl, type FileNode, type FileRootKey } from '../lib/fileExplorer';
 
 interface Props {
 	node: FileNode;
+	root: FileRootKey;
 }
 
-const { node } = Astro.props;
+const { node, root } = Astro.props;
 ---
 {
 	node.type === 'directory' ? (
@@ -37,16 +38,24 @@ const { node } = Astro.props;
 					// below. hasChildren is a cheap existence check (see
 					// hasPublicEntry in fileExplorer.ts), not a full read, so we know
 					// to render this instead of "Empty" without paying for the read.
-					<ul class="folder-children ml-[7.83px] border-l border-border pl-3" data-path={node.path} data-loaded="false"></ul>
+					<ul class="folder-children ml-[7.83px] border-l border-border pl-3" data-root={root} data-path={node.path} data-loaded="false"></ul>
 				) : (
 					<p class="ml-[7.83px] border-l border-border py-1 pl-3 text-text-muted">Empty</p>
 				)}
 			</details>
 		</li>
 	) : (
-		<li class="flex items-center gap-1.5 py-1 text-text-muted" data-file-path={node.path}>
-			<AppIcon name="file" size={16} class="shrink-0" />
-			<span class="truncate">{node.name}</span>
+		<li>
+			<button
+				type="button"
+				class="flex w-full min-w-0 items-center gap-1.5 rounded py-1 text-left text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:bg-selected-subtle aria-pressed:text-text"
+				data-file-path={node.path}
+				data-file-url={fileUrl(root, node.path)}
+				aria-pressed="false"
+			>
+				<AppIcon name="file" size={16} class="shrink-0" />
+				<span class="truncate">{node.name}</span>
+			</button>
 		</li>
 	)
 }
@@ -87,7 +96,8 @@ const { node } = Astro.props;
 		ul.textContent = 'Loading…';
 
 		try {
-			const res = await fetch(`/api/file-explorer?path=${encodeURIComponent(ul.dataset.path ?? '')}`);
+			const params = new URLSearchParams({ root: ul.dataset.root ?? '', path: ul.dataset.path ?? '' });
+			const res = await fetch(`/api/file-explorer?${params}`);
 			if (!res.ok) throw new Error(`${res.status}`);
 			ul.innerHTML = await res.text();
 		} catch {

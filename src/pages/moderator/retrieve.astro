@@ -3,11 +3,12 @@ export const prerender = false;
 
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
 import Button from '../../components/ui/Button.astro';
+import { ORDER_CODE_LENGTH } from '../../lib/orders';
 
-// Allows an optional leading "#" (e.g. "#AB12CD") on top of the
-// ORDER_CODE_LENGTH-character code itself — stripped server-side in
+// Room for an optional leading "#" (e.g. "#12ABM") and a couple of stray
+// spaces on top of the code itself — both stripped server-side in
 // src/pages/api/moderator/retrieve.ts before the lookup.
-const CODE_INPUT_MAX_LENGTH = 8;
+const CODE_INPUT_MAX_LENGTH = ORDER_CODE_LENGTH + 3;
 
 // Universal entry point for the moderator flow — reached by asking the
 // member to read out their order code, for either the review step or the

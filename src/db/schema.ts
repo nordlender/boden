@@ -55,7 +55,12 @@ export const products = sqliteTable('products', {
   status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden'),
   thumbnailImageUrl: text('thumbnail_image_url'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  // Set by Drizzle on every update query that goes through it ($onUpdate is
+  // app-side only, not a DB trigger — raw SQL updates won't touch it).
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`)
+    .$onUpdate(() => new Date()),
 }, (table) => [
   index('products_category_id_idx').on(table.categoryId),
   index('products_subcategory_id_idx').on(table.subcategoryId),

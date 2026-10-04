@@ -28,6 +28,8 @@ export const icons = {
 	selectNone: 'tabler:circle-dashed',
 	selectAll: 'tabler:circle-asterisk',
 	selectInvert: 'tabler:percentage-50',
+	// Kept for future static use (#258) — delete buttons today render
+	// through MorphButton's action icons (icon-nodes.ts) instead.
 	trash: 'tabler:trash',
 	// {edit_icon} — sits next to an attribute's value in the details box;
 	// clicking it reveals the inline edit form for that field.
@@ -46,9 +48,10 @@ export const icons = {
 	// (see icon-nodes.ts) — since a client-rendered custom element there would
 	// interfere with Astro's prefetch of the link it sits on.
 	user: 'tabler:user',
-	// Orders table (OrdersTable.astro): the compact row's view-order action
-	// is icon-only, and the layout toggle switches between the compact and
-	// detailed row components.
+	// Orders table (OrdersTable.astro): the layout toggle switches between
+	// the compact and detailed row components. `view` is kept for future
+	// static use (#258) — the compact row's view action renders through
+	// MorphButton's action icons (icon-nodes.ts) instead.
 	view: 'tabler:eye',
 	layoutCompact: 'tabler:list',
 	layoutDetailed: 'tabler:layout-list',

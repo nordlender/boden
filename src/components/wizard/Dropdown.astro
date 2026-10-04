@@ -1,7 +1,12 @@
 ---
+// Kept for future use (no callers yet, #258): a generic menu for when a
+// second dropdown is needed. The wizard's Set button (ButtonStrip.astro)
+// builds its own <details> menu rather than using this. Menu items are
+// plain buttons with no action wiring yet — add an action/href per item
+// when adopting it.
+//
 // Generic dropdown/menu primitive, built on <details>/<summary> so it needs
-// no client-side JS beyond animating its own chevron. Backs the Set (Set
-// image / Set product) button.
+// no client-side JS beyond animating its own chevron.
 import AppIcon from '../icons/AppIcon.astro';
 import MorphIcon from 'morphicons/astro';
 import type { IconName } from '../../lib/icons';

@@ -338,19 +338,20 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 	if (!product || product.status !== 'published') return null;
 
 	const visibleItems = product.items.filter((item) => !item.archived);
-	const reserved = getOccupiedToday(visibleItems.map((item) => item.id));
-	const items: ShopItem[] = visibleItems.map((item) => toShopItem(item, product, reserved));
-
 	const visibleSets = product.sets.filter((set) => !set.archived);
 	const setIds = visibleSets.map((set) => set.id);
 	const [childrenBySet, componentDisplayBySet] = await Promise.all([
 		getSetChildrenDetailedBulk(setIds),
 		getSetComponentDisplayBulk(setIds),
 	]);
-	const allChildItemIds = [...new Set([...childrenBySet.values()].flat().map((child) => child.itemId))];
-	const reservedForSets = getOccupiedToday(allChildItemIds);
+	const allChildItemIds = [...childrenBySet.values()].flat().map((child) => child.itemId);
+	// One claims query covers both the product's own items and its sets'
+	// components (getOccupiedToday dedupes the ids).
+	const reserved = getOccupiedToday([...visibleItems.map((item) => item.id), ...allChildItemIds]);
+
+	const items: ShopItem[] = visibleItems.map((item) => toShopItem(item, product, reserved));
 	const sets: ShopSet[] = visibleSets.map((set) =>
-		toShopSet(set, product, childrenBySet.get(set.id) ?? [], componentDisplayBySet.get(set.id) ?? [], reservedForSets),
+		toShopSet(set, product, childrenBySet.get(set.id) ?? [], componentDisplayBySet.get(set.id) ?? [], reserved),
 	);
 
 	return {

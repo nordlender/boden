@@ -140,6 +140,13 @@ describe('getReservationAvailability', () => {
 		expect(availability.peakReserved).toBe(0);
 	});
 
+	it('reports unavailable for a reversed (empty) range', () => {
+		const [availability] = getReservationAvailability({ from: '2026-02-05', to: '2026-02-01' }, [
+			{ itemId: ITEM_B_ID, quantity: 1 },
+		]);
+		expect(availability.available).toBe(false);
+	});
+
 	it('is unaffected by another item entirely', async () => {
 		const [availability] = getReservationAvailability({ from: '2026-01-06', to: '2026-01-08' }, [
 			{ itemId: ITEM_B_ID, quantity: 5 },

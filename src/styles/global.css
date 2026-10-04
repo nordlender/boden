@@ -52,7 +52,7 @@
 	--ui-success-subtle: var(--color-emerald-50);
 	--ui-success-border: var(--color-emerald-200);
 	--ui-success-text: var(--color-emerald-800);
-	/* Availability scale (AvailabilityCalendar): 0 = none available (red) … 4 = all available (green). */
+	/* Availability scale (AvailabilityCalendar): units available that day: 0 (red), 1, 2, 3, 4+ (green). */
 	--ui-availability-0: var(--color-red-100);
 	--ui-availability-0-text: var(--color-red-800);
 	--ui-availability-1: var(--color-orange-100);

@@ -22,7 +22,7 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 // Monday-based column of the first day (getUTCDay: Sunday = 0).
 const leadingBlanks = (new Date(`${start}T00:00:00Z`).getUTCDay() + 6) % 7;
 
-// Five-step scale from red (none available) through yellow to green (all
+// Five-step scale from red (none available) through yellow to green (4+
 // available) — the availability-* tokens in global.css. Written out in full
 // so Tailwind sees every class.
 const TONES = [
@@ -33,13 +33,10 @@ const TONES = [
 	'bg-availability-4 text-availability-4-text',
 ];
 
-// 0 = none, 4 = all; anything in between maps to 1–3 by the fraction
-// available (under a third, under two thirds, the rest), so a partly booked
-// day never reads as fully free or fully booked.
+// Fixed counts, not a share of stock: red = none, orange = 1, yellow = 2,
+// lime = 3, green = 4 or more available.
 function tone(count: number): string {
-	if (count <= 0 || total <= 0) return TONES[0];
-	if (count >= total) return TONES[4];
-	return TONES[1 + Math.min(2, Math.floor((count / total) * 3))];
+	return TONES[Math.min(4, Math.max(0, count))];
 }
 
 const days = daily.map((count, i) => {
@@ -67,9 +64,9 @@ const days = daily.map((count, i) => {
 	<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
 		<p>Each day shows how many are available. Today is outlined.</p>
 		<p class="flex items-center gap-1" aria-hidden="true">
-			None
+			0
 			{TONES.map((t) => <span class:list={["h-3 w-3 rounded-sm", t]} />)}
-			All
+			4+
 		</p>
 	</div>
 </div>

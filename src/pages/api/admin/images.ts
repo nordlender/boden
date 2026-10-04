@@ -2,7 +2,7 @@ export const prerender = false;
 
 // Image upload for the wizard's image menu (ImageMenu.astro). Called via
 // fetch() with a multipart body (`file`), answers JSON. Also gated by
-// src/middleware/index.ts's ADMIN_ROUTE_PREFIXES — defense-in-depth, keep
+// src/middleware/prefixes.ts's ROUTE_RULES — defense-in-depth, keep
 // this inline check too.
 
 import type { APIRoute } from 'astro';

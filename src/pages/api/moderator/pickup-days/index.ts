@@ -1,9 +1,9 @@
 export const prerender = false;
 
-// Also gated by src/middleware/index.ts's MOD_ROUTE_PREFIXES ('/api/moderator'),
+// Also gated by src/middleware/prefixes.ts's ROUTE_RULES ('/api/moderator'),
 // but that's defense-in-depth — keep this inline check too (see prefixes.ts).
-// Reachable by admins too (requireModerator/isModerator both treat admin as
-// at-least-moderator) — the admin page's calendar reuses this same endpoint
+// Reachable by admins too (requireModerator goes through hasRole, which treats
+// admin as at-least-moderator) — the admin page's calendar reuses this same endpoint
 // for its own single-day submissions, see src/pages/admin/pickup-days.astro.
 
 import type { APIRoute } from 'astro';

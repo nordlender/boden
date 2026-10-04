@@ -1,6 +1,6 @@
 export const prerender = false;
 
-// Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES
+// Also gated by src/middleware/prefixes.ts's ROUTE_RULES
 // ('/api/admin/pickup-days') — defense-in-depth, keep this inline check too.
 
 import type { APIRoute } from 'astro';

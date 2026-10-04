@@ -128,7 +128,9 @@ const {
 				)}
 				{availability && (
 					<>
-						<p class="mt-4 mb-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">Availability</p>
+						{/* Scheduled availability (every claiming order counts), unlike the
+						    row's "On shelf" figure, which is real availability. */}
+						<p class="mt-4 mb-1.5 text-xs font-medium uppercase tracking-wide text-text-muted" title="Counts every requested, scheduled and active order on each day — what members can still book">Scheduled availability</p>
 						<AvailabilityCalendar start={availability.start} daily={availability.daily.map((n) => Math.max(0, n))} total={totalStock} class="max-w-sm" />
 					</>
 				)}

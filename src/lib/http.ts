@@ -50,9 +50,11 @@ export function requirePositiveIntFields<K extends string>(form: FormData, keys:
  * the caller only has to supply its own noun for the 400 message.
  */
 export function parseNamedEntityForm(form: FormData): { name: string; imageUrl: string | null } | null {
-	const name = form.get('name')?.toString().trim();
+	const rawName = form.get('name');
+	const name = typeof rawName === 'string' ? rawName.trim() : '';
 	if (!name) return null;
-	const imageUrl = form.get('imageUrl')?.toString().trim() || null;
+	const rawImageUrl = form.get('imageUrl');
+	const imageUrl = (typeof rawImageUrl === 'string' ? rawImageUrl.trim() : '') || null;
 	return { name, imageUrl };
 }
 
@@ -146,7 +148,7 @@ export function safeRedirectTarget(form: FormData, origin: string, fallback = '/
  */
 export function withQueryParam(target: string, key: string, value: string): string {
 	// Parsed against a dummy base, since target is always a relative path.
-	const url = new URL(target, 'http://internal');
+	const url = new URL(target, 'https://internal');
 	url.searchParams.set(key, value);
 	return `${url.pathname}${url.search}${url.hash}`;
 }

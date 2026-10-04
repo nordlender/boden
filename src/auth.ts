@@ -2,6 +2,7 @@ import type { OAuthConfig, OAuthUserConfig } from '@auth/core/providers';
 import type { TokenSet } from '@auth/core/types';
 import { defineConfig } from 'auth-astro';
 import { db } from './db/client';
+import { fetchMemberFeeStatus } from './lib/blocFeeStatus';
 import { getBlocProfile, type BlocProfile } from './lib/blocProfile';
 import { upsertSignedInUser } from './lib/upsertUser';
 
@@ -101,8 +102,12 @@ function Bloc(config: OAuthUserConfig<BlocProfile> & { redirectUri: string }): O
         if (!person) {
           throw new Error('bloc returned no profiles for this account (ListOfMyProfiles empty)');
         }
+        // The account/* profile responses return these as null (bloc API
+        // defect); the dedicated fee method is the source of truth.
+        const fees = await fetchMemberFeeStatus(person.userId, tokens.access_token!);
         return {
           ...person,
+          ...fees,
           success: data.success,
           code: data.code,
           message: data.message,

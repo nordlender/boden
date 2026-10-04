@@ -107,6 +107,15 @@ API, reported to the provider by the user — see `docs/moderator-review.md`'s
 "Known issue" section for what this blocks and `docs/auth-testing.md`'s
 "Known, still-open items" for the retest procedure.
 
+### Update — `api/fee/GetMemberFeeStatus?userId=...`
+
+The provider added a dedicated method for these flags. `src/lib/blocFeeStatus.ts`
+calls it at sign-in (in `userinfo.request`, `src/auth.ts`) and its result
+overrides the null values from `account/listmypages`. Response shape is
+**unconfirmed** (not in the swagger for our key): it assumes top-level boolean
+`hasUnpaidFees`/`userIsMember`. Any failure or unexpected shape yields `null`
+(shown as "Unknown"), never a blocked sign-in.
+
 ## Reference
 
 - `docs/rental-shop.md` §6 "Upsert user on sign-in", §7 "Role API integration",

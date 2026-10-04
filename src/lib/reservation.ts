@@ -11,9 +11,10 @@ import { todayIsoInOslo } from './dates';
 export interface ReservationAvailability {
 	itemId: number;
 	requestedQuantity: number;
-	// The most units of this item reserved by any other requested/active
-	// order at any single point within [from, to] — i.e. the peak
-	// concurrent demand this request would be competing with.
+	// stockCount − (minimum units available on any day of [from, to]) — i.e.
+	// the most units occupied by other orders (requested/scheduled/active,
+	// including overdue claims per src/lib/availability.ts) on the busiest
+	// day of the range.
 	peakReserved: number;
 	stockCount: number;
 	available: boolean;
@@ -45,7 +46,8 @@ export function isValidDateRange(range: Partial<ReservationDateRange>): range is
 // Delegates to src/lib/availability.ts (the one availability model — see
 // there for what an order occupies, including the overdue rule).
 // `peakReserved` is the most units occupied by other orders on any single
-// day in the range. `executor` defaults to the top-level `db` (the live
+// day in the range. An empty/reversed range has no days, so nothing is
+// available. `executor` defaults to the top-level `db` (the live
 // preview), but callers that must check atomically alongside an insert
 // (src/lib/orders.ts) pass the transaction handle — everything stays
 // synchronous for that reason (see insertOrder's comment).
@@ -58,7 +60,7 @@ export function getReservationAvailability(
 	if (requestedItems.length === 0) return [];
 	const itemIds = requestedItems.map((entry) => entry.itemId);
 	const stock = getStockCounts(itemIds, executor);
-	const availableByItem = getAvailableForRange(itemIds, range.from, range.to, { excludeOrderId, executor });
+	const availableByItem = getAvailableForRange(itemIds, range.from, range.to, { excludeOrderId, executor, stock });
 
 	return requestedItems.map(({ itemId, quantity }) => {
 		const stockCount = stock.get(itemId) ?? 0;

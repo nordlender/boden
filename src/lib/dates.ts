@@ -52,7 +52,7 @@ export function todayIsoInOslo(): string {
 // there's no real-world "now" to get an Oslo-vs-UTC answer for — UTC
 // parsing just avoids the date shifting a day in either direction depending
 // on the viewer's own device timezone, same reasoning as
-// ReservationCalendar.astro's addDaysIso.
+// addDaysIso below.
 export function formatDateShort(value: string): string {
   const date = new Date(`${value}T00:00:00Z`);
   const day = String(date.getUTCDate()).padStart(2, '0');
@@ -76,4 +76,21 @@ export function formatDateTimeDisplay(value: Date): string {
     hour: 'numeric',
     minute: '2-digit',
   });
+}
+
+// Adds `days` calendar days to a YYYY-MM-DD date. UTC day arithmetic on an
+// already-normalized date string, not a "what day is it now" read — so no
+// viewer-timezone bug, and intentionally not Oslo-anchored. Client-safe
+// (used by ReservationCalendar.astro's script); re-exported by
+// src/lib/availability.ts.
+export function addDaysIso(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// Inclusive number of days from `from` to `to` (same day = 1; a reversed
+// range gives 0 or less).
+export function daysInclusive(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
 }

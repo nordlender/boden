@@ -42,7 +42,8 @@ vi.mock('../../db/client', async () => {
 	await order('scheduled', '2026-03-14', '2026-03-16', [{ itemId: 1, requested: 1 }]);
 	// 3: active, requested 3 but only 1 handed out, 9..11 — counts as 1
 	await order('active', '2026-03-09', '2026-03-11', [{ itemId: 1, requested: 3, retrieved: 1 }]);
-	// 4: active and overdue (ended the 5th, never returned), 1x B — occupies from the 1st onwards
+	// 4: active and overdue (ended the 5th, never returned), 1x B — its end is
+	// pushed forward a week at a time past the 5th until it covers today
 	await order('active', '2026-03-01', '2026-03-05', [{ itemId: 2, requested: 1, retrieved: 1 }]);
 	// 5 and 6: returned / rejected — occupy nothing
 	await order('returned', '2026-03-10', '2026-03-20', [{ itemId: 1, requested: 4, retrieved: 4 }]);
@@ -69,10 +70,20 @@ describe('getDailyAvailability', () => {
 		expect(daily).toEqual([3, 3, 3, 2, 2, 1, 3, 3, 4]);
 	});
 
-	it('keeps an overdue active order occupying until it is returned', () => {
-		expect(getDailyAvailability([2], TODAY, 3, { today: TODAY }).get(2)).toEqual([1, 1, 1]);
-		// Before it was overdue (today = the 4th), it ended on the 5th as booked.
+	it('extends an overdue active order one week at a time until it covers today', () => {
+		// Not yet overdue (today = the 4th, or the 5th itself): ends on the 5th as booked.
 		expect(getDailyAvailability([2], '2026-03-04', 3, { today: '2026-03-04' }).get(2)).toEqual([1, 1, 2]);
+		expect(getDailyAvailability([2], '2026-03-04', 3, { today: '2026-03-05' }).get(2)).toEqual([1, 1, 2]);
+		// 1 day overdue (the 6th) and 5 days overdue (TODAY, the 10th): end = 5th + 7 = 12th.
+		expect(getDailyAvailability([2], '2026-03-11', 3, { today: '2026-03-06' }).get(2)).toEqual([1, 1, 2]);
+		expect(getDailyAvailability([2], TODAY, 4, { today: TODAY }).get(2)).toEqual([1, 1, 1, 2]);
+		// Exactly 7 days overdue (the 12th): still the 12th.
+		expect(getDailyAvailability([2], '2026-03-11', 3, { today: '2026-03-12' }).get(2)).toEqual([1, 1, 2]);
+		// 8 days overdue (the 13th): end = 5th + 14 = 19th.
+		expect(getDailyAvailability([2], '2026-03-18', 3, { today: '2026-03-13' }).get(2)).toEqual([1, 1, 2]);
+		// Also seen by a window entirely after the original toDate.
+		expect(getClaims([2], '2026-03-19', '2026-03-19', { today: '2026-03-13' })).toHaveLength(1);
+		expect(getClaims([2], '2026-03-20', '2026-03-25', { today: '2026-03-13' })).toHaveLength(0);
 	});
 
 	it('ignores returned and rejected orders, and can exclude one order', () => {
@@ -84,13 +95,28 @@ describe('getDailyAvailability', () => {
 	it('returns zero stock for unknown items', () => {
 		expect(getDailyAvailability([999], TODAY, 2, { today: TODAY }).get(999)).toEqual([0, 0]);
 	});
+
+	it('returns empty arrays for zero or negative day counts', () => {
+		expect(getDailyAvailability([1, 2], TODAY, 0, { today: TODAY })).toEqual(new Map([[1, []], [2, []]]));
+		expect(getDailyAvailability([1], TODAY, -3, { today: TODAY }).get(1)).toEqual([]);
+	});
+
+	it('uses a pre-fetched stock map instead of looking stock up', () => {
+		expect(getDailyAvailability([1], '2026-03-18', 2, { today: TODAY, stock: new Map([[1, 10]]) }).get(1)).toEqual([10, 10]);
+	});
 });
 
 describe('getAvailableForRange', () => {
 	it('is the minimum over every day of the range', () => {
 		const result = getAvailableForRange([1, 2], '2026-03-12', '2026-03-16', { today: TODAY });
 		expect(result.get(1)).toBe(1); // the 14th
-		expect(result.get(2)).toBe(1); // overdue order
+		expect(result.get(2)).toBe(1); // overdue order (extended to the 12th)
+	});
+
+	it('reports nothing available for a reversed range', () => {
+		const result = getAvailableForRange([1, 999], '2026-03-16', '2026-03-12', { today: TODAY });
+		expect(result.get(1)).toBe(0);
+		expect(result.get(999)).toBe(0); // not Infinity, even with stock 0
 	});
 });
 

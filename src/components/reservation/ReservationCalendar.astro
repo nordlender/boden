@@ -194,7 +194,7 @@ const todayIso = todayIsoInOslo();
 
 <script>
 	import 'cally';
-	import { formatDateDisplay, dateToIsoInOslo } from '../../lib/dates';
+	import { addDaysIso, formatDateDisplay, dateToIsoInOslo } from '../../lib/dates';
 
 	type RangeCalendar = HTMLElement & {
 		value?: string;
@@ -234,17 +234,6 @@ const todayIso = todayIsoInOslo();
 		if (unavailableDates.size > 0) calendar.isDateDisallowed = (date) => unavailableDates.has(dateToIsoInOslo(date));
 	}
 
-	// Adds `days - 1` to `from` (inclusive range: a 1-day cap means from===to).
-	// UTC day arithmetic on an already-normalized YYYY-MM-DD string, not a
-	// "what day is it now" read — no viewer-timezone bug here, so this
-	// intentionally doesn't go through dates.ts's Oslo-anchored helpers (see
-	// dayAfter()'s comment in src/lib/reservation.ts for the same reasoning).
-	function addDaysIso(date: string, days: number) {
-		const d = new Date(`${date}T00:00:00Z`);
-		d.setUTCDate(d.getUTCDate() + days);
-		return d.toISOString().slice(0, 10);
-	}
-
 	// Fires once the calendar first upgrades even with a preselected `value`
 	// and no user interaction yet — show that preselection in the summary.
 	if (calendar?.value) {
@@ -270,6 +259,8 @@ const todayIso = todayIsoInOslo();
 		// selection — cap how far the second click can land. Reset once a
 		// full range lands (or the selection clears) so a later fresh pick
 		// isn't left capped from a stale prior computation.
+		// Inclusive range: a 1-day cap means from===to, hence `- 1`. addDaysIso
+		// is plain UTC day arithmetic (see src/lib/dates.ts), not Oslo-anchored.
 		if (maxRangeDays && from && !to) {
 			calendar.max = addDaysIso(from, maxRangeDays - 1);
 		} else if (!from) {

@@ -5,8 +5,8 @@
 // availability on day D is its stockCount minus everything occupied on D.
 // Nothing is stored — every number (the shop's "available today", the
 // availability calendar, the reservation check, the order-insert re-check)
-// is derived from the orders on the fly, so it can't drift. See
-// docs/stock-model.md for the research behind this.
+// is derived from the orders on the fly, so it can't drift. See PR #294
+// for the research behind this.
 //
 // Rules for what an order line occupies:
 // - Only orders in RESERVING_STATUSES (requested/scheduled/active) count;
@@ -14,43 +14,54 @@
 // - Quantity: coalesce(retrievedQuantity, requestedQuantity) — once a
 //   moderator has handed out fewer than requested, only what actually left
 //   the shelf is occupied.
-// - Overdue: an active order past its toDate that hasn't been returned is
-//   still physically out, so it occupies every day from fromDate onwards
-//   until a moderator marks it returned — never assume it'll come back on
-//   time.
+// - Overdue: an order not yet past its toDate is assumed returned on time
+//   (occupies fromDate..toDate). An active order past its toDate that hasn't
+//   been returned is still physically out, so its occupied period is
+//   extended one week at a time past toDate until it covers today:
+//   end = toDate + 7 * ceil(daysOverdue / 7) (1–7 days overdue → toDate+7,
+//   8–14 → toDate+14, …). It keeps occupying until a moderator marks it
+//   returned.
 //
 // All queries are synchronous (`.all()`) so callers that must check
 // availability atomically inside a better-sqlite3 transaction
 // (src/lib/orders.ts) can pass the transaction handle as `executor`.
-import { and, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { items, orderItems, orders } from '../db/schema';
 import { RESERVING_STATUSES } from './orderStatus';
-import { todayIsoInOslo } from './dates';
+import { addDaysIso, daysInclusive, todayIsoInOslo } from './dates';
+
+// Re-exported so existing server-side importers keep working; client code
+// should import these from ./dates directly (this module pulls in the db).
+export { addDaysIso, daysInclusive };
 
 export type QueryExecutor = Pick<typeof db, 'select'>;
 
-// Sentinel end date for an overdue order: sorts after every real date.
-const OPEN_END = '9999-12-31';
+export interface AvailabilityOptions {
+	excludeOrderId?: number;
+	executor?: QueryExecutor;
+	today?: string;
+	/** Pre-fetched getStockCounts() result, to avoid looking stock up twice. */
+	stock?: Map<number, number>;
+}
 
 export interface Claim {
 	orderId: number;
 	itemId: number;
 	quantity: number;
 	start: string; // YYYY-MM-DD, inclusive
-	end: string; // YYYY-MM-DD, inclusive (OPEN_END for overdue)
+	end: string; // YYYY-MM-DD, inclusive (extended weekly when overdue)
 }
 
-/** Adds `days` calendar days to a YYYY-MM-DD date (UTC arithmetic, no timezone involved). */
-export function addDaysIso(date: string, days: number): string {
-	const d = new Date(`${date}T00:00:00Z`);
-	d.setUTCDate(d.getUTCDate() + days);
-	return d.toISOString().slice(0, 10);
-}
-
-/** Inclusive number of days from `from` to `to` (same day = 1). */
-export function daysInclusive(from: string, to: string): number {
-	return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+/**
+ * Effective end of an order's occupied period. On time (or not active):
+ * its toDate. Overdue: toDate pushed forward in whole weeks until it
+ * reaches today — 1–7 days overdue → toDate+7, 8–14 → toDate+14, …
+ */
+function effectiveEnd(status: string, toDate: string, today: string): string {
+	if (status !== 'active' || toDate >= today) return toDate;
+	const daysOverdue = daysInclusive(toDate, today) - 1;
+	return addDaysIso(toDate, 7 * Math.ceil(daysOverdue / 7));
 }
 
 /**
@@ -66,9 +77,9 @@ export function getClaims(
 	if (itemIds.length === 0) return [];
 	const { excludeOrderId, executor = db, today = todayIsoInOslo() } = options;
 
-	// toDate isn't filtered in SQL: an overdue active order can end before
-	// `from` and still occupy it. Everything else is dropped below once its
-	// effective end is known.
+	// Active orders are kept regardless of toDate: an overdue one can end
+	// before `from` and still occupy it under the weekly-extension rule.
+	// Anything whose effective end still falls before `from` is dropped below.
 	const rows = executor
 		.select({
 			orderId: orders.id,
@@ -80,14 +91,20 @@ export function getClaims(
 		})
 		.from(orderItems)
 		.innerJoin(orders, eq(orderItems.orderId, orders.id))
-		.where(and(inArray(orderItems.itemId, itemIds), inArray(orders.status, [...RESERVING_STATUSES]), lte(orders.fromDate, to)))
+		.where(
+			and(
+				inArray(orderItems.itemId, itemIds),
+				inArray(orders.status, [...RESERVING_STATUSES]),
+				lte(orders.fromDate, to),
+				or(gte(orders.toDate, from), eq(orders.status, 'active')),
+			),
+		)
 		.all();
 
 	const claims: Claim[] = [];
 	for (const row of rows) {
 		if (row.orderId === excludeOrderId || row.quantity <= 0) continue;
-		const overdue = row.status === 'active' && row.toDate < today;
-		const end = overdue ? OPEN_END : row.toDate;
+		const end = effectiveEnd(row.status, row.toDate, today);
 		if (end < from) continue;
 		claims.push({ orderId: row.orderId, itemId: row.itemId, quantity: row.quantity, start: row.fromDate, end });
 	}
@@ -109,7 +126,7 @@ export function occupiedByDay(claims: Claim[], from: string, days: number): Map<
 	const result = new Map<number, number[]>();
 	for (const claim of claims) {
 		const first = Math.max(0, daysInclusive(from, claim.start) - 1);
-		const last = claim.end === OPEN_END ? days - 1 : Math.min(days - 1, daysInclusive(from, claim.end) - 1);
+		const last = Math.min(days - 1, daysInclusive(from, claim.end) - 1);
 		if (last < first) continue;
 		let perDay = result.get(claim.itemId);
 		if (!perDay) {
@@ -124,15 +141,17 @@ export function occupiedByDay(claims: Claim[], from: string, days: number): Map<
 /**
  * Units available per day (stockCount − occupied; can go negative when
  * overbooked) for each item, over `days` days starting at `from`.
+ * `days <= 0` yields an empty array per item.
  */
 export function getDailyAvailability(
 	itemIds: number[],
 	from: string,
 	days: number,
-	options: { excludeOrderId?: number; executor?: QueryExecutor; today?: string } = {},
+	options: AvailabilityOptions = {},
 ): Map<number, number[]> {
 	const uniqueIds = [...new Set(itemIds)];
-	const stock = getStockCounts(uniqueIds, options.executor);
+	if (days <= 0) return new Map(uniqueIds.map((id) => [id, []]));
+	const stock = options.stock ?? getStockCounts(uniqueIds, options.executor);
 	const occupied = occupiedByDay(getClaims(uniqueIds, from, addDaysIso(from, days - 1), options), from, days);
 	return new Map(
 		uniqueIds.map((id) => {
@@ -143,21 +162,19 @@ export function getDailyAvailability(
 	);
 }
 
-/** Units available on every single day of [from, to] — i.e. the minimum over the range. */
+/**
+ * Units available on every single day of [from, to] — i.e. the minimum over
+ * the range. An empty or reversed range (from > to) has no days, so nothing
+ * is available: every item reads 0.
+ */
 export function getAvailableForRange(
 	itemIds: number[],
 	from: string,
 	to: string,
-	options: { excludeOrderId?: number; executor?: QueryExecutor; today?: string } = {},
+	options: AvailabilityOptions = {},
 ): Map<number, number> {
 	const daily = getDailyAvailability(itemIds, from, daysInclusive(from, to), options);
-	return new Map([...daily].map(([id, perDay]) => [id, Math.min(...perDay)]));
-}
-
-/** Units available today, per item. */
-export function getAvailableToday(itemIds: number[], executor?: QueryExecutor): Map<number, number> {
-	const today = todayIsoInOslo();
-	return getAvailableForRange(itemIds, today, today, { executor, today });
+	return new Map([...daily].map(([id, perDay]) => [id, perDay.length === 0 ? 0 : Math.min(...perDay)]));
 }
 
 /**

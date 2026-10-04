@@ -1,6 +1,5 @@
 ---
-import '../styles/global.css';
-import ThemeInit from '../components/ThemeInit.astro';
+import HtmlShell from './HtmlShell.astro';
 import AdminNavbar from '../components/AdminNavbar.astro';
 
 interface Props {
@@ -10,18 +9,7 @@ interface Props {
 const { title } = Astro.props;
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>{title}</title>
-		<ThemeInit />
-	</head>
-	<body class="min-h-screen bg-bg-subtle">
-		<AdminNavbar />
-		<slot />
-	</body>
-</html>
+<HtmlShell title={title} bodyClass="min-h-screen bg-bg-subtle">
+	<AdminNavbar slot="navbar" />
+	<slot />
+</HtmlShell>

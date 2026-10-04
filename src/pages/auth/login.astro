@@ -1,19 +1,12 @@
 ---
 export const prerender = false;
-import '../../styles/global.css';
+import HtmlShell from '../../layouts/HtmlShell.astro';
 
 // Preserves the redirect target the auth+role gate middleware set when it
 // bounced an unauthenticated request here (src/middleware/index.ts).
 const next = Astro.url.searchParams.get('next') ?? '/';
 ---
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Signing in…</title>
-	</head>
-	<body data-next={next}>
+<HtmlShell title="Signing in…" bodyClass="" bodyAttrs={{ 'data-next': next }}>
 		<!--
 			No visible login screen by design (issue #58) — this fires the bloc
 			sign-in redirect immediately on load instead of waiting for a click.
@@ -33,5 +26,4 @@ const next = Astro.url.searchParams.get('next') ?? '/';
 			// type gap rather than pull in the whole next-auth package for types.
 			signIn('bloc', { callbackUrl: next } as Parameters<typeof signIn>[1]);
 		</script>
-	</body>
-</html>
+</HtmlShell>

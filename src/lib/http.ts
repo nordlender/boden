@@ -14,7 +14,7 @@
 //    gate, so every handler that needs auth calls one of these itself.
 
 import type { APIContext } from 'astro';
-import { isModerator } from './auth';
+import { hasRole } from './auth';
 
 /**
  * True for a strictly-positive integer. Use this — not bare
@@ -25,6 +25,40 @@ import { isModerator } from './auth';
  */
 export function isPositiveInteger(value: number): boolean {
 	return Number.isInteger(value) && value > 0;
+}
+
+/**
+ * Parses and validates a set of required positive-integer form fields in one
+ * call — replaces each caller re-deriving the same `Number(form.get(...))` +
+ * `isPositiveInteger` check (and usually the same error message) for its own
+ * id/quantity fields, which had already drifted into copy-pasted duplicates
+ * across a few src/pages/api/wizard/set-component-*.ts routes.
+ *
+ * Returns `null` — not a partial object — the moment any named field is
+ * missing or not a positive integer, so a caller only has one thing to check
+ * before using every field.
+ */
+export function requirePositiveIntFields<K extends string>(form: FormData, keys: readonly K[]): Record<K, number> | null {
+	const result = {} as Record<K, number>;
+	for (const key of keys) {
+		const value = Number(form.get(key));
+		if (!isPositiveInteger(value)) return null;
+		result[key] = value;
+	}
+	return result;
+}
+
+/**
+ * Parses the "create a named thing" form shared by the item and set wizards'
+ * create routes (items.ts / sets.ts) — a required `name` plus an optional
+ * `imageUrl`, both trimmed. Returns `null` when `name` is missing or blank, so
+ * the caller only has to supply its own noun for the 400 message.
+ */
+export function parseNamedEntityForm(form: FormData): { name: string; imageUrl: string | null } | null {
+	const name = form.get('name')?.toString().trim();
+	if (!name) return null;
+	const imageUrl = form.get('imageUrl')?.toString().trim() || null;
+	return { name, imageUrl };
 }
 
 /**
@@ -44,7 +78,7 @@ export function requireUser(locals: APIContext['locals']): Response | null {
  */
 export function requireAdmin(locals: APIContext['locals']): Response | null {
 	if (!locals.user) return new Response('Unauthorized', { status: 401 });
-	if (locals.user.role !== 'admin') {
+	if (!hasRole(locals.user.role, 'admin')) {
 		return new Response('Forbidden', { status: 403 });
 	}
 	return null;
@@ -52,12 +86,12 @@ export function requireAdmin(locals: APIContext['locals']): Response | null {
 
 /**
  * Returns a 401 Response for an anonymous request, a 403 Response if the
- * user isn't at least a moderator (admins included — see `isModerator`), or
+ * user isn't at least a moderator (board and admins included — see `hasRole`), or
  * `null` if the caller may proceed.
  */
 export function requireModerator(locals: APIContext['locals']): Response | null {
 	if (!locals.user) return new Response('Unauthorized', { status: 401 });
-	if (!isModerator(locals.user.role)) {
+	if (!hasRole(locals.user.role, 'moderator')) {
 		return new Response('Forbidden', { status: 403 });
 	}
 	return null;

@@ -9,9 +9,10 @@ interface Props {
 
 const { status, class: className } = Astro.props;
 
-// src/db/schema.ts's orders.status enum: 'requested' | 'active' | 'returned' | 'rejected'.
+// Keyed by the orders.status enum (see OrderStatus in src/lib/orderStatus.ts).
 const toneByStatus: Record<string, BadgeTone> = {
 	requested: 'warning',
+	scheduled: 'info',
 	active: 'success',
 	returned: 'neutral',
 	rejected: 'error',

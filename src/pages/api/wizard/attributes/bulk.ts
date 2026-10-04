@@ -1,6 +1,6 @@
 export const prerender = false;
 
-// Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES — see ../items.ts.
+// Also gated by src/middleware/prefixes.ts's ROUTE_RULES — see ../items.ts.
 // docs/schema.md's "attribute editing entry points" (bulk half): applies to
 // every currently-selected item at once, after confirming they share one
 // product (one attribute template). key[]/value[] are parallel repeatable

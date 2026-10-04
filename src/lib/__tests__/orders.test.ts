@@ -116,6 +116,12 @@ async function markOrderActive(orderId: number) {
 	await db.update(schema.orders).set({ status: 'active' }).where(eq(schema.orders.id, orderId));
 }
 
+async function markOrderAccepted(orderId: number) {
+	const { db } = await import('../../db/client');
+	const schema = await import('../../db/schema');
+	await db.update(schema.orders).set({ acceptedAt: new Date() }).where(eq(schema.orders.id, orderId));
+}
+
 describe('createOrder', () => {
 	it('creates an order and returns a checkout token distinct from the order code', async () => {
 		const result = await placeOrder([{ itemId: ITEM_B_ID, quantity: 2 }], '2026-02-01', '2026-02-05');
@@ -341,6 +347,17 @@ describe('deleteOrder', () => {
 		expect(result).toEqual({ ok: false, error: 'not_found' });
 	});
 
+	it('allows deleting an accepted (scheduled) order', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-20', '2026-05-21');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		await markOrderAccepted(created.orderId);
+
+		expect(await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({ ok: true });
+		expect(await findOrderByCode(created.orderCode)).toBeUndefined();
+	});
+
 	it('rejects deleting an order that has moved past "requested"', async () => {
 		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-10', '2026-05-11');
 		expect(created.ok).toBe(true);
@@ -412,6 +429,18 @@ describe('rescheduleOrder', () => {
 
 		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-10', toDate: '2026-11-11' });
 		expect(result).toEqual({ ok: false, error: 'not_modifiable', status: 'active' });
+	});
+
+	it('rejects rescheduling an order a moderator has accepted (scheduled)', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-11-15', '2026-11-16');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		await markOrderAccepted(created.orderId);
+
+		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-20', toDate: '2026-11-21' });
+		expect(result).toEqual({ ok: false, error: 'not_modifiable', status: 'scheduled' });
+		expect((await findOrderByCode(created.orderCode))?.fromDate).toBe('2026-11-15');
 	});
 
 	it('rejects rescheduling an order owned by someone else, without revealing whether it exists', async () => {

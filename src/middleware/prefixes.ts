@@ -1,4 +1,4 @@
-// Route-prefix tables and matcher extracted from ./index.ts so they can be
+// Route rule table and matcher extracted from ./index.ts so they can be
 // unit tested without pulling in the `astro:middleware` virtual module
 // (which only resolves inside Astro's own build/dev runtime, not plain
 // vitest).

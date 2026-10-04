@@ -1,7 +1,7 @@
 ---
 export const prerender = false;
 
-// Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin).
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin).
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
 import ProductForm from '../../../../components/wizard/ProductForm.astro';
 import { listCategoryOptions, listSubcategoryOptions, getProductForEdit } from '../../../../lib/products';

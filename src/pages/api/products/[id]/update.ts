@@ -1,6 +1,6 @@
 export const prerender = false;
 
-// Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES ('/api/products'),
+// Also gated by src/middleware/prefixes.ts's ROUTE_RULES ('/api/products'),
 // but that's defense-in-depth — keep this inline check too (see prefixes.ts).
 
 import type { APIRoute } from 'astro';

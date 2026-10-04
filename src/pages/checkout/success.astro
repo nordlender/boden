@@ -6,7 +6,7 @@ import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import Button from '../../components/ui/Button.astro';
 import { db } from '../../db/client';
 
-// Gated by src/middleware/index.ts (MEMBER_ROUTE_PREFIXES via /checkout) —
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /checkout) —
 // reached only when logged in, so Astro.locals.user is non-null here.
 //
 // `receipt` is orders.checkoutToken (src/db/schema.ts), not an order code:

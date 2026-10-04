@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { addDaysIso, daysInclusive, getAvailableForRange, getClaims, getDailyAvailability, occupiedByDay, setDailyAvailability } from '../availability';
+import { addDaysIso, daysInclusive, getAvailableForRange, getClaims, getDailyAvailability, getHandedOut, getRealAvailability, occupiedByDay, setDailyAvailability } from '../availability';
 
 // Fixture: item 1 (stock 4), item 2 (stock 2). Orders below are inserted in
 // the vi.mock factory so the module under test sees the seeded db.
@@ -117,6 +117,16 @@ describe('getAvailableForRange', () => {
 		const result = getAvailableForRange([1, 999], '2026-03-16', '2026-03-12', { today: TODAY });
 		expect(result.get(1)).toBe(0);
 		expect(result.get(999)).toBe(0); // not Infinity, even with stock 0
+	});
+});
+
+describe('real availability (getHandedOut / getRealAvailability)', () => {
+	it('counts only units handed out on active orders, whatever their dates', () => {
+		// Item 1: active order 3 handed out 1 of 3; requested/scheduled orders
+		// haven't left the shelf and the returned one is back.
+		// Item 2: the overdue active order still has 1 out; rejected counts nothing.
+		expect(getHandedOut([1, 2])).toEqual(new Map([[1, 1], [2, 1]]));
+		expect(getRealAvailability([1, 2, 999])).toEqual(new Map([[1, 3], [2, 1], [999, 0]]));
 	});
 });
 

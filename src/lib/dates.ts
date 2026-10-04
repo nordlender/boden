@@ -1,8 +1,43 @@
 // Shared by both server-rendered components (OrderCodeHeader.astro) and
 // client-side scripts (ReservationCalendar.astro) — plain Date/Intl usage,
 // no server-only dependency, so it works in either context unchanged.
+//
+// Display helpers use a fixed locale (Norwegian site; the UI text stays English)
+const DISPLAY_LOCALE = 'nb-NO';
+const SHOP_TIME_ZONE = 'Europe/Oslo';
+
+const ISO_DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
+const MS_PER_DAY = 86_400_000;
+
+// True for a real calendar date in YYYY-MM-DD form. The round-trip check
+// rejects impossible dates (2026-02-31) that Date would silently roll over.
+export function isIsoDate(value: string): boolean {
+  if (!ISO_DATE_FORMAT.test(value)) return false;
+  const d = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
+}
+
+// Adds `days` (may be negative) to a YYYY-MM-DD date. Pure UTC calendar
+// arithmetic on a bare date, not a "what day is it now" read, so there is no
+// viewer/server timezone to get wrong.
+export function addDaysIso(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// Inclusive day count between two YYYY-MM-DD dates (same day = 1, not 0).
+export function daysInclusive(from: string, to: string): number {
+  const fromMs = new Date(`${from}T00:00:00Z`).getTime();
+  const toMs = new Date(`${to}T00:00:00Z`).getTime();
+  return Math.round((toMs - fromMs) / MS_PER_DAY) + 1;
+}
+
 export function formatDateDisplay(value: string, options: { weekday?: boolean } = {}): string {
-  return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+  // A bare calendar date: parse and format on the UTC calendar so it can't
+  // shift across midnight in any timezone.
+  return new Date(`${value}T00:00:00Z`).toLocaleDateString(DISPLAY_LOCALE, {
+    timeZone: 'UTC',
     ...(options.weekday ? { weekday: 'short' as const } : {}),
     month: 'short',
     day: 'numeric',
@@ -69,28 +104,12 @@ export function formatWeekdayName(value: string): string {
 // createdAt) rather than a YYYY-MM-DD string — includes the time since
 // same-day posts are common on the message board.
 export function formatDateTimeDisplay(value: Date): string {
-  return value.toLocaleString(undefined, {
+  return value.toLocaleString(DISPLAY_LOCALE, {
+    timeZone: SHOP_TIME_ZONE,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    hour: 'numeric',
+    hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-// Adds `days` calendar days to a YYYY-MM-DD date. UTC day arithmetic on an
-// already-normalized date string, not a "what day is it now" read — so no
-// viewer-timezone bug, and intentionally not Oslo-anchored. Client-safe
-// (used by ReservationCalendar.astro's script); re-exported by
-// src/lib/availability.ts.
-export function addDaysIso(date: string, days: number): string {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-// Inclusive number of days from `from` to `to` (same day = 1; a reversed
-// range gives 0 or less).
-export function daysInclusive(from: string, to: string): number {
-  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
 }

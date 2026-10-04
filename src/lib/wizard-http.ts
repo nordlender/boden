@@ -3,7 +3,7 @@
 // verbatim in every wizard API route.
 
 import type { APIContext } from 'astro';
-import { isModerator } from './auth';
+import { hasRole } from './auth';
 
 /**
  * True for a strictly-positive integer. Use this — not bare
@@ -66,7 +66,7 @@ export function requireUser(locals: APIContext['locals']): Response | null {
  * `null` if the caller may proceed.
  */
 export function requireAdmin(locals: APIContext['locals']): Response | null {
-	if (locals.user?.role !== 'admin') {
+	if (!hasRole(locals.user?.role, 'admin')) {
 		return new Response('Forbidden', { status: 403 });
 	}
 	return null;
@@ -74,11 +74,11 @@ export function requireAdmin(locals: APIContext['locals']): Response | null {
 
 /**
  * Returns a 403 Response if the current request isn't from at least a
- * moderator (admins included — see `isModerator`), or `null` if the caller
+ * moderator (admins included — see `hasRole`), or `null` if the caller
  * may proceed.
  */
 export function requireModerator(locals: APIContext['locals']): Response | null {
-	if (!isModerator(locals.user?.role)) {
+	if (!hasRole(locals.user?.role, 'moderator')) {
 		return new Response('Forbidden', { status: 403 });
 	}
 	return null;

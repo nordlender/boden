@@ -5,8 +5,8 @@ export const prerender = false;
 // link once an order is active. Single page (unlike the retrieval flow's
 // checklist-then-count split): the member has already brought the items
 // back and set them in front of the moderator, so there's no "go fetch from
-// storage" step to separate out. Gated by src/middleware/index.ts
-// (MOD_ROUTE_PREFIXES via /moderator).
+// storage" step to separate out. Gated by src/middleware/prefixes.ts
+// (ROUTE_RULES via /moderator).
 import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
 import BackLink from '../../../components/moderator/BackLink.astro';
 import BlindCountList from '../../../components/moderator/BlindCountList.astro';

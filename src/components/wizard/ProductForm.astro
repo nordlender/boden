@@ -155,9 +155,12 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		{existingAttributeKeys.length > 0 && (
 			<div class="flex flex-col gap-1">
 				{existingAttributeKeys.map((key) => (
-					<label class="flex items-center gap-2 text-sm text-text">
-						<input type="radio" name="variantAttributeKey" value={key.name} checked={key.isVariant} />
-						{key.name}
+					<label class="flex items-center justify-between gap-2 text-sm text-text">
+						<span class="flex items-center gap-2">
+							<input type="radio" name="variantAttributeKey" value={key.name} checked={key.isVariant} />
+							{key.name}
+						</span>
+						{key.isVariant && <span class="text-xs text-text-muted">Current variant</span>}
 					</label>
 				))}
 			</div>

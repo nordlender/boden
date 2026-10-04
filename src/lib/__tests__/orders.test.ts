@@ -27,6 +27,7 @@ const CONTACT = {
 	role: 'member' as const,
 	hasUnpaidFees: null,
 	userIsMember: null,
+	disclaimerAccepted: false,
 };
 
 // createOrder/createSplitOrders join against the db (src/lib/orders.ts
@@ -125,6 +126,24 @@ describe('createOrder', () => {
 		expect(result.orderCode).toMatch(/^\d{2}[A-Z]{2}[ABIM]$/);
 		expect(result.checkoutToken).toHaveLength(10);
 		expect(result.checkoutToken).not.toBe(result.orderCode);
+	});
+
+	it('persists disclaimer acceptance as a timestamp on the order', async () => {
+		const result = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
+			fromDate: '2026-03-01',
+			toDate: '2026-03-02',
+			...CONTACT,
+			disclaimerAccepted: true,
+		});
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		const { db } = await import('../../db/client');
+		const { orders } = await import('../../db/schema');
+		const row = db.select().from(orders).where(eq(orders.id, result.orderId)).get();
+		expect(row?.disclaimerAcceptedAt).toBeInstanceOf(Date);
 	});
 
 	it('rejects with "unavailable" instead of creating an order when an item is already fully booked', async () => {

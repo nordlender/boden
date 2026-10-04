@@ -295,6 +295,12 @@ export const orders = sqliteTable('orders', {
   returnedAt: integer('returned_at', { mode: 'timestamp' }), // set when moderator marks returned
   rejectedAt: integer('rejected_at', { mode: 'timestamp' }), // set when moderator rejects
   rejectedReason: text('rejected_reason'), // set when moderator rejects
+  // Set when the checkout submitter (the renting user) accepted the liability
+  // disclaimer (OSI is not liable for injury, etc — see #134). Required at
+  // checkout, shown to moderators on the order detail. A timestamp (not a
+  // plain boolean) so there's a record of *when*, same pattern as acceptedAt
+  // above. Nullable only for orders created before the disclaimer existed.
+  disclaimerAcceptedAt: integer('disclaimer_accepted_at', { mode: 'timestamp' }),
   // TODO: dueAt (rental due date) — not yet confirmed, see docs/schema-legacy-fixes.md #9
 }, (table) => [
   index('orders_user_id_idx').on(table.userId),

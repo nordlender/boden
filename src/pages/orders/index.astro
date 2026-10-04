@@ -7,7 +7,7 @@ import OrdersTable from '../../components/orders/OrdersTable.astro';
 import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
 import OrdersLayoutToggle from '../../components/orders/OrdersLayoutToggle.astro';
 
-// Gated by src/middleware/index.ts (MEMBER_ROUTE_PREFIXES via /orders) —
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
 // reached only when logged in, so Astro.locals.user is non-null here.
 const userId = Astro.locals.user?.id ?? '';
 

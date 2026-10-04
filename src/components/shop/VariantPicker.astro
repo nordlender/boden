@@ -1,6 +1,6 @@
 ---
 // Owns the "choose a variant, add to cart" form on the product page: the
-// variant select (when the product has more than one), the resulting
+// variant buttons (when the product has more than one), the resulting
 // attribute list (items only), a set's automatically-derived "Includes"
 // breakdown, stock message, quantity cap, and add-to-cart button — plus the
 // client-side script that keeps all of those (and the product image
@@ -14,6 +14,13 @@
 // enforces that assumption itself rather than trusting callers/data to hold
 // it: it picks exactly one kind (items, unless there are none) and never
 // shows a set as an option alongside an item, or vice versa.
+//
+// Which attribute is the variant is the admin's choice (`variantKeys`, from
+// productAttributeKeys.isVariant): a button's text is that key's value
+// (joined with " / " if there are several), and those keys are left out of
+// the attribute list since the selected button already shows them. A product
+// with no variant key flagged falls back to labelling buttons with every
+// attribute value, and nothing is omitted.
 //
 // A set has no attribute template of its own — a set's "Includes" content
 // is derived automatically from its components' own real attribute values
@@ -37,24 +44,38 @@ interface Props {
 	productSlug: string;
 	thumbnailImageUrl: string | null;
 	attributeKeyOrder: string[];
+	variantKeys: string[];
 }
 
-const { items, sets, productSlug, thumbnailImageUrl, attributeKeyOrder } = Astro.props;
+const { items, sets, productSlug, thumbnailImageUrl, attributeKeyOrder, variantKeys } = Astro.props;
+
+const variantKeySet = new Set(variantKeys);
+const hasVariantKeys = variantKeys.length > 0;
+const displayedKeyCount = attributeKeyOrder.filter((key) => !variantKeySet.has(key)).length;
 
 type Variant =
-	| { kind: 'item'; id: number; imageUrl: string | null; inStock: number; attributes: { key: string; value: string }[] }
+	| { kind: 'item'; id: number; imageUrl: string | null; inStock: number; attributes: { key: string; value: string }[]; variantValues: { key: string; value: string }[] }
 	| { kind: 'set'; id: number; imageUrl: string | null; inStock: number; label: string | null; componentDisplay: SetComponentDisplay[] };
 
 const variantKind: 'item' | 'set' = items.length > 0 ? 'item' : 'set';
 const variants: Variant[] =
 	variantKind === 'item'
-		? items.map((item): Variant => ({ kind: 'item', id: item.id, imageUrl: item.imageUrl, inStock: item.inStock, attributes: item.attributes }))
+		? items.map(
+				(item): Variant => ({
+					kind: 'item',
+					id: item.id,
+					imageUrl: item.imageUrl,
+					inStock: item.inStock,
+					attributes: item.attributes.filter((a) => !variantKeySet.has(a.key)),
+					variantValues: hasVariantKeys ? item.attributes.filter((a) => variantKeySet.has(a.key)) : item.attributes,
+				}),
+			)
 		: sets.map((set): Variant => ({ kind: 'set', id: set.id, imageUrl: set.imageUrl, inStock: set.inStock, label: set.label, componentDisplay: set.componentDisplay }));
 const initialVariant = variants[0] ?? null;
 const initialMax = Math.max(initialVariant?.inStock ?? 1, 1);
 
 function optionLabel(variant: Variant): string {
-	const text = variant.kind === 'item' ? formatAttributes(variant.attributes) : variant.label;
+	const text = variant.kind === 'item' ? formatAttributes(variant.variantValues) : variant.label;
 	return text || `Option ${variant.id}`;
 }
 ---
@@ -84,36 +105,38 @@ function optionLabel(variant: Variant): string {
 
 	{
 		variants.length > 1 && (
-			<div>
-				<label class="mb-2 block text-sm font-medium text-text" for="variant">
-					Choose a variant
-				</label>
-				<select id="variant" data-variant-select class="w-full rounded-md border border-border-interactive px-3 py-2 text-sm">
+			<fieldset>
+				<legend class="mb-2 text-sm font-medium text-text">
+					{variantKind === 'item' && hasVariantKeys ? variantKeys.join(' / ') : 'Choose a variant'}
+				</legend>
+				<div data-variant-options class="flex flex-wrap gap-2">
 					{variants.map((variant) => {
 						const label = optionLabel(variant);
+						const selected = variant.kind === initialVariant?.kind && variant.id === initialVariant?.id;
 						return (
-							<option
-								value={`${variant.kind}:${variant.id}`}
-								selected={variant.kind === initialVariant?.kind && variant.id === initialVariant?.id}
-								disabled={variant.inStock <= 0}
+							<button
+								type="button"
+								aria-pressed={selected ? 'true' : 'false'}
+								data-variant-option
 								data-kind={variant.kind}
 								data-id={variant.id}
 								data-image={variant.imageUrl ?? thumbnailImageUrl ?? ''}
 								data-stock={variant.inStock}
 								data-attributes={variant.kind === 'item' ? JSON.stringify(variant.attributes) : '[]'}
 								data-component-display={variant.kind === 'set' ? JSON.stringify(variant.componentDisplay) : '[]'}
+								class={`rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-pressed:border-selected-border aria-pressed:bg-selected-subtle aria-pressed:font-medium aria-pressed:text-selected-text ${variant.inStock > 0 ? 'border-border-interactive text-text' : 'border-border-interactive text-disabled-text line-through'}`}
 							>
 								{variant.kind === 'set' ? `Set — ${label}` : label}
-								{variant.inStock <= 0 ? ' (out of stock)' : ''}
-							</option>
+								{variant.inStock <= 0 && <span class="sr-only"> (out of stock)</span>}
+							</button>
 						);
 					})}
-				</select>
-			</div>
+				</div>
+			</fieldset>
 		)
 	}
 
-	{variantKind === 'item' && attributeKeyOrder.length > 0 && (
+	{variantKind === 'item' && displayedKeyCount > 0 && (
 		<dl data-item-attributes class="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-sm">
 			{(initialVariant?.kind === 'item' ? initialVariant.attributes : []).map((attribute) => (
 				<div class="contents">
@@ -230,7 +253,7 @@ function optionLabel(variant: Variant): string {
 	}
 	type SetComponentDisplay = SetComponentTable | SetComponentLine;
 
-	const select = document.querySelector<HTMLSelectElement>('[data-variant-select]');
+	const options = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-variant-option]'));
 	const image = document.querySelector<HTMLImageElement>('[data-product-image]');
 	const imagePlaceholder = document.querySelector<HTMLElement>('[data-product-image-placeholder]');
 	const stockMessage = document.querySelector<HTMLElement>('[data-stock-message]');
@@ -363,7 +386,9 @@ function optionLabel(variant: Variant): string {
 		}
 	}
 
-	function applyOption(option: HTMLOptionElement) {
+	function applyOption(option: HTMLButtonElement) {
+		for (const other of options) other.setAttribute('aria-pressed', String(other === option));
+
 		const stock = Number(option.dataset.stock ?? '0');
 		const imageUrl = option.dataset.image ?? '';
 		const kind = option.dataset.kind;
@@ -406,21 +431,14 @@ function optionLabel(variant: Variant): string {
 		renderSetIncludes(kind, option.dataset.componentDisplay);
 	}
 
-	if (select) {
+	if (options.length > 0) {
 		const params = new URLSearchParams(location.search);
 		const presetKind = params.has('set') ? 'set' : params.has('item') ? 'item' : null;
 		const presetId = presetKind ? params.get(presetKind) : null;
-		if (presetKind && presetId) {
-			const match = select.querySelector(`option[data-kind="${presetKind}"][data-id="${CSS.escape(presetId)}"]`);
-			if (match instanceof HTMLOptionElement) select.value = match.value;
-		}
+		const preset = presetKind && presetId ? options.find((o) => o.dataset.kind === presetKind && o.dataset.id === presetId) : undefined;
+		const initial = preset ?? options.find((o) => o.getAttribute('aria-pressed') === 'true');
 
-		select.addEventListener('change', () => {
-			const option = select.selectedOptions[0];
-			if (option) applyOption(option);
-		});
-
-		const initialOption = select.selectedOptions[0];
-		if (initialOption) applyOption(initialOption);
+		for (const option of options) option.addEventListener('click', () => applyOption(option));
+		if (initial) applyOption(initial);
 	}
 </script>

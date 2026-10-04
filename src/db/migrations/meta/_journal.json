@@ -106,6 +106,13 @@
       "when": 1791068660336,
       "tag": "0014_add_disclaimer_accepted_at",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1791073576178,
+      "tag": "0015_add_attribute_key_is_variant",
+      "breakpoints": true
     }
   ]
 }

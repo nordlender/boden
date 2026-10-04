@@ -41,6 +41,21 @@ describe('parseProductForm', () => {
 		expect(result.input.attributeKeys).toEqual(['Size']);
 	});
 
+	it('collects variantAttributeKey selections, trimmed and without blanks', () => {
+		const result = parseProductForm(
+			formWith([
+				['title', 'Cams'],
+				['variantAttributeKey', ' #n '],
+			]),
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.input.variantAttributeKeys).toEqual(['#n']);
+
+		const none = parseProductForm(formWith([['title', 'Cams'], ['variantAttributeKey', '']]));
+		expect(none.ok && none.input.variantAttributeKeys).toEqual([]);
+	});
+
 	it('defaults status to hidden for anything other than "published"', () => {
 		const result = parseProductForm(formWith([['title', 'Harness']]));
 		expect(result.ok).toBe(true);

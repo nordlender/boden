@@ -78,6 +78,10 @@ export interface ShopProduct {
 	// each item's/set's flat attribute values consistently and to know
 	// whether a per-variant attribute list should render at all.
 	attributeKeyOrder: string[];
+	// Subset of attributeKeyOrder the admin flagged as the variant(s) — the
+	// product page renders these as picker buttons and omits them from the
+	// attribute list.
+	variantKeys: string[];
 	items: ShopItem[];
 	sets: ShopSet[];
 }
@@ -359,6 +363,7 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 		subcategoryName: product.subcategory?.name ?? null,
 		links: product.links,
 		attributeKeyOrder: product.attributeKeys.map((key) => key.name),
+		variantKeys: product.attributeKeys.filter((key) => key.isVariant).map((key) => key.name),
 		items,
 		sets,
 	};

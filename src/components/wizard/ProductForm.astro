@@ -143,10 +143,22 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		The field template every item under this product will have (e.g. "Weight", "Size", "Color") — each item fills in its own value per key. {mode === 'edit' && 'Existing keys can\'t be renamed or removed from here, only added to.'}
 		</p>
 
+		<p class="text-xs text-text-muted">
+			Pick one key as the <span class="font-medium text-text">variant</span>: shoppers choose between its values as buttons on the product page, and it's left out of the attribute list.
+		</p>
+
+		<label class="flex items-center gap-2 text-xs text-text-muted">
+			<input type="radio" name="variantAttributeKey" value="" checked={!existingAttributeKeys.some((key) => key.isVariant)} data-variant-none />
+			No variant
+		</label>
+
 		{existingAttributeKeys.length > 0 && (
-			<div class="flex flex-wrap gap-2">
+			<div class="flex flex-col gap-1">
 				{existingAttributeKeys.map((key) => (
-					<span class="rounded-full border border-border-strong px-3 py-1 text-xs text-text-muted">{key.name}</span>
+					<label class="flex items-center gap-2 text-sm text-text">
+						<input type="radio" name="variantAttributeKey" value={key.name} checked={key.isVariant} />
+						{key.name}
+					</label>
 				))}
 			</div>
 		)}
@@ -159,7 +171,11 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		<div data-row-list="attributes" class="flex flex-col gap-2">
 			{mode === 'create' && (
 				<div class="flex items-center gap-2" data-row>
-					<input name="attributeKey[]" type="text" placeholder="e.g. Size" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
+					<input name="attributeKey[]" type="text" placeholder="e.g. Size" data-new-key-input class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
+					<label class="flex shrink-0 items-center gap-1 text-xs text-text-muted">
+						<input type="radio" name="variantAttributeKey" value="" data-new-key-radio />
+						Variant
+					</label>
 					<button type="button" data-remove-row aria-label="Remove attribute key" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
 						<AppIcon name="trash" size={16} />
 					</button>
@@ -169,7 +185,11 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 
 		<template data-row-template="attributes">
 			<div class="flex items-center gap-2" data-row>
-				<input name="attributeKey[]" type="text" placeholder="e.g. Size" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
+				<input name="attributeKey[]" type="text" placeholder="e.g. Size" data-new-key-input class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
+				<label class="flex shrink-0 items-center gap-1 text-xs text-text-muted">
+					<input type="radio" name="variantAttributeKey" value="" data-new-key-radio />
+					Variant
+				</label>
 				<button type="button" data-remove-row aria-label="Remove attribute key" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
 					<AppIcon name="trash" size={16} />
 				</button>
@@ -205,6 +225,16 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		const removeButton = target.closest<HTMLElement>('[data-remove-row]');
 		if (!removeButton) return;
 		removeButton.closest('[data-row]')?.remove();
+	});
+
+	// A new key's variant radio has no value until the admin types the key's
+	// name — keep it synced so selecting it submits that name. An empty-named
+	// row is dropped server-side, so a stale empty selection is harmless.
+	document.addEventListener('input', (event) => {
+		const target = event.target;
+		if (!(target instanceof HTMLInputElement) || !target.matches('[data-new-key-input]')) return;
+		const radio = target.closest('[data-row]')?.querySelector<HTMLInputElement>('[data-new-key-radio]');
+		if (radio) radio.value = target.value.trim();
 	});
 
 	// Sub-category options are filtered to the currently selected category —

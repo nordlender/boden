@@ -1,0 +1,1 @@
+ALTER TABLE `product_attribute_keys` ADD `is_variant` integer DEFAULT false NOT NULL;

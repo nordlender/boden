@@ -18,12 +18,12 @@ describe('ADMIN_ROUTE_PREFIXES', () => {
 });
 
 describe('matchesPrefix', () => {
-  it('matches an exact prefix', () => {
-    expect(matchesPrefix('/admin', ADMIN_ROUTE_PREFIXES)).toBe(true);
-  });
-
-  it('matches a nested wizard write route', () => {
-    expect(matchesPrefix('/api/wizard/items', ADMIN_ROUTE_PREFIXES)).toBe(true);
+  it.each([
+    ['/admin', 'an exact prefix'],
+    ['/api/wizard/items', 'a nested wizard write route'],
+    ['/api/products/[id]/update', 'a nested product write route'],
+  ])('matches %s (%s)', (route) => {
+    expect(matchesPrefix(route, ADMIN_ROUTE_PREFIXES)).toBe(true);
   });
 
   it('does not match a route that merely shares the prefix string without a boundary', () => {

@@ -3,20 +3,18 @@
 
 import type { APIRoute } from 'astro';
 import { createItem } from '../../../lib/wizard';
-import { requireAdmin, safeRedirectTarget } from '../../../lib/wizard-http';
+import { parseNamedEntityForm, requireAdmin, safeRedirectTarget } from '../../../lib/wizard-http';
 
 export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 	const forbidden = requireAdmin(locals);
 	if (forbidden) return forbidden;
 
 	const form = await request.formData();
-	const name = form.get('name')?.toString().trim();
-	const imageUrl = form.get('imageUrl')?.toString().trim() || null;
-
-	if (!name) {
+	const fields = parseNamedEntityForm(form);
+	if (!fields) {
 		return new Response('Item name is required', { status: 400 });
 	}
 
-	await createItem({ name, imageUrl });
+	await createItem(fields);
 	return redirect(safeRedirectTarget(form, url.origin));
 };

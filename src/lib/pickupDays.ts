@@ -1,12 +1,12 @@
 import { and, asc, eq, gte } from 'drizzle-orm';
 import { db } from '../db/client';
+import { addDaysIso, isIsoDate } from './dates';
 import { pickupDays, pickupRecurringRules } from '../db/schema';
 
-const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_FORMAT = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export function isValidDateString(value: string): boolean {
-	return DATE_FORMAT.test(value);
+	return isIsoDate(value);
 }
 
 export function isValidTimeString(value: string): boolean {
@@ -125,18 +125,18 @@ export interface NewRecurringRule {
 // Every date in [startDate, endDate] (inclusive both ends) that falls on
 // `weekday`. Walked in UTC (matching the "YYYY-MM-DD as a bare calendar
 // date, not a moment in time" treatment the rest of this app gives
-// date-only columns — see ReservationCalendar.astro's addDaysIso) so a
+// date-only columns — see addDaysIso in dates.ts) so a
 // server running in a non-UTC timezone can't shift a date across midnight.
 function datesForWeekday(startDate: string, endDate: string, weekday: number): string[] {
 	const dates: string[] = [];
-	const cursor = new Date(`${startDate}T00:00:00Z`);
-	const end = new Date(`${endDate}T00:00:00Z`);
-	while (cursor.getUTCDay() !== weekday && cursor <= end) {
-		cursor.setUTCDate(cursor.getUTCDate() + 1);
+	// YYYY-MM-DD strings compare correctly as plain strings.
+	let cursor = startDate;
+	while (cursor <= endDate && new Date(`${cursor}T00:00:00Z`).getUTCDay() !== weekday) {
+		cursor = addDaysIso(cursor, 1);
 	}
-	while (cursor <= end) {
-		dates.push(cursor.toISOString().slice(0, 10));
-		cursor.setUTCDate(cursor.getUTCDate() + 7);
+	while (cursor <= endDate) {
+		dates.push(cursor);
+		cursor = addDaysIso(cursor, 7);
 	}
 	return dates;
 }

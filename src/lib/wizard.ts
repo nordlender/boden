@@ -130,6 +130,19 @@ export async function setItemsImage(itemIds: number[], imageUrl: string): Promis
 // wiping them would be silent, uninvited data loss.
 export async function setItemsProduct(itemIds: number[], productId: number): Promise<void> {
 	if (itemIds.length === 0) return;
+
+	// A product's variants are assumed all items or all sets, never a mix —
+	// see src/components/shop/VariantPicker.astro's comment, which enforces
+	// that assumption on the customer-facing picker. Enforced here too,
+	// rather than only defended against on the read side, so the invalid
+	// state can't be created in the first place.
+	const existingSet = await db.query.sets.findFirst({
+		where: (t, { eq: eqCol, and: andCol }) => andCol(eqCol(t.productId, productId), eqCol(t.archived, false)),
+	});
+	if (existingSet) {
+		throw new Error('This product already has sets assigned — a product cannot mix item and set variants.');
+	}
+
 	db.transaction((tx) => {
 		const current = tx
 			.select({ id: items.id, productId: items.productId })

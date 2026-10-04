@@ -55,7 +55,7 @@ member browses catalogue, adds items to cart
   → cart lives in a cookie only — no database row yet (§5)
 
 member goes to /reservation, picks pick-up/return dates
-  → live availability check against existing requested/active orders
+  → live availability check against existing requested/scheduled/active orders
   → may split off a mixed-availability item into its own order
   → submits → POST /api/orders/create
   → status: requested
@@ -66,7 +66,7 @@ member goes to /reservation, picks pick-up/return dates
 moderator reviews order on Review Order page (before retrieval) (planned)
   → sees member bio, hasUnpaidFees / userIsMember flags, requested items
   → clicks "Accept" or "Reject"
-  → status: requested (accept — unchanged, proceeds to retrieval below)
+  → status: scheduled (accept — proceeds to retrieval below)
   → status: rejected  (reject — moved to archive, rejectedReason recorded)
 
 moderator enters order number into Retrieve Order form (built, see §10)
@@ -561,7 +561,7 @@ declare namespace App {
 
 ### Step 0 — Review order (`/moderator/review/[id]`, route not finalized)
 
-Accept or reject a requested order **before** retrieval — see the lifecycle diagram above and `docs/moderator-review.md`. Accept leaves `status: requested` unchanged; reject sets `status: rejected` and records `rejectedReason`.
+Accept or reject a requested order **before** retrieval — see the lifecycle diagram above and `docs/moderator-review.md`. Accept sets `status: scheduled`; reject sets `status: rejected` and records `rejectedReason`.
 
 ### Step 1 — Retrieve order (`/moderator/retrieve`) — built
 
@@ -673,6 +673,8 @@ Daily database backup:
 # crontab -e
 0 3 * * * sqlite3 /path/to/data/rental.db ".backup /backups/rental-$(date +\%F).db"
 ```
+
+Admin-uploaded images live in `data/uploads/` (served at `/media/*`, not from `public/`, so they work without a rebuild). Back that directory up alongside the database, e.g. `rsync -a /path/to/data/uploads/ /backups/uploads/`.
 
 ---
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { vi } from 'vitest';
+import type { OrderStatus } from '../orderStatus';
 import {
 	acceptOrder,
 	confirmRetrieval,
@@ -68,7 +69,7 @@ async function seedOrder(opts: {
 	requestedQuantity?: number;
 	fromDate?: string;
 	toDate?: string;
-	status?: 'requested' | 'active' | 'returned' | 'rejected';
+	status?: OrderStatus;
 	acceptedAt?: Date | null;
 	rejectedAt?: Date | null;
 }) {
@@ -137,16 +138,17 @@ describe('getOrderIdByCode', () => {
 });
 
 describe('acceptOrder', () => {
-	it('accepts a pending order, setting acceptedAt', async () => {
+	it('accepts a pending order, setting acceptedAt and status to scheduled', async () => {
 		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID });
 		const result = await acceptOrder(orderId);
 		expect(result).toEqual({ ok: true });
 		const detail = await getOrderDetail(orderId);
 		expect(detail?.acceptedAt).toBeInstanceOf(Date);
+		expect(detail?.status).toBe('scheduled');
 	});
 
 	it('fails with not_pending_review for an order that is already accepted', async () => {
-		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, acceptedAt: new Date() });
+		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, status: 'scheduled', acceptedAt: new Date() });
 		expect(await acceptOrder(orderId)).toEqual({ ok: false, error: 'not_pending_review' });
 	});
 
@@ -171,14 +173,14 @@ describe('rejectOrder', () => {
 	});
 
 	it('fails with not_pending_review when already reviewed', async () => {
-		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, acceptedAt: new Date() });
+		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, status: 'scheduled', acceptedAt: new Date() });
 		expect(await rejectOrder(orderId, 'too late')).toEqual({ ok: false, error: 'not_pending_review' });
 	});
 });
 
 describe('confirmRetrieval', () => {
 	it('activates the order once every line matches its target', async () => {
-		const { orderId, orderItemId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, requestedQuantity: 3, acceptedAt: new Date() });
+		const { orderId, orderItemId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, requestedQuantity: 3, status: 'scheduled', acceptedAt: new Date() });
 		const result = await confirmRetrieval(orderId, 'moderator-1', [{ orderItemId, quantity: 3 }]);
 		expect(result).toEqual({ ok: true });
 		const detail = await getOrderDetail(orderId);
@@ -187,7 +189,7 @@ describe('confirmRetrieval', () => {
 	});
 
 	it('supports a reduced quantity for a flagged/adjusted line (per-item hand-out)', async () => {
-		const { orderId, orderItemId } = await seedOrder({ itemId: ITEM_ARCHIVED_ID, requestedQuantity: 2, acceptedAt: new Date() });
+		const { orderId, orderItemId } = await seedOrder({ itemId: ITEM_ARCHIVED_ID, requestedQuantity: 2, status: 'scheduled', acceptedAt: new Date() });
 		const result = await confirmRetrieval(orderId, 'moderator-1', [{ orderItemId, quantity: 0 }]);
 		expect(result).toEqual({ ok: true });
 	});
@@ -198,7 +200,7 @@ describe('confirmRetrieval', () => {
 	});
 
 	it('fails with quantity_exceeds_requested (defense-in-depth) when a submitted quantity exceeds requestedQuantity', async () => {
-		const { orderId, orderItemId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, requestedQuantity: 1, acceptedAt: new Date() });
+		const { orderId, orderItemId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, requestedQuantity: 1, status: 'scheduled', acceptedAt: new Date() });
 		expect(await confirmRetrieval(orderId, 'moderator-1', [{ orderItemId, quantity: 2 }])).toEqual({
 			ok: false,
 			error: 'quantity_exceeds_requested',
@@ -206,7 +208,7 @@ describe('confirmRetrieval', () => {
 	});
 
 	it('fails with moderator_not_found (defense-in-depth) instead of throwing when moderatorUserId has no matching users row', async () => {
-		const { orderId, orderItemId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, requestedQuantity: 1, acceptedAt: new Date() });
+		const { orderId, orderItemId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, requestedQuantity: 1, status: 'scheduled', acceptedAt: new Date() });
 		expect(await confirmRetrieval(orderId, 'no-such-user', [{ orderItemId, quantity: 1 }])).toEqual({
 			ok: false,
 			error: 'moderator_not_found',

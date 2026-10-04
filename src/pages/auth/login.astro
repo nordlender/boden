@@ -4,16 +4,9 @@
 // request here (src/middleware/index.ts) is read client-side below.
 export const prerender = true;
 
-import '../../styles/global.css';
+import HtmlShell from '../../layouts/HtmlShell.astro';
 ---
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Signing in…</title>
-	</head>
-	<body>
+<HtmlShell title="Signing in…" bodyClass="">
 		<!--
 			No visible login screen by design (issue #58) — this fires the bloc
 			sign-in redirect immediately on load instead of waiting for a click.
@@ -33,5 +26,4 @@ import '../../styles/global.css';
 			// type gap rather than pull in the whole next-auth package for types.
 			signIn('bloc', { callbackUrl: next } as Parameters<typeof signIn>[1]);
 		</script>
-	</body>
-</html>
+</HtmlShell>

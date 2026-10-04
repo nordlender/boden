@@ -4,10 +4,10 @@
 // so have no per-request cart cookie at render time. This is the HTML
 // partial the sidebar's client script swaps into `[data-cart-rows]`.
 import CartSidebarRow from './CartSidebarRow.astro';
-import type { CartItem } from '../../lib/cart';
+import type { CartLine } from '../../lib/cart';
 
 interface Props {
-	items: CartItem[];
+	items: CartLine[];
 }
 
 const { items } = Astro.props;

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { AstroCookies } from 'astro';
-import { getCart, setCart, addToCart, updateCartQuantity, removeFromCart, getCartLines } from '../cart';
+import { getCart, setCart, addToCart, updateCartQuantity, removeFromCart, getCartLines, findOvercommittedItems, overcommittedForLine, type CartLine } from '../cart';
 
 // getCartLines joins the cookie cart against the db (src/lib/cart.ts imports
 // ../db/client, which itself opens a fixed `./data/rental.db` file that
@@ -373,8 +373,8 @@ describe('getCartLines', () => {
         inStock: 1,
         label: 'M',
         children: [
-          { itemId: 1, productTitle: 'Test Rope', quantityPerSet: 1 },
-          { itemId: 2, productTitle: 'Test Rope', quantityPerSet: 2 },
+          { itemId: 1, productTitle: 'Test Rope', quantityPerSet: 1, stockCount: 5 },
+          { itemId: 2, productTitle: 'Test Rope', quantityPerSet: 2, stockCount: 2 },
         ],
       },
     ]);
@@ -411,5 +411,28 @@ describe('getCartLines', () => {
     expect(result).toHaveLength(2);
     expect('itemId' in result[0] && result[0].itemId).toBe(2);
     expect('setId' in result[1] && result[1].setId).toBe(1);
+  });
+});
+
+describe('findOvercommittedItems', () => {
+  const itemLine = (itemId: number, quantity: number, stockCount: number): CartLine => ({
+    itemId, quantity, stockCount, inStock: stockCount, productSlug: null, productTitle: `Item ${itemId}`, imageUrl: null, attributes: [],
+  });
+  const setLine = (quantity: number, children: { itemId: number; quantityPerSet: number; stockCount: number }[]): CartLine => ({
+    setId: 1, quantity, stockCount: 0, inStock: 0, productSlug: null, productTitle: 'Set', imageUrl: null, label: null,
+    children: children.map((c) => ({ ...c, productTitle: `Item ${c.itemId}` })),
+  });
+
+  it('totals an item across a loose line and a set that contains it', () => {
+    const lines = [itemLine(1, 2, 2), setLine(1, [{ itemId: 1, quantityPerSet: 1, stockCount: 2 }, { itemId: 2, quantityPerSet: 1, stockCount: 5 }])];
+    const result = findOvercommittedItems(lines);
+    expect([...result]).toEqual([[1, { productTitle: 'Item 1', needed: 3, stockCount: 2 }]]);
+    // Both lines contribute to the overcommitted item.
+    expect(overcommittedForLine(lines[0], result)).toHaveLength(1);
+    expect(overcommittedForLine(lines[1], result)).toHaveLength(1);
+  });
+
+  it('reports nothing when the combined cart fits what we own', () => {
+    expect(findOvercommittedItems([itemLine(1, 1, 2), setLine(1, [{ itemId: 1, quantityPerSet: 1, stockCount: 2 }])]).size).toBe(0);
   });
 });

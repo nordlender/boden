@@ -207,13 +207,19 @@ const todayIso = todayIsoInOslo();
 	const summary = document.querySelector<HTMLElement>('[data-range-summary]');
 	const maxRangeDays = calendar ? Number(calendar.dataset.maxRangeDays || '') || undefined : undefined;
 
-	if (calendar) {
-		let availableDates: Set<string>;
+	// A data-* attribute holding a JSON array of YYYY-MM-DD dates, as a Set
+	// (empty if the attribute is missing or malformed).
+	function parseDateSet(json: string | undefined): Set<string> {
 		try {
-			availableDates = new Set(JSON.parse(calendar.dataset.availablePickupDates ?? '[]'));
+			const parsed: unknown = JSON.parse(json ?? '[]');
+			return new Set(Array.isArray(parsed) ? parsed.filter((d): d is string => typeof d === 'string') : []);
 		} catch {
-			availableDates = new Set();
+			return new Set();
 		}
+	}
+
+	if (calendar) {
+		const availableDates = parseDateSet(calendar.dataset.availablePickupDates);
 
 		// Cally hands `getDayParts` a local-midnight Date for each rendered
 		// cell — deriving its date string via toISOString() (UTC) shifted the
@@ -223,12 +229,7 @@ const todayIso = todayIsoInOslo();
 		// viewer's own device timezone.
 		calendar.getDayParts = (date) => (availableDates.has(dateToIsoInOslo(date)) ? 'pickup-available' : '');
 
-		let unavailableDates: Set<string>;
-		try {
-			unavailableDates = new Set(JSON.parse(calendar.dataset.unavailableDates ?? '[]'));
-		} catch {
-			unavailableDates = new Set();
-		}
+		const unavailableDates = parseDateSet(calendar.dataset.unavailableDates);
 		// Same Oslo-anchored date matching as getDayParts above.
 		if (unavailableDates.size > 0) calendar.isDateDisallowed = (date) => unavailableDates.has(dateToIsoInOslo(date));
 	}

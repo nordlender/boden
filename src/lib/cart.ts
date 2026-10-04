@@ -54,6 +54,9 @@ export interface CartSetChild {
 	itemId: number;
 	productTitle: string;
 	quantityPerSet: number;
+	// The component item's own total owned — lets the cart total demand per
+	// item across lines (see findOvercommittedItems).
+	stockCount: number;
 }
 
 // Display shape for a cart line pointing at a set. stockCount/inStock are
@@ -76,6 +79,41 @@ export interface CartSetLine {
 }
 
 export type CartLine = CartItemLine | CartSetLine;
+
+export interface OvercommittedItem {
+	productTitle: string;
+	needed: number;
+	stockCount: number;
+}
+
+/**
+ * Items the cart as a whole asks for more of than we own, keyed by itemId —
+ * totalled across every line, so a loose item plus a set containing it are
+ * counted together (as checkout does). These can never be reserved for any
+ * date, unlike items that are merely booked.
+ */
+export function findOvercommittedItems(lines: CartLine[]): Map<number, OvercommittedItem> {
+	const totals = new Map<number, OvercommittedItem>();
+	const add = (itemId: number, productTitle: string, quantity: number, stockCount: number) => {
+		const current = totals.get(itemId) ?? { productTitle, needed: 0, stockCount };
+		current.needed += quantity;
+		totals.set(itemId, current);
+	};
+	for (const line of lines) {
+		if ('setId' in line) {
+			for (const child of line.children) add(child.itemId, child.productTitle, child.quantityPerSet * line.quantity, child.stockCount);
+		} else {
+			add(line.itemId, line.productTitle, line.quantity, line.stockCount);
+		}
+	}
+	return new Map([...totals].filter(([, item]) => item.needed > item.stockCount));
+}
+
+/** The overcommitted items a given cart line contributes to. */
+export function overcommittedForLine(line: CartLine, overcommitted: Map<number, OvercommittedItem>): OvercommittedItem[] {
+	const itemIds = 'setId' in line ? line.children.map((child) => child.itemId) : [line.itemId];
+	return [...new Set(itemIds)].flatMap((id) => overcommitted.get(id) ?? []);
+}
 
 export function getCart(cookies: AstroCookies): CartEntry[] {
 	try {
@@ -217,6 +255,7 @@ async function buildSetLines(entries: { setId: number; quantity: number }[]): Pr
 					itemId: child.itemId,
 					productTitle: child.productTitle,
 					quantityPerSet: child.quantity,
+					stockCount: child.stockCount,
 				})),
 			};
 		})

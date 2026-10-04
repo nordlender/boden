@@ -2,7 +2,7 @@
 // Owns the "choose a variant, add to cart" form on the product page: the
 // variant select (when the product has more than one), the resulting
 // attribute list (items only), a set's automatically-derived "Includes"
-// breakdown, stock message, quantity cap, and add-to-cart button — plus the
+// breakdown, quantity cap, and add-to-cart button — plus the
 // client-side script that keeps all of those (and the product image
 // rendered by the page above this form) in sync as the selected variant
 // changes, including a `?item=<id>`/`?set=<id>` preselect from an ItemCard
@@ -30,7 +30,6 @@ import type { SetComponentDisplay } from '../../lib/sets';
 import Button from '../ui/Button.astro';
 import AppIcon from '../icons/AppIcon.astro';
 import { formatAttributes } from '../../lib/attributes';
-import { stockMessage } from '../../lib/stockMessage';
 
 interface Props {
 	items: ShopItem[];
@@ -43,20 +42,20 @@ interface Props {
 const { items, sets, productSlug, thumbnailImageUrl, attributeKeyOrder } = Astro.props;
 
 type Variant =
-	| { kind: 'item'; id: number; imageUrl: string | null; inStock: number; stockCount: number; attributes: { key: string; value: string }[] }
-	| { kind: 'set'; id: number; imageUrl: string | null; inStock: number; stockCount: number; label: string | null; componentDisplay: SetComponentDisplay[] };
+	| { kind: 'item'; id: number; imageUrl: string | null; stockCount: number; attributes: { key: string; value: string }[] }
+	| { kind: 'set'; id: number; imageUrl: string | null; stockCount: number; label: string | null; componentDisplay: SetComponentDisplay[] };
 
 const variantKind: 'item' | 'set' = items.length > 0 ? 'item' : 'set';
 const variants: Variant[] =
 	variantKind === 'item'
-		? items.map((item): Variant => ({ kind: 'item', id: item.id, imageUrl: item.imageUrl, inStock: item.inStock, stockCount: item.stockCount, attributes: item.attributes }))
-		: sets.map((set): Variant => ({ kind: 'set', id: set.id, imageUrl: set.imageUrl, inStock: set.inStock, stockCount: set.stockCount, label: set.label, componentDisplay: set.componentDisplay }));
+		? items.map((item): Variant => ({ kind: 'item', id: item.id, imageUrl: item.imageUrl, stockCount: item.stockCount, attributes: item.attributes }))
+		: sets.map((set): Variant => ({ kind: 'set', id: set.id, imageUrl: set.imageUrl, stockCount: set.stockCount, label: set.label, componentDisplay: set.componentDisplay }));
 const initialVariant = variants[0] ?? null;
 // The quantity cap is how many exist, not how many are free today — a
-// member can reserve for a later date when more are back (see
-// src/lib/stockMessage.ts). The reservation step checks the chosen dates.
+// member can reserve for a later date when more are back. Availability per
+// day is shown by the calendar below (ProductAvailability.astro); the
+// reservation step checks the chosen dates.
 const initialMax = Math.max(initialVariant?.stockCount ?? 1, 1);
-const initialMessage = stockMessage(initialVariant?.inStock ?? 0, initialVariant?.stockCount ?? 0);
 
 function optionLabel(variant: Variant): string {
 	const text = variant.kind === 'item' ? formatAttributes(variant.attributes) : variant.label;
@@ -104,13 +103,12 @@ function optionLabel(variant: Variant): string {
 								data-kind={variant.kind}
 								data-id={variant.id}
 								data-image={variant.imageUrl ?? thumbnailImageUrl ?? ''}
-								data-stock={variant.inStock}
 								data-total={variant.stockCount}
 								data-attributes={variant.kind === 'item' ? JSON.stringify(variant.attributes) : '[]'}
 								data-component-display={variant.kind === 'set' ? JSON.stringify(variant.componentDisplay) : '[]'}
 							>
 								{variant.kind === 'set' ? `Set — ${label}` : label}
-								{variant.stockCount <= 0 ? ' (not available)' : variant.inStock <= 0 ? ' (booked today)' : ''}
+								{variant.stockCount <= 0 ? ' (not available)' : ''}
 							</option>
 						);
 					})}
@@ -169,8 +167,6 @@ function optionLabel(variant: Variant): string {
 		</div>
 	</div>
 
-	<p data-stock-message class:list={['text-sm font-medium', initialMessage.className]}>{initialMessage.text}</p>
-
 	<div class="flex items-center gap-3">
 		{/* Stepper's height (h-11) and count text (text-base) are pinned to
 			Button's `lg` size (see sizeClasses in lib/button-styles.ts) rather
@@ -207,9 +203,7 @@ function optionLabel(variant: Variant): string {
 </form>
 
 <script>
-	import { stockMessage } from '../../lib/stockMessage';
-
-	// Keeps the image, stock message, quantity cap, attribute list, and
+	// Keeps the image, quantity cap, attribute list, and
 	// "Includes" breakdown in sync with whichever variant is selected —
 	// including a `?item=<id>`/`?set=<id>` preselect from an ItemCard link,
 	// applied here rather than server-side since the product page is
@@ -235,7 +229,6 @@ function optionLabel(variant: Variant): string {
 	const select = document.querySelector<HTMLSelectElement>('[data-variant-select]');
 	const image = document.querySelector<HTMLImageElement>('[data-product-image]');
 	const imagePlaceholder = document.querySelector<HTMLElement>('[data-product-image-placeholder]');
-	const stockMessageEl = document.querySelector<HTMLElement>('[data-stock-message]');
 	const quantityInput = document.querySelector<HTMLInputElement>('[data-quantity-input]');
 	const quantityDisplay = document.querySelector<HTMLElement>('[data-quantity-display]');
 	const quantityIncrement = document.querySelector<HTMLButtonElement>('[data-quantity-increment]');
@@ -366,7 +359,6 @@ function optionLabel(variant: Variant): string {
 	}
 
 	function applyOption(option: HTMLOptionElement) {
-		const stock = Number(option.dataset.stock ?? '0');
 		const total = Number(option.dataset.total ?? '0');
 		const imageUrl = option.dataset.image ?? '';
 		const kind = option.dataset.kind;
@@ -384,11 +376,6 @@ function optionLabel(variant: Variant): string {
 			}
 		}
 
-		if (stockMessageEl) {
-			const message = stockMessage(stock, total);
-			stockMessageEl.textContent = message.text;
-			stockMessageEl.className = `text-sm font-medium ${message.className}`;
-		}
 
 		if (quantityInput) {
 			quantityInput.dataset.max = String(Math.max(total, 1));

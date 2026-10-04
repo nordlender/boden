@@ -20,14 +20,14 @@ function parseYesNo(value: FormDataEntryValue | null): boolean | null {
 
 export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => {
   // Not covered by src/middleware/index.ts's route-prefix gate (that only
-  // matches /cart, /checkout, /orders — not /api/...), so check auth here,
+  // matches /reservation, /checkout, /orders — not /api/...), so check auth here,
   // same as docs/rental-shop.md §9's confirm.ts/return.ts examples.
   const authError = requireUser(locals);
   if (authError) return authError;
 
   const cart = getCart(cookies);
   if (cart.length === 0) {
-    return redirect('/cart?error=empty_cart');
+    return redirect('/');
   }
 
   const form = await request.formData();
@@ -115,9 +115,9 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     // resolve for locals.user.id, which upsertUser guarantees exists in
     // normal operation. See orders.ts's createOrder/createSplitOrders.
     if (result.error === 'user_not_found') {
-      return redirect('/cart?error=account_not_found');
+      return redirect('/reservation?error=account_not_found');
     }
-    return redirect('/cart?error=empty_cart');
+    return redirect('/');
   }
 
   setCart(cookies, []);

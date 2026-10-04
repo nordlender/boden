@@ -107,7 +107,7 @@ export function addToCart(cookies: AstroCookies, entry: CartEntry) {
 }
 
 // Sets a line's quantity outright (unlike addToCart, which adds to whatever
-// is already there) — used by the /cart review page's per-row quantity
+// is already there) — used by the cart sidebar's per-row quantity
 // field. A quantity <= 0 removes the line entirely rather than storing a
 // zero/negative entry.
 export function updateCartQuantity(cookies: AstroCookies, ref: EntryRef, quantity: number) {

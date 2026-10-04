@@ -1,12 +1,12 @@
 ---
 export const prerender = false;
 
-import BaseLayout from '../layouts/BaseLayout.astro';
-import ReservationForm from '../components/reservation/ReservationForm.astro';
-import { getCartLines } from '../lib/cart';
-import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
-import { getMaxRentalDays } from '../lib/rental-policy';
-import { todayIsoInOslo } from '../lib/dates';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ReservationForm from '../../components/reservation/ReservationForm.astro';
+import { getCartLines } from '../../lib/cart';
+import { getUpcomingAvailablePickupDates } from '../../lib/pickupDays';
+import { getMaxRentalDays } from '../../lib/rental-policy';
+import { todayIsoInOslo } from '../../lib/dates';
 import { getSession } from 'auth-astro/server';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
@@ -14,7 +14,7 @@ const cartLines = await getCartLines(Astro.cookies);
 const session = await getSession(Astro.request);
 
 if (cartLines.length === 0) {
-	return Astro.redirect('/cart');
+	return Astro.redirect('/');
 }
 
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.

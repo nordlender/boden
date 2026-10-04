@@ -1,4 +1,4 @@
-// Also gated by src/middleware/index.ts's MOD_ROUTE_PREFIXES — see index.ts's
+// Also gated by src/middleware/prefixes.ts's ROUTE_RULES — see index.ts's
 // sibling route for why this inline check stays anyway.
 
 import type { APIRoute } from 'astro';

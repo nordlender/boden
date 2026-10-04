@@ -1,4 +1,4 @@
-// Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES — defense-in-depth.
+// Also gated by src/middleware/prefixes.ts's ROUTE_RULES — defense-in-depth.
 
 import type { APIRoute } from 'astro';
 import { deleteRecurringRule } from '../../../../../lib/pickupDays';

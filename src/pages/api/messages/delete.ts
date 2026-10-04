@@ -1,4 +1,4 @@
-import { isModerator } from '../../../lib/auth';
+import { hasRole } from '../../../lib/auth';
 import { deleteMessage } from '../../../lib/messages';
 import { withMessageIdAction } from '../../../lib/messages-http';
 
@@ -7,7 +7,7 @@ import { withMessageIdAction } from '../../../lib/messages-http';
 // issue #225 and the messages.authorId comment in src/db/schema.ts). A
 // non-moderator falls through both checks and is denied.
 export const POST = withMessageIdAction(deleteMessage, (locals, message) => {
-	if (locals.user?.role === 'admin') return null;
-	if (isModerator(locals.user?.role) && message.authorId !== null && message.authorId === locals.user?.id) return null;
+	if (hasRole(locals.user?.role, 'admin')) return null;
+	if (hasRole(locals.user?.role, 'moderator') && message.authorId !== null && message.authorId === locals.user?.id) return null;
 	return new Response('Forbidden', { status: 403 });
 });

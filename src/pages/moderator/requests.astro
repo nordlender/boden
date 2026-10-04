@@ -1,8 +1,8 @@
 ---
 // Review-stage entry point: every order still pending moderator review,
 // soonest pick-up date first — see src/pages/admin/orders.astro for the
-// OrdersTable pattern this mirrors. Gated by src/middleware/index.ts
-// (MOD_ROUTE_PREFIXES via /moderator).
+// OrdersTable pattern this mirrors. Gated by src/middleware/prefixes.ts
+// (ROUTE_RULES via /moderator).
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
 import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';

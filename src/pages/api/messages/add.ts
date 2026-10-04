@@ -4,7 +4,7 @@ import { requireModerator, safeRedirectTarget } from '../../../lib/wizard-http';
 
 export const POST: APIRoute = async ({ request, locals, redirect, url }) => {
 	// Defense-in-depth: /api/messages/add is also in
-	// src/middleware/prefixes.ts's MOD_ROUTE_PREFIXES, but this inline check
+	// src/middleware/prefixes.ts's ROUTE_RULES, but this inline check
 	// stays regardless, same pattern as the /api/wizard/* and
 	// /api/pickup-days/* routes.
 	const denied = requireModerator(locals);

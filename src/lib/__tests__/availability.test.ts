@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { addDaysIso, daysInclusive, getAvailableForRange, getClaims, getDailyAvailability, getUnmetDays, occupiedByDay, setDailyAvailability } from '../availability';
+import { addDaysIso, daysInclusive, getAvailableForRange, getClaims, getDailyAvailability, getHandedOut, getRealAvailability, getUnmetDays, occupiedByDay, setDailyAvailability } from '../availability';
 
 // Fixture: item 1 (stock 4), item 2 (stock 2). Orders below are inserted in
 // the vi.mock factory so the module under test sees the seeded db.
@@ -127,6 +127,16 @@ describe('getUnmetDays', () => {
 		// Adding 2x item 2 makes every day unmet (the overdue order leaves 1).
 		expect(getUnmetDays([{ itemId: 1, quantity: 1 }, { itemId: 2, quantity: 2 }], TODAY, 2, { today: TODAY })).toEqual(['2026-03-10', '2026-03-11']);
 		expect(getUnmetDays([], TODAY, 2, { today: TODAY })).toEqual([]);
+	});
+});
+
+describe('real availability (getHandedOut / getRealAvailability)', () => {
+	it('counts only units handed out on active orders, whatever their dates', () => {
+		// Item 1: active order 3 handed out 1 of 3; requested/scheduled orders
+		// haven't left the shelf and the returned one is back.
+		// Item 2: the overdue active order still has 1 out; rejected counts nothing.
+		expect(getHandedOut([1, 2])).toEqual(new Map([[1, 1], [2, 1]]));
+		expect(getRealAvailability([1, 2, 999])).toEqual(new Map([[1, 3], [2, 1], [999, 0]]));
 	});
 });
 

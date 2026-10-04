@@ -1,7 +1,7 @@
 import { db } from '../db/client';
-import { daysInclusive, getAvailableForRange, getStockCounts, type QueryExecutor } from './availability';
+import { getAvailableForRange, getStockCounts, type QueryExecutor } from './availability';
 import { getMaxRentalDays } from './rental-policy';
-import { todayIsoInOslo } from './dates';
+import { daysInclusive, isIsoDate, todayIsoInOslo } from './dates';
 
 // Reservation page backend (docs/TASKS.md "Reservation"). Orders carry a
 // date range (src/db/schema.ts's orders.fromDate/toDate, both YYYY-MM-DD,
@@ -27,7 +27,7 @@ export interface ReservationDateRange {
 
 export function isValidDateRange(range: Partial<ReservationDateRange>): range is ReservationDateRange {
 	if (!range.from || !range.to) return false;
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(range.from) || !/^\d{4}-\d{2}-\d{2}$/.test(range.to)) return false;
+	if (!isIsoDate(range.from) || !isIsoDate(range.to)) return false;
 	// The calendar's `min` attribute (ReservationCalendar.astro) only stops a
 	// past date client-side — this is the server-side backstop against a
 	// direct POST bypassing it. "Today" is always Europe/Oslo's today (the

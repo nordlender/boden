@@ -1,79 +1,62 @@
 import { describe, it, expect } from 'vitest';
-import {
-  MEMBER_ROUTE_PREFIXES,
-  MOD_ROUTE_PREFIXES,
-  ADMIN_ROUTE_PREFIXES,
-  matchesPrefix,
-  isApiRoute,
-} from '../prefixes';
-
-describe('ADMIN_ROUTE_PREFIXES', () => {
-  it('includes /api/wizard as defense-in-depth for the wizard write routes', () => {
-    expect(ADMIN_ROUTE_PREFIXES).toContain('/api/wizard');
-  });
-
-  it('still includes /admin', () => {
-    expect(ADMIN_ROUTE_PREFIXES).toContain('/admin');
-  });
-});
+import { requiredRole, matchesPrefix, isApiRoute } from '../prefixes';
 
 describe('matchesPrefix', () => {
-  it('matches an exact prefix', () => {
-    expect(matchesPrefix('/admin', ADMIN_ROUTE_PREFIXES)).toBe(true);
-  });
-
-  it('matches a nested wizard write route', () => {
-    expect(matchesPrefix('/api/wizard/items', ADMIN_ROUTE_PREFIXES)).toBe(true);
+  it.each([
+    ['/admin', '/admin', 'an exact prefix'],
+    ['/api/wizard/items', '/api/wizard', 'a nested wizard write route'],
+    ['/api/products/[id]/update', '/api/products', 'a nested product write route'],
+  ])('matches %s against %s (%s)', (route, prefix) => {
+    expect(matchesPrefix(route, prefix)).toBe(true);
   });
 
   it('does not match a route that merely shares the prefix string without a boundary', () => {
-    // e.g. a hypothetical /api/wizardry route should not be swept in by the
-    // /api/wizard prefix.
-    expect(matchesPrefix('/api/wizardry', ADMIN_ROUTE_PREFIXES)).toBe(false);
+    expect(matchesPrefix('/api/wizardry', '/api/wizard')).toBe(false);
+  });
+});
+
+describe('requiredRole', () => {
+  it('requires admin for admin routes', () => {
+    expect(requiredRole('/admin')).toBe('admin');
+    expect(requiredRole('/api/wizard/items')).toBe('admin');
+    expect(requiredRole('/api/admin/pickup-days')).toBe('admin');
+    expect(requiredRole('/api/admin/images')).toBe('admin');
+    expect(requiredRole('/api/products/create')).toBe('admin');
+    expect(requiredRole('/api/products/[id]/update')).toBe('admin');
   });
 
-  it('does not match unrelated routes', () => {
-    expect(matchesPrefix('/catalogue', ADMIN_ROUTE_PREFIXES)).toBe(false);
-    expect(matchesPrefix('/catalogue', MEMBER_ROUTE_PREFIXES)).toBe(false);
-    expect(matchesPrefix('/catalogue', MOD_ROUTE_PREFIXES)).toBe(false);
+  it('requires moderator for moderator routes, incl. messages add/delete (#225)', () => {
+    expect(requiredRole('/moderator/orders/[id]')).toBe('moderator');
+    expect(requiredRole('/api/moderator/retrieve')).toBe('moderator');
+    expect(requiredRole('/api/messages/add')).toBe('moderator');
+    expect(requiredRole('/api/messages/delete')).toBe('moderator');
   });
 
-  it('still matches the pre-existing member and moderator prefixes', () => {
-    expect(matchesPrefix('/cart', MEMBER_ROUTE_PREFIXES)).toBe(true);
-    expect(matchesPrefix('/checkout/confirm', MEMBER_ROUTE_PREFIXES)).toBe(true);
-    expect(matchesPrefix('/orders/123', MEMBER_ROUTE_PREFIXES)).toBe(true);
-    expect(matchesPrefix('/moderator/orders/[id]', MOD_ROUTE_PREFIXES)).toBe(true);
+  it('keeps messages pin/unpin admin-only', () => {
+    expect(requiredRole('/api/messages/pin')).toBe('admin');
+    expect(requiredRole('/api/messages/unpin')).toBe('admin');
   });
 
-  it('matches /api/moderator/* routes (defense-in-depth for moderator write routes)', () => {
-    expect(matchesPrefix('/api/moderator/retrieve', MOD_ROUTE_PREFIXES)).toBe(true);
-    expect(matchesPrefix('/api/moderator/orders/[id]/accept', MOD_ROUTE_PREFIXES)).toBe(true);
+  it('requires member for signed-in routes', () => {
+    expect(requiredRole('/cart')).toBe('member');
+    expect(requiredRole('/checkout/confirm')).toBe('member');
+    expect(requiredRole('/orders/123')).toBe('member');
+    expect(requiredRole('/api/orders')).toBe('member');
   });
 
-  it('matches /api/messages/add and /api/messages/delete as moderator routes (issue #225)', () => {
-    expect(matchesPrefix('/api/messages/add', MOD_ROUTE_PREFIXES)).toBe(true);
-    expect(matchesPrefix('/api/messages/delete', MOD_ROUTE_PREFIXES)).toBe(true);
-    expect(matchesPrefix('/api/messages/add', ADMIN_ROUTE_PREFIXES)).toBe(false);
-    expect(matchesPrefix('/api/messages/delete', ADMIN_ROUTE_PREFIXES)).toBe(false);
-  });
-
-  it('matches /api/messages/pin and /api/messages/unpin as admin-only routes', () => {
-    expect(matchesPrefix('/api/messages/pin', ADMIN_ROUTE_PREFIXES)).toBe(true);
-    expect(matchesPrefix('/api/messages/unpin', ADMIN_ROUTE_PREFIXES)).toBe(true);
-    expect(matchesPrefix('/api/messages/pin', MOD_ROUTE_PREFIXES)).toBe(false);
-    expect(matchesPrefix('/api/messages/unpin', MOD_ROUTE_PREFIXES)).toBe(false);
+  it('returns null for public routes', () => {
+    expect(requiredRole('/catalogue')).toBeNull();
+    expect(requiredRole('/api/wizardry')).toBeNull();
   });
 });
 
 describe('isApiRoute', () => {
-  it('identifies /api/wizard/* routes as API routes', () => {
+  it('identifies API routes', () => {
     expect(isApiRoute('/api/wizard/items')).toBe(true);
-    expect(isApiRoute('/api/wizard/set-product')).toBe(true);
   });
 
   it('does not treat page routes as API routes', () => {
     expect(isApiRoute('/admin')).toBe(false);
     expect(isApiRoute('/cart')).toBe(false);
-    expect(isApiRoute('/moderator/orders/[id]')).toBe(false);
   });
 });

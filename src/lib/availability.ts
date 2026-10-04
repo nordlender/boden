@@ -1,6 +1,15 @@
-// Single source of truth for "how many of an item are available on a day".
+// Single source of truth for how many of an item are available. Two views:
 //
-// Model: an order is a time range, and every item on it is occupied for
+// - Scheduled availability (everything below except the last section): for
+//   each day, stockCount minus every order holding a claim on that day —
+//   including requested and scheduled orders whose items haven't been handed
+//   out yet. This is what members see (availability calendar) and what the
+//   reservation check and order insert enforce, so orders never overlap.
+// - Real availability (getRealAvailability): what's physically on the shelf
+//   right now — stockCount minus units handed out on active orders that
+//   haven't been returned. For admins/moderators to check against the shelf.
+//
+// Scheduled model: an order is a time range, and every item on it is occupied for
 // every day of that range (orders.fromDate..toDate, inclusive). An item's
 // availability on day D is its stockCount minus everything occupied on D.
 // Nothing is stored — every number (the shop's "available today", the
@@ -227,4 +236,39 @@ export function setDailyAvailability(
 	return Array.from({ length: days }, (_, i) =>
 		Math.max(0, Math.min(...components.map((c) => Math.floor((dailyByItem.get(c.itemId)?.[i] ?? 0) / c.quantity)))),
 	);
+}
+
+// ---------------------------------------------------------------------------
+// Real availability — what's physically on the shelf right now.
+// ---------------------------------------------------------------------------
+
+/**
+ * Units physically out right now, per item (items with nothing out are
+ * absent): every active order's coalesce(retrievedQuantity,
+ * requestedQuantity), regardless of its dates — an active order has been
+ * handed out and not yet returned, overdue or not. Requested/scheduled
+ * orders haven't left the shelf, so they don't count here (they do in
+ * scheduled availability).
+ */
+export function getHandedOut(itemIds: number[], executor: QueryExecutor = db): Map<number, number> {
+	if (itemIds.length === 0) return new Map();
+	const rows = executor
+		.select({
+			itemId: orderItems.itemId,
+			out: sql<number>`sum(coalesce(${orderItems.retrievedQuantity}, ${orderItems.requestedQuantity}))`,
+		})
+		.from(orderItems)
+		.innerJoin(orders, eq(orderItems.orderId, orders.id))
+		.where(and(inArray(orderItems.itemId, [...new Set(itemIds)]), eq(orders.status, 'active')))
+		.groupBy(orderItems.itemId)
+		.all();
+	return new Map(rows.map((row) => [row.itemId, row.out]));
+}
+
+/** Units physically on the shelf right now (stockCount − handed out), per item. */
+export function getRealAvailability(itemIds: number[], executor: QueryExecutor = db): Map<number, number> {
+	const uniqueIds = [...new Set(itemIds)];
+	const stock = getStockCounts(uniqueIds, executor);
+	const out = getHandedOut(uniqueIds, executor);
+	return new Map(uniqueIds.map((id) => [id, (stock.get(id) ?? 0) - (out.get(id) ?? 0)]));
 }

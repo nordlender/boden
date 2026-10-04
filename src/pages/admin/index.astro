@@ -3,7 +3,7 @@ export const prerender = false;
 
 // Admin hub — landing page for the /admin/* section, mirroring
 // /moderator/index.astro's role as a landing page. Gated by
-// src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin). The message
+// src/middleware/prefixes.ts (ROUTE_RULES via /admin). The message
 // board here is the same shared MessageTable moderators also post to and
 // see (see issue #151, #225) — this page adds `isAdmin` (pin/delete any
 // message) plus its own "Message" trigger + modal for posting.

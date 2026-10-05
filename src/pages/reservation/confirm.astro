@@ -151,7 +151,10 @@ const hiddenFields: Record<string, string> = {
 	// reservation form the member just came from. Falls back to the plain
 	// /reservation link (e.g. page opened directly).
 	document.querySelector<HTMLAnchorElement>('[data-back-link]')?.addEventListener('click', (event) => {
-		if (history.length > 1) {
+		// Only when we really came from the reservation form (the form POST
+		// sends it as referrer) — otherwise history.back() could leave the flow.
+		const cameFromForm = document.referrer !== '' && new URL(document.referrer).pathname === '/reservation';
+		if (cameFromForm && history.length > 1) {
 			event.preventDefault();
 			history.back();
 		}

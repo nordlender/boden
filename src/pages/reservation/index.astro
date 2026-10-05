@@ -13,11 +13,6 @@ import { getSession } from 'auth-astro/server';
 const cartLines = await getCartLines(Astro.cookies);
 const session = await getSession(Astro.request);
 
-const emptyCartMessage =
-	cartLines.length === 0 && Astro.url.searchParams.get('error') === 'empty_cart'
-		? 'None of the items in your cart can be reserved any more, so the order was not placed.'
-		: null;
-
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
 const todayIso = todayIsoInOslo();
 const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
@@ -35,9 +30,13 @@ const errorMessage =
 				? 'You must accept the disclaimer before submitting the order.'
 				: error === 'account_not_found'
 					? 'We could not find your account — please sign out and back in, then try again.'
-					: error === 'order_failed'
-						? 'Something went wrong while placing your order — please review your items and dates and try again.'
-						: null;
+					: error === 'cart_empty'
+						? 'Your cart is empty, so no order was placed.'
+						: error === 'items_unrentable'
+							? 'None of the items in your cart can be reserved any more, so the order was not placed.'
+							: error === 'order_failed'
+								? 'Something went wrong while placing your order — please review your items and dates and try again.'
+								: null;
 ---
 
 <BaseLayout title="Reservation dates">
@@ -45,7 +44,7 @@ const errorMessage =
 		<h1 class="mb-2 text-2xl font-semibold tracking-tight text-text">Reserve your items</h1>
 		{cartLines.length > 0 && <p class="mb-6 text-sm text-text-muted">Choose your dates, then review your items and submit your request.</p>}
 
-		{(emptyCartMessage ?? errorMessage) && <p class="mb-6 rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">{emptyCartMessage ?? errorMessage}</p>}
+		{errorMessage && <p class="mb-6 rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">{errorMessage}</p>}
 
 		{cartLines.length === 0 && (
 			<p class="text-sm text-text-muted">Your cart is empty. <a href="/" class="font-medium text-accent-text hover:underline">Continue shopping</a></p>

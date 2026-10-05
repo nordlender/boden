@@ -27,7 +27,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
 
   const cart = getCart(cookies);
   if (cart.length === 0) {
-    return redirect('/reservation?error=empty_cart');
+    return redirect('/reservation?error=cart_empty');
   }
 
   const form = await request.formData();
@@ -117,9 +117,10 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     if (result.error === 'user_not_found') {
       return redirect('/reservation?error=account_not_found');
     }
-    // 'empty_cart' here means every line was dropped as unrentable (archived
-    // item/unpublished product) — see orders.ts.
-    return redirect(`/reservation?error=${result.error === 'empty_cart' ? 'empty_cart' : 'order_failed'}`);
+    // 'empty_cart' from createOrder means every line was dropped as
+    // unrentable (archived item/unpublished product) — see orders.ts. Distinct
+    // from the 'cart_empty' check above, where the cart cookie itself was empty.
+    return redirect(`/reservation?error=${result.error === 'empty_cart' ? 'items_unrentable' : 'order_failed'}`);
   }
 
   setCart(cookies, []);

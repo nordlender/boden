@@ -12,7 +12,10 @@ import type { Role } from './auth';
 //  3. Dev users only get roles via getRole() while isDevLoginEnabled() is
 //     true; their synthetic ids are never consulted otherwise.
 
-export const DEV_LOGIN_PROVIDER_ID = 'dev-login';
+// Must be exactly 'credentials': auth-astro's client signIn() only posts to
+// /callback/<id> (the credentials flow) for that id; any other id is treated as
+// OAuth and bounces to /api/auth/signin.
+export const DEV_LOGIN_PROVIDER_ID = 'credentials';
 
 // Synthetic users: ids are deliberately non-numeric so they can't collide
 // with bloc's numeric ids (see upsertUser.ts's id-scheme heuristic).

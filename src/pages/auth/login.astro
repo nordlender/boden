@@ -58,7 +58,7 @@ const devLogin = isDevLoginEnabled();
 
 			if (document.querySelector('[data-dev-login="1"]')) {
 				document.querySelectorAll<HTMLButtonElement>('[data-dev-role]').forEach((btn) => {
-					btn.addEventListener('click', () => signIn('dev-login', signInOptions({ role: btn.dataset.devRole })));
+					btn.addEventListener('click', () => signIn('credentials', signInOptions({ role: btn.dataset.devRole })));
 				});
 				document.querySelector('[data-bloc-login]')?.addEventListener('click', () => signIn('bloc', signInOptions({})));
 			} else {

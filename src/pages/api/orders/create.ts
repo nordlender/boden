@@ -34,13 +34,6 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const contactEmail = form.get('email')?.toString().trim() ?? '';
   const contactMobile = form.get('mobile')?.toString().trim() || null;
 
-  // Snapshot of bloc's fee/membership status (see schema.ts's
-  // orders.hasUnpaidFees/userIsMember doc comment), fetched server-side from
-  // GetMemberFeeStatus (src/lib/blocFeeStatus.ts) at submit time — never taken
-  // from the posted form, whose readonly inputs a member could forge. null
-  // (Unknown) if the call failed.
-  const { hasUnpaidFees, userIsMember } = await fetchOwnMemberFeeStatus(request);
-
   // Every submitter must accept the liability disclaimer (see #134). Enforced
   // here rather than trusting the form's `required` attribute; the acceptance
   // timestamp is persisted on the order for moderators to see.
@@ -48,6 +41,14 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   if (!disclaimerAccepted) {
     return redirect('/reservation?error=disclaimer_required');
   }
+
+  // Snapshot of bloc's fee/membership status (see schema.ts's
+  // orders.hasUnpaidFees/userIsMember doc comment), fetched server-side from
+  // GetMemberFeeStatus (src/lib/blocFeeStatus.ts) at submit time — never taken
+  // from the posted form, whose readonly inputs a member could forge. null
+  // (Unknown) if the call failed. After the cheap validation redirects so
+  // those never wait on bloc.
+  const { hasUnpaidFees, userIsMember } = await fetchOwnMemberFeeStatus(request);
 
   // Populated by the reservation page's split-order action when the member
   // moves one or more mixed-availability lines (items or sets) into their

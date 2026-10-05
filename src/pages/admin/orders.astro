@@ -38,6 +38,13 @@ const rows: OrdersTableRow[] = allOrders.map((order) => ({
 		requestedQuantity: oi.requestedQuantity,
 	})),
 }));
+
+// There's no admin order detail page yet, so "View order" links to the
+// moderator pages (admins can access them), which are keyed by order id:
+// the review page for pending requests, the order hub for everything else.
+const targetByCode = new Map(
+	allOrders.map((o) => [o.orderCode, `/moderator/${o.status === 'requested' ? 'review' : 'retrieve'}/${o.id}`]),
+);
 ---
 <AdminLayout title="Orders">
 	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
@@ -76,6 +83,6 @@ const rows: OrdersTableRow[] = allOrders.map((order) => ({
 			<OrdersLayoutToggle />
 		</div>
 
-		<OrdersTable orders={rows} viewHref={(code: string) => `/admin/orders/${code}`} emptyMessage="No orders match this filter." />
+		<OrdersTable orders={rows} viewHref={(code: string) => targetByCode.get(code) ?? '/moderator/retrieve'} emptyMessage="No orders match this filter." />
 	</div>
 </AdminLayout>

@@ -62,6 +62,16 @@ credentials, the OAuth redirect URI, a session secret, and a temporary
 comma-separated admin/moderator user-id allowlist (bloc has no role API
 yet).
 
+### Dev login (optional)
+
+To test admin/moderator pages without bloc credentials, set `DEV_LOGIN=1` in
+`.env` and restart the dev server. `/auth/login` then shows a role picker
+(admin / board / moderator / member) and a "DEV LOGIN" badge appears in the
+navbar. Dev users have synthetic ids (`dev-admin`, …) that don't need to be in
+`ADMIN_USER_IDS`/`MODERATOR_USER_IDS`. It works only under `astro dev`; a
+production build refuses to start if `DEV_LOGIN` is set. To go back to real
+bloc auth, remove `DEV_LOGIN` (or set it empty) and restart.
+
 ### Scripts
 
 | Command | Action |

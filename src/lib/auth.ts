@@ -1,4 +1,5 @@
 import { getToken } from '@auth/core/jwt';
+import { devRoleForUserId } from './devLogin';
 
 export type Role = 'admin' | 'board' | 'moderator' | 'member';
 
@@ -40,6 +41,9 @@ const MODERATOR_USER_IDS = parseIdAllowlist(import.meta.env.MODERATOR_USER_IDS);
 // Plain synchronous lookup; add caching back only once a real bloc role API
 // exists (#22).
 export function getRole(userId: string): Role {
+  // Synthetic dev-login ids (#270); null unless DEV_LOGIN is active in dev.
+  const devRole = devRoleForUserId(userId);
+  if (devRole) return devRole;
   if (ADMIN_USER_IDS.has(userId)) return 'admin';
   if (BOARD_USER_IDS.has(userId)) return 'board';
   if (MODERATOR_USER_IDS.has(userId)) return 'moderator';

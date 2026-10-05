@@ -12,6 +12,8 @@ interface ImportMetaEnv {
   // real role API exists. See src/lib/auth.ts's getRole().
   readonly ADMIN_USER_IDS: string;
   readonly BOARD_USER_IDS: string;
+  // Opt-in dev-only login (#270): '1' enables it, dev server only. See src/lib/devLogin.ts.
+  readonly DEV_LOGIN?: string;
   readonly MODERATOR_USER_IDS: string;
 }
 

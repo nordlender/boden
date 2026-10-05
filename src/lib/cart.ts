@@ -77,9 +77,38 @@ export interface CartSetLine {
 
 export type CartLine = CartItemLine | CartSetLine;
 
+// The cookie is client-controlled, so its contents are untrusted: keep only
+// entries with a positive-int itemId or setId (not both) and a positive-int
+// quantity, and merge duplicates of the same item/set, so downstream code
+// (createOrder's CHECK/unique constraints) can't be tripped by a tampered
+// value.
+export function normalizeCart(raw: unknown): CartEntry[] {
+	if (!Array.isArray(raw)) return [];
+
+	const isPositiveInt = (n: unknown): n is number => Number.isSafeInteger(n) && (n as number) > 0;
+
+	const merged = new Map<string, CartEntry>();
+	for (const entry of raw) {
+		if (typeof entry !== 'object' || entry === null) continue;
+		const { itemId, setId, quantity } = entry as Record<string, unknown>;
+		if (!isPositiveInt(quantity)) continue;
+
+		let clean: CartEntry;
+		if (isPositiveInt(itemId) && setId === undefined) clean = { itemId, quantity };
+		else if (isPositiveInt(setId) && itemId === undefined) clean = { setId, quantity };
+		else continue;
+
+		const key = entryKey(clean);
+		const existing = merged.get(key);
+		if (existing) existing.quantity += quantity;
+		else merged.set(key, clean);
+	}
+	return [...merged.values()];
+}
+
 export function getCart(cookies: AstroCookies): CartEntry[] {
 	try {
-		return JSON.parse(cookies.get('cart')?.value ?? '[]');
+		return normalizeCart(JSON.parse(cookies.get('cart')?.value ?? '[]'));
 	} catch {
 		return [];
 	}

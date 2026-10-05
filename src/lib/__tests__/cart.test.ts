@@ -190,6 +190,53 @@ describe('cart', () => {
     ]);
   });
 
+  it('getCart returns [] when the cookie JSON is not an array', () => {
+    for (const value of ['{"itemId":1,"quantity":1}', 'null', '5', '"x"']) {
+      fake.set('cart', value);
+      expect(getCart(cookies)).toEqual([]);
+    }
+  });
+
+  it('getCart drops entries with a missing/non-integer/non-positive id or quantity', () => {
+    fake.set(
+      'cart',
+      JSON.stringify([
+        { itemId: 1, quantity: 0 },
+        { itemId: 1, quantity: -2 },
+        { itemId: 1, quantity: 1.5 },
+        { itemId: 1, quantity: '2' },
+        { itemId: 0, quantity: 1 },
+        { itemId: 'a', quantity: 1 },
+        { itemId: 1, setId: 1, quantity: 1 },
+        { quantity: 1 },
+        null,
+        7,
+        { itemId: 3, quantity: 2 },
+        { setId: 4, quantity: 1 },
+      ]),
+    );
+    expect(getCart(cookies)).toEqual([
+      { itemId: 3, quantity: 2 },
+      { setId: 4, quantity: 1 },
+    ]);
+  });
+
+  it('getCart merges duplicate itemIds/setIds by summing quantities', () => {
+    fake.set(
+      'cart',
+      JSON.stringify([
+        { itemId: 1, quantity: 1 },
+        { setId: 1, quantity: 1 },
+        { itemId: 1, quantity: 2 },
+        { setId: 1, quantity: 4 },
+      ]),
+    );
+    expect(getCart(cookies)).toEqual([
+      { itemId: 1, quantity: 3 },
+      { setId: 1, quantity: 5 },
+    ]);
+  });
+
   it('setCart persists an empty cart', () => {
     addToCart(cookies, { itemId: 1, quantity: 1 });
     setCart(cookies, []);

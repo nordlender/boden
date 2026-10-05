@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Button from '../../components/ui/Button.astro';
+import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
+import ItemQtyLine from '../../components/ui/ItemQtyLine.astro';
 import { getCartLines, entryKey, type CartLine } from '../../lib/cart';
 import { isValidDateRange } from '../../lib/reservation';
 import { listPickupDaysOn } from '../../lib/pickupDays';
@@ -43,8 +45,13 @@ const splitKeys = new Set(
 const pickupWindows = await listPickupDaysOn(fromDate);
 
 const lineKey = (line: CartLine) => entryKey('setId' in line ? { setId: line.setId } : { itemId: line.itemId });
-const lineLabel = (line: CartLine) => ('setId' in line ? `${line.productTitle} (set)` : line.productTitle);
-const lineDetail = (line: CartLine) => ('setId' in line ? line.label : formatAttributes(line.attributes));
+// ItemQtyLine only renders "name × qty", so the variant (item attributes, or a
+// set's label) is folded into the name.
+const lineLabel = (line: CartLine) => {
+	const detail = 'setId' in line ? line.label : formatAttributes(line.attributes);
+	const title = 'setId' in line ? `${line.productTitle} (set)` : line.productTitle;
+	return detail ? `${title} — ${detail}` : title;
+};
 const groups = [
 	{ title: 'Order', lines: cartLines.filter((l) => !splitKeys.has(lineKey(l))) },
 	{ title: 'Separate order', lines: cartLines.filter((l) => splitKeys.has(lineKey(l))) },
@@ -70,61 +77,41 @@ const hiddenFields: Record<string, string> = {
 		<h1 class="mb-2 text-2xl font-semibold tracking-tight text-text">Confirm your order</h1>
 		<p class="mb-6 text-sm text-text-muted">Check everything below, then confirm to submit your request.</p>
 
-		<dl class="mb-8 grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface p-4 sm:grid-cols-3">
-			<div>
-				<dt class="text-xs font-semibold tracking-wide text-text-muted uppercase">From (pick-up)</dt>
-				<dd class="mt-1 text-sm text-text">{formatDateDisplay(fromDate, { weekday: true })}</dd>
-			</div>
-			<div>
-				<dt class="text-xs font-semibold tracking-wide text-text-muted uppercase">To (return)</dt>
-				<dd class="mt-1 text-sm text-text">{formatDateDisplay(toDate, { weekday: true })}</dd>
-			</div>
-			<div>
-				<dt class="text-xs font-semibold tracking-wide text-text-muted uppercase">Pick-up time</dt>
-				<dd class="mt-1 text-sm text-text">
-					{
-						pickupWindows.length === 0 ? (
-							<span class="text-text-muted">To be announced</span>
-						) : (
-							<ul>
-								{pickupWindows.map((w) => (
-									<li>
-										{w.startTime}–{w.endTime}
-										{w.where && <span class="text-text-muted"> · {w.where}</span>}
-									</li>
-								))}
-							</ul>
-						)
-					}
-				</dd>
-			</div>
+		<dl class="mb-8 rounded-lg border border-border bg-surface p-4">
+			<dt class="text-xs font-semibold tracking-wide text-text-muted uppercase">Pick-up time</dt>
+			<dd class="mt-1 text-sm text-text">
+				{formatDateDisplay(fromDate, { weekday: true })}
+				{
+					pickupWindows.length === 0 ? (
+						<span class="text-text-muted">· time to be announced</span>
+					) : (
+						<ul>
+							{pickupWindows.map((w) => (
+								<li>
+									{w.startTime}–{w.endTime}
+									{w.where && <span class="text-text-muted"> · {w.where}</span>}
+								</li>
+							))}
+						</ul>
+					)
+				}
+			</dd>
 		</dl>
 
-		<div class="mb-8 flex flex-col gap-6">
+		<div class="mb-8 flex flex-col gap-4">
 			{
 				groups.map((group) => (
-					<section>
-						<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">
-							{groups.length > 1 ? group.title : 'Items'}
-						</h2>
-						<table class="w-full border-y border-border text-sm">
-							<thead>
-								<tr class="text-left text-text-muted">
-									<th scope="col" class="py-2 pr-4 font-medium">Item</th>
-									<th scope="col" class="py-2 pr-4 font-medium">Details</th>
-									<th scope="col" class="py-2 text-right font-medium">Qty</th>
-								</tr>
-							</thead>
-							<tbody class="divide-y divide-border text-text">
+					<section class="flex flex-col gap-2">
+						{groups.length > 1 && (
+							<h2 class="text-sm font-semibold tracking-wide text-text-muted uppercase">{group.title}</h2>
+						)}
+						<OrdersTableRow fromDate={fromDate} toDate={toDate} customerName={contact.name}>
+							<ul class="flex flex-col gap-1 pl-1 text-text-muted">
 								{group.lines.map((line) => (
-									<tr>
-										<td class="py-2 pr-4">{lineLabel(line)}</td>
-										<td class="py-2 pr-4 text-text-muted">{lineDetail(line) || '—'}</td>
-										<td class="py-2 text-right">{line.quantity}</td>
-									</tr>
+									<ItemQtyLine name={lineLabel(line)} quantity={line.quantity} />
 								))}
-							</tbody>
-						</table>
+							</ul>
+						</OrdersTableRow>
 					</section>
 				))
 			}
@@ -132,7 +119,7 @@ const hiddenFields: Record<string, string> = {
 
 		<section class="mb-8 text-sm text-text">
 			<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">Your details</h2>
-			<p>{contact.name} · {contact.email}{contact.mobile && ` · ${contact.mobile}`}</p>
+			<p>{contact.email}{contact.mobile && ` · ${contact.mobile}`}</p>
 			{note && <p class="mt-2 text-text-muted">Note: {note}</p>}
 		</section>
 

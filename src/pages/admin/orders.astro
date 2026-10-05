@@ -50,6 +50,7 @@ const rows: OrdersTableRow[] = allOrders.map((order) => ({
 			<div class="flex flex-wrap gap-2">
 				<a
 					href={statusHref(null)}
+					aria-current={activeStatus === null ? 'true' : undefined}
 					class:list={[
 						'rounded-full border px-3 py-1 text-xs font-medium capitalize',
 						activeStatus === null ? 'border-border-strong bg-bg text-text' : 'border-border text-text-muted hover:text-text',
@@ -61,6 +62,7 @@ const rows: OrdersTableRow[] = allOrders.map((order) => ({
 					ORDER_STATUSES.map((status) => (
 						<a
 							href={statusHref(status)}
+							aria-current={activeStatus === status ? 'true' : undefined}
 							class:list={[
 								'rounded-full border px-3 py-1 text-xs font-medium capitalize',
 								activeStatus === status

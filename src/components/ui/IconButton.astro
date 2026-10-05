@@ -29,7 +29,7 @@ const classes = [baseClasses, iconOnlySizeClasses[size], variantClasses[variant]
 ---
 {
 	href ? (
-		<a href={href} aria-label={label} class={classes} aria-disabled={disabled || undefined} {...rest}>
+		<a href={disabled ? undefined : href} aria-label={label} class={classes} aria-disabled={disabled || undefined} {...rest}>
 			{icon ? <AppIcon name={icon} size={iconOnlyPixelSize[size]} /> : <slot />}
 		</a>
 	) : (

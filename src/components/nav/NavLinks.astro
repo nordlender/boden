@@ -15,6 +15,8 @@ interface Props {
 }
 
 const { links } = Astro.props;
+const normalize = (path: string) => path.replace(/\/$/, '') || '/';
+const currentPath = normalize(Astro.url.pathname);
 ---
 
 <ul class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
@@ -28,7 +30,7 @@ const { links } = Astro.props;
 				</li>
 			) : (
 				<li {...(link.authOnly ? { 'data-signed-in': true, hidden: true } : {})}>
-					<a href={link.href} class="text-sm text-text-muted hover:text-text">
+					<a href={link.href} aria-current={normalize(link.href) === currentPath ? 'page' : undefined} class="text-sm text-text-muted hover:text-text">
 						{link.label}
 					</a>
 				</li>

@@ -8,7 +8,7 @@ import CartActionsBar from './CartActionsBar.astro';
 	id="cart-sidebar"
 	data-cart-sidebar
 	class="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm translate-x-full flex-col bg-surface shadow-xl transition-transform duration-200"
-	aria-hidden="true"
+	inert
 >
 	<div class="flex items-center justify-between border-b border-border px-4 py-3">
 		<h2 class="text-sm font-semibold text-text">Cart</h2>
@@ -87,12 +87,21 @@ import CartActionsBar from './CartActionsBar.astro';
 			loadCart();
 		});
 
+		let lastFocused: HTMLElement | null = null;
+
 		function setOpen(open: boolean) {
+			const wasOpen = isOpen();
 			sidebar!.classList.toggle('translate-x-full', !open);
-			sidebar!.setAttribute('aria-hidden', String(!open));
+			sidebar!.inert = !open;
 			backdrop!.classList.toggle('hidden', !open);
 			toggleButtons.forEach((button) => button.setAttribute('aria-expanded', String(open)));
-			if (open) loadCart();
+			if (open) {
+				if (!wasOpen) lastFocused = document.activeElement as HTMLElement | null;
+				sidebar!.querySelector<HTMLElement>('[data-cart-close]')?.focus();
+				loadCart();
+			} else if (wasOpen) {
+				lastFocused?.focus();
+			}
 		}
 
 		toggleButtons.forEach((button) => {

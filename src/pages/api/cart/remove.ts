@@ -20,5 +20,5 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	}
 
 	removeFromCart(cookies, cartEntryRef(kind, id));
-	return redirect('/cart');
+	return redirect('/reservation');
 };

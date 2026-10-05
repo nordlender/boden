@@ -25,7 +25,7 @@ const foundOrders = receipt
 
 // Don't leak another member's order by guessing/enumerating tokens.
 if (foundOrders.length === 0 || foundOrders.some((o) => o.userId !== Astro.locals.user?.id)) {
-  return Astro.redirect('/');
+  return Astro.redirect('/orders');
 }
 // createSplitOrders always inserts the main group before the split group
 // (see its `groups` array) — sorting by id recovers that order without

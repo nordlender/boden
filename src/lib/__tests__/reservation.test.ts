@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
-import { isValidDateRange, hasMixedAvailability, getReservationAvailability, getCartLineAvailability } from '../reservation';
+import { isValidDateRange, getReservationAvailability, getCartLineAvailability } from '../reservation';
 
 // isValidDateRange rejects a `from` before "today" (src/lib/reservation.ts) —
 // pin the clock well before every fixture date below (all in Jan/Feb 2026)
@@ -39,7 +39,7 @@ vi.mock('../../db/client', async () => {
 	// An existing order holds 1x item A for 2026-01-05..2026-01-10.
 	const [existingOrder] = await db
 		.insert(schema.orders)
-		.values({ orderCode: 'AAAAAA', checkoutToken: 'TESTTOKEN1', userId: user.id, fromDate: '2026-01-05', toDate: '2026-01-10' })
+		.values({ orderCode: 'AAAAAA', userId: user.id, fromDate: '2026-01-05', toDate: '2026-01-10' })
 		.returning();
 	await db.insert(schema.orderItems).values({ orderId: existingOrder.id, itemId: 1, requestedQuantity: 1 });
 
@@ -49,7 +49,7 @@ vi.mock('../../db/client', async () => {
 	// what exercises the peakConcurrentQuantity same-day tie-break test below.
 	const [adjacentOrder] = await db
 		.insert(schema.orders)
-		.values({ orderCode: 'CCCCCC', checkoutToken: 'TESTTOKEN2', userId: user.id, fromDate: '2026-01-01', toDate: '2026-01-04' })
+		.values({ orderCode: 'CCCCCC', userId: user.id, fromDate: '2026-01-01', toDate: '2026-01-04' })
 		.returning();
 	await db.insert(schema.orderItems).values({ orderId: adjacentOrder.id, itemId: 1, requestedQuantity: 1 });
 
@@ -62,7 +62,6 @@ vi.mock('../../db/client', async () => {
 		.insert(schema.orders)
 		.values({
 			orderCode: 'DDDDDD',
-			checkoutToken: 'TESTTOKEN3',
 			userId: user.id,
 			fromDate: '2026-02-01',
 			toDate: '2026-02-05',
@@ -103,14 +102,6 @@ describe('isValidDateRange', () => {
 
 	it('rejects a range one day past the max rental duration', () => {
 		expect(isValidDateRange({ from: '2025-12-01', to: '2025-12-15' })).toBe(false);
-	});
-});
-
-describe('hasMixedAvailability', () => {
-	it('is true only when some but not all items are available', () => {
-		expect(hasMixedAvailability([{ available: true } as never, { available: false } as never])).toBe(true);
-		expect(hasMixedAvailability([{ available: true } as never, { available: true } as never])).toBe(false);
-		expect(hasMixedAvailability([{ available: false } as never, { available: false } as never])).toBe(false);
 	});
 });
 

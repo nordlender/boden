@@ -7,62 +7,46 @@ import { db } from '../../db/client';
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /checkout) —
 // reached only when logged in, so Astro.locals.user is non-null here.
 //
-// `receipt` is orders.checkoutToken (src/db/schema.ts), not an order code:
-// every order created from one checkout submission — split or not, see
-// src/lib/orders.ts's createOrder/createSplitOrders — shares one token, so
-// a single equality lookup naturally returns all of them together. This
-// replaced an earlier design keyed on a comma-separated list of order codes
-// in the URL, which broke on a duplicated code in that list (looked like
-// tampering) and tied the confirmation link's shape to the order code
-// itself.
-const receipt = Astro.url.searchParams.get('receipt') ?? '';
-const foundOrders = receipt
-  ? await db.query.orders.findMany({
-      where: (t, { eq }) => eq(t.checkoutToken, receipt),
+// `order` is the order code. The lookup is scoped to the signed-in user, so
+// guessing another member's code just redirects away rather than leaking it.
+const orderCode = Astro.url.searchParams.get('order') ?? '';
+const order = orderCode
+  ? await db.query.orders.findFirst({
+      where: (t, { and, eq }) => and(eq(t.orderCode, orderCode), eq(t.userId, Astro.locals.user!.id)),
       with: { orderItems: { with: { item: true } } },
     })
-  : [];
+  : undefined;
 
-// Don't leak another member's order by guessing/enumerating tokens.
-if (foundOrders.length === 0 || foundOrders.some((o) => o.userId !== Astro.locals.user?.id)) {
+if (!order) {
   return Astro.redirect('/cart');
 }
-// createSplitOrders always inserts the main group before the split group
-// (see its `groups` array) — sorting by id recovers that order without
-// needing to track it separately.
-const orderedOrders = [...foundOrders].sort((a, b) => a.id - b.id);
 ---
 
 <ConfirmationLayout title="Order placed" heading="Order placed">
 	<Fragment slot="subtitle">
-		{orderedOrders.length > 1 && <p>Your items were split across {orderedOrders.length} separate orders.</p>}
 		<p>
-			Please take a screenshot of this page for your records — it's the easiest way to have your order code(s) on
+			Please take a screenshot of this page for your records — it's the easiest way to have your order code on
 			hand when you come to pick up.
 		</p>
 	</Fragment>
 
-	<div class="flex flex-col gap-4">
-		{orderedOrders.map((order) => (
-			<div class="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
-				<UserOrderSummary
-					orderCode={order.orderCode}
-					status={order.status}
-					fromDate={order.fromDate}
-					toDate={order.toDate}
-					note={order.note}
-					items={order.orderItems.map((oi) => ({
-						itemName: oi.item.name,
-						requestedQuantity: oi.requestedQuantity,
-						itemImageUrl: oi.item.imageUrl,
-					}))}
-					showImages
-				/>
-				<Button variant="primary" size="lg" href={`/orders/${order.orderCode}`} class="self-start">
-					View or manage this order
-				</Button>
-			</div>
-		))}
+	<div class="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
+		<UserOrderSummary
+			orderCode={order.orderCode}
+			status={order.status}
+			fromDate={order.fromDate}
+			toDate={order.toDate}
+			note={order.note}
+			items={order.orderItems.map((oi) => ({
+				itemName: oi.item.name,
+				requestedQuantity: oi.requestedQuantity,
+				itemImageUrl: oi.item.imageUrl,
+			}))}
+			showImages
+		/>
+		<Button variant="primary" size="lg" href={`/orders/${order.orderCode}`} class="self-start">
+			View or manage this order
+		</Button>
 	</div>
 
 	<a href="/" class="self-center text-sm font-medium text-accent-text hover:underline">

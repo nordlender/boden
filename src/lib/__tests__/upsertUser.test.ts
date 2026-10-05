@@ -71,7 +71,6 @@ describe('upsertSignedInUser', () => {
     db.insert(schema.orders)
       .values({
         orderCode: 'ABC123',
-        checkoutToken: 'TESTTOKEN1',
         userId: 'old-id',
         note: null,
         fromDate: '2026-01-01',
@@ -114,7 +113,6 @@ describe('upsertSignedInUser', () => {
     db.insert(schema.orders)
       .values({
         orderCode: 'CARL01',
-        checkoutToken: 'TESTTOKEN2',
         userId: legacyId,
         note: null,
         fromDate: '2026-01-01',
@@ -149,7 +147,6 @@ describe('upsertSignedInUser', () => {
     db.insert(schema.orders)
       .values({
         orderCode: 'DEF456',
-        checkoutToken: 'TESTTOKEN3',
         userId: '111',
         note: null,
         fromDate: '2026-01-01',

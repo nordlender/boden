@@ -1,5 +1,3 @@
-export const prerender = false;
-
 // See ../add.ts for why no auth check happens here — cart mutation itself is
 // unauthenticated, and gating lives at /cart (middleware) and checkout
 // (src/pages/api/orders/create.ts).

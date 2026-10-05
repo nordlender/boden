@@ -3,7 +3,7 @@ import { validateSession, hasRole } from '../lib/auth';
 import { requiredRole, isApiRoute } from './prefixes';
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
-  // Prerendered routes (the catalogue, item pages) are built once, ahead of
+  // Prerendered routes (shop grid shell, login, 404) are built once, ahead of
   // any request — there's no real per-visitor Request here, so a session
   // lookup is both meaningless and throws Astro's own warning
   // ("Astro.request.headers ... not available on prerendered pages").

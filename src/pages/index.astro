@@ -1,16 +1,21 @@
 ---
+export const prerender = true;
+
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ItemGrid from '../components/shop/ItemGrid.astro';
+import ItemGridSkeleton from '../components/shop/ItemGridSkeleton.astro';
+import ShopGrid from '../components/shop/ShopGrid.astro';
 import { getShopGridProducts } from '../lib/shop';
 
-// Prerendered (static output, see astro.config.mjs) — this query runs once
-// at build time, same as worktree-navbar-homepage's index.astro did against
-// the old schema.
-const products = await getShopGridProducts();
+// Build-time snapshot of the grid, shown instantly as the server island's
+// fallback until <ShopGrid> swaps in live data (see ShopGrid.astro).
+const snapshot = await getShopGridProducts();
 ---
 
 <BaseLayout title="Boden">
 	<div class="mx-auto max-w-6xl px-4 py-8">
-		<ItemGrid products={products} />
+		<ShopGrid server:defer>
+			{snapshot.length > 0 ? <ItemGrid slot="fallback" products={snapshot} /> : <ItemGridSkeleton slot="fallback" />}
+		</ShopGrid>
 	</div>
 </BaseLayout>

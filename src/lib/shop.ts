@@ -300,17 +300,6 @@ export async function getShopGridProducts(): Promise<ShopGridProduct[]> {
 	return [...itemTiles, ...setTiles];
 }
 
-// Every published product's slug with at least a wizard-created row —
-// used by /products/[slug].astro's getStaticPaths (this app prerenders the
-// catalogue/product pages at build time, see astro.config.mjs).
-export async function getPublishedProductSlugs(): Promise<string[]> {
-	const rows = await db.query.products.findMany({
-		where: (t, { eq }) => eq(t.status, 'published'),
-		columns: { slug: true },
-	});
-	return rows.map((row) => row.slug);
-}
-
 // Product detail page: the product plus its non-archived sibling items,
 // each labeled by its own flat attribute values (schema v3 has no
 // per-option-value images or mutually-exclusive option groups — see this

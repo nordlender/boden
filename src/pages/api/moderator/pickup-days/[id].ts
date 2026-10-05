@@ -1,20 +1,16 @@
-export const prerender = false;
-
 // Also gated by src/middleware/prefixes.ts's ROUTE_RULES — see index.ts's
 // sibling route for why this inline check stays anyway.
 
 import type { APIRoute } from 'astro';
 import { deleteSingleDay } from '../../../../lib/pickupDays';
-import { requireModerator, isPositiveInteger } from '../../../../lib/wizard-http';
+import { json, jsonError, parseIdParam, requireModerator } from '../../../../lib/http';
 
 export const DELETE: APIRoute = async ({ params, locals }) => {
 	const forbidden = requireModerator(locals);
 	if (forbidden) return forbidden;
 
-	const id = Number(params.id);
-	if (!isPositiveInteger(id)) {
-		return new Response(JSON.stringify({ error: 'invalid_id' }), { status: 400 });
-	}
+	const id = parseIdParam(params.id);
+	if (id === null) return jsonError('invalid_id', 400);
 
 	// Ownership (and kind: 'single') is enforced inside deleteSingleDay's own
 	// WHERE clause, not just checked here — a moderator can never delete
@@ -22,8 +18,8 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
 	// they know/guess it.
 	const deleted = await deleteSingleDay(id, locals.user!.id);
 	if (!deleted) {
-		return new Response(JSON.stringify({ error: 'not_found' }), { status: 404 });
+		return jsonError('not_found', 404);
 	}
 
-	return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+	return json({ ok: true });
 };

@@ -2,7 +2,9 @@
 import ConfirmationLayout from '../../layouts/ConfirmationLayout.astro';
 import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import Button from '../../components/ui/Button.astro';
+import PickupInfo from '../../components/orders/PickupInfo.astro';
 import { db } from '../../db/client';
+import { getPickupWindowsForDate } from '../../lib/pickupDays';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /checkout) —
 // reached only when logged in, so Astro.locals.user is non-null here.
@@ -20,6 +22,8 @@ const order = orderCode
 if (!order) {
   return Astro.redirect('/cart');
 }
+
+const pickupWindows = await getPickupWindowsForDate(order.fromDate);
 ---
 
 <ConfirmationLayout title="Order placed" heading="Order placed">
@@ -44,6 +48,7 @@ if (!order) {
 			}))}
 			showImages
 		/>
+		<PickupInfo windows={pickupWindows} />
 		<Button variant="primary" size="lg" href={`/orders/${order.orderCode}`} class="self-start">
 			View or manage this order
 		</Button>

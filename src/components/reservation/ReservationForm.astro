@@ -4,11 +4,12 @@ import ReservationItemRow from './ReservationItemRow.astro';
 import CheckoutForm from '../cart/CheckoutForm.astro';
 import { entryKey, type CartLine } from '../../lib/cart';
 import { formatAttributes } from '../../lib/attributes';
+import type { PickupWindow } from '../../lib/pickupDays';
 import type { ReservationCartLineRef } from './reservationFormState';
 
 interface Props {
 	cartLines: CartLine[];
-	availablePickupDates: string[];
+	pickupWindows: Record<string, PickupWindow[]>;
 	name: string | null;
 	email: string | null;
 	mobile: string | null;
@@ -16,7 +17,7 @@ interface Props {
 	userIsMember: boolean | null;
 }
 
-const { cartLines, availablePickupDates, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
+const { cartLines, pickupWindows, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
 
 const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 	'setId' in line
@@ -28,7 +29,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 <div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} class="flex flex-col gap-8">
 	<section>
 		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">1. Pick-up &amp; return dates</h2>
-		<ReservationCalendar availablePickupDates={availablePickupDates} />
+		<ReservationCalendar availablePickupDates={Object.keys(pickupWindows)} pickupWindows={pickupWindows} />
 	</section>
 
 	<section>

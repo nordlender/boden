@@ -54,6 +54,49 @@ export async function getUpcomingAvailablePickupDates(fromDate: string): Promise
 	return rows.map((row) => row.date);
 }
 
+export interface PickupWindow {
+	startTime: string;
+	endTime: string;
+	where: string | null;
+}
+
+function groupWindowsByDate(rows: Array<PickupWindow & { date: string }>): Map<string, PickupWindow[]> {
+	const byDate = new Map<string, PickupWindow[]>();
+	for (const { date, startTime, endTime, where } of rows) {
+		const windows = byDate.get(date) ?? [];
+		// Two moderators (or overlapping recurring rules) can offer the exact
+		// same window — members only need to see it once.
+		if (!windows.some((w) => w.startTime === startTime && w.endTime === endTime && w.where === where)) {
+			windows.push({ startTime, endTime, where });
+		}
+		byDate.set(date, windows);
+	}
+	return byDate;
+}
+
+// Time + place of every pick-up window from `fromDate` onward, keyed by date
+// — the /reservation page lists the selected day's windows under the
+// calendar summary. Same date set as getUpcomingAvailablePickupDates.
+export async function getUpcomingPickupWindows(fromDate: string): Promise<Record<string, PickupWindow[]>> {
+	const rows = await db
+		.select({ date: pickupDays.date, startTime: pickupDays.startTime, endTime: pickupDays.endTime, where: pickupDays.where })
+		.from(pickupDays)
+		.where(gte(pickupDays.date, fromDate))
+		.orderBy(asc(pickupDays.date), asc(pickupDays.startTime), asc(pickupDays.endTime));
+	return Object.fromEntries(groupWindowsByDate(rows));
+}
+
+// Windows for one exact date, past or future — an order's pick-up day
+// (orders.fromDate) keeps showing its time/place on the order pages.
+export async function getPickupWindowsForDate(date: string): Promise<PickupWindow[]> {
+	const rows = await db
+		.select({ date: pickupDays.date, startTime: pickupDays.startTime, endTime: pickupDays.endTime, where: pickupDays.where })
+		.from(pickupDays)
+		.where(eq(pickupDays.date, date))
+		.orderBy(asc(pickupDays.startTime), asc(pickupDays.endTime));
+	return groupWindowsByDate(rows).get(date) ?? [];
+}
+
 // Full rows (both kinds, every submitter) for the moderator/admin pages'
 // "All pickup days" table and for deriving "My"/"Other"/"Single" from —
 // those are all filters over this same result set, not separate queries.

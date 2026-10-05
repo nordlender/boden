@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { db } from '../../db/client';
+import { getPickupWindowsForDate } from '../../lib/pickupDays';
+import PickupInfo from '../../components/orders/PickupInfo.astro';
 import { getMaxRentalDays } from '../../lib/rental-policy';
 import OrderCodeHeader from '../../components/orders/OrderCodeHeader.astro';
 import OrderContents from '../../components/orders/OrderContents.astro';
@@ -22,6 +24,8 @@ const order = code
 if (!order || order.userId !== Astro.locals.user?.id) {
   return Astro.redirect('/');
 }
+
+const pickupWindows = await getPickupWindowsForDate(order.fromDate);
 ---
 
 <BaseLayout title={`Order #${order.orderCode}`}>
@@ -30,6 +34,7 @@ if (!order || order.userId !== Astro.locals.user?.id) {
 
 		<div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">
 			<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
+			<PickupInfo windows={pickupWindows} />
 			<OrderContents
 				items={order.orderItems.map((oi) => ({
 					itemName: oi.item.name,

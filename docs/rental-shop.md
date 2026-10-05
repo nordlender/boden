@@ -56,12 +56,12 @@ member browses catalogue, adds items to cart
 
 member goes to /reservation, picks pick-up/return dates
   → live availability check against existing requested/scheduled/active orders
-  → may split off a mixed-availability item into its own order
+  → if any item or set is unavailable for the chosen dates, submit is blocked
+    until the member picks other dates or removes those lines from the cart
   → submits → POST /api/orders/create
   → status: requested
-  → order code (NNAAX format, read aloud at pick-up) + checkout token
-    (groups every order from one checkout, split or not) generated
-  → redirected to /checkout/success?receipt=<checkoutToken>
+  → order code (NNAAX format, read aloud at pick-up) generated
+  → redirected to /checkout/success?order=<orderCode>
 
 moderator reviews order on Review Order page (before retrieval) (planned)
   → sees member bio, hasUnpaidFees / userIsMember flags, requested items
@@ -122,9 +122,9 @@ boden/
 │   │   ├── products/
 │   │   │   └── [slug].astro                 # Product detail: variant select, image, attributes, links — static
 │   │   ├── cart.astro                       # Cart review — SSR
-│   │   ├── reservation.astro                # Pick-up/return dates, availability, split-order — SSR
+│   │   ├── reservation.astro                # Pick-up/return dates, availability, remove unavailable items — SSR
 │   │   ├── checkout/
-│   │   │   └── success.astro                # Order receipt(s) after placing — SSR
+│   │   │   └── success.astro                # Order receipt after placing — SSR
 │   │   ├── admin/
 │   │   │   ├── items.astro                  # Product/item wizard — SSR, admin only
 │   │   │   └── pickup-days.astro            # Set which pick-up dates have moderator coverage — SSR, admin only
@@ -156,11 +156,11 @@ boden/
 │   ├── lib/
 │   │   ├── auth.ts                          # Role gate: getRole/validateSession — §8
 │   │   ├── cart.ts                          # Cart read/write (cookie-based) — §5
-│   │   ├── orders.ts                        # createOrder / createSplitOrders — §6
+│   │   ├── orders.ts                        # createOrder — §6
 │   │   ├── reservation.ts                   # Date-range validation + availability queries
 │   │   ├── shop.ts                          # Customer-facing catalogue/product queries
 │   │   ├── stock.ts                         # reservedQuantitiesByItem — "in stock now" derivation
-│   │   ├── pickupDays.ts, wizard.ts, wizard-http.ts, upsertUser.ts, icons.ts, ...
+│   │   ├── pickupDays.ts, wizard.ts, http.ts, upsertUser.ts, icons.ts, ...
 │   │
 │   ├── middleware/
 │   │   ├── index.ts                         # Auth + role gate — §9
@@ -201,9 +201,10 @@ import auth from 'auth-astro';
 import icon from 'astro-icon';
 
 export default defineConfig({
-  // Static by default (catalogue + product pages are pre-rendered at build time).
-  // Every other route opts into per-request rendering with `export const prerender = false`.
-  output: 'static',
+  // Rendered per request by default; the shop grid shell, login and 404
+  // opt into build-time rendering with `export const prerender = true`.
+  output: 'server',
+  redirects: { '/moderator/review': '/moderator/requests' },
   adapter: node({ mode: 'standalone' }),
   integrations: [auth({ configFile: './src/auth.ts' }), icon()],
   vite: {
@@ -213,7 +214,7 @@ export default defineConfig({
 });
 ```
 
-`output: 'static'` is the key setting: `/` and `/products/[slug]` are pre-rendered at build time, served from disk with no database round-trip per visitor. Every other route is marked `export const prerender = false` and rendered on the server per-request.
+`output: 'server'` renders every route per request (SQLite is local, so a catalogue query costs well under a millisecond). Only pages with nothing per-request are prerendered: `/auth/login`, `404`, and the shell of `/`. The shop grid on `/` is a server island (`<ShopGrid server:defer>`): the prerendered page ships a build-time snapshot of the grid as fallback, and the island swaps in live data on load — instant first paint without a stale catalogue.
 
 ---
 
@@ -312,12 +313,9 @@ export const users = sqliteTable('users', {
 // No `sessions` table: Auth.js manages its own signed JWT session cookie.
 
 // One order = one rental request, potentially covering multiple items.
-// A checkout that got split across dates/availability produces multiple
-// order rows sharing one checkoutToken.
 export const orders = sqliteTable('orders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   orderCode: text('order_code').notNull().unique(),      // NNAAX format, read aloud at pick-up
-  checkoutToken: text('checkout_token').notNull(),        // groups every order from one checkout submission
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', { enum: ['requested', 'active', 'returned', 'rejected'] }).notNull().default('requested'),
   fromDate: text('from_date').notNull(),                  // YYYY-MM-DD, pick-up day
@@ -414,26 +412,21 @@ export async function getCartItems(cookies): Promise<CartItem[]> { /* joins agai
 Placing an order is a three-step flow, not a single "place order" action:
 
 1. **`/cart`** — review cart lines, adjust quantity, remove. Links to `/reservation`.
-2. **`/reservation`** — pick a pick-up (`fromDate`) and return (`toDate`) date. A live `POST /api/reservation/availability` preview flags any cart line that's unavailable for the chosen range; the member may split an unavailable item into its own order (`splitItemIds`) rather than changing dates. The form also displays (read-only, from the bloc session) name/email/mobile and the `hasUnpaidFees`/`userIsMember` flags.
-3. **`POST /api/orders/create`** — re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently). Generates an `NNAAX`-format `orderCode` per order (last letter always flags the creating member's role — A/B/I/M for admin/board member/instructor(moderator)/member) and one shared `checkoutToken` per submission, then redirects to `/checkout/success?receipt=<checkoutToken>`.
+2. **`/reservation`** — pick a pick-up (`fromDate`) and return (`toDate`) date. A live `POST /api/reservation/availability` preview flags any cart line that's unavailable for the chosen range; submit stays blocked while any item is unavailable, and the member either changes dates or removes the unavailable items from the cart (`POST /api/cart/remove`) — there are no split orders; one checkout is always one order. The form also displays (read-only, from the bloc session) name/email/mobile and the `hasUnpaidFees`/`userIsMember` flags.
+3. **`POST /api/orders/create`** — re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently). Generates an `NNAAX`-format `orderCode` (last letter always flags the creating member's role — A/B/I/M for admin/board member/instructor(moderator)/member), then redirects to `/checkout/success?order=<orderCode>`.
 
 ```ts
 // src/lib/orders.ts (signatures)
 export async function createOrder(input: {
   userId: string; note: string | null; cartEntries: CartEntry[]; fromDate: string; toDate: string;
 }): Promise<
-  | { ok: true; orderId: number; orderCode: string; checkoutToken: string }
+  | { ok: true; orderId: number; orderCode: string }
   | { ok: false; error: 'empty_cart' }
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
 >;
-
-// Splits cartEntries into up to two orders (sharing one date range and one
-// checkoutToken) when the member moved some items into their own order via
-// the reservation page's split action.
-export async function createSplitOrders(input: CreateOrderInput & { splitItemIds: number[] }): Promise<CreateSplitOrdersResult>;
 ```
 
-`/checkout/success` looks orders up by `checkoutToken` (not by order code) — every order from one submission, split or not, shares a token, so a single query returns the whole group. It refuses to render if any matched order doesn't belong to the signed-in user (no enumerating another member's orders by guessing tokens).
+`/checkout/success?order=<orderCode>` looks the order up by code, scoped to the signed-in user in the query itself (no enumerating another member's orders by guessing codes — a miss redirects to `/cart`).
 
 ---
 
@@ -623,7 +616,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
 ---
 
-## 11. Product detail page (static)
+## 11. Product detail page
 
 ```astro
 ---
@@ -631,23 +624,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
 // Route is "/products/[slug]", not "/items/[slug]": a slug-routable,
 // customer-facing page is a product (title/description/attribute
 // template), with items as its unlabeled variants underneath.
-import { getPublishedProductSlugs, getShopProductBySlug } from '../../lib/shop';
-
-export async function getStaticPaths() {
-  const slugs = await getPublishedProductSlugs();
-  return slugs.map((slug) => ({ params: { slug } }));
-}
+import { getShopProductBySlug } from '../../lib/shop';
 
 const product = await getShopProductBySlug(Astro.params.slug!);
-if (!product) return Astro.redirect('/404');
+if (!product) return new Response(null, { status: 404 }); // serves 404.astro
 ---
 <!-- variant <select> (one option per item, disabled when inStock <= 0),
      image + ImagePlaceholder fallback, attribute list, quantity input
      capped at inStock, "Add to cart" POSTing to /api/cart/add.
      A client-side <script> keeps image/stock/attributes/quantity-cap in
      sync on variant change (including a ?item=<id> preselect from an
-     ItemCard link) — this page is prerendered, so there's no per-request
-     server render to do it there. -->
+     ItemCard link). -->
 ```
 
 ---

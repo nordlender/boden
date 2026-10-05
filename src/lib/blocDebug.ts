@@ -1,4 +1,5 @@
 import { getToken } from '@auth/core/jwt';
+import { json } from './http';
 
 const BLOC_BASE_URL = 'https://rest.bloc.net';
 
@@ -26,7 +27,7 @@ export async function callBlocAsSelf(
   const accessToken = typeof token?.accessToken === 'string' ? token.accessToken : undefined;
 
   if (!accessToken) {
-    return jsonResponse({ error: 'Not logged in (no session access token found).' }, 401);
+    return json({ error: 'Not logged in (no session access token found).' }, 401);
   }
 
   let path: string;
@@ -44,17 +45,10 @@ export async function callBlocAsSelf(
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const bodyText = await res.text();
-    return jsonResponse({ status: res.status, ok: res.ok, body: safeJsonParse(bodyText) }, 200);
+    return json({ status: res.status, ok: res.ok, body: safeJsonParse(bodyText) }, 200);
   } catch (err) {
-    return jsonResponse({ error: `bloc request failed: ${err instanceof Error ? err.message : String(err)}` }, 502);
+    return json({ error: `bloc request failed: ${err instanceof Error ? err.message : String(err)}` }, 502);
   }
-}
-
-function jsonResponse(data: unknown, status: number): Response {
-  return new Response(JSON.stringify(data, null, 2), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  });
 }
 
 function safeJsonParse(text: string) {

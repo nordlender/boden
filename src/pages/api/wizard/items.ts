@@ -1,11 +1,9 @@
-export const prerender = false;
-
 // Also gated by src/middleware/prefixes.ts's ROUTE_RULES ('/api/wizard'),
 // but that's defense-in-depth — keep this inline check too (see prefixes.ts).
 
 import type { APIRoute } from 'astro';
 import { createItem } from '../../../lib/wizard';
-import { parseNamedEntityForm, requireAdmin, safeRedirectTarget } from '../../../lib/wizard-http';
+import { parseNamedEntityForm, requireAdmin, safeRedirectTarget } from '../../../lib/http';
 
 export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 	const forbidden = requireAdmin(locals);

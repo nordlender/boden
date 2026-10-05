@@ -35,12 +35,11 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">2. Your items</h2>
 
 		<p
-			data-mixed-availability-warning
+			data-unavailable-warning
 			hidden
 			class="mb-4 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-warning-text"
 		>
-			At least one of the items is not available in this timeframe. You can set up a separate order by clicking the
-			split icon next to each item.
+			Some items are not available in this timeframe. Remove them from your cart below, or choose different dates.
 		</p>
 
 		<p data-availability-loading hidden class="mb-4 text-sm text-text-muted">Checking availability…</p>

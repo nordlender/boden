@@ -7,7 +7,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { MAX_UPLOAD_BYTES, saveImageUpload } from '../../../lib/uploads';
-import { requireAdmin } from '../../../lib/wizard-http';
+import { requireAdmin } from '../../../lib/http';
 
 function json(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });

@@ -1,20 +1,9 @@
 import type { APIRoute } from 'astro';
+import { fetchOwnMemberFeeStatus } from '../../../lib/blocFeeStatus';
 import { getCart, setCart } from '../../../lib/cart';
 import { createOrder } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
 import { redirectWithError, requireUser } from '../../../lib/http';
-
-// Maps the checkout form's readonly hasUnpaidFees/userIsMember text inputs
-// (literally "Yes" | "No" | "Unknown", see CheckoutForm.astro's yesNo()) back
-// to the nullable boolean stored on orders — anything other than an exact
-// "Yes"/"No" (including "Unknown", missing, or a tampered value) is treated
-// as unknown/null rather than guessed at.
-function parseYesNo(value: FormDataEntryValue | null): boolean | null {
-  const s = value?.toString();
-  if (s === 'Yes') return true;
-  if (s === 'No') return false;
-  return null;
-}
 
 export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => {
   const authError = requireUser(locals);
@@ -40,16 +29,6 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const contactEmail = form.get('email')?.toString().trim() ?? '';
   const contactMobile = form.get('mobile')?.toString().trim() || null;
 
-  // Snapshot of the checkout form's readonly bloc-sourced fields (see
-  // schema.ts's orders.hasUnpaidFees/userIsMember doc comment). The form
-  // submits the literal string the readonly input displayed
-  // ("Yes"/"No"/"Unknown" — see CheckoutForm.astro's yesNo()); still blocked
-  // on bloc's hasUnpaidFees/userIsMember API defect for real Yes/No data
-  // (see docs/moderator-review.md), so this reads back as null for every
-  // member today, but the columns/wiring aren't blocked on that fix.
-  const hasUnpaidFees = parseYesNo(form.get('hasUnpaidFees'));
-  const userIsMember = parseYesNo(form.get('userIsMember'));
-
   // Every submitter must accept the liability disclaimer (see #134). Enforced
   // here rather than trusting the form's `required` attribute; the acceptance
   // timestamp is persisted on the order for moderators to see.
@@ -57,6 +36,14 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   if (!disclaimerAccepted) {
     return redirect('/reservation?error=disclaimer_required');
   }
+
+  // Snapshot of bloc's fee/membership status (see schema.ts's
+  // orders.hasUnpaidFees/userIsMember doc comment), fetched server-side from
+  // GetMemberFeeStatus (src/lib/blocFeeStatus.ts) at submit time — never taken
+  // from the posted form, whose readonly inputs a member could forge. null
+  // (Unknown) if the call failed. After the cheap validation redirects so
+  // those never wait on bloc.
+  const { hasUnpaidFees, userIsMember } = await fetchOwnMemberFeeStatus(request);
 
   const result = await createOrder({
     userId: locals.user!.id,

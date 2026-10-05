@@ -144,7 +144,7 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		</p>
 
 		<p class="text-xs text-text-muted">
-			Click a key to make it the <span class="font-medium text-text">variant</span> — shoppers choose between its values as buttons on the product page, and it's left out of the attribute list. Click it again to unset.
+			Click a saved key to make it the <span class="font-medium text-text">variant</span> — shoppers choose between its values as buttons on the product page, and it's left out of the attribute list. Click it again to unset. New keys can be set as the variant after saving.
 		</p>
 
 		<input type="hidden" name="variantAttributeKey" value={existingAttributeKeys.find((key) => key.isVariant)?.name ?? ''} data-variant-input />
@@ -167,8 +167,7 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		<div data-row-list="attributes" class="flex flex-col gap-2">
 			{mode === 'create' && (
 				<div class="flex items-center gap-2" data-row>
-					<input name="attributeKey[]" type="text" placeholder="e.g. Size" data-new-key-input class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
-					<button type="button" data-variant-toggle aria-pressed="false" class="shrink-0 rounded-full border px-3 py-1 text-xs transition-colors border-border-strong text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-accent aria-pressed:bg-transparent aria-pressed:font-medium aria-pressed:text-accent-text aria-pressed:hover:bg-accent-subtle">Variant</button>
+					<input name="attributeKey[]" type="text" placeholder="e.g. Size" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
 					<button type="button" data-remove-row aria-label="Remove attribute key" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
 						<AppIcon name="trash" size={16} />
 					</button>
@@ -178,8 +177,7 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 
 		<template data-row-template="attributes">
 			<div class="flex items-center gap-2" data-row>
-				<input name="attributeKey[]" type="text" placeholder="e.g. Size" data-new-key-input class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
-				<button type="button" data-variant-toggle aria-pressed="false" class="shrink-0 rounded-full border px-3 py-1 text-xs transition-colors border-border-strong text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-accent aria-pressed:bg-transparent aria-pressed:font-medium aria-pressed:text-accent-text aria-pressed:hover:bg-accent-subtle">Variant</button>
+				<input name="attributeKey[]" type="text" placeholder="e.g. Size" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
 				<button type="button" data-remove-row aria-label="Remove attribute key" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
 					<AppIcon name="trash" size={16} />
 				</button>
@@ -217,15 +215,11 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		removeButton.closest('[data-row]')?.remove();
 	});
 
-	// Variant toggle: at most one key is the variant (the hidden input holds
-	// its name; empty means none). Clicking the pressed key unsets it. A
-	// new-key row has no data-name — its name is whatever is typed in the row,
-	// so the hidden value is re-synced as that input changes.
+	// Variant toggle: at most one existing key is the variant (the hidden
+	// input holds its name; empty means none). Clicking the pressed key unsets
+	// it. Keys added in this same save have no pill yet — set the variant
+	// after saving.
 	const variantInput = document.querySelector<HTMLInputElement>('[data-variant-input]');
-
-	function toggleName(toggle: HTMLElement): string {
-		return toggle.dataset.name ?? toggle.closest('[data-row]')?.querySelector<HTMLInputElement>('[data-new-key-input]')?.value.trim() ?? '';
-	}
 
 	document.addEventListener('click', (event) => {
 		const target = event.target;
@@ -235,14 +229,7 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		const wasPressed = toggle.getAttribute('aria-pressed') === 'true';
 		document.querySelectorAll('[data-variant-toggle]').forEach((other) => other.setAttribute('aria-pressed', 'false'));
 		toggle.setAttribute('aria-pressed', String(!wasPressed));
-		variantInput.value = wasPressed ? '' : toggleName(toggle);
-	});
-
-	document.addEventListener('input', (event) => {
-		const target = event.target;
-		if (!(target instanceof HTMLInputElement) || !variantInput || !target.matches('[data-new-key-input]')) return;
-		const toggle = target.closest('[data-row]')?.querySelector<HTMLElement>('[data-variant-toggle]');
-		if (toggle?.getAttribute('aria-pressed') === 'true') variantInput.value = target.value.trim();
+		variantInput.value = wasPressed ? '' : (toggle.dataset.name ?? '');
 	});
 
 	// Sub-category options are filtered to the currently selected category —

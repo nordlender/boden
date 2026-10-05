@@ -15,25 +15,18 @@ page — this review step happens earlier.
 Design goal: very user-friendly, scannable at a glance. Good/bad values are
 indicated with color, not just raw text.
 
-## Known issue — bloc API defect (2026-09-02)
+## Resolved — bloc API defect (2026-09-02)
 
-`hasUnpaidFees` and `userIsMember`, the two flagged fields below, currently
-come back `null`/empty from **every** bloc method that exposes them
-(`account/listmypages`, `Account/MyAccount`, `Profile/GetPage`,
-`account/listmypersonprofiles`) — confirmed against a real logged-in account,
-not a caching or client-side issue. This is an external API defect on bloc's
-side; the user has contacted the provider to request a fix. Until that's
-resolved, this page cannot show real values for either field — see
-`docs/bloc-api.md`'s "Addendum" for the investigation and
-`docs/auth-testing.md`'s "Known, still-open items" for the retest procedure.
-Don't
-mistake `null` for "no data submitted yet" once order persistence exists —
-it may just be bloc still not returning real values.
+`hasUnpaidFees` and `userIsMember` used to come back `null` from every bloc
+profile method. They now come from bloc's dedicated `GetMemberFeeStatus`
+method, fetched live on `/reservation` — see `docs/bloc-api.md`'s "Update". A
+stored `null` now means the live call failed (timeout/error), not a bloc
+defect.
 
 ## Fields to display (so far)
 
-Sourced from the bloc session profile (`session.bloc`, set in `src/auth.ts`),
-already autofilled — immutable, Yes/No — on the member's checkout form
+Fetched live from bloc's `GetMemberFeeStatus` when the member opens the
+reservation page (`src/lib/blocFeeStatus.ts`), already autofilled — immutable, Yes/No — on the member's checkout form
 (`src/components/cart/CheckoutForm.astro`). **Decision (2026-08-26): these are
 submitted as part of the checkout form itself** — a snapshot of the session
 value at the moment the member places the order, not something the review

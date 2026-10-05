@@ -48,10 +48,9 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   // Snapshot of the checkout form's readonly bloc-sourced fields (see
   // schema.ts's orders.hasUnpaidFees/userIsMember doc comment). The form
   // submits the literal string the readonly input displayed
-  // ("Yes"/"No"/"Unknown" — see CheckoutForm.astro's yesNo()); still blocked
-  // on bloc's hasUnpaidFees/userIsMember API defect for real Yes/No data
-  // (see docs/moderator-review.md), so this reads back as null for every
-  // member today, but the columns/wiring aren't blocked on that fix.
+  // ("Yes"/"No"/"Unknown" — see CheckoutForm.astro's yesNo()), which the
+  // reservation page fetched live from bloc's GetMemberFeeStatus
+  // (src/lib/blocFeeStatus.ts); null if that call failed.
   const hasUnpaidFees = parseYesNo(form.get('hasUnpaidFees'));
   const userIsMember = parseYesNo(form.get('userIsMember'));
 

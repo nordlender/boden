@@ -9,8 +9,8 @@ export interface BlocProfile {
   mobile: string | null;
   image: string | null;
   profileTypeId: number;
-  hasUnpaidFees: boolean | null;
-  userIsMember: boolean | null;
+  // hasUnpaidFees/userIsMember are deliberately absent: listmypages returns
+  // them as null — read them live via src/lib/blocFeeStatus.ts instead.
   success: boolean;
   code: number;
   message: string | null;

@@ -2,7 +2,6 @@ import type { OAuthConfig, OAuthUserConfig } from '@auth/core/providers';
 import type { TokenSet } from '@auth/core/types';
 import { defineConfig } from 'auth-astro';
 import { db } from './db/client';
-import { fetchMemberFeeStatus } from './lib/blocFeeStatus';
 import { getBlocProfile, type BlocProfile } from './lib/blocProfile';
 import { upsertSignedInUser } from './lib/upsertUser';
 
@@ -31,8 +30,6 @@ declare module '@auth/core/types' {
       userId: number;
       mobile: string | null;
       profileTypeId: number;
-      hasUnpaidFees: boolean | null;
-      userIsMember: boolean | null;
       success: boolean;
       code: number;
       message: string | null;
@@ -102,13 +99,8 @@ function Bloc(config: OAuthUserConfig<BlocProfile> & { redirectUri: string }): O
         if (!person) {
           throw new Error('bloc returned no profiles for this account (ListOfMyProfiles empty)');
         }
-        // The account/* profile responses return these as null (bloc API
-        // defect); the dedicated fee method is the source of truth.
-        const fees = await fetchMemberFeeStatus(person.userId, tokens.access_token!);
-        console.info(`[bloc] fee status for userId=${person.userId}:`, fees);
         return {
           ...person,
-          ...fees,
           success: data.success,
           code: data.code,
           message: data.message,
@@ -126,8 +118,6 @@ function Bloc(config: OAuthUserConfig<BlocProfile> & { redirectUri: string }): O
         userId: profile.userId,
         mobile: profile.mobile,
         profileTypeId: profile.profileTypeId,
-        hasUnpaidFees: profile.hasUnpaidFees,
-        userIsMember: profile.userIsMember,
         success: profile.success,
         code: profile.code,
         message: profile.message,
@@ -180,8 +170,6 @@ export default defineConfig({
           userId: p.userId,
           mobile: p.mobile,
           profileTypeId: p.profileTypeId,
-          hasUnpaidFees: p.hasUnpaidFees,
-          userIsMember: p.userIsMember,
           success: p.success,
           code: p.code,
           message: p.message,

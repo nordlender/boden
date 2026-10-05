@@ -16,12 +16,27 @@ const BLOC_BASE_URL = 'https://rest.bloc.net';
  * Check a new bloc endpoint's params for exactly that shape before adding
  * a route here, and skip it if found.
  */
-export async function callBlocAsSelf(request: Request, path: string): Promise<Response> {
+export async function callBlocAsSelf(
+  request: Request,
+  // A builder receives the caller's own bloc userId (JWT `sub`) for endpoints
+  // that need one, so callers never decode the JWT a second time.
+  pathOrBuilder: string | ((ownUserId: string) => string),
+): Promise<Response> {
   const token = await getToken({ req: request, secret: import.meta.env.AUTH_SECRET });
   const accessToken = typeof token?.accessToken === 'string' ? token.accessToken : undefined;
 
   if (!accessToken) {
     return jsonResponse({ error: 'Not logged in (no session access token found).' }, 401);
+  }
+
+  let path: string;
+  if (typeof pathOrBuilder === 'string') {
+    path = pathOrBuilder;
+  } else {
+    if (!token?.sub || !/^\d+$/.test(token.sub)) {
+      return jsonResponse({ error: 'No bloc user id in session.' }, 401);
+    }
+    path = pathOrBuilder(token.sub);
   }
 
   try {

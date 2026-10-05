@@ -3,12 +3,11 @@ export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ReservationForm from '../components/reservation/ReservationForm.astro';
-import { findOvercommittedItems, getCartLines } from '../lib/cart';
+import { findOvercommittedItems, getCartLines, totalItemDemand } from '../lib/cart';
 import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
 import { getMaxRentalDays } from '../lib/rental-policy';
 import { todayIsoInOslo } from '../lib/dates';
 import { getUnmetDays } from '../lib/availability';
-import { resolveEntriesToItemQuantities } from '../lib/sets';
 import { getSession } from 'auth-astro/server';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
@@ -31,9 +30,7 @@ const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
 // src/lib/availability.ts). The per-line check after picking dates still
 // catches a range that spans one of these days.
 const UNAVAILABLE_HORIZON_DAYS = 120;
-const requirements = await resolveEntriesToItemQuantities(
-	cartLines.map((line) => ('setId' in line ? { setId: line.setId, quantity: line.quantity } : { itemId: line.itemId, quantity: line.quantity })),
-);
+const requirements = [...totalItemDemand(cartLines)].map(([itemId, { needed }]) => ({ itemId, quantity: needed }));
 const unavailableDates = getUnmetDays(requirements, todayIso, UNAVAILABLE_HORIZON_DAYS, { today: todayIso });
 
 // Surfaces the two error redirects /api/orders/create can send back here
@@ -44,7 +41,7 @@ const errorMessage =
 	error === 'invalid_dates'
 		? `Your selected dates were invalid, the pick-up date has already passed, or the range was longer than the maximum ${getMaxRentalDays()} days — please choose your dates again.`
 		: error === 'unavailable'
-			? "One or more items in your cart are no longer available for the selected dates — check the availability badges below and adjust your dates, or split off the unavailable item(s), before submitting again."
+			? "One or more items in your cart are no longer available for the selected dates — check the availability badges below and adjust your dates before submitting again."
 			: error === 'disclaimer_required'
 				? 'You must accept the disclaimer before submitting the order.'
 				: null;

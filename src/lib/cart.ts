@@ -80,20 +80,19 @@ export interface CartSetLine {
 
 export type CartLine = CartItemLine | CartSetLine;
 
-export interface OvercommittedItem {
+export interface ItemDemand {
 	productTitle: string;
 	needed: number;
 	stockCount: number;
 }
 
 /**
- * Items the cart as a whole asks for more of than we own, keyed by itemId —
+ * Units of each item the cart as a whole asks for, keyed by itemId —
  * totalled across every line, so a loose item plus a set containing it are
- * counted together (as checkout does). These can never be reserved for any
- * date, unlike items that are merely booked.
+ * counted together (as checkout does).
  */
-export function findOvercommittedItems(lines: CartLine[]): Map<number, OvercommittedItem> {
-	const totals = new Map<number, OvercommittedItem>();
+export function totalItemDemand(lines: CartLine[]): Map<number, ItemDemand> {
+	const totals = new Map<number, ItemDemand>();
 	const add = (itemId: number, productTitle: string, quantity: number, stockCount: number) => {
 		const current = totals.get(itemId) ?? { productTitle, needed: 0, stockCount };
 		current.needed += quantity;
@@ -106,11 +105,20 @@ export function findOvercommittedItems(lines: CartLine[]): Map<number, Overcommi
 			add(line.itemId, line.productTitle, line.quantity, line.stockCount);
 		}
 	}
-	return new Map([...totals].filter(([, item]) => item.needed > item.stockCount));
+	return totals;
+}
+
+/**
+ * Items the cart as a whole asks for more of than we own (see
+ * totalItemDemand). These can never be reserved for any date, unlike items
+ * that are merely booked.
+ */
+export function findOvercommittedItems(lines: CartLine[]): Map<number, ItemDemand> {
+	return new Map([...totalItemDemand(lines)].filter(([, item]) => item.needed > item.stockCount));
 }
 
 /** The overcommitted items a given cart line contributes to. */
-export function overcommittedForLine(line: CartLine, overcommitted: Map<number, OvercommittedItem>): OvercommittedItem[] {
+export function overcommittedForLine(line: CartLine, overcommitted: Map<number, ItemDemand>): ItemDemand[] {
 	const itemIds = 'setId' in line ? line.children.map((child) => child.itemId) : [line.itemId];
 	return [...new Set(itemIds)].flatMap((id) => overcommitted.get(id) ?? []);
 }

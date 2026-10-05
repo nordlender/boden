@@ -31,6 +31,7 @@ const overcommitted = findOvercommittedItems(cartLines);
 						// this line is (see api/cart/{update,remove}.ts).
 						const lineIdField = isSet ? 'setId' : 'itemId';
 						const lineId = isSet ? line.setId : line.itemId;
+						const lineOvercommitted = overcommittedForLine(line, overcommitted);
 						return (
 							<div class="py-4">
 								<ItemLine
@@ -44,10 +45,15 @@ const overcommitted = findOvercommittedItems(cartLines);
 									class="flex-wrap"
 								>
 									{isSet && <Badge class="mt-0.5 inline-block">Set</Badge>}
-									{overcommittedForLine(line, overcommitted).length > 0 ? (
-										overcommittedForLine(line, overcommitted).map((item) => (
+									{/* An item line's own row already says which item it is
+									    (product title + attributes); a set line names the
+									    component, as its children list below does. */}
+									{lineOvercommitted.length > 0 ? (
+										lineOvercommitted.map((item) => (
 											<p class="text-sm text-error-text">
-												Your cart has {item.needed} × {item.productTitle} in total — we only have {item.stockCount}
+												{isSet
+													? `Your cart has ${item.needed} × ${item.productTitle} in total — we only have ${item.stockCount}`
+													: `Your cart has ${item.needed} of this item in total — we only have ${item.stockCount}`}
 											</p>
 										))
 									) : (

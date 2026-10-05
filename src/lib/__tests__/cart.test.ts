@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { AstroCookies } from 'astro';
-import { getCart, setCart, addToCart, updateCartQuantity, removeFromCart, getCartLines, findOvercommittedItems, overcommittedForLine, type CartLine } from '../cart';
+import { getCart, setCart, addToCart, updateCartQuantity, removeFromCart, getCartLines, findOvercommittedItems, overcommittedForLine, totalItemDemand, type CartLine } from '../cart';
 
 // getCartLines joins the cookie cart against the db (src/lib/cart.ts imports
 // ../db/client, which itself opens a fixed `./data/rental.db` file that
@@ -434,5 +434,13 @@ describe('findOvercommittedItems', () => {
 
   it('reports nothing when the combined cart fits what we own', () => {
     expect(findOvercommittedItems([itemLine(1, 1, 2), setLine(1, [{ itemId: 1, quantityPerSet: 1, stockCount: 2 }])]).size).toBe(0);
+  });
+
+  it('totalItemDemand counts every item, overcommitted or not, with set quantities multiplied out', () => {
+    const demand = totalItemDemand([itemLine(1, 1, 5), setLine(2, [{ itemId: 1, quantityPerSet: 2, stockCount: 5 }, { itemId: 2, quantityPerSet: 1, stockCount: 3 }])]);
+    expect([...demand]).toEqual([
+      [1, { productTitle: 'Item 1', needed: 5, stockCount: 5 }],
+      [2, { productTitle: 'Item 2', needed: 2, stockCount: 3 }],
+    ]);
   });
 });

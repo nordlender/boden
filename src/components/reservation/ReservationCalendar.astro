@@ -171,15 +171,6 @@ const todayIso = todayIsoInOslo();
 		color: var(--color-success-text);
 	}
 
-	/* After pickup-available, so a booked day never looks pickable. */
-	.reservation-calendar calendar-range::part(disallowed) {
-		background-color: var(--color-disabled-bg);
-		box-shadow: none;
-		color: var(--color-disabled-text);
-		text-decoration: line-through;
-		cursor: not-allowed;
-	}
-
 	.reservation-calendar calendar-range::part(range-inner) {
 		background-color: var(--color-selected-subtle);
 		color: var(--color-selected-text);
@@ -189,6 +180,18 @@ const todayIso = todayIsoInOslo();
 	.reservation-calendar calendar-range::part(range-end) {
 		background-color: var(--color-selected);
 		color: var(--color-text-inverted);
+	}
+
+	/* Last, so a booked day never looks pickable or selected — not even
+	   inside a selected range. opacity resets cally's built-in 0.5 so the
+	   disabled tokens alone set the contrast. */
+	.reservation-calendar calendar-range::part(disallowed) {
+		background-color: var(--color-disabled-bg);
+		box-shadow: none;
+		color: var(--color-disabled-text);
+		text-decoration: line-through;
+		cursor: not-allowed;
+		opacity: 1;
 	}
 </style>
 

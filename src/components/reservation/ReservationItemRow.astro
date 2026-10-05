@@ -1,29 +1,42 @@
 ---
 import ItemLine from '../ui/ItemLine.astro';
+import Badge from '../ui/Badge.astro';
+import SetChildrenList from '../cart/SetChildrenList.astro';
 
 interface Props {
-	itemId: number;
+	kind: 'item' | 'set';
+	id: number;
 	productSlug: string | null;
 	productTitle: string;
 	imageUrl: string | null;
 	quantity: number;
-	attributes: { key: string; value: string }[];
+	// Already-formatted per-kind subtitle text, computed by the caller — an
+	// item's joined attribute values, or a set's own manually-typed label
+	// (see cart.ts's CartSetLine comment on why a set has no attributes of
+	// its own to join).
+	subtitle: string | null;
+	// Only for a set row — its resolved components, shown indented and
+	// smaller underneath, read-only (never independently removed —
+	// see cart.ts's CartSetChild).
+	components?: { productTitle: string; quantityPerSet: number }[];
 }
 
-const { itemId, productSlug, productTitle, imageUrl, quantity, attributes } = Astro.props;
+const { kind, id, productSlug, productTitle, imageUrl, quantity, subtitle, components = [] } = Astro.props;
+const lineKey = `${kind}:${id}`;
 ---
 
-<div data-reservation-row data-item-id={itemId} class="py-4">
+<div data-reservation-row data-line-key={lineKey} class="py-4">
 	<ItemLine
 		imageUrl={imageUrl}
 		name={productTitle}
 		href={productSlug ? `/products/${productSlug}` : null}
-		attributes={attributes}
+		subtitle={subtitle}
 		quantity={quantity}
 		thumbnailSize={64}
 		gap="lg"
 		class="flex-wrap"
 	>
+		{kind === 'set' && <Badge class="mt-0.5 inline-block">Set</Badge>}
 		<Fragment slot="badge">
 			<p data-availability-badge hidden class="rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"></p>
 		</Fragment>
@@ -33,7 +46,7 @@ const { itemId, productSlug, productTitle, imageUrl, quantity, attributes } = As
 				type="button"
 				data-remove-item-button
 				hidden
-				title="Remove this item from your cart"
+				title={`Remove this ${kind} from your cart`}
 				class="shrink-0 rounded-md border border-border-strong px-2 py-1 text-sm text-text-muted hover:bg-bg-subtle hover:text-text"
 			>
 				Remove
@@ -41,4 +54,5 @@ const { itemId, productSlug, productTitle, imageUrl, quantity, attributes } = As
 			</button>
 		</Fragment>
 	</ItemLine>
+	{kind === 'set' && <SetChildrenList components={components} quantity={quantity} class="ml-20" />}
 </div>

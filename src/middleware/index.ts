@@ -1,9 +1,9 @@
 import { defineMiddleware } from 'astro:middleware';
-import { validateSession, isModerator } from '../lib/auth';
-import { MEMBER_ROUTE_PREFIXES, MOD_ROUTE_PREFIXES, ADMIN_ROUTE_PREFIXES, matchesPrefix, isApiRoute } from './prefixes';
+import { validateSession, hasRole } from '../lib/auth';
+import { requiredRole, isApiRoute } from './prefixes';
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
-  // Prerendered routes (the catalogue, item pages) are built once, ahead of
+  // Prerendered routes (shop grid shell, login, 404) are built once, ahead of
   // any request — there's no real per-visitor Request here, so a session
   // lookup is both meaningless and throws Astro's own warning
   // ("Astro.request.headers ... not available on prerendered pages").
@@ -16,9 +16,9 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   ctx.locals.user = user;
 
   const { routePattern } = ctx;
-  const allProtectedPrefixes = [...MEMBER_ROUTE_PREFIXES, ...MOD_ROUTE_PREFIXES, ...ADMIN_ROUTE_PREFIXES];
+  const minRole = requiredRole(routePattern);
 
-  if (matchesPrefix(routePattern, allProtectedPrefixes) && !user) {
+  if (minRole && !user) {
     // API routes (e.g. /api/wizard/*) are form-POST/fetch targets, not
     // something a browser navigates to — redirecting them into the OAuth
     // login dance means Auth.js's callback then does a GET back to that
@@ -33,11 +33,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     return ctx.redirect(`/auth/login?next=${encodeURIComponent(ctx.url.pathname)}`);
   }
 
-  if (matchesPrefix(routePattern, MOD_ROUTE_PREFIXES) && !isModerator(user?.role)) {
-    return new Response('Forbidden', { status: 403 });
-  }
-
-  if (matchesPrefix(routePattern, ADMIN_ROUTE_PREFIXES) && user?.role !== 'admin') {
+  if (minRole && !hasRole(user?.role, minRole)) {
     return new Response('Forbidden', { status: 403 });
   }
 

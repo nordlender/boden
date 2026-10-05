@@ -6,15 +6,16 @@
 // to render and calls these.
 import { badgeBaseClasses, badgeToneClasses } from '../../lib/badge-styles';
 
-export interface ItemAvailability {
-	itemId: number;
+// A row is either a plain item or a set (see cart.ts's CartLine) — this
+// module doesn't care which, it only ever paints `available`.
+export interface LineAvailability {
+	key: string;
 	available: boolean;
-	requestedQuantity: number;
 }
 
 // Renders one row's availability badge and remove button. The remove button
 // is only offered on a row that is unavailable for the chosen dates.
-export function renderRow(row: Element, availability: ItemAvailability): void {
+export function renderRow(row: Element, availability: LineAvailability): void {
 	const badge = row.querySelector('[data-availability-badge]');
 	const removeButton = row.querySelector('[data-remove-item-button]');
 	if (!(badge instanceof HTMLElement)) return;

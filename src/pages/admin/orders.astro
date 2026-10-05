@@ -1,20 +1,16 @@
 ---
-export const prerender = false;
-
-// Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin) —
 // reached only when logged in with role === 'admin'.
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { db } from '../../db/client';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
 import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
+import { ORDER_STATUSES, isOrderStatus, type OrderStatus } from '../../lib/orderStatus';
 import OrdersLayoutToggle from '../../components/orders/OrdersLayoutToggle.astro';
 
-// src/db/schema.ts's orders.status enum.
-const ORDER_STATUSES = ['requested', 'active', 'returned', 'rejected'] as const;
-type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 const statusParam = Astro.url.searchParams.get('status');
-const activeStatus: OrderStatus | null = ORDER_STATUSES.includes(statusParam as OrderStatus)
+const activeStatus: OrderStatus | null = isOrderStatus(statusParam)
 	? (statusParam as OrderStatus)
 	: null;
 

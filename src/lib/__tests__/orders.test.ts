@@ -14,7 +14,7 @@ afterAll(() => {
 	vi.useRealTimers();
 });
 
-// Contact snapshot fields are required on createOrder/createSplitOrders
+// Contact snapshot fields are required on createOrder
 // input (src/db/schema.ts's orders.contactName/contactEmail) — a fixed
 // stand-in for every call below, since none of these tests are about the
 // contact snapshot itself. `role` is likewise a fixed 'member' stand-in
@@ -27,16 +27,21 @@ const CONTACT = {
 	role: 'member' as const,
 	hasUnpaidFees: null,
 	userIsMember: null,
+	disclaimerAccepted: false,
 };
 
-// createOrder/createSplitOrders join against the db (src/lib/orders.ts
+// createOrder join against the db (src/lib/orders.ts
 // imports ../db/client) — swap it here for a seeded in-memory sqlite db,
 // same pattern as src/lib/__tests__/cart.test.ts and reservation.test.ts.
 // Deterministic ids: itemA=1, itemB=2, itemC=3 (the only rows ever inserted
 // into `items` here, and sqlite autoincrement counters start at 1 per table
-// per in-memory db instance).
+// per in-memory db instance). setX=1 (the only row ever inserted into
+// `sets`), resolving to 1× item B + 1× item C.
 const ITEM_A_ID = 1;
 const ITEM_B_ID = 2;
+const ITEM_C_ID = 3;
+const SET_X_ID = 1;
+const SET_Y_ID = 2; // contains only item D, which is archived
 
 vi.mock('../../db/client', async () => {
 	const { createTestDb } = await import('../../db/testDb');
@@ -54,6 +59,19 @@ vi.mock('../../db/client', async () => {
 	await db.insert(schema.items).values({ productId: product.id, slug: 'item-a', name: 'Item A', stockCount: 1 });
 	await db.insert(schema.items).values({ productId: product.id, slug: 'item-b', name: 'Item B', stockCount: 5 });
 	await db.insert(schema.items).values({ productId: product.id, slug: 'item-c', name: 'Item C', stockCount: 5 });
+	// vi.mock factories are hoisted above top-level const declarations, so
+	// these use literal ids (1/2/3) rather than the ITEM_*_ID/SET_X_ID
+	// constants declared above — same reason the item inserts below do too.
+	await db.insert(schema.sets).values({ productId: product.id, slug: 'set-x', name: 'Set X' });
+	await db.insert(schema.setItems).values([
+		{ setId: 1, itemId: 2, quantity: 1 },
+		{ setId: 1, itemId: 3, quantity: 1 },
+	]);
+	// Item D (archived) and Set Y (containing it) — for the "a set with an
+	// archived component is dropped whole, not partially resolved" case.
+	await db.insert(schema.items).values({ productId: product.id, slug: 'item-d', name: 'Item D', stockCount: 5, archived: true });
+	await db.insert(schema.sets).values({ productId: product.id, slug: 'set-y', name: 'Set Y' });
+	await db.insert(schema.setItems).values({ setId: 2, itemId: 4, quantity: 1 });
 	await db.insert(schema.users).values({ id: 'member-1', name: 'Member', email: 'member@example.com' });
 	const [otherUser] = await db.insert(schema.users).values({ id: 'other-user', name: 'Other', email: 'other@example.com' }).returning();
 
@@ -67,17 +85,35 @@ vi.mock('../../db/client', async () => {
 	return { db };
 });
 
+// Every createOrder call below uses the same member and contact stand-ins
+// and only varies the cart and the dates.
+function placeOrder(cartEntries: CartEntry[], fromDate: string, toDate: string) {
+	return createOrder({ userId: 'member-1', note: null, cartEntries, fromDate, toDate, ...CONTACT });
+}
+
+// db/schema are imported lazily (not at the top of the file) because both sit
+// behind the vi.mock above — the same two dynamic imports every test used to
+// repeat inline.
+async function orderItemRows(orderId: number) {
+	const { db } = await import('../../db/client');
+	const schema = await import('../../db/schema');
+	return db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, orderId));
+}
+
+async function findOrderByCode(orderCode: string) {
+	const { db } = await import('../../db/client');
+	return db.query.orders.findFirst({ where: (t, { eq: eqCol }) => eqCol(t.orderCode, orderCode) });
+}
+
+async function markOrderActive(orderId: number) {
+	const { db } = await import('../../db/client');
+	const schema = await import('../../db/schema');
+	await db.update(schema.orders).set({ status: 'active' }).where(eq(schema.orders.id, orderId));
+}
+
 describe('createOrder', () => {
 	it('creates an order with an NNAAX order code', async () => {
-		const cartEntries: CartEntry[] = [{ itemId: ITEM_B_ID, quantity: 2 }];
-		const result = await createOrder({
-			userId: 'member-1',
-			note: null,
-			cartEntries,
-			fromDate: '2026-02-01',
-			toDate: '2026-02-05',
-			...CONTACT,
-		});
+		const result = await placeOrder([{ itemId: ITEM_B_ID, quantity: 2 }], '2026-02-01', '2026-02-05');
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
@@ -85,34 +121,99 @@ describe('createOrder', () => {
 		expect(result.orderCode).toMatch(/^\d{2}[A-Z]{2}[ABIM]$/);
 	});
 
-	it('rejects with "unavailable" instead of creating an order when an item is already fully booked', async () => {
-		const cartEntries: CartEntry[] = [{ itemId: ITEM_A_ID, quantity: 1 }];
+	it('persists disclaimer acceptance as a timestamp on the order', async () => {
 		const result = await createOrder({
 			userId: 'member-1',
 			note: null,
-			// Overlaps the existing order's 2026-01-05..2026-01-10 booking of
-			// item A's only unit.
-			cartEntries,
-			fromDate: '2026-01-06',
-			toDate: '2026-01-08',
+			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
+			fromDate: '2026-03-01',
+			toDate: '2026-03-02',
 			...CONTACT,
+			disclaimerAccepted: true,
 		});
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		const { db } = await import('../../db/client');
+		const { orders } = await import('../../db/schema');
+		const row = db.select().from(orders).where(eq(orders.id, result.orderId)).get();
+		expect(row?.disclaimerAcceptedAt).toBeInstanceOf(Date);
+	});
+
+	it('rejects with "unavailable" instead of creating an order when an item is already fully booked', async () => {
+		// Overlaps the existing order's 2026-01-05..2026-01-10 booking of item
+		// A's only unit.
+		const result = await placeOrder([{ itemId: ITEM_A_ID, quantity: 1 }], '2026-01-06', '2026-01-08');
 
 		expect(result).toEqual({ ok: false, error: 'unavailable', unavailableItemIds: [ITEM_A_ID] });
 	});
 
 	it('fails with user_not_found (defense-in-depth) instead of throwing when userId has no matching users row', async () => {
-		const cartEntries: CartEntry[] = [{ itemId: ITEM_B_ID, quantity: 1 }];
 		const result = await createOrder({
 			userId: 'no-such-user',
 			note: null,
-			cartEntries,
+			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
 			fromDate: '2026-02-01',
 			toDate: '2026-02-05',
 			...CONTACT,
 		});
 
 		expect(result).toEqual({ ok: false, error: 'user_not_found' });
+	});
+
+	it('resolves a set entry into its component items at checkout', async () => {
+		const result = await placeOrder([{ setId: SET_X_ID, quantity: 2 }], '2026-02-10', '2026-02-12');
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		const rows = await orderItemRows(result.orderId);
+		expect(rows.map((row) => [row.itemId, row.requestedQuantity]).sort()).toEqual([
+			[ITEM_B_ID, 2],
+			[ITEM_C_ID, 2],
+		]);
+	});
+
+	it('merges a direct item entry with the same item pulled in via a set into one summed orderItems row', async () => {
+		const result = await placeOrder(
+			[
+				{ itemId: ITEM_B_ID, quantity: 1 },
+				{ setId: SET_X_ID, quantity: 1 }, // also resolves to 1× item B
+			],
+			'2026-02-15',
+			'2026-02-16',
+		);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		const rows = await orderItemRows(result.orderId);
+		expect(rows).toHaveLength(2); // one row per distinct item, not per cart entry
+		expect(rows.find((row) => row.itemId === ITEM_B_ID)?.requestedQuantity).toBe(2);
+		expect(rows.find((row) => row.itemId === ITEM_C_ID)?.requestedQuantity).toBe(1);
+	});
+
+	it('drops a set entry whole when one of its components is archived, rather than partially resolving it', async () => {
+		const result = await placeOrder(
+			[
+				{ itemId: ITEM_B_ID, quantity: 1 },
+				{ setId: SET_Y_ID, quantity: 1 }, // resolves only to item D, which is archived
+			],
+			'2026-02-20',
+			'2026-02-21',
+		);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		// Only item B (the direct entry) made it in — set Y contributed nothing.
+		const rows = await orderItemRows(result.orderId);
+		expect(rows.map((row) => row.itemId)).toEqual([ITEM_B_ID]);
+	});
+
+	it('rejects with empty_cart when the only entry is a set whose sole component is archived', async () => {
+		const result = await placeOrder([{ setId: SET_Y_ID, quantity: 1 }], '2026-02-22', '2026-02-23');
+
+		expect(result).toEqual({ ok: false, error: 'empty_cart' });
 	});
 });
 
@@ -123,17 +224,14 @@ describe('createOrder with mixed availability', () => {
 		const before = await db.select().from(schema.orders);
 
 		// Item A is booked 01-05..01-10, item B is free for the same range.
-		const result = await createOrder({
-			userId: 'member-1',
-			note: null,
-			cartEntries: [
+		const result = await placeOrder(
+			[
 				{ itemId: ITEM_A_ID, quantity: 1 },
 				{ itemId: ITEM_B_ID, quantity: 1 },
 			],
-			fromDate: '2026-01-06',
-			toDate: '2026-01-08',
-			...CONTACT,
-		});
+			'2026-01-06',
+			'2026-01-08',
+		);
 
 		expect(result).toEqual({ ok: false, error: 'unavailable', unavailableItemIds: [ITEM_A_ID] });
 		const after = await db.select().from(schema.orders);
@@ -143,24 +241,15 @@ describe('createOrder with mixed availability', () => {
 
 describe('deleteOrder', () => {
 	it('deletes a requested order owned by the caller, cascading its orderItems', async () => {
-		const created = await createOrder({
-			userId: 'member-1',
-			note: null,
-			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
-			fromDate: '2026-05-01',
-			toDate: '2026-05-02',
-			...CONTACT,
-		});
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-01', '2026-05-02');
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
 		const result = await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' });
 		expect(result).toEqual({ ok: true });
 
-		const { db } = await import('../../db/client');
-		const schema = await import('../../db/schema');
-		expect(await db.query.orders.findFirst({ where: (t, { eq: eqCol }) => eqCol(t.orderCode, created.orderCode) })).toBeUndefined();
-		expect(await db.select().from(schema.orderItems).where(eq(schema.orderItems.orderId, created.orderId))).toEqual([]);
+		expect(await findOrderByCode(created.orderCode)).toBeUndefined();
+		expect(await orderItemRows(created.orderId)).toEqual([]);
 	});
 
 	it('rejects deleting an order owned by someone else, without revealing whether it exists', async () => {
@@ -169,45 +258,28 @@ describe('deleteOrder', () => {
 	});
 
 	it('rejects deleting an order that has moved past "requested"', async () => {
-		const created = await createOrder({
-			userId: 'member-1',
-			note: null,
-			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
-			fromDate: '2026-05-10',
-			toDate: '2026-05-11',
-			...CONTACT,
-		});
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-10', '2026-05-11');
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
-		const { db } = await import('../../db/client');
-		const schema = await import('../../db/schema');
-		await db.update(schema.orders).set({ status: 'active' }).where(eq(schema.orders.id, created.orderId));
+		await markOrderActive(created.orderId);
 
 		const result = await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' });
 		expect(result).toEqual({ ok: false, error: 'not_deletable', status: 'active' });
-		expect(await db.query.orders.findFirst({ where: (t, { eq: eqCol }) => eqCol(t.orderCode, created.orderCode) })).toBeDefined();
+		expect(await findOrderByCode(created.orderCode)).toBeDefined();
 	});
 });
 
 describe('rescheduleOrder', () => {
 	it('reschedules a requested order to new, available dates', async () => {
-		const created = await createOrder({
-			userId: 'member-1',
-			note: null,
-			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
-			fromDate: '2026-06-01',
-			toDate: '2026-06-02',
-			...CONTACT,
-		});
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-06-01', '2026-06-02');
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
 		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-06-10', toDate: '2026-06-11' });
 		expect(result).toEqual({ ok: true, fromDate: '2026-06-10', toDate: '2026-06-11' });
 
-		const { db } = await import('../../db/client');
-		const updated = await db.query.orders.findFirst({ where: (t, { eq: eqCol }) => eqCol(t.orderCode, created.orderCode) });
+		const updated = await findOrderByCode(created.orderCode);
 		expect(updated?.fromDate).toBe('2026-06-10');
 		expect(updated?.toDate).toBe('2026-06-11');
 	});
@@ -216,14 +288,7 @@ describe('rescheduleOrder', () => {
 		// Item A has only 1 unit of stock — rescheduling this order to overlap
 		// its OWN existing 2026-08-01..2026-08-03 booking must not count that
 		// booking against itself (getReservationAvailability's excludeOrderId).
-		const created = await createOrder({
-			userId: 'member-1',
-			note: null,
-			cartEntries: [{ itemId: ITEM_A_ID, quantity: 1 }],
-			fromDate: '2026-08-01',
-			toDate: '2026-08-03',
-			...CONTACT,
-		});
+		const created = await placeOrder([{ itemId: ITEM_A_ID, quantity: 1 }], '2026-08-01', '2026-08-03');
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
@@ -235,22 +300,8 @@ describe('rescheduleOrder', () => {
 		// Both bookings are for item A (1 unit of stock) on non-overlapping
 		// ranges, so both succeed — then reschedule the second to overlap the
 		// first, which only its own exclusion doesn't cover.
-		const first = await createOrder({
-			userId: 'member-1',
-			note: null,
-			cartEntries: [{ itemId: ITEM_A_ID, quantity: 1 }],
-			fromDate: '2026-09-01',
-			toDate: '2026-09-05',
-			...CONTACT,
-		});
-		const second = await createOrder({
-			userId: 'member-1',
-			note: null,
-			cartEntries: [{ itemId: ITEM_A_ID, quantity: 1 }],
-			fromDate: '2026-09-10',
-			toDate: '2026-09-15',
-			...CONTACT,
-		});
+		const first = await placeOrder([{ itemId: ITEM_A_ID, quantity: 1 }], '2026-09-01', '2026-09-05');
+		const second = await placeOrder([{ itemId: ITEM_A_ID, quantity: 1 }], '2026-09-10', '2026-09-15');
 		expect(first.ok).toBe(true);
 		expect(second.ok).toBe(true);
 		if (!first.ok || !second.ok) return;
@@ -260,14 +311,7 @@ describe('rescheduleOrder', () => {
 	});
 
 	it('rejects a reschedule range longer than the max rental duration', async () => {
-		const created = await createOrder({
-			userId: 'member-1',
-			note: null,
-			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
-			fromDate: '2026-10-01',
-			toDate: '2026-10-02',
-			...CONTACT,
-		});
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-10-01', '2026-10-02');
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
@@ -276,20 +320,11 @@ describe('rescheduleOrder', () => {
 	});
 
 	it('rejects rescheduling an order that has moved past "requested"', async () => {
-		const created = await createOrder({
-			userId: 'member-1',
-			note: null,
-			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
-			fromDate: '2026-11-01',
-			toDate: '2026-11-02',
-			...CONTACT,
-		});
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-11-01', '2026-11-02');
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
-		const { db } = await import('../../db/client');
-		const schema = await import('../../db/schema');
-		await db.update(schema.orders).set({ status: 'active' }).where(eq(schema.orders.id, created.orderId));
+		await markOrderActive(created.orderId);
 
 		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-10', toDate: '2026-11-11' });
 		expect(result).toEqual({ ok: false, error: 'not_modifiable', status: 'active' });
@@ -328,5 +363,16 @@ describe('generateOrderCode', () => {
 
 	it('matches the NNAAX format', () => {
 		expect(generateOrderCode('member')).toMatch(/^\d{2}[A-Z]{2}[ABIM]$/);
+	});
+
+	it('never draws the randomly-placed digits/letters from the ambiguous 0/O or 1/I pairs', () => {
+		// The fixed 5th character legitimately can be 'I' (moderator) — this
+		// only checks the two random digits and two random free letters
+		// (positions 0-3), same ambiguity rationale as RANDOM_CODE_ALPHABET.
+		for (let i = 0; i < 50; i++) {
+			const code = generateOrderCode('member');
+			const randomPart = code.slice(0, 4);
+			expect(randomPart).not.toMatch(/[01IO]/);
+		}
 	});
 });

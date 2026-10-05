@@ -116,10 +116,10 @@ export const items = sqliteTable('items', {
   name: text('name').notNull(),
   imageUrl: text('image_url'),
   // Total owned. "In stock right now" is never stored — it's always
-  // computed as stockCount minus quantities on currently active/requested
-  // rentals (see docs/schema-legacy-fixes.md's original `available` derivation,
-  // carried forward unchanged): a stored second number can only drift out
-  // of sync.
+  // computed as stockCount minus quantities on currently active/scheduled/
+  // requested rentals (see docs/schema-legacy-fixes.md's original `available`
+  // derivation, carried forward unchanged): a stored second number can only
+  // drift out of sync.
   stockCount: integer('stock_count').notNull().default(1),
   // Soft delete: items referenced by orderItems can't be hard-deleted.
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
@@ -154,6 +154,70 @@ export const itemAttributeValues = sqliteTable('item_attribute_values', {
   index('item_attribute_values_attribute_id_idx').on(table.attributeId),
 ]);
 
+// ---------------------------------------------------------------------------
+// Sets — an alternative to `items` for a product's variant slot. A product
+// points to an item OR a set for each of its variants (schema-v3 already
+// lets a product have several items as its variants, e.g. Size/Color; a set
+// is the same idea, except that variant resolves to a *bundle* of items
+// rather than one physical item — e.g. "Indoor Rope Climbing Set" comes in
+// S/M/L, each a `sets` row, each resolving via `setItems` to a harness of
+// that size plus a chalk bag and a belay device). Mirrors `items` in shape
+// (productId, slug, name, imageUrl, archived) so the two behave the same way
+// everywhere a product lists its variants.
+// ---------------------------------------------------------------------------
+
+export const sets = sqliteTable('sets', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  // Nullable/set-null, same rationale as items.productId: a set can exist
+  // unassigned, and deleting a product must never delete (or orphan the
+  // meaning of) a set that past orders' resolved items still reference.
+  productId: integer('product_id').references(() => products.id, { onDelete: 'set null' }),
+  slug: text('slug').notNull().unique(),
+  // Internal/admin-only label, same as items.name — never shown to customers.
+  name: text('name').notNull(),
+  // Short customer-facing text distinguishing this set from its siblings
+  // under the same product (e.g. "S"/"M"/"L") — typed directly by the admin
+  // when creating the set, same as any other manually-entered field. There
+  // is deliberately no attribute-key/value template for sets (unlike items'
+  // productAttributeKeys/itemAttributeValues split): a set's *contents* are
+  // shown automatically, derived from its components' own attribute values
+  // (see src/lib/sets.ts's getSetComponentDisplayBulk), but a set's own
+  // identity/label is not derived — the admin creates each variant by hand.
+  label: text('label'),
+  imageUrl: text('image_url'),
+  // Soft delete: a set that's ever been ordered has its resolved items
+  // living on in orderItems, independent of this row — same rationale as
+  // items.archived.
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index('sets_product_id_idx').on(table.productId),
+]);
+
+// ---------------------------------------------------------------------------
+// Set items — the bundle a set resolves into. A rental/order never
+// references a set directly (see orderItems above); at the moment an order
+// is placed, each cart line for a set is expanded into its setItems rows
+// (quantity multiplied by however many of the set were requested) and
+// inserted as ordinary orderItems rows. Kept here purely so a set's
+// composition — and therefore its availability, computed from its
+// components' stock same as any other item — can be looked up.
+// ---------------------------------------------------------------------------
+
+export const setItems = sqliteTable('set_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  setId: integer('set_id').notNull().references(() => sets.id, { onDelete: 'cascade' }),
+  // No onDelete: a component item can't be hard-deleted out from under a
+  // set that still resolves to it — same convention as orderItems.itemId.
+  itemId: integer('item_id').notNull().references(() => items.id),
+  quantity: integer('quantity').notNull().default(1),
+}, (table) => [
+  uniqueIndex('set_items_set_item_unique').on(table.setId, table.itemId),
+  index('set_items_set_id_idx').on(table.setId),
+  index('set_items_item_id_idx').on(table.itemId),
+  check('set_items_quantity_positive', sql`${table.quantity} > 0`),
+]);
+
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(), // ID from external OAuth provider
   // WARNING: this UNIQUE constraint assumes bloc never reports the same
@@ -185,7 +249,7 @@ export const orders = sqliteTable('orders', {
   orderCode: text('order_code').notNull().unique(),
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', {
-    enum: ['requested', 'active', 'returned', 'rejected'],
+    enum: ['requested', 'scheduled', 'active', 'returned', 'rejected'],
   }).notNull().default('requested'),
   // Reservation date range (YYYY-MM-DD, inclusive on both ends) chosen on the
   // /reservation page — the whole order (all its orderItems) shares one
@@ -219,14 +283,20 @@ export const orders = sqliteTable('orders', {
   returnedByUserId: text('returned_by_user_id').references(() => users.id),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   // Set when a moderator accepts the order on the review step, ahead of
-  // retrieval — deliberately not a 5th `status` value: accept leaves
-  // `status: 'requested'` unchanged (see docs/moderator-review.md), it just
-  // gates whether the order is eligible for the retrieve/confirm flow yet.
+  // retrieval — accept also moves `status` to 'scheduled' (see
+  // src/lib/moderatorOrders.ts's acceptOrder), so acceptedAt is redundant
+  // with that for gating purposes but kept as the accountability timestamp.
   acceptedAt: integer('accepted_at', { mode: 'timestamp' }),
   activatedAt: integer('activated_at', { mode: 'timestamp' }), // set when moderator confirms
   returnedAt: integer('returned_at', { mode: 'timestamp' }), // set when moderator marks returned
   rejectedAt: integer('rejected_at', { mode: 'timestamp' }), // set when moderator rejects
   rejectedReason: text('rejected_reason'), // set when moderator rejects
+  // Set when the checkout submitter (the renting user) accepted the liability
+  // disclaimer (OSI is not liable for injury, etc — see #134). Required at
+  // checkout, shown to moderators on the order detail. A timestamp (not a
+  // plain boolean) so there's a record of *when*, same pattern as acceptedAt
+  // above. Nullable only for orders created before the disclaimer existed.
+  disclaimerAcceptedAt: integer('disclaimer_accepted_at', { mode: 'timestamp' }),
   // TODO: dueAt (rental due date) — not yet confirmed, see docs/schema-legacy-fixes.md #9
 }, (table) => [
   index('orders_user_id_idx').on(table.userId),
@@ -383,6 +453,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   // Convenience relation only — no real FK column on `products` (same
   // pattern as usersRelations' `many(orders)` below).
   items: many(items),
+  sets: many(sets),
 }));
 
 export const productLinksRelations = relations(productLinks, ({ one }) => ({
@@ -407,6 +478,7 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   }),
   attributeValues: many(itemAttributeValues),
   orderItems: many(orderItems),
+  setItems: many(setItems),
 }));
 
 export const itemAttributeValuesRelations = relations(itemAttributeValues, ({ one }) => ({
@@ -417,6 +489,25 @@ export const itemAttributeValuesRelations = relations(itemAttributeValues, ({ on
   attribute: one(productAttributeKeys, {
     fields: [itemAttributeValues.attributeId],
     references: [productAttributeKeys.id],
+  }),
+}));
+
+export const setsRelations = relations(sets, ({ one, many }) => ({
+  product: one(products, {
+    fields: [sets.productId],
+    references: [products.id],
+  }),
+  setItems: many(setItems),
+}));
+
+export const setItemsRelations = relations(setItems, ({ one }) => ({
+  set: one(sets, {
+    fields: [setItems.setId],
+    references: [sets.id],
+  }),
+  item: one(items, {
+    fields: [setItems.itemId],
+    references: [items.id],
   }),
 }));
 

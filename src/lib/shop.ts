@@ -8,6 +8,7 @@
 // to what a shopper should see rather than the admin wizard's full set.
 import { db } from '../db/client';
 import { reservedQuantitiesByItem } from './stock';
+import { computeSetAvailability, getSetChildrenDetailedBulk, getSetComponentDisplayBulk, type SetChildDetail, type SetComponentDisplay } from './sets';
 
 export interface ShopAttribute {
 	key: string;
@@ -31,6 +32,33 @@ export interface ShopItem {
 	attributes: ShopAttribute[];
 }
 
+// A set's variant, shaped like ShopItem (same product-level fields) but
+// resolving to a bundle of components rather than being one physical thing
+// — see src/db/schema.ts's `sets` comment. `inStock`/`stockCount` are the
+// most sets orderable right now/ever, capped by whichever component has the
+// least room (src/lib/sets.ts's computeSetAvailability) — a set has no
+// stock of its own. Unlike ShopItem, there's no `attributes` here — a set
+// has no attribute template of its own (see schema.ts's `sets.label`
+// comment): `label` is the admin's own short, manually-typed text
+// distinguishing this set from its siblings, and `componentDisplay` is the
+// automatically-derived "what this set includes" breakdown, sourced from
+// the components' own real attribute values (src/lib/sets.ts's
+// getSetComponentDisplayBulk).
+export interface ShopSet {
+	id: number;
+	name: string;
+	label: string | null;
+	imageUrl: string | null;
+	inStock: number;
+	stockCount: number;
+	productId: number;
+	productSlug: string;
+	productTitle: string;
+	categoryName: string | null;
+	subcategoryName: string | null;
+	componentDisplay: SetComponentDisplay[];
+}
+
 export interface ShopProductLink {
 	id: number;
 	label: string;
@@ -47,10 +75,11 @@ export interface ShopProduct {
 	subcategoryName: string | null;
 	links: ShopProductLink[];
 	// Ordered attribute key names from the product's template — used to sort
-	// each item's flat attribute values consistently and to know whether a
-	// per-variant attribute list should render at all.
+	// each item's/set's flat attribute values consistently and to know
+	// whether a per-variant attribute list should render at all.
 	attributeKeyOrder: string[];
 	items: ShopItem[];
+	sets: ShopSet[];
 }
 
 export function sortAttributes(
@@ -98,6 +127,32 @@ function toShopItem(item: ItemLike, product: ProductLike, reserved: Map<number, 
 	};
 }
 
+// Shared by getShopSets (product nested per-row) and getShopProductBySlug
+// (one product, many sibling sets) — mirrors toShopItem above.
+function toShopSet(
+	set: { id: number; name: string; label: string | null; imageUrl: string | null },
+	product: ProductLike,
+	children: SetChildDetail[],
+	componentDisplay: SetComponentDisplay[],
+	reserved: Map<number, number>,
+): ShopSet {
+	const { stockCount, inStock } = computeSetAvailability(children, reserved);
+	return {
+		id: set.id,
+		name: set.name,
+		label: set.label,
+		imageUrl: set.imageUrl ?? product.thumbnailImageUrl,
+		inStock,
+		stockCount,
+		productId: product.id,
+		productSlug: product.slug,
+		productTitle: product.title,
+		categoryName: product.category?.name ?? null,
+		subcategoryName: product.subcategory?.name ?? null,
+		componentDisplay,
+	};
+}
+
 // Homepage listing: every non-archived item whose product is published.
 // Items with no product (still mid-wizard, per wizard.ts's "unassigned"
 // bucket) never have a product to be published, so they're excluded
@@ -123,6 +178,36 @@ export async function getShopItems(): Promise<ShopItem[]> {
 	return published.map((row) => toShopItem(row, row.product, reserved));
 }
 
+// Same idea as getShopItems, for sets — every non-archived set whose
+// product is published.
+export async function getShopSets(): Promise<ShopSet[]> {
+	const rows = await db.query.sets.findMany({
+		where: (t, { eq }) => eq(t.archived, false),
+		orderBy: (t, { asc }) => asc(t.id),
+		with: {
+			product: {
+				with: { category: true, subcategory: true },
+			},
+		},
+	});
+
+	const published = rows.filter(
+		(row): row is typeof row & { product: NonNullable<typeof row.product> } => row.product?.status === 'published',
+	);
+
+	const setIds = published.map((row) => row.id);
+	const [childrenBySet, componentDisplayBySet] = await Promise.all([
+		getSetChildrenDetailedBulk(setIds),
+		getSetComponentDisplayBulk(setIds),
+	]);
+	const allChildItemIds = [...new Set([...childrenBySet.values()].flat().map((child) => child.itemId))];
+	const reserved = await reservedQuantitiesByItem(allChildItemIds);
+
+	return published.map((row) =>
+		toShopSet(row, row.product, childrenBySet.get(row.id) ?? [], componentDisplayBySet.get(row.id) ?? [], reserved),
+	);
+}
+
 export interface ShopGridProduct {
 	productId: number;
 	productSlug: string;
@@ -130,66 +215,89 @@ export interface ShopGridProduct {
 	// Representative item's image/id — see groupShopItemsByProduct for how
 	// it's picked. Used for the tile's image and the `?item=<id>` link that
 	// preselects a variant on /products/[slug].
-	representativeItemId: number;
+	representativeItemId: number | null;
+	// Set only for a product whose variants are sets (a product's variants are
+	// all items or all sets, never a mix — see VariantPicker.astro). Exactly
+	// one of representativeItemId / representativeSetId is non-null.
+	representativeSetId: number | null;
 	imageUrl: string | null;
 	categoryName: string | null;
 	subcategoryName: string | null;
-	// Sum of every sibling item's inStock — interim approach (issue #64
+	// Sum of every sibling variant's inStock — interim approach (issue #64
 	// still owns the stock badge's final design), so this effectively reads
-	// "in stock if any item in the group is available."
+	// "in stock if any variant in the group is available."
 	inStock: number;
 }
 
-// Collapses getShopItems()'s one-row-per-item rows into one row per
-// product, for the homepage grid — a product with N size/color variants
-// should render as one tile, not N. Preserves the input's ordering (first
-// occurrence of each productId), since getShopItems already orders by item
-// id ascending.
-export function groupShopItemsByProduct(items: ShopItem[]): ShopGridProduct[] {
+// What both an item and a set variant provide to the grid — ShopItem and
+// ShopSet each satisfy this structurally, so one grouping routine serves both.
+type GridVariant = Pick<
+	ShopItem,
+	'id' | 'productId' | 'productSlug' | 'productTitle' | 'imageUrl' | 'categoryName' | 'subcategoryName' | 'inStock'
+>;
+
+// Collapses one-row-per-variant rows into one row per product, for the
+// homepage grid — a product with N size/color variants should render as one
+// tile, not N. Preserves the input's ordering (first occurrence of each
+// productId), since getShopItems/getShopSets already order by id ascending.
+function groupVariantsByProduct(
+	variants: GridVariant[],
+): (Omit<ShopGridProduct, 'representativeItemId' | 'representativeSetId'> & { representativeId: number })[] {
 	const order: number[] = [];
-	const groups = new Map<number, ShopItem[]>();
-	for (const item of items) {
-		if (!groups.has(item.productId)) {
-			order.push(item.productId);
-			groups.set(item.productId, []);
+	const groups = new Map<number, GridVariant[]>();
+	for (const variant of variants) {
+		if (!groups.has(variant.productId)) {
+			order.push(variant.productId);
+			groups.set(variant.productId, []);
 		}
-		groups.get(item.productId)!.push(item);
+		groups.get(variant.productId)!.push(variant);
 	}
 
 	return order.map((productId) => {
 		const group = groups.get(productId)!;
-		// Representative = first in-stock item, falling back to the first
-		// item in the group if none are in stock.
-		const representative = group.find((item) => item.inStock > 0) ?? group[0];
+		// Representative = first in-stock variant, falling back to the first
+		// variant in the group if none are in stock.
+		const representative = group.find((variant) => variant.inStock > 0) ?? group[0];
 		return {
 			productId,
 			productSlug: representative.productSlug,
 			productTitle: representative.productTitle,
-			representativeItemId: representative.id,
+			representativeId: representative.id,
 			imageUrl: representative.imageUrl,
 			categoryName: representative.categoryName,
 			subcategoryName: representative.subcategoryName,
-			inStock: group.reduce((sum, item) => sum + item.inStock, 0),
+			inStock: group.reduce((sum, variant) => sum + variant.inStock, 0),
 		};
 	});
 }
 
-// The homepage grid's data source: one row per published product,
-// collapsing its item variants into a single representative tile.
-export async function getShopGridProducts(): Promise<ShopGridProduct[]> {
-	const items = await getShopItems();
-	return groupShopItemsByProduct(items);
+export function groupShopItemsByProduct(items: ShopItem[]): ShopGridProduct[] {
+	return groupVariantsByProduct(items).map(({ representativeId, ...tile }) => ({
+		...tile,
+		representativeItemId: representativeId,
+		representativeSetId: null,
+	}));
 }
 
-// Every published product's slug with at least a wizard-created row —
-// used by /products/[slug].astro's getStaticPaths (this app prerenders the
-// catalogue/product pages at build time, see astro.config.mjs).
-export async function getPublishedProductSlugs(): Promise<string[]> {
-	const rows = await db.query.products.findMany({
-		where: (t, { eq }) => eq(t.status, 'published'),
-		columns: { slug: true },
-	});
-	return rows.map((row) => row.slug);
+export function groupShopSetsByProduct(sets: ShopSet[]): ShopGridProduct[] {
+	return groupVariantsByProduct(sets).map(({ representativeId, ...tile }) => ({
+		...tile,
+		representativeItemId: null,
+		representativeSetId: representativeId,
+	}));
+}
+
+// The homepage grid's data source: one row per published product,
+// collapsing its variants into a single representative tile. Item products
+// first (by item id), then set-only products (by set id). A product that
+// somehow has both is shown as an item product — the same "items unless
+// there are none" rule VariantPicker.astro applies.
+export async function getShopGridProducts(): Promise<ShopGridProduct[]> {
+	const [items, sets] = await Promise.all([getShopItems(), getShopSets()]);
+	const itemTiles = groupShopItemsByProduct(items);
+	const itemProductIds = new Set(itemTiles.map((tile) => tile.productId));
+	const setTiles = groupShopSetsByProduct(sets).filter((tile) => !itemProductIds.has(tile.productId));
+	return [...itemTiles, ...setTiles];
 }
 
 // Product detail page: the product plus its non-archived sibling items,
@@ -208,6 +316,7 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 			items: {
 				with: { attributeValues: { with: { attribute: true } } },
 			},
+			sets: true,
 		},
 	});
 
@@ -215,8 +324,19 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 
 	const visibleItems = product.items.filter((item) => !item.archived);
 	const reserved = await reservedQuantitiesByItem(visibleItems.map((item) => item.id));
-
 	const items: ShopItem[] = visibleItems.map((item) => toShopItem(item, product, reserved));
+
+	const visibleSets = product.sets.filter((set) => !set.archived);
+	const setIds = visibleSets.map((set) => set.id);
+	const [childrenBySet, componentDisplayBySet] = await Promise.all([
+		getSetChildrenDetailedBulk(setIds),
+		getSetComponentDisplayBulk(setIds),
+	]);
+	const allChildItemIds = [...new Set([...childrenBySet.values()].flat().map((child) => child.itemId))];
+	const reservedForSets = await reservedQuantitiesByItem(allChildItemIds);
+	const sets: ShopSet[] = visibleSets.map((set) =>
+		toShopSet(set, product, childrenBySet.get(set.id) ?? [], componentDisplayBySet.get(set.id) ?? [], reservedForSets),
+	);
 
 	return {
 		id: product.id,
@@ -229,5 +349,6 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 		links: product.links,
 		attributeKeyOrder: product.attributeKeys.map((key) => key.name),
 		items,
+		sets,
 	};
 }

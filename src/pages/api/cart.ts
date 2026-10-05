@@ -1,8 +1,6 @@
-export const prerender = false;
-
-// HTML read model for CartSidebar.astro's script. The catalogue/product
-// pages that render the sidebar are prerendered (static output — see
-// astro.config.mjs), so they have no per-request access to the cart cookie
+// HTML read model for CartSidebar.astro's script. Some pages that render
+// the sidebar are prerendered (the shop grid, 404 — see their
+// `prerender = true`), so they have no per-request access to the cart cookie
 // at render time; the sidebar instead fetches this endpoint client-side
 // whenever it opens and swaps the response straight into the DOM.
 //
@@ -13,14 +11,14 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
-import { getCartItems } from '../../lib/cart';
+import { getCartLines } from '../../lib/cart';
 import CartSidebarRows from '../../components/cart/CartSidebarRows.astro';
 
 export const GET: APIRoute = async ({ cookies }) => {
-	const cartItems = await getCartItems(cookies);
+	const cartLines = await getCartLines(cookies);
 	const container = await AstroContainer.create();
 	const html = await container.renderToString(CartSidebarRows, {
-		props: { items: cartItems },
+		props: { items: cartLines },
 	});
 	return new Response(html, {
 		headers: { 'Content-Type': 'text/html' },

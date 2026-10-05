@@ -1,6 +1,4 @@
-export const prerender = false;
-
-// Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES — see items.ts.
+// Also gated by src/middleware/prefixes.ts's ROUTE_RULES — see items.ts.
 // Single-item attribute edit — docs/schema.md's "attribute editing entry
 // points" (single-item half), submitted from the small per-attribute form
 // revealed by the {edit_icon} in the details box. Bulk editing is
@@ -8,7 +6,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { setItemAttributeValue } from '../../../lib/wizard';
-import { requireAdmin, safeRedirectTarget, isPositiveInteger } from '../../../lib/wizard-http';
+import { requireAdmin, safeRedirectTarget, isPositiveInteger } from '../../../lib/http';
 
 export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 	const forbidden = requireAdmin(locals);

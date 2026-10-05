@@ -3,6 +3,7 @@ import { items, orders, orderItems } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
 import type { Role } from './auth';
+import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
 
@@ -10,8 +11,14 @@ import { getReservationAvailability, isValidDateRange } from './reservation';
 export const ORDER_CODE_LENGTH = 5;
 const MAX_ORDER_CODE_ATTEMPTS = 5;
 
-const ORDER_CODE_DIGITS = '0123456789';
-const ORDER_CODE_FREE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+// Excludes 0/O and 1/I — same ambiguous-character rationale as
+// RANDOM_CODE_ALPHABET above; an order code is read aloud by members to
+// moderators. 'I' still appears as a *fixed* role-letter suffix below
+// (ORDER_CODE_ROLE_LETTERS) — that's a single, always-in-the-same-position
+// character, not a randomly drawn one, so it doesn't reintroduce the
+// ambiguity this excludes from the two free-letter positions.
+const ORDER_CODE_DIGITS = '23456789';
+const ORDER_CODE_FREE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 
 // Maps the role that created the order to its fixed last-character letter —
 // every order code's last letter is always one of these four, so the
@@ -77,6 +84,10 @@ export type CreateOrderInput = {
   // schema.ts's orders.hasUnpaidFees/userIsMember doc comment.
   hasUnpaidFees: boolean | null;
   userIsMember: boolean | null;
+  // Whether the checkout submitter checked the liability disclaimer box —
+  // see schema.ts's orders.disclaimerAcceptedAt doc comment. Required for
+  // every submitter at the API layer, so real submissions always pass true.
+  disclaimerAccepted: boolean;
 };
 
 export type CreateOrderResult =
@@ -93,12 +104,16 @@ function insertOrder(
     note: string | null;
     fromDate: string;
     toDate: string;
-    entries: CartEntry[];
+    // Always already resolved down to real items (see
+    // resolveEntriesToItemQuantities) — a set never reaches this far; orders
+    // always reference items, never sets (see schema.ts's `sets` comment).
+    entries: { itemId: number; quantity: number }[];
     contactName: string;
     contactEmail: string;
     contactMobile: string | null;
     hasUnpaidFees: boolean | null;
     userIsMember: boolean | null;
+    disclaimerAccepted: boolean;
   },
 ) {
   // Re-check availability inside the same transaction as the insert below —
@@ -108,12 +123,7 @@ function insertOrder(
   // point. Doing it here rather than before the transaction closes the race
   // between two members submitting overlapping requests concurrently: the
   // check and the insert commit atomically together.
-  const availabilities = getReservationAvailability(
-    { from: input.fromDate, to: input.toDate },
-    input.entries.map((e) => ({ itemId: e.itemId, quantity: e.quantity })),
-    undefined,
-    tx,
-  );
+  const availabilities = getReservationAvailability({ from: input.fromDate, to: input.toDate }, input.entries, undefined, tx);
   const unavailableItemIds = availabilities.filter((a) => !a.available).map((a) => a.itemId);
   if (unavailableItemIds.length > 0) {
     throw new UnavailableItemsError(unavailableItemIds);
@@ -135,6 +145,7 @@ function insertOrder(
           contactMobile: input.contactMobile,
           hasUnpaidFees: input.hasUnpaidFees,
           userIsMember: input.userIsMember,
+          disclaimerAcceptedAt: input.disclaimerAccepted ? new Date() : null,
         })
         .returning({ id: orders.id, orderCode: orders.orderCode })
         .get();
@@ -160,22 +171,24 @@ function insertOrder(
   throw new Error('Failed to generate a unique order code');
 }
 
-// Used by createOrder: drops cart entries pointing at
-// items that no longer exist or were archived — stock shortfall itself is
-// resolved later by the moderator at the confirm step (see
+// Used by createOrder: drops cart entries pointing at items/sets that no
+// longer exist or were archived — stock shortfall itself is resolved later by
+// the moderator at the confirm step (see
 // orderItems.retrievedQuantity), not here.
 //
-// Deliberately not checked here: item.product.status. Unlike getCartItems
-// (src/lib/cart.ts), this doesn't drop an entry whose product was
-// unpublished after it was added to the cart — so a stale/tampered cart can
-// still produce an orderItems row for it. Accepted for now rather than fixed
-// here: the not-yet-built moderator hand-out flow is expected to (a) warn
-// when an order contains an item that's since become archived/unpublished,
-// and (b) let the moderator hand out only a subset of an order's items, so
-// they can simply decline to hand out that one instead of it being a hard
-// failure. See the moderator-workflow-deferred memory.
+// Deliberately not checked here: item/set product.status. Unlike
+// getCartLines (src/lib/cart.ts), this doesn't drop an entry whose product
+// was unpublished after it was added to the cart — so a stale/tampered cart
+// can still produce an orderItems row for it. Accepted for now rather than
+// fixed here: the not-yet-built moderator hand-out flow is expected to (a)
+// warn when an order contains an item that's since become
+// archived/unpublished, and (b) let the moderator hand out only a subset of
+// an order's items, so they can simply decline to hand out that one instead
+// of it being a hard failure. See the moderator-workflow-deferred memory.
 async function resolveOrderableEntries(cartEntries: CartEntry[]): Promise<CartEntry[]> {
-  const itemIds = cartEntries.map((e) => e.itemId);
+  const itemIds = cartEntries.filter((e): e is { itemId: number; quantity: number } => 'itemId' in e).map((e) => e.itemId);
+  const setIds = cartEntries.filter((e): e is { setId: number; quantity: number } => 'setId' in e).map((e) => e.setId);
+
   const validItems = itemIds.length
     ? await db
         .select({ id: items.id })
@@ -183,12 +196,23 @@ async function resolveOrderableEntries(cartEntries: CartEntry[]): Promise<CartEn
         .where(and(inArray(items.id, itemIds), eq(items.archived, false)))
     : [];
   const validItemIds = new Set(validItems.map((i) => i.id));
-  return cartEntries.filter((e) => validItemIds.has(e.itemId));
+  const validSetIds = await getValidSetIds(setIds);
+
+  return cartEntries.filter((e) => ('itemId' in e ? validItemIds.has(e.itemId) : validSetIds.has(e.setId)));
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
   const entriesToOrder = await resolveOrderableEntries(input.cartEntries);
   if (entriesToOrder.length === 0) {
+    return { ok: false, error: 'empty_cart' };
+  }
+  // Expand any set entries into their component items and merge everything
+  // down to one summed quantity per itemId — see sets.ts's
+  // resolveEntriesToItemQuantities. orderItems always references items,
+  // never sets (schema.ts's `sets` comment) — this is the one place that
+  // resolution happens for a real checkout.
+  const resolvedEntries = await resolveEntriesToItemQuantities(entriesToOrder);
+  if (resolvedEntries.length === 0) {
     return { ok: false, error: 'empty_cart' };
   }
 
@@ -200,12 +224,13 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         note: input.note,
         fromDate: input.fromDate,
         toDate: input.toDate,
-        entries: entriesToOrder,
+        entries: resolvedEntries,
         contactName: input.contactName,
         contactEmail: input.contactEmail,
         contactMobile: input.contactMobile,
         hasUnpaidFees: input.hasUnpaidFees,
         userIsMember: input.userIsMember,
+        disclaimerAccepted: input.disclaimerAccepted,
       }),
     );
     return { ok: true, orderId: result.id, orderCode: result.orderCode };

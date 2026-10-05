@@ -1,15 +1,11 @@
 ---
-export const prerender = false;
-
 // Admin hub — landing page for the /admin/* section, mirroring
 // /moderator/index.astro's role as a landing page. Gated by
-// src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin). The message
+// src/middleware/prefixes.ts (ROUTE_RULES via /admin). The message
 // board here is the same shared MessageTable moderators also post to and
 // see (see issue #151, #225) — this page adds `isAdmin` (pin/delete any
 // message) plus its own "Message" trigger + modal for posting.
-import '../../styles/global.css';
-import ThemeInit from '../../components/ThemeInit.astro';
-import AdminNavbar from '../../components/AdminNavbar.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
 import MessageTable from '../../components/messages/MessageTable.astro';
 import Modal from '../../components/ui/Modal.astro';
 import Button from '../../components/ui/Button.astro';
@@ -23,15 +19,7 @@ const messages = await listMessages();
 const modalId = 'add-message-modal';
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<title>Admin</title>
-		<ThemeInit />
-	</head>
-	<body class="min-h-screen bg-bg-subtle">
-		<AdminNavbar />
+<AdminLayout title="Admin">
 		<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
 			<h1 class="text-xl font-semibold text-text">Admin</h1>
 			{
@@ -95,5 +83,4 @@ const modalId = 'add-message-modal';
 				</div>
 			</form>
 		</Modal>
-	</body>
-</html>
+</AdminLayout>

@@ -1,42 +1,36 @@
-export const prerender = false;
-
 // Bulk counterpart of ./update.ts for the cart sidebar's single "Update cart"
-// button: every `quantity_<itemId>` field is applied at once, and 0 removes
-// the line. Same availability rules as update.ts, except a line whose
-// quantity hasn't changed is left alone — so an item that's since been
-// archived can't block the rest of the update.
+// button: every `quantity_<itemId>` / `quantity_set_<setId>` field is applied
+// at once, and 0 removes the line. Same availability rules as update.ts,
+// except a line whose quantity hasn't changed is left alone — so an item or
+// set that's since been archived can't block the rest of the update.
 
 import type { APIRoute } from 'astro';
-import { db } from '../../../db/client';
-import { getCart, updateCartQuantity } from '../../../lib/cart';
+import { entryKey, getCart, updateCartQuantity } from '../../../lib/cart';
+import { cartEntryRef, isCartEntryAvailable, type CartEntryKind } from '../../../lib/cart-http';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 	const form = await request.formData();
-	const current = new Map(getCart(cookies).map((e) => [e.itemId, e.quantity]));
-	const updates: { itemId: number; quantity: number }[] = [];
+	const current = new Map(getCart(cookies).map((entry) => [entryKey(entry), entry.quantity]));
+	const updates: { kind: CartEntryKind; id: number; quantity: number }[] = [];
 
-	for (const [key, value] of form.entries()) {
-		const match = /^quantity_(\d+)$/.exec(key);
+	for (const [field, value] of form.entries()) {
+		const match = /^quantity_(set_)?(\d+)$/.exec(field);
 		if (!match) continue;
-		const itemId = Number(match[1]);
+		const kind: CartEntryKind = match[1] ? 'set' : 'item';
+		const id = Number(match[2]);
 		const quantity = Number(value);
-		if (!Number.isInteger(itemId) || itemId <= 0 || !Number.isInteger(quantity)) {
+		if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(quantity)) {
 			return new Response('Invalid item or quantity', { status: 400 });
 		}
-		if (current.get(itemId) !== quantity) updates.push({ itemId, quantity });
+		if (current.get(entryKey(cartEntryRef(kind, id))) !== quantity) updates.push({ kind, id, quantity });
 	}
 
-	for (const { itemId, quantity } of updates) {
-		if (quantity <= 0) continue;
-		const item = await db.query.items.findFirst({
-			where: (t, { eq }) => eq(t.id, itemId),
-			with: { product: true },
-		});
-		if (!item || item.archived || item.product?.status !== 'published') {
-			return new Response('Item not available', { status: 404 });
+	for (const { kind, id, quantity } of updates) {
+		if (quantity > 0 && !(await isCartEntryAvailable(kind, id))) {
+			return new Response(kind === 'item' ? 'Item not available' : 'Set not available', { status: 404 });
 		}
 	}
 
-	for (const { itemId, quantity } of updates) updateCartQuantity(cookies, itemId, quantity);
+	for (const { kind, id, quantity } of updates) updateCartQuantity(cookies, cartEntryRef(kind, id), quantity);
 	return redirect('/cart');
 };

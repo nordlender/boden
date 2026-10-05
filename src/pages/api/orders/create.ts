@@ -1,10 +1,8 @@
-export const prerender = false;
-
 import type { APIRoute } from 'astro';
 import { getCart, setCart } from '../../../lib/cart';
 import { createOrder } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
-import { requireUser } from '../../../lib/wizard-http';
+import { redirectWithError, requireUser } from '../../../lib/http';
 
 // Maps the checkout form's readonly hasUnpaidFees/userIsMember text inputs
 // (literally "Yes" | "No" | "Unknown", see CheckoutForm.astro's yesNo()) back
@@ -19,15 +17,12 @@ function parseYesNo(value: FormDataEntryValue | null): boolean | null {
 }
 
 export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => {
-  // Not covered by src/middleware/index.ts's route-prefix gate (that only
-  // matches /cart, /checkout, /orders — not /api/...), so check auth here,
-  // same as docs/rental-shop.md §9's confirm.ts/return.ts examples.
   const authError = requireUser(locals);
   if (authError) return authError;
 
   const cart = getCart(cookies);
   if (cart.length === 0) {
-    return redirect('/cart?error=empty_cart');
+    return redirect(redirectWithError('/cart', 'empty_cart'));
   }
 
   const form = await request.formData();
@@ -35,7 +30,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const fromDate = form.get('fromDate')?.toString() ?? '';
   const toDate = form.get('toDate')?.toString() ?? '';
   if (!isValidDateRange({ from: fromDate, to: toDate })) {
-    return redirect('/reservation?error=invalid_dates');
+    return redirect(redirectWithError('/reservation', 'invalid_dates'));
   }
 
   // Snapshot of the checkout form's contact fields, persisted on the order
@@ -55,6 +50,14 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const hasUnpaidFees = parseYesNo(form.get('hasUnpaidFees'));
   const userIsMember = parseYesNo(form.get('userIsMember'));
 
+  // Every submitter must accept the liability disclaimer (see #134). Enforced
+  // here rather than trusting the form's `required` attribute; the acceptance
+  // timestamp is persisted on the order for moderators to see.
+  const disclaimerAccepted = form.get('disclaimerAccepted') === 'on';
+  if (!disclaimerAccepted) {
+    return redirect('/reservation?error=disclaimer_required');
+  }
+
   const result = await createOrder({
     userId: locals.user!.id,
     role: locals.user!.role,
@@ -67,21 +70,22 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     contactMobile,
     hasUnpaidFees,
     userIsMember,
+    disclaimerAccepted,
   });
   if (!result.ok) {
     // 'unavailable': re-checked at insert time (see orders.ts's insertOrder)
     // and found the member's cart/dates changed since the last availability
     // preview — same query-param error pattern as 'invalid_dates' below.
     if (result.error === 'unavailable') {
-      return redirect('/reservation?error=unavailable');
+      return redirect(redirectWithError('/reservation', 'unavailable'));
     }
     // 'user_not_found': defense-in-depth only — orders.userId's FK didn't
     // resolve for locals.user.id, which upsertUser guarantees exists in
     // normal operation. See orders.ts's createOrder.
     if (result.error === 'user_not_found') {
-      return redirect('/cart?error=account_not_found');
+      return redirect(redirectWithError('/cart', 'account_not_found'));
     }
-    return redirect('/cart?error=empty_cart');
+    return redirect(redirectWithError('/cart', 'empty_cart'));
   }
 
   setCart(cookies, []);

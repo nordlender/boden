@@ -1,0 +1,67 @@
+---
+export const prerender = false;
+
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin) —
+// reached only when logged in with role === 'admin'. Mirrors admin/items.astro.
+import '../../styles/global.css';
+import ThemeInit from '../../components/ThemeInit.astro';
+import AdminNavbar from '../../components/AdminNavbar.astro';
+import WizardHeader from '../../components/wizard/WizardHeader.astro';
+import AddSetPanel from '../../components/wizard/sets/AddSetPanel.astro';
+import SetPanel from '../../components/wizard/sets/SetPanel.astro';
+import { getWizardSets, listComponentItemOptions } from '../../lib/setWizard';
+import { listProductOptions } from '../../lib/wizard';
+
+const redirectTo = Astro.url.pathname;
+const [{ unassigned, assigned }, products, componentItemOptions] = await Promise.all([
+	getWizardSets(),
+	listProductOptions(),
+	listComponentItemOptions(),
+]);
+
+const toSetView = (set: Awaited<ReturnType<typeof getWizardSets>>['unassigned'][number]) => ({
+	setId: set.id,
+	name: set.name,
+	label: set.label,
+	image: set.imageUrl,
+	product: set.productTitle,
+	inStock: set.inStock,
+	totalStock: set.totalStock,
+	components: set.components,
+	includes: set.includes,
+	needsAttention: set.components.length === 0 || set.hasArchivedComponent,
+});
+---
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Sets</title>
+		<ThemeInit />
+	</head>
+	<body class="min-h-screen bg-bg-subtle">
+		<AdminNavbar />
+		<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+			<WizardHeader title="Sets" />
+
+			<AddSetPanel redirectTo={redirectTo} />
+
+			<SetPanel
+				variant="unassigned"
+				title="Unassigned sets"
+				sets={unassigned.map(toSetView)}
+				products={products}
+				componentItemOptions={componentItemOptions}
+				redirectTo={redirectTo}
+			/>
+			<SetPanel
+				variant="assigned"
+				title="Assigned sets"
+				sets={assigned.map(toSetView)}
+				products={products}
+				componentItemOptions={componentItemOptions}
+				redirectTo={redirectTo}
+			/>
+		</div>
+	</body>
+</html>

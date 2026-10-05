@@ -1,11 +1,9 @@
 ---
-export const prerender = false;
-
 // The moderator order hub — the most cross-cutting page in the flow:
 // everything else (review, the blind-count page, return) links back here,
 // and this is where the moderator lands to see availability/warnings and
 // kick off the next action for whatever state the order is in. Gated by
-// src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator) — reached
+// src/middleware/prefixes.ts (ROUTE_RULES via /moderator) — reached
 // only when logged in with role 'moderator' or 'admin'.
 import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
 import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro';
@@ -22,8 +20,8 @@ if (!order) {
 	return Astro.redirect('/moderator/retrieve');
 }
 
-const notYetReviewed = order.acceptedAt === null && order.rejectedAt === null;
-const acceptedNotRetrieved = order.acceptedAt !== null && order.status === 'requested';
+const notYetReviewed = order.status === 'requested';
+const acceptedNotRetrieved = order.status === 'scheduled';
 
 // getFollowingRentalWorries does its own DB round-trips per item — only
 // worth calling in the one state where the warning is actionable (the

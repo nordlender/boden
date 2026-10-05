@@ -1,0 +1,231 @@
+---
+// Shared create/edit form for /admin/products/new and
+// /admin/products/[id]/edit — same field shape either way (see
+// lib/productForm.ts's parseProductForm, which both API routes share).
+//
+// Attribute keys are additive-only in edit mode (see products.ts's
+// updateProduct comment): an existing key can't be renamed or removed from
+// this form, only new ones added. Reconciling/removing a key that already
+// has real item values is a separate, larger piece of work — this form
+// deliberately doesn't attempt it.
+import AppIcon from '../icons/AppIcon.astro';
+import TextMorphButton from '../ui/TextMorphButton.astro';
+import Button from '../ui/Button.astro';
+import type { CategoryOption, SubcategoryOption, ProductForEdit } from '../../lib/products';
+
+interface Props {
+	mode: 'create' | 'edit';
+	product?: ProductForEdit;
+	categories: CategoryOption[];
+	subcategories: SubcategoryOption[];
+	redirectTo: string;
+}
+
+const { mode, product, categories, subcategories, redirectTo } = Astro.props;
+
+const action = mode === 'create' ? '/api/products/create' : `/api/products/${product!.id}/update`;
+const links = product?.links ?? [];
+const existingAttributeKeys = product?.attributeKeys ?? [];
+---
+
+<form method="post" action={action} class="flex flex-col gap-6">
+	<input type="hidden" name="redirectTo" value={redirectTo} />
+
+	<section class="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
+		<h2 class="text-sm font-medium text-text">Basics</h2>
+
+		<div>
+			<label class="mb-1 block text-xs text-text-muted" for="product-title">Title</label>
+			<input
+				id="product-title"
+				name="title"
+				type="text"
+				required
+				value={product?.title}
+				class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm"
+			/>
+		</div>
+
+		<div>
+			<label class="mb-1 block text-xs text-text-muted" for="product-description">Description</label>
+			<textarea
+				id="product-description"
+				name="description"
+				rows="3"
+				class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm"
+				set:text={product?.description ?? ''}
+			/>
+		</div>
+
+		<div class="grid grid-cols-2 gap-4">
+			<div>
+				<label class="mb-1 block text-xs text-text-muted" for="product-category">Category</label>
+				<select id="product-category" name="categoryId" data-category-select class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm">
+					<option value="">None</option>
+					{categories.map((category) => (
+						<option value={category.id} selected={category.id === product?.categoryId}>
+							{category.name}
+						</option>
+					))}
+				</select>
+			</div>
+			<div>
+				<label class="mb-1 block text-xs text-text-muted" for="product-subcategory">Sub-category</label>
+				<select id="product-subcategory" name="subcategoryId" data-subcategory-select class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm">
+					<option value="">None</option>
+					{subcategories.map((subcategory) => (
+						<option value={subcategory.id} data-category-id={subcategory.categoryId} selected={subcategory.id === product?.subcategoryId}>
+							{subcategory.name}
+						</option>
+					))}
+				</select>
+			</div>
+		</div>
+
+		<div class="grid grid-cols-2 gap-4">
+			<div>
+				<label class="mb-1 block text-xs text-text-muted" for="product-status">Status</label>
+				<select id="product-status" name="status" class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm">
+					<option value="hidden" selected={(product?.status ?? 'hidden') === 'hidden'}>Hidden</option>
+					<option value="published" selected={product?.status === 'published'}>Published</option>
+				</select>
+			</div>
+			<div>
+				<label class="mb-1 block text-xs text-text-muted" for="product-thumbnail">Thumbnail image URL</label>
+				<input
+					id="product-thumbnail"
+					name="thumbnailImageUrl"
+					type="text"
+					placeholder="https://…"
+					value={product?.thumbnailImageUrl ?? ''}
+					class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm"
+				/>
+			</div>
+		</div>
+	</section>
+
+	<section class="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+		<div class="flex items-center justify-between">
+			<h2 class="text-sm font-medium text-text">Links</h2>
+			<Button type="button" size="sm" data-add-row="links">Add link</Button>
+		</div>
+		<p class="text-xs text-text-muted">External links shown on the product page — manufacturer page, manual PDF, etc.</p>
+
+		<div data-row-list="links" class="flex flex-col gap-2">
+			{links.map((link) => (
+				<div class="flex items-center gap-2" data-row>
+					<input name="linkLabel[]" type="text" placeholder="Label" value={link.label} class="w-40 rounded border border-border-interactive px-2 py-1.5 text-sm" />
+					<input name="linkUrl[]" type="text" placeholder="https://…" value={link.url} class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
+					<button type="button" data-remove-row aria-label="Remove link" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
+						<AppIcon name="trash" size={16} />
+					</button>
+				</div>
+			))}
+		</div>
+
+		<template data-row-template="links">
+			<div class="flex items-center gap-2" data-row>
+				<input name="linkLabel[]" type="text" placeholder="Label" class="w-40 rounded border border-border-interactive px-2 py-1.5 text-sm" />
+				<input name="linkUrl[]" type="text" placeholder="https://…" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
+				<button type="button" data-remove-row aria-label="Remove link" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
+					<AppIcon name="trash" size={16} />
+				</button>
+			</div>
+		</template>
+	</section>
+
+	<section class="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+		<div class="flex items-center gap-2">
+			<AppIcon name="attribute" size={16} class="text-text-muted" />
+			<h2 class="text-sm font-medium text-text">Attributes</h2>
+		</div>
+		<p class="text-xs text-text-muted">
+		The field template every item under this product will have (e.g. "Weight", "Size", "Color") — each item fills in its own value per key. {mode === 'edit' && 'Existing keys can\'t be renamed or removed from here, only added to.'}
+		</p>
+
+		{existingAttributeKeys.length > 0 && (
+			<div class="flex flex-wrap gap-2">
+				{existingAttributeKeys.map((key) => (
+					<span class="rounded-full border border-border-strong px-3 py-1 text-xs text-text-muted">{key.name}</span>
+				))}
+			</div>
+		)}
+
+		<div class="flex items-center justify-between">
+			<span class="text-xs font-medium text-text-muted">{mode === 'edit' ? 'Add attribute key' : 'Attribute keys'}</span>
+			<Button type="button" size="sm" data-add-row="attributes">Add key</Button>
+		</div>
+
+		<div data-row-list="attributes" class="flex flex-col gap-2">
+			{mode === 'create' && (
+				<div class="flex items-center gap-2" data-row>
+					<input name="attributeKey[]" type="text" placeholder="e.g. Size" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
+					<button type="button" data-remove-row aria-label="Remove attribute key" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
+						<AppIcon name="trash" size={16} />
+					</button>
+				</div>
+			)}
+		</div>
+
+		<template data-row-template="attributes">
+			<div class="flex items-center gap-2" data-row>
+				<input name="attributeKey[]" type="text" placeholder="e.g. Size" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
+				<button type="button" data-remove-row aria-label="Remove attribute key" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
+					<AppIcon name="trash" size={16} />
+				</button>
+			</div>
+		</template>
+	</section>
+
+	<div class="flex justify-end gap-2">
+		<TextMorphButton href={redirectTo} action="cancel" variant="danger" />
+		<TextMorphButton type="submit" action="save" variant="primary">{mode === 'create' ? 'Create product' : 'Save changes'}</TextMorphButton>
+	</div>
+</form>
+
+<script>
+	// Repeatable-row add/remove for the Links and Attributes sections above —
+	// both lists are plain form fields (linkLabel[]/linkUrl[]/attributeKey[]),
+	// so removing a row's DOM node is enough to drop it from submission; no
+	// index bookkeeping needed.
+	document.querySelectorAll<HTMLButtonElement>('[data-add-row]').forEach((button) => {
+		button.addEventListener('click', () => {
+			const key = button.dataset.addRow;
+			const template = document.querySelector<HTMLTemplateElement>(`template[data-row-template="${key}"]`);
+			const list = document.querySelector<HTMLElement>(`[data-row-list="${key}"]`);
+			if (!template || !list) return;
+			const row = template.content.cloneNode(true);
+			list.appendChild(row);
+		});
+	});
+
+	document.addEventListener('click', (event) => {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+		const removeButton = target.closest<HTMLElement>('[data-remove-row]');
+		if (!removeButton) return;
+		removeButton.closest('[data-row]')?.remove();
+	});
+
+	// Sub-category options are filtered to the currently selected category —
+	// all options are rendered server-side (small table) with a
+	// data-category-id tag. The list is rebuilt from a snapshot rather than
+	// toggling [hidden] on options, which Safari ignores. Runs once on load
+	// (so an edit page's pre-selected subcategory is kept) and on every
+	// category change; a selection that no longer matches resets to "None".
+	const categorySelect = document.querySelector<HTMLSelectElement>('[data-category-select]');
+	const subcategorySelect = document.querySelector<HTMLSelectElement>('[data-subcategory-select]');
+	const allSubcategoryOptions = Array.from(subcategorySelect?.querySelectorAll<HTMLOptionElement>('option[data-category-id]') ?? []);
+	const noneOption = subcategorySelect?.querySelector<HTMLOptionElement>('option:not([data-category-id])');
+
+	function filterSubcategories() {
+		if (!categorySelect || !subcategorySelect || !noneOption) return;
+		const selectedId = subcategorySelect.value;
+		const matching = allSubcategoryOptions.filter((option) => option.dataset.categoryId === categorySelect.value);
+		subcategorySelect.replaceChildren(noneOption, ...matching);
+		subcategorySelect.value = matching.some((option) => option.value === selectedId) ? selectedId : '';
+	}
+
+	categorySelect?.addEventListener('change', filterSubcategories);
+	filterSubcategories();
+</script>

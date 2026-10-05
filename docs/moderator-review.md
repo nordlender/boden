@@ -77,8 +77,8 @@ accept/deny controls themselves, etc.) still need to be listed out here.
   its own earlier review step (`moderator reviews order on Review Order page
   (before retrieval)`, ending in `clicks "Accept" or "Reject"`) ahead of the
   retrieve/confirm flow, instead of conflating accept/reject with the
-  *Confirm Order* step. Accept leaves `status: requested` unchanged (retrieval
-  still sets `active` at Confirm); reject sets `status: rejected`.
+  *Confirm Order* step. Accept sets `status: scheduled` (retrieval still sets
+  `active` at Confirm); reject sets `status: rejected`.
 - The schema already supports a reject outcome: `orders.status` includes
   `'rejected'`, and `rejectedAt` / `rejectedReason` columns already exist in
   `src/db/schema.ts` (added ahead of `docs/schema-legacy-fixes.md` item #9's original

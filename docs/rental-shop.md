@@ -55,9 +55,9 @@ member browses catalogue, adds items to cart
   → cart lives in a cookie only — no database row yet (§5)
 
 member goes to /reservation, picks pick-up/return dates
-  → live availability check against existing requested/active orders
-  → if any item is unavailable for the chosen dates, submit is blocked until
-    the member picks other dates or removes those items from the cart
+  → live availability check against existing requested/scheduled/active orders
+  → if any item or set is unavailable for the chosen dates, submit is blocked
+    until the member picks other dates or removes those lines from the cart
   → submits → POST /api/orders/create
   → status: requested
   → order code (NNAAX format, read aloud at pick-up) generated
@@ -66,7 +66,7 @@ member goes to /reservation, picks pick-up/return dates
 moderator reviews order on Review Order page (before retrieval) (planned)
   → sees member bio, hasUnpaidFees / userIsMember flags, requested items
   → clicks "Accept" or "Reject"
-  → status: requested (accept — unchanged, proceeds to retrieval below)
+  → status: scheduled (accept — proceeds to retrieval below)
   → status: rejected  (reject — moved to archive, rejectedReason recorded)
 
 moderator enters order number into Retrieve Order form (built, see §10)
@@ -160,7 +160,7 @@ boden/
 │   │   ├── reservation.ts                   # Date-range validation + availability queries
 │   │   ├── shop.ts                          # Customer-facing catalogue/product queries
 │   │   ├── stock.ts                         # reservedQuantitiesByItem — "in stock now" derivation
-│   │   ├── pickupDays.ts, wizard.ts, wizard-http.ts, upsertUser.ts, icons.ts, ...
+│   │   ├── pickupDays.ts, wizard.ts, http.ts, upsertUser.ts, icons.ts, ...
 │   │
 │   ├── middleware/
 │   │   ├── index.ts                         # Auth + role gate — §9
@@ -201,9 +201,10 @@ import auth from 'auth-astro';
 import icon from 'astro-icon';
 
 export default defineConfig({
-  // Static by default (catalogue + product pages are pre-rendered at build time).
-  // Every other route opts into per-request rendering with `export const prerender = false`.
-  output: 'static',
+  // Rendered per request by default; the shop grid shell, login and 404
+  // opt into build-time rendering with `export const prerender = true`.
+  output: 'server',
+  redirects: { '/moderator/review': '/moderator/requests' },
   adapter: node({ mode: 'standalone' }),
   integrations: [auth({ configFile: './src/auth.ts' }), icon()],
   vite: {
@@ -213,7 +214,7 @@ export default defineConfig({
 });
 ```
 
-`output: 'static'` is the key setting: `/` and `/products/[slug]` are pre-rendered at build time, served from disk with no database round-trip per visitor. Every other route is marked `export const prerender = false` and rendered on the server per-request.
+`output: 'server'` renders every route per request (SQLite is local, so a catalogue query costs well under a millisecond). Only pages with nothing per-request are prerendered: `/auth/login`, `404`, and the shell of `/`. The shop grid on `/` is a server island (`<ShopGrid server:defer>`): the prerendered page ships a build-time snapshot of the grid as fallback, and the island swaps in live data on load — instant first paint without a stale catalogue.
 
 ---
 
@@ -471,18 +472,29 @@ See `docs/auth-testing.md` for the manual test guide.
 
 ## 8. Role gate (temporary allowlist)
 
-Bloc doesn't expose a role endpoint yet, so admin/moderator status is a **temporary hardcoded allowlist** of bloc user ids, not a live external lookup.
+Bloc doesn't expose a role endpoint yet, so admin/board/moderator status is a **temporary hardcoded allowlist** of bloc user ids, not a live external lookup.
 
 ```ts
 // src/lib/auth.ts
-export type Role = 'admin' | 'moderator' | 'member';
+export type Role = 'admin' | 'board' | 'moderator' | 'member';
 
-const ADMIN_USER_IDS = parseIdAllowlist(import.meta.env.ADMIN_USER_IDS);       // comma-separated
+// member < moderator < board < admin. Every "at least X" check goes through
+// hasRole() rather than comparing roles directly.
+export const ROLE_RANK: Record<Role, number> = { member: 0, moderator: 1, board: 2, admin: 3 };
+export function hasRole(role: Role | undefined | null, min: Role): boolean {
+  return role != null && ROLE_RANK[role] >= ROLE_RANK[min];
+}
+
+const ADMIN_USER_IDS = parseIdAllowlist(import.meta.env.ADMIN_USER_IDS);         // comma-separated
+const BOARD_USER_IDS = parseIdAllowlist(import.meta.env.BOARD_USER_IDS);
 const MODERATOR_USER_IDS = parseIdAllowlist(import.meta.env.MODERATOR_USER_IDS);
 
-export async function getRole(userId: string): Promise<Role> {
-  // 30s in-memory cache (size-capped, simple LRU via Map re-insertion), then:
-  return ADMIN_USER_IDS.has(userId) ? 'admin' : MODERATOR_USER_IDS.has(userId) ? 'moderator' : 'member';
+// Plain synchronous lookup, no cache — add caching back once a real bloc role API exists (#22).
+export function getRole(userId: string): Role {
+  if (ADMIN_USER_IDS.has(userId)) return 'admin';
+  if (BOARD_USER_IDS.has(userId)) return 'board';
+  if (MODERATOR_USER_IDS.has(userId)) return 'moderator';
+  return 'member';
 }
 
 // Decodes the Auth.js JWT cookie directly via @auth/core/jwt's getToken()
@@ -491,7 +503,7 @@ export async function getRole(userId: string): Promise<Role> {
 export async function validateSession(request: Request): Promise<{ id: string; email: string; name: string | null; role: Role } | null>;
 ```
 
-`getRole()`'s shape (`userId in, Role out, cached`) deliberately mirrors what a real `getRoleFromExternalApi(accessToken, cacheKey)` would look like, so swapping the body for a live bloc role lookup later shouldn't require touching `validateSession()` or the middleware.
+`getRole()`'s shape (`userId in, Role out`) deliberately mirrors what a real `getRoleFromExternalApi(accessToken, cacheKey)` would look like, so swapping the body for a live bloc role lookup later shouldn't require touching `validateSession()` or the middleware.
 
 ---
 
@@ -501,12 +513,33 @@ Matches against Astro's own resolved `ctx.routePattern` (e.g. `/moderator/orders
 
 ```ts
 // src/middleware/prefixes.ts
-export const MEMBER_ROUTE_PREFIXES = ['/cart', '/checkout', '/orders', '/reservation', '/api/reservation', '/api/orders'];
-export const MOD_ROUTE_PREFIXES = ['/moderator'];
-export const ADMIN_ROUTE_PREFIXES = ['/admin', '/api/wizard', '/api/pickup-days'];
+// Ordered; first match wins, so more specific prefixes go before broader ones.
+export const ROUTE_RULES: RouteRule[] = [
+  { prefix: '/admin', minRole: 'admin' },
+  { prefix: '/api/wizard', minRole: 'admin' },
+  { prefix: '/api/products', minRole: 'admin' },
+  { prefix: '/api/admin/pickup-days', minRole: 'admin' },
+  { prefix: '/api/admin/images', minRole: 'admin' },
+  { prefix: '/api/messages/pin', minRole: 'admin' },
+  { prefix: '/api/messages/unpin', minRole: 'admin' },
+  { prefix: '/moderator', minRole: 'moderator' },
+  { prefix: '/api/moderator', minRole: 'moderator' },
+  { prefix: '/api/messages/add', minRole: 'moderator' },
+  { prefix: '/api/messages/delete', minRole: 'moderator' },
+  { prefix: '/cart', minRole: 'member' },
+  { prefix: '/checkout', minRole: 'member' },
+  { prefix: '/orders', minRole: 'member' },
+  { prefix: '/reservation', minRole: 'member' },
+  { prefix: '/api/reservation', minRole: 'member' },
+  { prefix: '/api/orders', minRole: 'member' },
+];
 
-export function matchesPrefix(routePattern: string, prefixes: string[]) {
-  return prefixes.some((p) => routePattern === p || routePattern.startsWith(`${p}/`));
+export function matchesPrefix(routePattern: string, prefix: string) {
+  return routePattern === prefix || routePattern.startsWith(`${prefix}/`);
+}
+// Minimum role needed for a route, or null if it's public.
+export function requiredRole(routePattern: string): Role | null {
+  return ROUTE_RULES.find((r) => matchesPrefix(routePattern, r.prefix))?.minRole ?? null;
 }
 export function isApiRoute(routePattern: string) { return routePattern.startsWith('/api/'); }
 ```
@@ -519,21 +552,20 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   const user = await validateSession(ctx.request);
   ctx.locals.user = user;
   const { routePattern } = ctx;
-  const allProtected = [...MEMBER_ROUTE_PREFIXES, ...MOD_ROUTE_PREFIXES, ...ADMIN_ROUTE_PREFIXES];
+  const minRole = requiredRole(routePattern);
 
-  if (matchesPrefix(routePattern, allProtected) && !user) {
+  if (minRole && !user) {
     // API callers get a plain 401 (redirecting into OAuth login would send Auth.js's
     // callback back to a POST-only route with a GET, which 404s); page routes get redirected.
     if (isApiRoute(routePattern)) return new Response('Unauthorized', { status: 401 });
     return ctx.redirect(`/auth/login?next=${encodeURIComponent(ctx.url.pathname)}`);
   }
-  if (matchesPrefix(routePattern, MOD_ROUTE_PREFIXES) && user?.role === 'member') return new Response('Forbidden', { status: 403 });
-  if (matchesPrefix(routePattern, ADMIN_ROUTE_PREFIXES) && user?.role !== 'admin') return new Response('Forbidden', { status: 403 });
+  if (minRole && !hasRole(user?.role, minRole)) return new Response('Forbidden', { status: 403 });
   return next();
 });
 ```
 
-`/api/wizard/*`, `/api/pickup-days/*`, `/api/reservation`, and `/api/orders` are each listed here **and** re-implement their own inline role/auth check — this middleware gate is defense-in-depth for those routes, not their only protection.
+Most `/api/*` rules (`/api/wizard`, `/api/products`, `/api/admin/*`, `/api/moderator`, `/api/messages/*`, `/api/reservation`, `/api/orders`) are backed by an inline role/auth check in the endpoint itself (`requireAdmin`/`requireModerator`, both built on `hasRole`) — this middleware gate is defense-in-depth for those routes, not their only protection.
 
 ```ts
 // src/env.d.ts
@@ -552,7 +584,7 @@ declare namespace App {
 
 ### Step 0 — Review order (`/moderator/review/[id]`, route not finalized)
 
-Accept or reject a requested order **before** retrieval — see the lifecycle diagram above and `docs/moderator-review.md`. Accept leaves `status: requested` unchanged; reject sets `status: rejected` and records `rejectedReason`.
+Accept or reject a requested order **before** retrieval — see the lifecycle diagram above and `docs/moderator-review.md`. Accept sets `status: scheduled`; reject sets `status: rejected` and records `rejectedReason`.
 
 ### Step 1 — Retrieve order (`/moderator/retrieve`) — built
 
@@ -584,7 +616,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
 ---
 
-## 11. Product detail page (static)
+## 11. Product detail page
 
 ```astro
 ---
@@ -592,23 +624,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
 // Route is "/products/[slug]", not "/items/[slug]": a slug-routable,
 // customer-facing page is a product (title/description/attribute
 // template), with items as its unlabeled variants underneath.
-import { getPublishedProductSlugs, getShopProductBySlug } from '../../lib/shop';
-
-export async function getStaticPaths() {
-  const slugs = await getPublishedProductSlugs();
-  return slugs.map((slug) => ({ params: { slug } }));
-}
+import { getShopProductBySlug } from '../../lib/shop';
 
 const product = await getShopProductBySlug(Astro.params.slug!);
-if (!product) return Astro.redirect('/404');
+if (!product) return new Response(null, { status: 404 }); // serves 404.astro
 ---
 <!-- variant <select> (one option per item, disabled when inStock <= 0),
      image + ImagePlaceholder fallback, attribute list, quantity input
      capped at inStock, "Add to cart" POSTing to /api/cart/add.
      A client-side <script> keeps image/stock/attributes/quantity-cap in
      sync on variant change (including a ?item=<id> preselect from an
-     ItemCard link) — this page is prerendered, so there's no per-request
-     server render to do it there. -->
+     ItemCard link). -->
 ```
 
 ---
@@ -670,6 +696,8 @@ Daily database backup:
 # crontab -e
 0 3 * * * sqlite3 /path/to/data/rental.db ".backup /backups/rental-$(date +\%F).db"
 ```
+
+Admin-uploaded images live in `data/uploads/` (served at `/media/*`, not from `public/`, so they work without a rebuild). Back that directory up alongside the database, e.g. `rsync -a /path/to/data/uploads/ /backups/uploads/`.
 
 ---
 

@@ -1,6 +1,4 @@
-export const prerender = false;
-
-// Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES — see ../items.ts.
+// Also gated by src/middleware/prefixes.ts's ROUTE_RULES — see ../items.ts.
 // docs/schema.md's "attribute editing entry points" (bulk half): applies to
 // every currently-selected item at once, after confirming they share one
 // product (one attribute template). key[]/value[] are parallel repeatable
@@ -8,7 +6,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { setBulkAttributeValues } from '../../../../lib/wizard';
-import { requireAdmin, safeRedirectTarget, isPositiveInteger } from '../../../../lib/wizard-http';
+import { requireAdmin, safeRedirectTarget, isPositiveInteger } from '../../../../lib/http';
 
 export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 	const forbidden = requireAdmin(locals);

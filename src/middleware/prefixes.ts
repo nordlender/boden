@@ -1,4 +1,4 @@
-// Route-prefix tables and matcher extracted from ./index.ts so they can be
+// Route rule table and matcher extracted from ./index.ts so they can be
 // unit tested without pulling in the `astro:middleware` virtual module
 // (which only resolves inside Astro's own build/dev runtime, not plain
 // vitest).
@@ -10,38 +10,45 @@
 // middleware sees differ from the route Astro actually matches internally.
 // routePattern is Astro's own route resolution, so there's no such gap to
 // exploit. https://docs.astro.build/en/guides/authentication/
-// /api/reservation and /api/orders are included here as defense-in-depth:
-// both already re-implement their own inline auth check (see those files),
-// so this is redundant today — but it means a future route in either group
-// that forgets the inline check isn't left with zero protection.
-export const MEMBER_ROUTE_PREFIXES = ['/cart', '/checkout', '/orders', '/reservation', '/api/reservation', '/api/orders'];
-// /api/moderator and /api/messages/{add,delete} are included here as
-// defense-in-depth, same reasoning as /api/wizard under ADMIN_ROUTE_PREFIXES
-// below: every /api/moderator/* write route, plus add.ts and delete.ts,
-// already re-implements its own requireModerator() (or an inline
-// admin-or-own-message) check (see src/lib/wizard-http.ts and
-// src/pages/api/messages/delete.ts), so this is redundant today — but it
-// means a future moderator route that forgets the inline check isn't left
-// with zero protection. Moderators can author and delete-their-own message
-// as of issue #225; pin/unpin stay admin-only, so those two routes stay
-// under ADMIN_ROUTE_PREFIXES below instead.
-export const MOD_ROUTE_PREFIXES = ['/moderator', '/api/moderator', '/api/messages/add', '/api/messages/delete'];
-// /api/wizard, /api/admin/pickup-days, and /api/messages/{pin,unpin} are
-// included here as defense-in-depth: their write routes each already
-// re-implement their own `requireAdmin()`/`locals.user?.role !== 'admin'`
-// check inline (see those files), so this is redundant today — but it means
-// a future route in any of the three groups that forgets the inline check
-// isn't left with zero protection.
-export const ADMIN_ROUTE_PREFIXES = [
-  '/admin',
-  '/api/wizard',
-  '/api/admin/pickup-days',
-  '/api/messages/pin',
-  '/api/messages/unpin',
+import type { Role } from '../lib/auth';
+
+export interface RouteRule {
+  prefix: string;
+  minRole: Role;
+}
+
+// Ordered; first match wins, so put more specific prefixes before broader
+// ones. Many /api entries are redundant with the inline checks in those
+// endpoints (defense in depth: a future route that forgets its inline check
+// isn't left unprotected). Moderators may add/delete messages (#225);
+// pin/unpin stay admin-only.
+export const ROUTE_RULES: RouteRule[] = [
+  { prefix: '/admin', minRole: 'admin' },
+  { prefix: '/api/wizard', minRole: 'admin' },
+  { prefix: '/api/products', minRole: 'admin' },
+  { prefix: '/api/admin/pickup-days', minRole: 'admin' },
+  { prefix: '/api/admin/images', minRole: 'admin' },
+  { prefix: '/api/messages/pin', minRole: 'admin' },
+  { prefix: '/api/messages/unpin', minRole: 'admin' },
+  { prefix: '/moderator', minRole: 'moderator' },
+  { prefix: '/api/moderator', minRole: 'moderator' },
+  { prefix: '/api/messages/add', minRole: 'moderator' },
+  { prefix: '/api/messages/delete', minRole: 'moderator' },
+  { prefix: '/cart', minRole: 'member' },
+  { prefix: '/checkout', minRole: 'member' },
+  { prefix: '/orders', minRole: 'member' },
+  { prefix: '/reservation', minRole: 'member' },
+  { prefix: '/api/reservation', minRole: 'member' },
+  { prefix: '/api/orders', minRole: 'member' },
 ];
 
-export function matchesPrefix(routePattern: string, prefixes: string[]) {
-  return prefixes.some((p) => routePattern === p || routePattern.startsWith(`${p}/`));
+export function matchesPrefix(routePattern: string, prefix: string) {
+  return routePattern === prefix || routePattern.startsWith(`${prefix}/`);
+}
+
+// Minimum role needed for a route, or null if it's public.
+export function requiredRole(routePattern: string): Role | null {
+  return ROUTE_RULES.find((r) => matchesPrefix(routePattern, r.prefix))?.minRole ?? null;
 }
 
 // API routes are form-POST/fetch targets, not something a browser navigates

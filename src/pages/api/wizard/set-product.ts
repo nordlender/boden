@@ -1,10 +1,8 @@
-export const prerender = false;
-
-// Also gated by src/middleware/index.ts's ADMIN_ROUTE_PREFIXES — see items.ts.
+// Also gated by src/middleware/prefixes.ts's ROUTE_RULES — see items.ts.
 
 import type { APIRoute } from 'astro';
 import { setItemsProduct } from '../../../lib/wizard';
-import { requireAdmin, safeRedirectTarget, isPositiveInteger } from '../../../lib/wizard-http';
+import { requireAdmin, safeRedirectTarget, isPositiveInteger } from '../../../lib/http';
 
 export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 	const forbidden = requireAdmin(locals);

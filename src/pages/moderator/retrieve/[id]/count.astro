@@ -1,10 +1,8 @@
 ---
-export const prerender = false;
-
 // Blind count — reached from the hub's "Confirm" button. One numeric
 // input per line, left empty on first load (never pre-filled with the
 // target — the whole point is the moderator reports an unbiased count).
-// Gated by src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator).
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /moderator).
 import ModeratorLayout from '../../../../layouts/ModeratorLayout.astro';
 import BackLink from '../../../../components/moderator/BackLink.astro';
 import BlindCountList from '../../../../components/moderator/BlindCountList.astro';
@@ -16,7 +14,7 @@ const order = Number.isInteger(idParam) ? await getOrderDetail(idParam) : null;
 if (!order) {
 	return Astro.redirect('/moderator/retrieve');
 }
-if (order.acceptedAt === null || order.status !== 'requested') {
+if (order.status !== 'scheduled') {
 	return Astro.redirect(`/moderator/retrieve/${order.id}`);
 }
 

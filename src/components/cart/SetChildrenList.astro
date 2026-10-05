@@ -1,0 +1,34 @@
+---
+// Read-only breakdown of what a set cart line resolves into — indented and
+// smaller than the set's own row, never independently addable/removable (see
+// lib/cart.ts's CartSetChild). Shared by the cart page, the cart sidebar, and
+// the reservation row so the three can't drift apart.
+//
+// `class` supplies the left indent, since it depends on the host row's
+// thumbnail size + gap (so the list lines up under the set's name).
+interface Props {
+	components: { productTitle: string; quantityPerSet: number }[];
+	// How many of the set are in the cart — each component's shown count is
+	// its per-set quantity times this.
+	quantity: number;
+	class?: string;
+}
+
+const { components, quantity, class: className } = Astro.props;
+---
+
+{
+	components.length > 0 && (
+		<ul class:list={['mt-2 flex flex-col gap-0.5 border-l border-border pl-3 text-xs text-text-muted', className]}>
+			{components.map((component) => {
+				const totalQuantity = component.quantityPerSet * quantity;
+				return (
+					<li>
+						{totalQuantity > 1 ? `${totalQuantity}× ` : ''}
+						{component.productTitle}
+					</li>
+				);
+			})}
+		</ul>
+	)
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
-import { isValidDateRange, getReservationAvailability } from '../reservation';
+import { isValidDateRange, getReservationAvailability, getCartLineAvailability } from '../reservation';
 
 // isValidDateRange rejects a `from` before "today" (src/lib/reservation.ts) —
 // pin the clock well before every fixture date below (all in Jan/Feb 2026)
@@ -52,6 +52,24 @@ vi.mock('../../db/client', async () => {
 		.values({ orderCode: 'CCCCCC', userId: user.id, fromDate: '2026-01-01', toDate: '2026-01-04' })
 		.returning();
 	await db.insert(schema.orderItems).values({ orderId: adjacentOrder.id, itemId: 1, requestedQuantity: 1 });
+
+	// A moderator-accepted ('scheduled') order holds 3x item B for
+	// 2026-02-01..2026-02-05 — item B is otherwise never reserved, so this is
+	// what exercises 'scheduled' orders still counting toward peak demand
+	// (accept moves an order from 'requested' to 'scheduled', not out of the
+	// reserved set — see src/lib/moderatorOrders.ts's acceptOrder).
+	const [scheduledOrder] = await db
+		.insert(schema.orders)
+		.values({
+			orderCode: 'DDDDDD',
+			userId: user.id,
+			fromDate: '2026-02-01',
+			toDate: '2026-02-05',
+			status: 'scheduled',
+			acceptedAt: new Date(),
+		})
+		.returning();
+	await db.insert(schema.orderItems).values({ orderId: scheduledOrder.id, itemId: 2, requestedQuantity: 3 });
 
 	return { db };
 });
@@ -132,5 +150,75 @@ describe('getReservationAvailability', () => {
 		]);
 		expect(availability.peakReserved).toBe(1);
 		expect(availability.available).toBe(true);
+	});
+
+	it('counts a scheduled (moderator-accepted) order toward peak demand, same as requested/active', () => {
+		// Item B has 5 in stock, 3 already held by a 'scheduled' order over
+		// 2026-02-01..2026-02-05 — requesting 3 more during an overlapping
+		// range only leaves 2 free.
+		const [availability] = getReservationAvailability({ from: '2026-02-02', to: '2026-02-03' }, [
+			{ itemId: ITEM_B_ID, quantity: 3 },
+		]);
+		expect(availability.peakReserved).toBe(3);
+		expect(availability.available).toBe(false);
+	});
+});
+
+describe('getCartLineAvailability', () => {
+	it('reports a plain item line available/unavailable the same as getReservationAvailability', () => {
+		const [unavailable] = getCartLineAvailability({ from: '2026-01-06', to: '2026-01-08' }, [
+			{ key: 'item:1', itemRequirements: [{ itemId: ITEM_A_ID, quantity: 2 }] },
+		]);
+		expect(unavailable).toEqual({ key: 'item:1', available: false });
+
+		const [available] = getCartLineAvailability({ from: '2026-01-06', to: '2026-01-08' }, [
+			{ key: 'item:2', itemRequirements: [{ itemId: ITEM_B_ID, quantity: 5 }] },
+		]);
+		expect(available).toEqual({ key: 'item:2', available: true });
+	});
+
+	it('reports a set line unavailable when any one of its components is', () => {
+		// Item A only has 1 free unit during this overlap (see the mock db
+		// setup above) — a set needing 2 of item A plus some of item B (which
+		// has plenty) is unavailable overall, because one insufficient
+		// component caps the whole set.
+		const [availability] = getCartLineAvailability({ from: '2026-01-06', to: '2026-01-08' }, [
+			{
+				key: 'set:1',
+				itemRequirements: [
+					{ itemId: ITEM_A_ID, quantity: 2 },
+					{ itemId: ITEM_B_ID, quantity: 1 },
+				],
+			},
+		]);
+		expect(availability).toEqual({ key: 'set:1', available: false });
+	});
+
+	it('reports a set line available when every one of its components is', () => {
+		const [availability] = getCartLineAvailability({ from: '2026-01-06', to: '2026-01-08' }, [
+			{
+				key: 'set:1',
+				itemRequirements: [
+					{ itemId: ITEM_A_ID, quantity: 1 },
+					{ itemId: ITEM_B_ID, quantity: 1 },
+				],
+			},
+		]);
+		expect(availability).toEqual({ key: 'set:1', available: true });
+	});
+
+	it('merges demand for a component shared by two different lines before checking either', () => {
+		// Item A has only 1 free unit during this overlap. A plain item line
+		// wanting 1 unit and a set line also needing 1 unit of the same item
+		// together demand 2 — more than the 1 actually free — so both lines
+		// come back unavailable, even though neither alone would exceed it.
+		const availabilities = getCartLineAvailability({ from: '2026-01-06', to: '2026-01-08' }, [
+			{ key: 'item:1', itemRequirements: [{ itemId: ITEM_A_ID, quantity: 1 }] },
+			{ key: 'set:1', itemRequirements: [{ itemId: ITEM_A_ID, quantity: 1 }] },
+		]);
+		expect(availabilities).toEqual([
+			{ key: 'item:1', available: false },
+			{ key: 'set:1', available: false },
+		]);
 	});
 });

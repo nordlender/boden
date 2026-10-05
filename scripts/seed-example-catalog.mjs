@@ -84,6 +84,60 @@ const products = [
         stockCount: 3,
         values: { Size: 'M (adjustable)', Type: 'Sit harness', Color: 'Green' },
       },
+      // S/L sizes exist mainly to give the example set below (Indoor Rope
+      // Climbing Set) size-matched harnesses to bundle — its M variant
+      // reuses climbing-harness-blue above rather than adding a redundant
+      // 4th M-sized item, which is itself the point: a set component is a
+      // real, independently-rentable item, not a set-only stub (see issue
+      // #61's original framing).
+      {
+        slug: 'climbing-harness-s',
+        name: 'Climbing Harness — S',
+        imageUrl: '/uploads/harness.svg',
+        stockCount: 3,
+        values: { Size: 'S (adjustable)', Type: 'Sit harness', Color: 'Black' },
+      },
+      {
+        slug: 'climbing-harness-l',
+        name: 'Climbing Harness — L',
+        imageUrl: '/uploads/harness.svg',
+        stockCount: 3,
+        values: { Size: 'L (adjustable)', Type: 'Sit harness', Color: 'Black' },
+      },
+    ],
+  },
+  {
+    slug: 'chalk-bag',
+    title: 'Chalk Bag',
+    description: 'Simple chalk bag with a brush loop and adjustable belt.',
+    categorySlug: 'harness',
+    thumbnailImageUrl: '/uploads/quickdraws.svg',
+    attributeKeys: ['Capacity'],
+    items: [
+      {
+        slug: 'chalk-bag',
+        name: 'Chalk Bag',
+        imageUrl: '/uploads/quickdraws.svg',
+        stockCount: 6,
+        values: { Capacity: '650 ml' },
+      },
+    ],
+  },
+  {
+    slug: 'singing-rock-rama-belay-device',
+    title: 'Singing Rock Rama Belay Device',
+    description: 'Assisted-braking belay device for single ropes.',
+    categorySlug: 'harness',
+    thumbnailImageUrl: '/uploads/harness.svg',
+    attributeKeys: ['Type', 'Compatible rope diameter'],
+    items: [
+      {
+        slug: 'singing-rock-rama',
+        name: 'Singing Rock Rama Belay Device',
+        imageUrl: '/uploads/harness.svg',
+        stockCount: 5,
+        values: { Type: 'Assisted-braking', 'Compatible rope diameter': '8.5–11 mm' },
+      },
     ],
   },
   {
@@ -260,6 +314,89 @@ const products = [
   },
 ];
 
+// Example sets — a product's variant slot can be a set instead of (or
+// alongside) an item, each set resolving to a bundle of real items via
+// setItems (see src/db/schema.ts's `sets` comment). A set has no attribute
+// template of its own: `label` is a plain, manually-typed string the admin
+// picks to distinguish sibling sets (or null when there's only one), and
+// what a set "includes" is derived automatically at display time from its
+// components' own real attribute values — see src/lib/sets.ts's
+// getSetComponentDisplayBulk. Deliberately two different shapes here:
+//
+// - "Indoor Rope Climbing Set" bundles components from three unrelated
+//   products (harness/chalk bag/belay device) — each set component renders
+//   as its own line, since nothing else in the set shares its attribute
+//   keys.
+// - "Dragon Cam Rack" bundles five different sizes of the *same* product
+//   (Dragon Cam) — these share an identical attribute-key signature, so
+//   they render as one shared table instead (this is the case the table
+//   layout exists for).
+const setProducts = [
+  {
+    slug: 'indoor-rope-climbing-set',
+    title: 'Indoor Rope Climbing Set',
+    description: 'Everything for an indoor top-rope session — harness, chalk bag, and belay device, bundled by size.',
+    categorySlug: 'ropes',
+    thumbnailImageUrl: '/uploads/rope-60m.svg',
+    sets: [
+      {
+        slug: 'indoor-rope-climbing-set-s',
+        name: 'Indoor Rope Climbing Set (internal) — S',
+        label: 'S',
+        components: [
+          { itemSlug: 'climbing-harness-s', quantity: 1 },
+          { itemSlug: 'chalk-bag', quantity: 1 },
+          { itemSlug: 'singing-rock-rama', quantity: 1 },
+        ],
+      },
+      {
+        slug: 'indoor-rope-climbing-set-m',
+        name: 'Indoor Rope Climbing Set (internal) — M',
+        label: 'M',
+        components: [
+          { itemSlug: 'climbing-harness-blue', quantity: 1 },
+          { itemSlug: 'chalk-bag', quantity: 1 },
+          { itemSlug: 'singing-rock-rama', quantity: 1 },
+        ],
+      },
+      {
+        slug: 'indoor-rope-climbing-set-l',
+        name: 'Indoor Rope Climbing Set (internal) — L',
+        label: 'L',
+        components: [
+          { itemSlug: 'climbing-harness-l', quantity: 1 },
+          { itemSlug: 'chalk-bag', quantity: 1 },
+          { itemSlug: 'singing-rock-rama', quantity: 1 },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'dragon-cam-rack-set',
+    title: 'Dragon Cam Rack (5-piece)',
+    description: 'A curated 5-piece Dragon Cam rack, sizes #00 through #4 (excluding #3).',
+    categorySlug: 'protection',
+    subcategorySlug: 'cams',
+    thumbnailImageUrl: '/product/dragon1.webp',
+    sets: [
+      {
+        slug: 'dragon-cam-rack-set-standard',
+        name: 'Dragon Cam Rack (internal)',
+        label: null, // only one variant — nothing to distinguish it from
+        components: [
+          { itemSlug: 'dmm-dragon-cam-00', quantity: 1 },
+          { itemSlug: 'dmm-dragon-cam-0', quantity: 1 },
+          { itemSlug: 'dmm-dragon-cam-1', quantity: 1 },
+          { itemSlug: 'dmm-dragon-cam-2', quantity: 1 },
+          // Skips dmm-dragon-cam-3, which is deliberately zero-stock (see
+          // its own comment above) — keeps this set actually orderable.
+          { itemSlug: 'dmm-dragon-cam-4', quantity: 1 },
+        ],
+      },
+    ],
+  },
+];
+
 const db = new Database(dbPath);
 db.pragma('foreign_keys = ON');
 
@@ -308,6 +445,83 @@ const upsertAttributeValue = db.prepare(
    ON CONFLICT(item_id, attribute_id) DO UPDATE SET value = excluded.value`,
 );
 
+const upsertSet = db.prepare(
+  `INSERT INTO sets (product_id, slug, name, label, image_url, archived)
+   VALUES (@productId, @slug, @name, @label, @imageUrl, 0)
+   ON CONFLICT(slug) DO UPDATE SET
+     product_id = excluded.product_id,
+     name = excluded.name,
+     label = excluded.label,
+     image_url = excluded.image_url,
+     archived = 0`,
+);
+const getSetBySlug = db.prepare('SELECT id FROM sets WHERE slug = ?');
+
+const upsertSetItem = db.prepare(
+  `INSERT INTO set_items (set_id, item_id, quantity) VALUES (?, ?, ?)
+   ON CONFLICT(set_id, item_id) DO UPDATE SET quantity = excluded.quantity`,
+);
+
+// Shared by seedProduct/seedSetProduct — both a regular product and a
+// set-only product upsert the same row shape, just with a different set of
+// children underneath.
+function upsertProductRow(p) {
+  const categoryId = getCategoryBySlug.get(p.categorySlug).id;
+  const subcategoryId = p.subcategorySlug ? getSubcategoryBySlug.get(categoryId, p.subcategorySlug).id : null;
+
+  upsertProduct.run({
+    slug: p.slug,
+    title: p.title,
+    description: p.description,
+    categoryId,
+    subcategoryId,
+    thumbnailImageUrl: p.thumbnailImageUrl,
+  });
+  return getProductBySlug.get(p.slug).id;
+}
+
+function seedItem(productId, item, attributeIds) {
+  upsertItem.run({
+    productId,
+    slug: item.slug,
+    name: item.name,
+    imageUrl: item.imageUrl,
+    stockCount: item.stockCount,
+  });
+  const itemId = getItemBySlug.get(item.slug).id;
+
+  for (const [key, value] of Object.entries(item.values)) {
+    upsertAttributeValue.run(itemId, attributeIds[key], value);
+  }
+}
+
+function seedProduct(p) {
+  const productId = upsertProductRow(p);
+
+  const attributeIds = {};
+  p.attributeKeys.forEach((name, i) => {
+    upsertAttributeKey.run(productId, name, i);
+    attributeIds[name] = getAttributeKey.get(productId, name).id;
+  });
+
+  for (const item of p.items) seedItem(productId, item, attributeIds);
+}
+
+function seedSet(productId, set) {
+  upsertSet.run({ productId, slug: set.slug, name: set.name, label: set.label ?? null, imageUrl: set.imageUrl ?? null });
+  const setId = getSetBySlug.get(set.slug).id;
+
+  for (const component of set.components) {
+    const itemId = getItemBySlug.get(component.itemSlug).id;
+    upsertSetItem.run(setId, itemId, component.quantity);
+  }
+}
+
+function seedSetProduct(p) {
+  const productId = upsertProductRow(p);
+  for (const set of p.sets) seedSet(productId, set);
+}
+
 const seed = db.transaction(() => {
   for (const c of categories) upsertCategory.run(c.name, c.slug);
 
@@ -316,45 +530,15 @@ const seed = db.transaction(() => {
     upsertSubcategory.run(categoryId, name, slug);
   }
 
-  for (const p of products) {
-    const categoryId = getCategoryBySlug.get(p.categorySlug).id;
-    const subcategoryId = p.subcategorySlug ? getSubcategoryBySlug.get(categoryId, p.subcategorySlug).id : null;
-
-    upsertProduct.run({
-      slug: p.slug,
-      title: p.title,
-      description: p.description,
-      categoryId,
-      subcategoryId,
-      thumbnailImageUrl: p.thumbnailImageUrl,
-    });
-    const productId = getProductBySlug.get(p.slug).id;
-
-    const attributeIds = {};
-    p.attributeKeys.forEach((name, i) => {
-      upsertAttributeKey.run(productId, name, i);
-      attributeIds[name] = getAttributeKey.get(productId, name).id;
-    });
-
-    for (const item of p.items) {
-      upsertItem.run({
-        productId,
-        slug: item.slug,
-        name: item.name,
-        imageUrl: item.imageUrl,
-        stockCount: item.stockCount,
-      });
-      const itemId = getItemBySlug.get(item.slug).id;
-
-      for (const [key, value] of Object.entries(item.values)) {
-        upsertAttributeValue.run(itemId, attributeIds[key], value);
-      }
-    }
-  }
+  for (const p of products) seedProduct(p);
+  for (const p of setProducts) seedSetProduct(p);
 });
 
 seed();
 db.close();
 
 const totalItems = products.reduce((sum, p) => sum + p.items.length, 0);
-console.log(`Seeded ${categories.length} categories, ${products.length} products, ${totalItems} items.`);
+const totalSets = setProducts.reduce((sum, p) => sum + p.sets.length, 0);
+console.log(
+  `Seeded ${categories.length} categories, ${products.length + setProducts.length} products, ${totalItems} items, ${totalSets} sets.`,
+);

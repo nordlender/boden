@@ -1,7 +1,5 @@
 ---
-export const prerender = false;
-
-// Gated by src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator) —
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /moderator) —
 // reached only when logged in as at least a moderator (admins included).
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
 import PickupDaysCalendar from '../../components/pickup-days/PickupDaysCalendar.astro';

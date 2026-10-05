@@ -7,10 +7,13 @@ import SetChildrenList from '../components/cart/SetChildrenList.astro';
 import Badge from '../components/ui/Badge.astro';
 import Button from '../components/ui/Button.astro';
 import ItemLine from '../components/ui/ItemLine.astro';
-import { getCartLines } from '../lib/cart';
+import { findOvercommittedItems, getCartLines, overcommittedForLine } from '../lib/cart';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
 const cartLines = await getCartLines(Astro.cookies);
+// Totalled across lines (a loose item plus a set containing it), the same
+// way checkout counts them — a per-line check misses that.
+const overcommitted = findOvercommittedItems(cartLines);
 ---
 
 <BaseLayout title="Cart">
@@ -28,6 +31,7 @@ const cartLines = await getCartLines(Astro.cookies);
 						// this line is (see api/cart/{update,remove}.ts).
 						const lineIdField = isSet ? 'setId' : 'itemId';
 						const lineId = isSet ? line.setId : line.itemId;
+						const lineOvercommitted = overcommittedForLine(line, overcommitted);
 						return (
 							<div class="py-4">
 								<ItemLine
@@ -41,8 +45,21 @@ const cartLines = await getCartLines(Astro.cookies);
 									class="flex-wrap"
 								>
 									{isSet && <Badge class="mt-0.5 inline-block">Set</Badge>}
-									{line.quantity > line.inStock && (
-										<p class="text-sm text-error">Only {Math.max(line.inStock, 0)} left in stock</p>
+									{/* An item line's own row already says which item it is
+									    (product title + attributes); a set line names the
+									    component, as its children list below does. */}
+									{lineOvercommitted.length > 0 ? (
+										lineOvercommitted.map((item) => (
+											<p class="text-sm text-error-text">
+												{isSet
+													? `Your cart has ${item.needed} × ${item.productTitle} in total — we only have ${item.stockCount}`
+													: `Your cart has ${item.needed} of this item in total — we only have ${item.stockCount}`}
+											</p>
+										))
+									) : (
+										line.quantity > line.inStock && (
+											<p class="text-sm text-text-muted">Booked today — you'll pick dates when it's free</p>
+										)
 									)}
 									<Fragment slot="action">
 										<form method="post" action="/api/cart/update" class="flex items-center gap-2">

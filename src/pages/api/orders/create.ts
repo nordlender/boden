@@ -1,22 +1,11 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
+import { fetchOwnMemberFeeStatus } from '../../../lib/blocFeeStatus';
 import { getCart, setCart } from '../../../lib/cart';
 import { createOrder, createSplitOrders } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
 import { requireUser } from '../../../lib/wizard-http';
-
-// Maps the checkout form's readonly hasUnpaidFees/userIsMember text inputs
-// (literally "Yes" | "No" | "Unknown", see CheckoutForm.astro's yesNo()) back
-// to the nullable boolean stored on orders — anything other than an exact
-// "Yes"/"No" (including "Unknown", missing, or a tampered value) is treated
-// as unknown/null rather than guessed at.
-function parseYesNo(value: FormDataEntryValue | null): boolean | null {
-  const s = value?.toString();
-  if (s === 'Yes') return true;
-  if (s === 'No') return false;
-  return null;
-}
 
 export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => {
   // Not covered by src/middleware/index.ts's route-prefix gate (that only
@@ -45,14 +34,12 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const contactEmail = form.get('email')?.toString().trim() ?? '';
   const contactMobile = form.get('mobile')?.toString().trim() || null;
 
-  // Snapshot of the checkout form's readonly bloc-sourced fields (see
-  // schema.ts's orders.hasUnpaidFees/userIsMember doc comment). The form
-  // submits the literal string the readonly input displayed
-  // ("Yes"/"No"/"Unknown" — see CheckoutForm.astro's yesNo()), which the
-  // reservation page fetched live from bloc's GetMemberFeeStatus
-  // (src/lib/blocFeeStatus.ts); null if that call failed.
-  const hasUnpaidFees = parseYesNo(form.get('hasUnpaidFees'));
-  const userIsMember = parseYesNo(form.get('userIsMember'));
+  // Snapshot of bloc's fee/membership status (see schema.ts's
+  // orders.hasUnpaidFees/userIsMember doc comment), fetched server-side from
+  // GetMemberFeeStatus (src/lib/blocFeeStatus.ts) at submit time — never taken
+  // from the posted form, whose readonly inputs a member could forge. null
+  // (Unknown) if the call failed.
+  const { hasUnpaidFees, userIsMember } = await fetchOwnMemberFeeStatus(request);
 
   // Every submitter must accept the liability disclaimer (see #134). Enforced
   // here rather than trusting the form's `required` attribute; the acceptance

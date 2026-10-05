@@ -20,7 +20,7 @@ if (Astro.request.method !== 'POST') {
 const form = await Astro.request.formData();
 const cartLines = await getCartLines(Astro.cookies);
 if (cartLines.length === 0) {
-	return Astro.redirect('/');
+	return Astro.redirect('/reservation');
 }
 
 const fromDate = form.get('fromDate')?.toString() ?? '';
@@ -140,8 +140,20 @@ const hiddenFields: Record<string, string> = {
 
 		<form method="POST" action="/api/orders/create" class="flex items-center gap-4">
 			{Object.entries(hiddenFields).map(([name, value]) => <input type="hidden" name={name} value={value} />)}
-			<Button href="/reservation" variant="secondary" size="lg">Back</Button>
+			<Button href="/reservation" variant="secondary" size="lg" data-back-link>Back</Button>
 			<Button type="submit" variant="primary" size="lg">Confirm order</Button>
 		</form>
 	</div>
 </BaseLayout>
+
+<script>
+	// Prefer real history navigation: it lets the browser restore the
+	// reservation form the member just came from. Falls back to the plain
+	// /reservation link (e.g. page opened directly).
+	document.querySelector<HTMLAnchorElement>('[data-back-link]')?.addEventListener('click', (event) => {
+		if (history.length > 1) {
+			event.preventDefault();
+			history.back();
+		}
+	});
+</script>

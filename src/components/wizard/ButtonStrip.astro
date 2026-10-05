@@ -75,12 +75,12 @@ const confirmId = `archive-confirm-${formId}`;
 
 	{/* Trigger stays a plain type="button" with `popovertarget` — the click
 	    handler below cancels the popover's native open when nothing is
-	    selected (showing the hint instead). Variant flips danger →
+	    selected (showing the hint instead). Variant flips secondary →
 	    danger-filled once something is selected. */}
 	<ActionPopover id={confirmId} title="Delete selected items?" confirmLabel="Delete" confirmVariant="danger" side="bottom">
 		<Fragment slot="trigger">
 			<MorphButton
-				variant="danger"
+				variant="secondary"
 				action="delete"
 				label="Delete selected items"
 				popovertarget={confirmId}
@@ -137,11 +137,11 @@ const confirmId = `archive-confirm-${formId}`;
 		document.querySelectorAll(`.selected-count[data-form-id="${formId}"]`).forEach((el) => {
 			el.textContent = String(count);
 		});
-		// Outline when nothing is selected, filled once something is.
+		// Secondary when nothing is selected, filled once something is.
 		document.querySelectorAll<HTMLElement>(`[data-archive-trigger="${formId}"]`).forEach((btn) => {
-			const [off, on] = count > 0 ? ['danger', 'danger-filled'] : ['danger-filled', 'danger'];
-			btn.classList.remove(...variantClasses[off as 'danger'].split(' '));
-			btn.classList.add(...variantClasses[on as 'danger'].split(' '));
+			const [off, on] = count > 0 ? ['secondary', 'danger-filled'] : ['danger-filled', 'secondary'];
+			btn.classList.remove(...variantClasses[off as 'secondary'].split(' '));
+			btn.classList.add(...variantClasses[on as 'secondary'].split(' '));
 		});
 		// The hint is only relevant while the selection is empty — dismiss it
 		// as soon as the user checks an item, per HintPopover.astro's guidance

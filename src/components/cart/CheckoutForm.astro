@@ -22,7 +22,7 @@ const readonlyFieldClass = `${fieldClass} bg-disabled-bg text-disabled-text`;
 const labelClass = 'block text-sm font-medium text-text';
 ---
 
-<form class="checkout-form flex flex-col gap-4" method="POST" action="/api/orders/create">
+<form class="checkout-form flex flex-col gap-4" method="POST" action="/reservation/confirm">
 	<input type="hidden" name="fromDate" data-checkout-from-date />
 	<input type="hidden" name="toDate" data-checkout-to-date />
 	<input type="hidden" name="splitLineKeys" data-checkout-split-line-keys />
@@ -67,5 +67,5 @@ const labelClass = 'block text-sm font-medium text-text';
 				I accept the liability disclaimer above.
 			</label>
 		</div>
-	<Button type="submit" variant="primary" size="lg" class="self-start">Place order</Button>
+	<Button type="submit" variant="primary" size="lg" class="self-start">Review order</Button>
 </form>

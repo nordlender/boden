@@ -5,7 +5,7 @@ import Button from '../ui/Button.astro';
 interface Props {
 	primaryHref: string;
 	primaryLabel: string;
-	// Static pages (e.g. /cart) post straight to this action; the JS-driven
+	// Static pages post straight to this action; the JS-driven
 	// cart popup omits it and wires up EmptyCartButton's data-cart-clear
 	// listener itself (see CartSidebar.astro's script).
 	clearAction?: string;

@@ -4,7 +4,7 @@
 <!--
 	This component can be rendered on a prerendered page (the shop grid and
 	404 are built once, ahead of any request), so there
-	is no per-visitor session to read server-side here the way src/pages/cart.astro
+	is no per-visitor session to read server-side here the way src/pages/reservation.astro
 	does with getSession(Astro.request). Instead it renders signed-out by
 	default and a client script below corrects it against auth-astro's own
 	session endpoint — no changes to src/auth.ts/src/lib/auth.ts/middleware

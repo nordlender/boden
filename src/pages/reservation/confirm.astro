@@ -1,0 +1,160 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Button from '../../components/ui/Button.astro';
+import { getCartLines, entryKey, type CartLine } from '../../lib/cart';
+import { isValidDateRange } from '../../lib/reservation';
+import { listPickupDaysOn } from '../../lib/pickupDays';
+import { formatDateDisplay } from '../../lib/dates';
+import { formatAttributes } from '../../lib/attributes';
+
+// Gated by src/middleware/prefixes.ts (/reservation) — member-only. Only
+// reachable via the reservation form's POST: this page is a read-only
+// overview, the order itself is created by /api/orders/create when the
+// "Confirm order" button below is pressed.
+if (Astro.request.method !== 'POST') {
+	return Astro.redirect('/reservation');
+}
+
+const form = await Astro.request.formData();
+const cartLines = await getCartLines(Astro.cookies);
+if (cartLines.length === 0) {
+	return Astro.redirect('/reservation');
+}
+
+const fromDate = form.get('fromDate')?.toString() ?? '';
+const toDate = form.get('toDate')?.toString() ?? '';
+if (!isValidDateRange({ from: fromDate, to: toDate })) {
+	return Astro.redirect('/reservation?error=invalid_dates');
+}
+if (form.get('disclaimerAccepted') !== 'on') {
+	return Astro.redirect('/reservation?error=disclaimer_required');
+}
+
+const text = (name: string) => form.get(name)?.toString().trim() ?? '';
+const contact = { name: text('name'), email: text('email'), mobile: text('mobile') };
+const note = text('note');
+const splitKeys = new Set(
+	text('splitLineKeys')
+		.split(',')
+		.map((s) => s.trim())
+		.filter(Boolean),
+);
+
+const pickupWindows = await listPickupDaysOn(fromDate);
+
+const lineKey = (line: CartLine) => entryKey('setId' in line ? { setId: line.setId } : { itemId: line.itemId });
+const lineLabel = (line: CartLine) => ('setId' in line ? `${line.productTitle} (set)` : line.productTitle);
+const lineDetail = (line: CartLine) => ('setId' in line ? line.label : formatAttributes(line.attributes));
+const groups = [
+	{ title: 'Order', lines: cartLines.filter((l) => !splitKeys.has(lineKey(l))) },
+	{ title: 'Separate order', lines: cartLines.filter((l) => splitKeys.has(lineKey(l))) },
+].filter((g) => g.lines.length > 0);
+
+// Everything the API route needs, passed through unchanged.
+const hiddenFields: Record<string, string> = {
+	fromDate,
+	toDate,
+	splitLineKeys: [...splitKeys].join(','),
+	name: contact.name,
+	email: contact.email,
+	mobile: contact.mobile,
+	hasUnpaidFees: text('hasUnpaidFees'),
+	userIsMember: text('userIsMember'),
+	note,
+	disclaimerAccepted: 'on',
+};
+---
+
+<BaseLayout title="Confirm order">
+	<div class="mx-auto max-w-3xl px-4 py-8">
+		<h1 class="mb-2 text-2xl font-semibold tracking-tight text-text">Confirm your order</h1>
+		<p class="mb-6 text-sm text-text-muted">Check everything below, then confirm to submit your request.</p>
+
+		<dl class="mb-8 grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface p-4 sm:grid-cols-3">
+			<div>
+				<dt class="text-xs font-semibold tracking-wide text-text-muted uppercase">From (pick-up)</dt>
+				<dd class="mt-1 text-sm text-text">{formatDateDisplay(fromDate, { weekday: true })}</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-semibold tracking-wide text-text-muted uppercase">To (return)</dt>
+				<dd class="mt-1 text-sm text-text">{formatDateDisplay(toDate, { weekday: true })}</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-semibold tracking-wide text-text-muted uppercase">Pick-up time</dt>
+				<dd class="mt-1 text-sm text-text">
+					{
+						pickupWindows.length === 0 ? (
+							<span class="text-text-muted">To be announced</span>
+						) : (
+							<ul>
+								{pickupWindows.map((w) => (
+									<li>
+										{w.startTime}–{w.endTime}
+										{w.where && <span class="text-text-muted"> · {w.where}</span>}
+									</li>
+								))}
+							</ul>
+						)
+					}
+				</dd>
+			</div>
+		</dl>
+
+		<div class="mb-8 flex flex-col gap-6">
+			{
+				groups.map((group) => (
+					<section>
+						<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">
+							{groups.length > 1 ? group.title : 'Items'}
+						</h2>
+						<table class="w-full border-y border-border text-sm">
+							<thead>
+								<tr class="text-left text-text-muted">
+									<th scope="col" class="py-2 pr-4 font-medium">Item</th>
+									<th scope="col" class="py-2 pr-4 font-medium">Details</th>
+									<th scope="col" class="py-2 text-right font-medium">Qty</th>
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-border text-text">
+								{group.lines.map((line) => (
+									<tr>
+										<td class="py-2 pr-4">{lineLabel(line)}</td>
+										<td class="py-2 pr-4 text-text-muted">{lineDetail(line) || '—'}</td>
+										<td class="py-2 text-right">{line.quantity}</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</section>
+				))
+			}
+		</div>
+
+		<section class="mb-8 text-sm text-text">
+			<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">Your details</h2>
+			<p>{contact.name} · {contact.email}{contact.mobile && ` · ${contact.mobile}`}</p>
+			{note && <p class="mt-2 text-text-muted">Note: {note}</p>}
+		</section>
+
+		<form method="POST" action="/api/orders/create" class="flex items-center gap-4">
+			{Object.entries(hiddenFields).map(([name, value]) => <input type="hidden" name={name} value={value} />)}
+			<Button href="/reservation" variant="secondary" size="lg" data-back-link>Back</Button>
+			<Button type="submit" variant="primary" size="lg">Confirm order</Button>
+		</form>
+	</div>
+</BaseLayout>
+
+<script>
+	// Prefer real history navigation: it lets the browser restore the
+	// reservation form the member just came from. Falls back to the plain
+	// /reservation link (e.g. page opened directly).
+	document.querySelector<HTMLAnchorElement>('[data-back-link]')?.addEventListener('click', (event) => {
+		// Only when we really came from the reservation form (the form POST
+		// sends it as referrer) — otherwise history.back() could leave the flow.
+		const cameFromForm = document.referrer !== '' && new URL(document.referrer).pathname === '/reservation';
+		if (cameFromForm && history.length > 1) {
+			event.preventDefault();
+			history.back();
+		}
+	});
+</script>

@@ -34,7 +34,6 @@ export const ROUTE_RULES: RouteRule[] = [
   { prefix: '/api/moderator', minRole: 'moderator' },
   { prefix: '/api/messages/add', minRole: 'moderator' },
   { prefix: '/api/messages/delete', minRole: 'moderator' },
-  { prefix: '/cart', minRole: 'member' },
   { prefix: '/checkout', minRole: 'member' },
   { prefix: '/orders', minRole: 'member' },
   { prefix: '/reservation', minRole: 'member' },

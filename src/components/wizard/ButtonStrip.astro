@@ -7,9 +7,9 @@
 //
 // Assign/Unassign are gone — "Set product" now handles both assigning an
 // unassigned item and reassigning an already-assigned one.
-// Unassigned: | Set | ---- | (+) | (trash) |
-// Assigned:   | Set | ---- | (trash)
-// Both are icon-only; delete asks for confirmation via a popover.
+// | Set | ---- | (trash)
+// Delete is icon-only and asks for confirmation via a popover. Adding items
+// is done from AddItemPanel above, not from this strip.
 import MorphIcon from 'morphicons/astro';
 import { dropdownChevron } from '../../lib/icon-nodes';
 import AppIcon from '../icons/AppIcon.astro';
@@ -73,9 +73,6 @@ const confirmId = `archive-confirm-${formId}`;
 
 	<div class="flex-1"></div>
 
-	{variant === 'unassigned' && (
-		<MorphButton variant="primary" action="add" label="Add item" href="#add-item-name" data-expand-open="add-item-panel" />
-	)}
 	{/* Trigger stays a plain type="button" with `popovertarget` — the click
 	    handler below cancels the popover's native open when nothing is
 	    selected (showing the hint instead). Variant flips danger →

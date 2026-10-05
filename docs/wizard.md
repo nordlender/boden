@@ -75,7 +75,7 @@ Description and category/sub-category used to be fields here (description as fre
 
 #### Unassigned items
 Button strip:
-| Set | ---- | (+ add item) | (trash) |
+| Set | ---- | (trash) |
 
 | List |
 
@@ -83,7 +83,7 @@ Button strip:
 Button strip:
 | Set | ---- | (trash)
 
-Both buttons are icon-only. Delete is outlined (`danger`) with nothing selected and filled (`danger-filled`) once items are selected; clicking it asks for confirmation in a popover (or shows a "select at least one item" hint if nothing is selected).
+The delete button is icon-only. It is outlined (`danger`) with nothing selected and filled (`danger-filled`) once items are selected; clicking it asks for confirmation in a popover (or shows a "select at least one item" hint if nothing is selected).
 
 | List |
 

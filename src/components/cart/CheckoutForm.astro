@@ -19,6 +19,12 @@ const yesNo = (value: boolean | null) => (value === null ? 'Unknown' : value ? '
 
 const fieldClass = 'w-full rounded-md border border-border-interactive px-3 py-2 text-sm text-text focus:border-accent focus:outline-none';
 const readonlyFieldClass = `${fieldClass} bg-disabled-bg text-disabled-text`;
+// Green when the value is the good one (no unpaid fees / is a member), red
+// when not; Unknown (null) keeps the neutral readonly look.
+const flagClass = (value: boolean | null, goodValue: boolean) =>
+	value === null
+		? readonlyFieldClass
+		: `w-full rounded-md border px-3 py-2 text-sm font-medium focus:outline-none ${value === goodValue ? 'border-success-border bg-success-subtle text-success-text' : 'border-error-border bg-error-subtle text-error-text'}`;
 const labelClass = 'block text-sm font-medium text-text';
 ---
 
@@ -45,11 +51,11 @@ const labelClass = 'block text-sm font-medium text-text';
 	<div class="grid grid-cols-2 gap-4">
 		<label class={labelClass}>
 			Unpaid fee?
-			<input type="text" value={yesNo(hasUnpaidFees)} readonly class={`${readonlyFieldClass} mt-1`} />
+			<input type="text" value={yesNo(hasUnpaidFees)} readonly class={`${flagClass(hasUnpaidFees, false)} mt-1`} />
 		</label>
 		<label class={labelClass}>
 			Member?
-			<input type="text" value={yesNo(userIsMember)} readonly class={`${readonlyFieldClass} mt-1`} />
+			<input type="text" value={yesNo(userIsMember)} readonly class={`${flagClass(userIsMember, true)} mt-1`} />
 		</label>
 	</div>
 	<label class={labelClass}>

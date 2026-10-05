@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { addDaysIso, daysInclusive, getAvailableForRange, getClaims, getDailyAvailability, getHandedOut, getRealAvailability, getUnmetDays, occupiedByDay, setDailyAvailability } from '../availability';
+import { addDaysIso, daysInclusive } from '../dates';
+import { getAvailableForRange, getClaims, getDailyAvailability, getHandedOut, getRealAvailability, getUnmetDays, occupiedByDay, setDailyAvailability } from '../availability';
 
 // Fixture: item 1 (stock 4), item 2 (stock 2). Orders below are inserted in
 // the vi.mock factory so the module under test sees the seeded db.

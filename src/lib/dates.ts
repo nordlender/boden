@@ -87,7 +87,7 @@ export function todayIsoInOslo(): string {
 // there's no real-world "now" to get an Oslo-vs-UTC answer for — UTC
 // parsing just avoids the date shifting a day in either direction depending
 // on the viewer's own device timezone, same reasoning as
-// addDaysIso below.
+// addDaysIso above.
 export function formatDateShort(value: string): string {
   const date = new Date(`${value}T00:00:00Z`);
   const day = String(date.getUTCDate()).padStart(2, '0');

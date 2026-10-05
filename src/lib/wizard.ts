@@ -1,7 +1,7 @@
 import { db } from '../db/client';
 import { items, productAttributeKeys, itemAttributeValues } from '../db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
-import { getHandedOut } from './availability';
+import { getRealAvailability } from './availability';
 
 export interface WizardAttribute {
 	key: string;
@@ -66,13 +66,13 @@ export async function getWizardItems(): Promise<{ unassigned: WizardItem[]; assi
 
 	// Real availability: what's physically on the shelf now, for admins to
 	// check against what they see (src/lib/availability.ts).
-	const handedOut = getHandedOut(rows.map((row) => row.id));
+	const onShelf = getRealAvailability(rows.map((row) => row.id));
 
 	const wizardItems: WizardItem[] = rows.map((row) => ({
 		id: row.id,
 		name: row.name,
 		imageUrl: row.imageUrl,
-		inStock: row.stockCount - (handedOut.get(row.id) ?? 0),
+		inStock: onShelf.get(row.id) ?? row.stockCount,
 		totalStock: row.stockCount,
 		productId: row.productId,
 		productTitle: row.product?.title,

@@ -39,10 +39,19 @@ import { db } from '../db/client';
 import { items, orderItems, orders } from '../db/schema';
 import { RESERVING_STATUSES } from './orderStatus';
 import { addDaysIso, daysInclusive, todayIsoInOslo } from './dates';
+import { setsThatFit } from './sets';
 
-// Re-exported so existing server-side importers keep working; client code
-// should import these from ./dates directly (this module pulls in the db).
-export { addDaysIso, daysInclusive };
+/**
+ * Units an order line occupies: what was actually handed out once a
+ * moderator has recorded it, otherwise what was requested. The one rule —
+ * use `occupiedQuantity` in SQL and `lineQuantity` in JS rather than
+ * re-deriving it.
+ */
+export const occupiedQuantity = sql<number>`coalesce(${orderItems.retrievedQuantity}, ${orderItems.requestedQuantity})`;
+
+export function lineQuantity(line: { retrievedQuantity: number | null; requestedQuantity: number }): number {
+	return line.retrievedQuantity ?? line.requestedQuantity;
+}
 
 export type QueryExecutor = Pick<typeof db, 'select'>;
 
@@ -93,7 +102,7 @@ export function getClaims(
 		.select({
 			orderId: orders.id,
 			itemId: orderItems.itemId,
-			quantity: sql<number>`coalesce(${orderItems.retrievedQuantity}, ${orderItems.requestedQuantity})`,
+			quantity: occupiedQuantity,
 			status: orders.status,
 			fromDate: orders.fromDate,
 			toDate: orders.toDate,
@@ -232,9 +241,8 @@ export function setDailyAvailability(
 	dailyByItem: Map<number, number[]>,
 	days: number,
 ): number[] {
-	if (components.length === 0) return new Array<number>(days).fill(0);
 	return Array.from({ length: days }, (_, i) =>
-		Math.max(0, Math.min(...components.map((c) => Math.floor((dailyByItem.get(c.itemId)?.[i] ?? 0) / c.quantity)))),
+		setsThatFit(components.map((c) => ({ available: dailyByItem.get(c.itemId)?.[i] ?? 0, quantity: c.quantity }))),
 	);
 }
 
@@ -255,7 +263,7 @@ export function getHandedOut(itemIds: number[], executor: QueryExecutor = db): M
 	const rows = executor
 		.select({
 			itemId: orderItems.itemId,
-			out: sql<number>`sum(coalesce(${orderItems.retrievedQuantity}, ${orderItems.requestedQuantity}))`,
+			out: sql<number>`sum(${occupiedQuantity})`,
 		})
 		.from(orderItems)
 		.innerJoin(orders, eq(orderItems.orderId, orders.id))

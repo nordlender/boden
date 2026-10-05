@@ -1,9 +1,31 @@
 import type { OAuthConfig, OAuthUserConfig } from '@auth/core/providers';
 import type { TokenSet } from '@auth/core/types';
+import Credentials from '@auth/core/providers/credentials';
 import { defineConfig } from 'auth-astro';
 import { db } from './db/client';
 import { getBlocProfile, type BlocProfile } from './lib/blocProfile';
 import { upsertSignedInUser } from './lib/upsertUser';
+import { DEV_LOGIN_PROVIDER_ID, DEV_USERS, assertDevLoginSafe, isDevLoginEnabled, isDevRole } from './lib/devLogin';
+
+// Refuse to start a production build that has DEV_LOGIN set (#270).
+assertDevLoginSafe();
+
+// Opt-in dev-only login (#270): pick a synthetic user by role. Written with a
+// literal `import.meta.env.DEV` gate at the call site below so Vite drops it
+// from production bundles.
+function DevLogin() {
+  return Credentials({
+    id: DEV_LOGIN_PROVIDER_ID,
+    name: 'Dev login',
+    credentials: { role: {} },
+    authorize(credentials) {
+      // Defence in depth: even if registered by mistake, refuse unless active.
+      if (!isDevLoginEnabled()) return null;
+      const role = credentials?.role;
+      return isDevRole(role) ? { ...DEV_USERS[role] } : null;
+    },
+  });
+}
 
 declare module '@auth/core/types' {
   interface Session {
@@ -135,6 +157,7 @@ export default defineConfig({
       // swap it per environment without touching the fixed callback path.
       redirectUri: new URL(BLOC_CALLBACK_PATH, import.meta.env.REDIRECT_URL).toString(),
     }),
+    ...(import.meta.env.DEV && isDevLoginEnabled() ? [DevLogin()] : []),
   ],
 
   callbacks: {
@@ -150,7 +173,12 @@ export default defineConfig({
     // override), so read userId from there instead — see #59.
     // Fails closed (returns false -> sign-in rejected) rather than letting a
     // signed-in session exist with no matching users row.
-    async signIn({ user, profile }) {
+    async signIn({ user, profile, account }) {
+      if (account?.provider === DEV_LOGIN_PROVIDER_ID) {
+        if (!import.meta.env.DEV || !isDevLoginEnabled() || !user.id || !user.email) return false;
+        await upsertSignedInUser(db, { id: user.id, email: user.email, name: user.name });
+        return true;
+      }
       const blocUserId = getBlocProfile(profile)?.userId;
       if (!blocUserId || !user.email) return false;
       await upsertSignedInUser(db, { id: String(blocUserId), email: user.email, name: user.name });

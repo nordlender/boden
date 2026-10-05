@@ -1,6 +1,12 @@
 import { defineMiddleware } from 'astro:middleware';
+import { assertDevLoginSafe } from '../lib/devLogin';
 import { validateSession, hasRole } from '../lib/auth';
 import { requiredRole, isApiRoute } from './prefixes';
+
+// Astro's node adapter loads modules lazily, so src/auth.ts's own assertion only
+// fires on the first /api/auth request. Repeat it here so a production build
+// with DEV_LOGIN set fails every dynamic request (#270).
+assertDevLoginSafe();
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
   // Prerendered routes (shop grid shell, login, 404) are built once, ahead of

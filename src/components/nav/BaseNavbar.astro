@@ -7,6 +7,7 @@ import CartButton from './CartButton.astro';
 import ThemeToggle from './ThemeToggle.astro';
 import MorphIcon from 'morphicons/astro';
 import { navMenu } from '../../lib/icon-nodes';
+import { isDevLoginEnabled } from '../../lib/devLogin';
 import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 
 interface Props {
@@ -15,11 +16,16 @@ interface Props {
 }
 
 const { links, showCart = false } = Astro.props;
+const devLogin = isDevLoginEnabled();
 ---
 
 <header class="border-b border-border bg-bg">
 	<nav class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
 		<Logo />
+
+		{devLogin && (
+			<span class="rounded border border-warning-border bg-warning-subtle px-2 py-0.5 text-xs font-bold tracking-wide text-warning-text" title="DEV_LOGIN=1 — synthetic dev users enabled">DEV LOGIN</span>
+		)}
 
 		<div class="flex items-center gap-6">
 			<div class="hidden md:block">

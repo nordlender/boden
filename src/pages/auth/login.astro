@@ -5,6 +5,12 @@
 export const prerender = true;
 
 import HtmlShell from '../../layouts/HtmlShell.astro';
+import { DEV_USERS, isDevLoginEnabled } from '../../lib/devLogin';
+
+// Opt-in dev login (#270): show a role picker instead of auto-redirecting to
+// bloc. Always false in `astro build` (import.meta.env.DEV is false there), so
+// the prerendered production page never contains the picker.
+const devLogin = isDevLoginEnabled();
 ---
 <HtmlShell title="Signing in…" bodyClass="">
 		<!--
@@ -14,9 +20,33 @@ import HtmlShell from '../../layouts/HtmlShell.astro';
 			/api/auth/csrf, which a plain server-side redirect can't do without
 			reimplementing Auth.js's CSRF handling), so this brief document is
 			unavoidable, but the user never sees an interactive login screen —
-			just an instant redirect to bloc.
+			just an instant redirect to bloc. (Exception: the opt-in dev login
+			picker below.)
 		-->
-		<p>Signing in…</p>
+		<div data-dev-login={devLogin ? '1' : undefined}>
+			{devLogin ? (
+				<main class="mx-auto mt-12 flex max-w-sm flex-col gap-3 px-4">
+					<h1 class="text-lg font-bold">DEV LOGIN</h1>
+					<p class="text-sm text-text-muted">Sign in as a synthetic dev user (DEV_LOGIN=1).</p>
+					<ul class="flex flex-col gap-2">
+						{Object.entries(DEV_USERS).map(([role, user]) => (
+							<li>
+								<button type="button" data-dev-role={role} class="w-full rounded-md border border-border-strong px-3 py-2 text-left hover:bg-bg-subtle">
+									{user.name} ({role})
+								</button>
+							</li>
+						))}
+						<li>
+							<button type="button" data-bloc-login class="w-full rounded-md border border-border px-3 py-2 text-left text-text-muted hover:bg-bg-subtle">
+								Real bloc login
+							</button>
+						</li>
+					</ul>
+				</main>
+			) : (
+				<p>Signing in…</p>
+			)}
+		</div>
 		<script>
 			import { signIn } from 'auth-astro/client';
 
@@ -24,6 +54,15 @@ import HtmlShell from '../../layouts/HtmlShell.astro';
 			// auth-astro's SignInOptions type pulls in `next-auth/react`, which
 			// isn't installed as a dependency here — cast to bypass the resulting
 			// type gap rather than pull in the whole next-auth package for types.
-			signIn('bloc', { callbackUrl: next } as Parameters<typeof signIn>[1]);
+			const signInOptions = (extra: object) => ({ callbackUrl: next, ...extra }) as Parameters<typeof signIn>[1];
+
+			if (document.querySelector('[data-dev-login="1"]')) {
+				document.querySelectorAll<HTMLButtonElement>('[data-dev-role]').forEach((btn) => {
+					btn.addEventListener('click', () => signIn('credentials', signInOptions({ role: btn.dataset.devRole })));
+				});
+				document.querySelector('[data-bloc-login]')?.addEventListener('click', () => signIn('bloc', signInOptions({})));
+			} else {
+				signIn('bloc', signInOptions({}));
+			}
 		</script>
 </HtmlShell>

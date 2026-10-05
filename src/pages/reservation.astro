@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ReservationForm from '../components/reservation/ReservationForm.astro';
 import { getCartLines } from '../lib/cart';
-import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
+import { getUpcomingPickupWindows } from '../lib/pickupDays';
 import { getMaxRentalDays } from '../lib/rental-policy';
 import { todayIsoInOslo } from '../lib/dates';
 import { getSession } from 'auth-astro/server';
@@ -22,7 +22,7 @@ const [session, feeStatus] = await Promise.all([getSession(Astro.request), fetch
 
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
 const todayIso = todayIsoInOslo();
-const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
+const pickupWindows = await getUpcomingPickupWindows(todayIso);
 
 // Surfaces the two error redirects /api/orders/create can send back here
 // (invalid_dates, unavailable) — previously the form just silently
@@ -47,7 +47,7 @@ const errorMessage =
 
 		<ReservationForm
 			cartLines={cartLines}
-			availablePickupDates={availablePickupDates}
+			pickupWindows={pickupWindows}
 			name={session?.user?.name ?? null}
 			email={session?.user?.email ?? null}
 			mobile={session?.bloc?.mobile ?? null}

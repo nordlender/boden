@@ -5,7 +5,7 @@ import { callBlocAsSelf } from '../../../lib/blocDebug';
 export const prerender = false;
 
 // Live-test route for bloc's fee/GetMemberFeeStatus, to see the raw response
-// shape (src/lib/blocFeeStatus.ts assumes top-level hasUnpaidFees/userIsMember).
+// shape (src/lib/blocFeeStatus.ts maps isMember/hasUnpaidFees).
 // That method takes a userId, which the blocDebug.ts hard rule warns about —
 // so any `?userId=` is deliberately ignored and the caller's OWN id (the JWT
 // `sub`, which src/auth.ts sets to bloc's userId) is always used.

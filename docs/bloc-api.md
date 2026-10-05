@@ -111,9 +111,9 @@ API, reported to the provider by the user — see `docs/moderator-review.md`'s
 
 The provider added a dedicated method for these flags. `src/lib/blocFeeStatus.ts`
 calls it at sign-in (in `userinfo.request`, `src/auth.ts`) and its result
-overrides the null values from `account/listmypages`. Response shape is
-**unconfirmed** (not in the swagger for our key): it assumes top-level boolean
-`hasUnpaidFees`/`userIsMember`. Any failure or unexpected shape yields `null`
+overrides the null values from `account/listmypages`. Confirmed live response:
+`{ userId, siteId, isMember, hasUnpaidFees, success, message, errorCode,
+errorMessage }` — `isMember` maps to our `userIsMember`. Any failure or unexpected shape yields `null`
 (shown as "Unknown"), never a blocked sign-in.
 
 ## Reference

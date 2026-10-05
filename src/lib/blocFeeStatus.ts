@@ -12,9 +12,9 @@ const UNKNOWN: MemberFeeStatus = { hasUnpaidFees: null, userIsMember: null };
 
 const asBool = (v: unknown): boolean | null => (typeof v === 'boolean' ? v : null);
 
-// Response shape is unconfirmed (the method isn't in the swagger spec for our
-// API key) — assumes the two flags at the top level, as on the profile
-// responses. Fails soft to unknown (null) rather than blocking sign-in/checkout:
+// Confirmed live response: { userId, siteId, isMember, hasUnpaidFees, success,
+// message, errorCode, errorMessage } — note `isMember`, not `userIsMember`.
+// Fails soft to unknown (null) rather than blocking sign-in/checkout:
 // the order snapshot already treats null as "Unknown".
 export async function fetchMemberFeeStatus(
   userId: number | string,
@@ -26,7 +26,8 @@ export async function fetchMemberFeeStatus(
     const res = await fetchImpl(url, { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!res.ok) return UNKNOWN;
     const data = await res.json();
-    return { hasUnpaidFees: asBool(data?.hasUnpaidFees), userIsMember: asBool(data?.userIsMember) };
+    if (data?.success === false) return UNKNOWN;
+    return { hasUnpaidFees: asBool(data?.hasUnpaidFees), userIsMember: asBool(data?.isMember) };
   } catch {
     return UNKNOWN;
   }

@@ -24,11 +24,18 @@ export async function fetchMemberFeeStatus(
   try {
     const url = `${BLOC_API_BASE_URL}fee/GetMemberFeeStatus?userId=${encodeURIComponent(String(userId))}`;
     const res = await fetchImpl(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-    if (!res.ok) return UNKNOWN;
+    if (!res.ok) {
+      console.warn(`[bloc] GetMemberFeeStatus returned ${res.status} for userId=${userId}`);
+      return UNKNOWN;
+    }
     const data = await res.json();
-    if (data?.success === false) return UNKNOWN;
+    if (data?.success === false) {
+      console.warn(`[bloc] GetMemberFeeStatus success=false for userId=${userId}: ${data?.errorMessage ?? ''}`);
+      return UNKNOWN;
+    }
     return { hasUnpaidFees: asBool(data?.hasUnpaidFees), userIsMember: asBool(data?.isMember) };
-  } catch {
+  } catch (err) {
+    console.warn(`[bloc] GetMemberFeeStatus failed for userId=${userId}:`, err);
     return UNKNOWN;
   }
 }

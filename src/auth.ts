@@ -105,6 +105,7 @@ function Bloc(config: OAuthUserConfig<BlocProfile> & { redirectUri: string }): O
         // The account/* profile responses return these as null (bloc API
         // defect); the dedicated fee method is the source of truth.
         const fees = await fetchMemberFeeStatus(person.userId, tokens.access_token!);
+        console.info(`[bloc] fee status for userId=${person.userId}:`, fees);
         return {
           ...person,
           ...fees,

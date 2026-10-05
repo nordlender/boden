@@ -100,6 +100,13 @@ const dayKinds = Object.fromEntries(kindByDate);
 		width: 100%;
 	}
 
+	/* Narrow containers (phones) show one month at a time; the second
+	   <calendar-month> only appears once there's room to put it beside the
+	   first (see the container query below). */
+	.pickup-days-calendar calendar-multi calendar-month:nth-of-type(2) {
+		display: none;
+	}
+
 	@container (min-width: 30rem) {
 		.pickup-days-calendar calendar-multi::part(months) {
 			flex-direction: row;
@@ -109,6 +116,10 @@ const dayKinds = Object.fromEntries(kindByDate);
 			width: auto;
 			min-width: 0;
 			flex: 1 1 0%;
+		}
+
+		.pickup-days-calendar calendar-multi calendar-month:nth-of-type(2) {
+			display: block;
 		}
 	}
 

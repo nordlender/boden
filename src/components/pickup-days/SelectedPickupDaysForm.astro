@@ -16,13 +16,17 @@ import MorphButton from '../ui/MorphButton.astro';
 import Button from '../ui/Button.astro';
 
 // Columns: bubble | date | weekday | start | end | where | buttons. Below `sm`
-// each row stacks instead — bubble, date, weekday, buttons on top; start and
-// end times; then where — via explicit max-sm: placements below (DOM order,
-// and so focus order, is unchanged), and the header row is hidden in favour
-// of each input's own visible label.
-const GRID_STYLE = '--grid-cols: 1.25rem 1fr 1fr auto; --grid-cols-sm: 1.25rem 4.5rem 7rem 6rem 6rem 1fr 4.5rem';
+// each row stacks into four lines instead — bubble, date, weekday; start and
+// end time; where; buttons — via explicit max-sm: placements below (DOM
+// order, and so focus order, is unchanged), and the header row is hidden in
+// favour of each input's own visible label.
+const GRID_STYLE = '--grid-cols: 1.25rem 1fr 1fr; --grid-cols-sm: 1.25rem 4.5rem 7rem 6rem 6rem 1fr 4.5rem';
 const GRID_CLASS = 'grid grid-cols-(--grid-cols) sm:grid-cols-(--grid-cols-sm)';
 const INPUT_CLASS = 'w-full rounded border border-border-interactive px-1.5 py-1 text-xs';
+// Fixed width (= the sm column width) so a time input doesn't grow once a
+// value is typed in — a bare w-full lets the native picker's intrinsic width
+// stretch the cell.
+const TIME_INPUT_CLASS = 'w-24 rounded border border-border-interactive px-1.5 py-1 text-xs';
 // Visible only in the stacked mobile layout; the sm+ header row labels the
 // columns there, but the text stays available to screen readers.
 const LABEL_TEXT_CLASS = 'mb-0.5 block text-xs text-text-muted sm:sr-only';
@@ -64,24 +68,24 @@ const LABEL_TEXT_CLASS = 'mb-0.5 block text-xs text-text-muted sm:sr-only';
 		{/* lang="en-GB" forces the native time picker to 24h — a bare type="time" instead follows the browser/OS locale, which shows AM/PM on a US-locale Chrome. */}
 		<label class="max-sm:col-start-2">
 			<span class={LABEL_TEXT_CLASS}>Start time</span>
-			<input type="time" required lang="en-GB" data-field="startTime" class={INPUT_CLASS} />
+			<input type="time" required lang="en-GB" data-field="startTime" class={TIME_INPUT_CLASS} />
 		</label>
 		<label>
 			<span class={LABEL_TEXT_CLASS}>End time</span>
-			<input type="time" required lang="en-GB" data-field="endTime" class={INPUT_CLASS} />
+			<input type="time" required lang="en-GB" data-field="endTime" class={TIME_INPUT_CLASS} />
 		</label>
-		<label class="max-sm:col-span-3 max-sm:col-start-2">
+		<label class="max-sm:col-span-2 max-sm:col-start-2">
 			<span class={LABEL_TEXT_CLASS}>Where</span>
-			<input
-				type="text"
+			<textarea
 				required
+				rows="2"
 				placeholder='Ex. "In the reception at SiO Athletica Blindern" or "At Vulkan"'
 				data-field="where"
-				class={INPUT_CLASS}
-			/>
+				class:list={[INPUT_CLASS, 'block resize-none']}
+			></textarea>
 		</label>
-		<div class="flex items-center justify-end gap-1 max-sm:col-start-4 max-sm:row-start-1">
-			<MorphButton action="add" size="sm" label="Add another time for this day" data-add-another-time />
+		<div class="flex items-center justify-end gap-1 max-sm:col-span-2 max-sm:col-start-2">
+			<MorphButton action="duplicate" size="sm" label="Add another time for this day" data-add-another-time />
 			<MorphButton action="delete" variant="danger" size="sm" label="Remove this time" data-remove-selected-day />
 		</div>
 	</div>
@@ -147,7 +151,7 @@ const LABEL_TEXT_CLASS = 'mb-0.5 block text-xs text-text-muted sm:sr-only';
 			if (!row || !state) return;
 			state.startTime = row.querySelector<HTMLInputElement>('[data-field="startTime"]')?.value ?? '';
 			state.endTime = row.querySelector<HTMLInputElement>('[data-field="endTime"]')?.value ?? '';
-			state.where = row.querySelector<HTMLInputElement>('[data-field="where"]')?.value ?? '';
+			state.where = row.querySelector<HTMLTextAreaElement>('[data-field="where"]')?.value ?? '';
 		}
 
 		function render() {
@@ -171,11 +175,11 @@ const LABEL_TEXT_CLASS = 'mb-0.5 block text-xs text-text-muted sm:sr-only';
 				row.querySelector('[data-field="weekday-display"]')!.textContent = formatWeekdayName(state.date);
 				(row.querySelector('[data-field="startTime"]') as HTMLInputElement).value = state.startTime;
 				(row.querySelector('[data-field="endTime"]') as HTMLInputElement).value = state.endTime;
-				(row.querySelector('[data-field="where"]') as HTMLInputElement).value = state.where;
+				(row.querySelector('[data-field="where"]') as HTMLTextAreaElement).value = state.where;
 
 				const addButton = row.querySelector('[data-add-another-time]');
 				addButton?.addEventListener('click', () => addAnotherTime(state.date));
-				wireMorphAction(addButton, 'add');
+				wireMorphAction(addButton, 'duplicate');
 
 				const removeButton = row.querySelector('[data-remove-selected-day]');
 				removeButton?.addEventListener('click', () => removeRow(state.key));

@@ -159,7 +159,7 @@ boden/
 │   │   ├── orders.ts                        # createOrder / createSplitOrders — §6
 │   │   ├── reservation.ts                   # Date-range validation + availability queries
 │   │   ├── shop.ts                          # Customer-facing catalogue/product queries
-│   │   ├── stock.ts                         # reservedQuantitiesByItem — "in stock now" derivation
+│   │   ├── availability.ts                  # Per-day (scheduled) and on-shelf (real) availability, derived from orders
 │   │   ├── pickupDays.ts, wizard.ts, wizard-http.ts, upsertUser.ts, icons.ts, ...
 │   │
 │   ├── middleware/
@@ -285,8 +285,8 @@ export const items = sqliteTable('items', {
   name: text('name').notNull(),        // internal/admin-only label — never shown to customers
   imageUrl: text('image_url'),
   stockCount: integer('stock_count').notNull().default(1),
-  // "In stock right now" is never stored — always computed as stockCount
-  // minus quantities on currently requested/active orders (src/lib/stock.ts).
+  // Availability is never stored — it's derived per day from the orders
+  // occupying the item on that day (src/lib/availability.ts).
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false), // soft delete
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
@@ -393,7 +393,7 @@ npx drizzle-kit migrate
 
 ## 5. Cart (cookie-based, no database)
 
-The cart cookie stores only `{ itemId, quantity }[]` — no database row is created until checkout. `src/lib/cart.ts` joins that against `items`/`products` on read to build a display shape (`CartItem`: product title/slug, image, attribute values, `stockCount` vs. `inStock` — the latter accounting for other requested/active orders via `src/lib/stock.ts`). Entries pointing at an item that no longer exists, is archived, or whose product is unpublished are silently dropped when reading the cart for display.
+The cart cookie stores only `{ itemId, quantity }[]` — no database row is created until checkout. `src/lib/cart.ts` joins that against `items`/`products` on read to build a display shape (`CartItem`: product title/slug, image, attribute values, `stockCount` vs. `inStock` — the latter being what's available today, via `getOccupiedToday` in `src/lib/availability.ts`). Entries pointing at an item that no longer exists, is archived, or whose product is unpublished are silently dropped when reading the cart for display.
 
 ```ts
 // src/lib/cart.ts (core shape)

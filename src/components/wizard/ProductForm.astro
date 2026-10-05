@@ -144,24 +144,17 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		</p>
 
 		<p class="text-xs text-text-muted">
-			Pick one key as the <span class="font-medium text-text">variant</span>: shoppers choose between its values as buttons on the product page, and it's left out of the attribute list.
+			Click a key to make it the <span class="font-medium text-text">variant</span> — shoppers choose between its values as buttons on the product page, and it's left out of the attribute list. Click it again to unset.
 		</p>
 
-		<label class="flex items-center gap-2 text-xs text-text-muted">
-			<input type="radio" name="variantAttributeKey" value="" checked={!existingAttributeKeys.some((key) => key.isVariant)} data-variant-none />
-			No variant
-		</label>
+		<input type="hidden" name="variantAttributeKey" value={existingAttributeKeys.find((key) => key.isVariant)?.name ?? ''} data-variant-input />
 
 		{existingAttributeKeys.length > 0 && (
-			<div class="flex flex-col gap-1">
+			<div class="flex flex-wrap gap-2">
 				{existingAttributeKeys.map((key) => (
-					<label class="flex items-center justify-between gap-2 text-sm text-text">
-						<span class="flex items-center gap-2">
-							<input type="radio" name="variantAttributeKey" value={key.name} checked={key.isVariant} />
-							{key.name}
-						</span>
-						{key.isVariant && <span class="text-xs text-text-muted">Current variant</span>}
-					</label>
+					<button type="button" data-variant-toggle data-name={key.name} aria-pressed={key.isVariant ? 'true' : 'false'} class="rounded-full border px-3 py-1 text-xs transition-colors border-border-strong text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-accent aria-pressed:bg-transparent aria-pressed:font-medium aria-pressed:text-accent-text aria-pressed:hover:bg-accent-subtle">
+						{key.name}
+					</button>
 				))}
 			</div>
 		)}
@@ -175,10 +168,7 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 			{mode === 'create' && (
 				<div class="flex items-center gap-2" data-row>
 					<input name="attributeKey[]" type="text" placeholder="e.g. Size" data-new-key-input class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
-					<label class="flex shrink-0 items-center gap-1 text-xs text-text-muted">
-						<input type="radio" name="variantAttributeKey" value="" data-new-key-radio />
-						Variant
-					</label>
+					<button type="button" data-variant-toggle aria-pressed="false" class="shrink-0 rounded-full border px-3 py-1 text-xs transition-colors border-border-strong text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-accent aria-pressed:bg-transparent aria-pressed:font-medium aria-pressed:text-accent-text aria-pressed:hover:bg-accent-subtle">Variant</button>
 					<button type="button" data-remove-row aria-label="Remove attribute key" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
 						<AppIcon name="trash" size={16} />
 					</button>
@@ -189,10 +179,7 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		<template data-row-template="attributes">
 			<div class="flex items-center gap-2" data-row>
 				<input name="attributeKey[]" type="text" placeholder="e.g. Size" data-new-key-input class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
-				<label class="flex shrink-0 items-center gap-1 text-xs text-text-muted">
-					<input type="radio" name="variantAttributeKey" value="" data-new-key-radio />
-					Variant
-				</label>
+				<button type="button" data-variant-toggle aria-pressed="false" class="shrink-0 rounded-full border px-3 py-1 text-xs transition-colors border-border-strong text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-accent aria-pressed:bg-transparent aria-pressed:font-medium aria-pressed:text-accent-text aria-pressed:hover:bg-accent-subtle">Variant</button>
 				<button type="button" data-remove-row aria-label="Remove attribute key" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
 					<AppIcon name="trash" size={16} />
 				</button>
@@ -230,14 +217,32 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		removeButton.closest('[data-row]')?.remove();
 	});
 
-	// A new key's variant radio has no value until the admin types the key's
-	// name — keep it synced so selecting it submits that name. An empty-named
-	// row is dropped server-side, so a stale empty selection is harmless.
+	// Variant toggle: at most one key is the variant (the hidden input holds
+	// its name; empty means none). Clicking the pressed key unsets it. A
+	// new-key row has no data-name — its name is whatever is typed in the row,
+	// so the hidden value is re-synced as that input changes.
+	const variantInput = document.querySelector<HTMLInputElement>('[data-variant-input]');
+
+	function toggleName(toggle: HTMLElement): string {
+		return toggle.dataset.name ?? toggle.closest('[data-row]')?.querySelector<HTMLInputElement>('[data-new-key-input]')?.value.trim() ?? '';
+	}
+
+	document.addEventListener('click', (event) => {
+		const target = event.target;
+		if (!(target instanceof Element) || !variantInput) return;
+		const toggle = target.closest<HTMLElement>('[data-variant-toggle]');
+		if (!toggle) return;
+		const wasPressed = toggle.getAttribute('aria-pressed') === 'true';
+		document.querySelectorAll('[data-variant-toggle]').forEach((other) => other.setAttribute('aria-pressed', 'false'));
+		toggle.setAttribute('aria-pressed', String(!wasPressed));
+		variantInput.value = wasPressed ? '' : toggleName(toggle);
+	});
+
 	document.addEventListener('input', (event) => {
 		const target = event.target;
-		if (!(target instanceof HTMLInputElement) || !target.matches('[data-new-key-input]')) return;
-		const radio = target.closest('[data-row]')?.querySelector<HTMLInputElement>('[data-new-key-radio]');
-		if (radio) radio.value = target.value.trim();
+		if (!(target instanceof HTMLInputElement) || !variantInput || !target.matches('[data-new-key-input]')) return;
+		const toggle = target.closest('[data-row]')?.querySelector<HTMLElement>('[data-variant-toggle]');
+		if (toggle?.getAttribute('aria-pressed') === 'true') variantInput.value = target.value.trim();
 	});
 
 	// Sub-category options are filtered to the currently selected category —

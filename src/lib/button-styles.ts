@@ -62,7 +62,7 @@ export const textIconPixelSize: Record<ButtonSize, number> = {
 };
 
 export const baseClasses =
-	'inline-flex items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed';
+	'inline-flex items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed aria-disabled:pointer-events-none aria-disabled:opacity-60';
 
 // Default aria-label / visible text for MorphButton/TextMorphButton's
 // `action` prop — overridable via `label` (MorphButton) or the default slot

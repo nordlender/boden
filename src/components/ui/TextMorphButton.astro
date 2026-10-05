@@ -29,7 +29,7 @@ const classes = [baseClasses, sizeClasses[size], variantClasses[variant], 'morph
 ---
 {
 	href ? (
-		<a href={href} class={classes} data-morph-action={action} aria-disabled={disabled || undefined} {...rest}>
+		<a href={disabled ? undefined : href} class={classes} data-morph-action={action} aria-disabled={disabled || undefined} {...rest}>
 			<slot>{actionLabels[action]}</slot>
 			<MorphIcon icon={icons.default} size={textIconPixelSize[size]} class="morph-action-icon" />
 		</a>

@@ -46,6 +46,12 @@ export function parseProductForm(form: FormData): ParsedProductForm {
 		.map((name) => name.trim())
 		.filter(Boolean);
 
+	// A radio today (one variant key), but read with getAll so a future
+	// multi-select needs no parser change.
+	const variantAttributeKeys = formStrings(form, 'variantAttributeKey')
+		.map((name) => name.trim())
+		.filter(Boolean);
+
 	return {
 		ok: true,
 		input: {
@@ -57,6 +63,7 @@ export function parseProductForm(form: FormData): ParsedProductForm {
 			thumbnailImageUrl: formString(form, 'thumbnailImageUrl').trim() || null,
 			links,
 			attributeKeys,
+			variantAttributeKeys,
 		},
 	};
 }

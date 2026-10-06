@@ -143,10 +143,18 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		The field template every item under this product will have (e.g. "Weight", "Size", "Color") — each item fills in its own value per key. {mode === 'edit' && 'Existing keys can\'t be renamed or removed from here, only added to.'}
 		</p>
 
+		<p class="text-xs text-text-muted">
+			Click a saved key to make it the <span class="font-medium text-text">variant</span> — shoppers choose between its values as buttons on the product page, and it's left out of the attribute list. Click it again to unset. New keys can be set as the variant after saving.
+		</p>
+
+		<input type="hidden" name="variantAttributeKey" value={existingAttributeKeys.find((key) => key.isVariant)?.name ?? ''} data-variant-input />
+
 		{existingAttributeKeys.length > 0 && (
 			<div class="flex flex-wrap gap-2">
 				{existingAttributeKeys.map((key) => (
-					<span class="rounded-full border border-border-strong px-3 py-1 text-xs text-text-muted">{key.name}</span>
+					<button type="button" data-variant-toggle data-name={key.name} aria-pressed={key.isVariant ? 'true' : 'false'} class="rounded-full border px-3 py-1 text-xs transition-colors border-border-strong text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-accent aria-pressed:bg-transparent aria-pressed:font-medium aria-pressed:text-accent-text aria-pressed:hover:bg-accent-subtle">
+						{key.name}
+					</button>
 				))}
 			</div>
 		)}
@@ -205,6 +213,23 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		const removeButton = target.closest<HTMLElement>('[data-remove-row]');
 		if (!removeButton) return;
 		removeButton.closest('[data-row]')?.remove();
+	});
+
+	// Variant toggle: at most one existing key is the variant (the hidden
+	// input holds its name; empty means none). Clicking the pressed key unsets
+	// it. Keys added in this same save have no pill yet — set the variant
+	// after saving.
+	const variantInput = document.querySelector<HTMLInputElement>('[data-variant-input]');
+
+	document.addEventListener('click', (event) => {
+		const target = event.target;
+		if (!(target instanceof Element) || !variantInput) return;
+		const toggle = target.closest<HTMLElement>('[data-variant-toggle]');
+		if (!toggle) return;
+		const wasPressed = toggle.getAttribute('aria-pressed') === 'true';
+		document.querySelectorAll('[data-variant-toggle]').forEach((other) => other.setAttribute('aria-pressed', 'false'));
+		toggle.setAttribute('aria-pressed', String(!wasPressed));
+		variantInput.value = wasPressed ? '' : (toggle.dataset.name ?? '');
 	});
 
 	// Sub-category options are filtered to the currently selected category —

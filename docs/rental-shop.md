@@ -120,7 +120,7 @@ boden/
 │   ├── pages/
 │   │   ├── index.astro                      # Catalogue — static, home page
 │   │   ├── products/
-│   │   │   └── [slug].astro                 # Product detail: variant select, image, attributes, links — static
+│   │   │   └── [slug].astro                 # Product detail: variant buttons, image, attributes, links — static
 │   │   ├── cart.astro                       # Cart review — SSR
 │   │   ├── reservation.astro                # Pick-up/return dates, availability, remove unavailable items — SSR
 │   │   ├── checkout/
@@ -629,7 +629,8 @@ import { getShopProductBySlug } from '../../lib/shop';
 const product = await getShopProductBySlug(Astro.params.slug!);
 if (!product) return new Response(null, { status: 404 }); // serves 404.astro
 ---
-<!-- variant <select> (one option per item, disabled when inStock <= 0),
+<!-- variant buttons (one per item, labelled by the admin-flagged variant
+     attribute key(s); dimmed when inStock <= 0),
      image + ImagePlaceholder fallback, attribute list, quantity input
      capped at inStock, "Add to cart" POSTing to /api/cart/add.
      A client-side <script> keeps image/stock/attributes/quantity-cap in

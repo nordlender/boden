@@ -1,7 +1,7 @@
 ---
 export const prerender = false;
 
-// Gated by src/middleware/index.ts (ADMIN_ROUTE_PREFIXES via /admin) —
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin) —
 // reached only when logged in with role === 'admin'. Mirrors admin/items.astro.
 import '../../styles/global.css';
 import ThemeInit from '../../components/ThemeInit.astro';

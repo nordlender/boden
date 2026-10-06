@@ -1,11 +1,9 @@
-export const prerender = false;
-
-// Also gated by src/middleware/index.ts's MOD_ROUTE_PREFIXES ('/api/moderator'),
+// Also gated by src/middleware/prefixes.ts's ROUTE_RULES ('/api/moderator'),
 // but that's defense-in-depth — keep this inline check too (see prefixes.ts).
 
 import type { APIRoute } from 'astro';
 import { getOrderIdByCode } from '../../../lib/moderatorOrders';
-import { requireModerator } from '../../../lib/wizard-http';
+import { requireModerator } from '../../../lib/http';
 
 export const POST: APIRoute = async ({ request, redirect, locals }) => {
 	const forbidden = requireModerator(locals);

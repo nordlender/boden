@@ -5,7 +5,7 @@
 // rather than silently no-op'ing, so they don't fit this shape.
 import type { APIContext, APIRoute } from 'astro';
 import { getMessageById, type MessageRow } from './messages';
-import { isPositiveInteger, safeRedirectTarget } from './wizard-http';
+import { isPositiveInteger, safeRedirectTarget } from './http';
 
 /**
  * Returns a 403 Response if `locals`/`message` fail the route's

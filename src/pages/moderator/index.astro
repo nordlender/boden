@@ -1,8 +1,6 @@
 ---
-export const prerender = false;
-
 // Moderator hub — landing page for the /moderator/* section. Gated by
-// src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator). The message
+// src/middleware/prefixes.ts (ROUTE_RULES via /moderator). The message
 // board is the same shared MessageTable the admin hub renders (see issue
 // #151) — moderators can now post their own messages here too, and delete
 // only the ones they authored (see issue #225); admin-authored messages,

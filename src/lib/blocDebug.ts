@@ -1,4 +1,5 @@
 import { getToken } from '@auth/core/jwt';
+import { json } from './http';
 
 const BLOC_BASE_URL = 'https://rest.bloc.net';
 
@@ -16,12 +17,27 @@ const BLOC_BASE_URL = 'https://rest.bloc.net';
  * Check a new bloc endpoint's params for exactly that shape before adding
  * a route here, and skip it if found.
  */
-export async function callBlocAsSelf(request: Request, path: string): Promise<Response> {
+export async function callBlocAsSelf(
+  request: Request,
+  // A builder receives the caller's own bloc userId (JWT `sub`) for endpoints
+  // that need one, so callers never decode the JWT a second time.
+  pathOrBuilder: string | ((ownUserId: string) => string),
+): Promise<Response> {
   const token = await getToken({ req: request, secret: import.meta.env.AUTH_SECRET });
   const accessToken = typeof token?.accessToken === 'string' ? token.accessToken : undefined;
 
   if (!accessToken) {
-    return jsonResponse({ error: 'Not logged in (no session access token found).' }, 401);
+    return json({ error: 'Not logged in (no session access token found).' }, 401);
+  }
+
+  let path: string;
+  if (typeof pathOrBuilder === 'string') {
+    path = pathOrBuilder;
+  } else {
+    if (!token?.sub || !/^\d+$/.test(token.sub)) {
+      return json({ error: 'No bloc user id in session.' }, 401);
+    }
+    path = pathOrBuilder(token.sub);
   }
 
   try {
@@ -29,17 +45,10 @@ export async function callBlocAsSelf(request: Request, path: string): Promise<Re
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const bodyText = await res.text();
-    return jsonResponse({ status: res.status, ok: res.ok, body: safeJsonParse(bodyText) }, 200);
+    return json({ status: res.status, ok: res.ok, body: safeJsonParse(bodyText) }, 200);
   } catch (err) {
-    return jsonResponse({ error: `bloc request failed: ${err instanceof Error ? err.message : String(err)}` }, 502);
+    return json({ error: `bloc request failed: ${err instanceof Error ? err.message : String(err)}` }, 502);
   }
-}
-
-function jsonResponse(data: unknown, status: number): Response {
-  return new Response(JSON.stringify(data, null, 2), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  });
 }
 
 function safeJsonParse(text: string) {

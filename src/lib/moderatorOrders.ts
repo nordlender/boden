@@ -6,10 +6,10 @@ import { getReservationAvailability } from './reservation';
 import { RESERVING_STATUSES, type OrderStatus } from './orderStatus';
 
 // Moderator-side order operations — kept separate from member-side
-// src/lib/orders.ts (createOrder/createSplitOrders/deleteOrder/
+// src/lib/orders.ts (createOrder/deleteOrder/
 // rescheduleOrder), which only ever acts on an order its caller owns.
 // Everything here acts across all members' orders, gated by
-// requireModerator() (src/lib/wizard-http.ts) at the API-route layer.
+// requireModerator() (src/lib/http.ts) at the API-route layer.
 
 export interface OrderDetailItem {
 	orderItemId: number;

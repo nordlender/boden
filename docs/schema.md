@@ -4,7 +4,7 @@
 > `pickupAvailableDays` (a bare date-PK table, admin-only, no time or "who")
 > with `pickupDays`/`pickupRecurringRules` — see that section below for why.
 > Everything else in this re-sync note is unchanged from the 2026-09-11 pass:
-> `orders.checkoutToken`/`fromDate`/`toDate` (the reservation flow, built
+> `orders.fromDate`/`toDate` (the reservation flow, built
 > after this doc was originally written) and the CHECK constraints real code
 > now has; `orderItems.reservedFrom`/`reservedTo`, which never existed in
 > real code, stay dropped — reservation dates live on `orders`, one range per
@@ -214,10 +214,6 @@ export const users = sqliteTable('users', {
 export const orders = sqliteTable('orders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   orderCode: text('order_code').notNull().unique(),
-  // Shared by every order created from one checkout submission (split or
-  // not) — /checkout/success looks orders up by this instead of by
-  // (potentially duplicated/tampered) order codes joined in a URL.
-  checkoutToken: text('checkout_token').notNull(),
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', {
     enum: ['requested', 'active', 'returned', 'rejected'],
@@ -239,7 +235,6 @@ export const orders = sqliteTable('orders', {
   index('orders_user_id_idx').on(table.userId),
   index('orders_status_idx').on(table.status),
   index('orders_date_range_idx').on(table.fromDate, table.toDate),
-  index('orders_checkout_token_idx').on(table.checkoutToken),
   check('order_date_range_valid', sql`${table.toDate} >= ${table.fromDate}`),
 ]);
 

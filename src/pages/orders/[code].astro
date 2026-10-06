@@ -1,6 +1,4 @@
 ---
-export const prerender = false;
-
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { db } from '../../db/client';
 import { getMaxRentalDays } from '../../lib/rental-policy';
@@ -10,7 +8,7 @@ import SubmittedContactDetails from '../../components/orders/SubmittedContactDet
 import DeleteOrderButton from '../../components/orders/DeleteOrderButton.astro';
 import ChangeOrderLink from '../../components/orders/ChangeOrderLink.astro';
 
-// Gated by src/middleware/index.ts (MEMBER_ROUTE_PREFIXES via /orders) —
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
 // reached only when logged in, so Astro.locals.user is non-null here.
 const { code } = Astro.params;
 const order = code

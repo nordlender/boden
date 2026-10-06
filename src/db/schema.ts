@@ -254,12 +254,6 @@ export const orders = sqliteTable('orders', {
   // src/lib/orders.ts's generateOrderCode. This is what members read aloud
   // to moderators and what appears in the retrieve-order URL.
   orderCode: text('order_code').notNull().unique(),
-  // Shared by every order created from one checkout submission (split or
-  // not) — the confirmation page looks orders up by this instead of by
-  // (potentially duplicated/tampered) order codes joined in a URL. Not
-  // unique: two rows from the same split submission share one token by
-  // design. Independently random, deliberately not derived from orderCode.
-  checkoutToken: text('checkout_token').notNull(),
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', {
     enum: ['requested', 'scheduled', 'active', 'returned', 'rejected'],
@@ -281,14 +275,13 @@ export const orders = sqliteTable('orders', {
   contactName: text('contact_name').notNull().default(''),
   contactEmail: text('contact_email').notNull().default(''),
   contactMobile: text('contact_mobile'),
-  // Snapshot of the checkout form's readonly bloc-sourced fields at
-  // submission time (see docs/moderator-review.md) — not re-fetched live
-  // from bloc at review time. Nullable boolean rather than a text tri-state
-  // enum: "Unknown" isn't a real business state, it's the absence of data
-  // (bloc's hasUnpaidFees/userIsMember API defect currently returns null for
-  // every member), so NULL is the correct representation, same as the
-  // underlying value's real type. Mapping from the form's submitted
-  // "Yes"/"No"/"Unknown" string happens in src/pages/api/orders/create.ts.
+  // Snapshot of bloc's fee/membership status at submission time (see
+  // docs/moderator-review.md) — not re-fetched live from bloc at review time.
+  // Nullable boolean rather than a text tri-state enum: "Unknown" isn't a real
+  // business state, it's the absence of data (bloc call failed/timed out), so
+  // NULL is the correct representation, same as the underlying value's real
+  // type. Fetched server-side in src/pages/api/orders/create.ts, never taken
+  // from the posted form.
   hasUnpaidFees: integer('has_unpaid_fees', { mode: 'boolean' }),
   userIsMember: integer('user_is_member', { mode: 'boolean' }),
   // Moderator accountability: who confirmed retrieval / processed the return
@@ -315,7 +308,6 @@ export const orders = sqliteTable('orders', {
   index('orders_user_id_idx').on(table.userId),
   index('orders_status_idx').on(table.status),
   index('orders_date_range_idx').on(table.fromDate, table.toDate),
-  index('orders_checkout_token_idx').on(table.checkoutToken),
   check('order_date_range_valid', sql`${table.toDate} >= ${table.fromDate}`),
 ]);
 

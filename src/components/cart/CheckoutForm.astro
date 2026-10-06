@@ -13,8 +13,8 @@ const { name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
 
 // Yes/No display per the moderator-review-page spec (docs/moderator-review.md)
 // — hasUnpaidFees/userIsMember are semester-membership-fee flags from bloc,
-// not something a member can self-report, hence readonly (not disabled: a
-// disabled field wouldn't submit with the form once order persistence exists).
+// not something a member can self-report. Display only: the inputs have no
+// `name`, and /api/orders/create re-fetches the values server-side.
 const yesNo = (value: boolean | null) => (value === null ? 'Unknown' : value ? 'Yes' : 'No');
 
 const fieldClass = 'w-full rounded-md border border-border-interactive px-3 py-2 text-sm text-text focus:border-accent focus:outline-none';
@@ -25,7 +25,6 @@ const labelClass = 'block text-sm font-medium text-text';
 <form class="checkout-form flex flex-col gap-4" method="POST" action="/api/orders/create">
 	<input type="hidden" name="fromDate" data-checkout-from-date />
 	<input type="hidden" name="toDate" data-checkout-to-date />
-	<input type="hidden" name="splitLineKeys" data-checkout-split-line-keys />
 	{hasUnpaidFees && (
 		<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
 			Note: you have an unpaid fee. You can still submit the form. Please check your payments on osiklatring.no. If you have paid the current semester fee, this could be an error.
@@ -46,11 +45,11 @@ const labelClass = 'block text-sm font-medium text-text';
 	<div class="grid grid-cols-2 gap-4">
 		<label class={labelClass}>
 			Unpaid fee?
-			<input type="text" name="hasUnpaidFees" value={yesNo(hasUnpaidFees)} readonly class={`${readonlyFieldClass} mt-1`} />
+			<input type="text" value={yesNo(hasUnpaidFees)} readonly class={`${readonlyFieldClass} mt-1`} />
 		</label>
 		<label class={labelClass}>
 			Member?
-			<input type="text" name="userIsMember" value={yesNo(userIsMember)} readonly class={`${readonlyFieldClass} mt-1`} />
+			<input type="text" value={yesNo(userIsMember)} readonly class={`${readonlyFieldClass} mt-1`} />
 		</label>
 	</div>
 	<label class={labelClass}>

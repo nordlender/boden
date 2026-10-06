@@ -1,9 +1,20 @@
-// Shared helpers for src/pages/api/wizard/*.ts route handlers: the admin
-// role-gate and the post-submit redirect target, both previously duplicated
-// verbatim in every wizard API route.
+// Shared HTTP helpers for src/pages/api/** route handlers: auth gates,
+// response builders, input parsing and safe redirects.
+//
+// Convention:
+//  - HTML <form> submissions: POST, then redirect (303 where a refresh must not
+//    resubmit). Failures redirect back with `?error=<code>` (see
+//    `redirectWithError`); the form's `redirectTo` field is validated with
+//    `safeRedirectTarget`.
+//  - fetch() callers: JSON in, JSON out (`json` / `jsonError` / `readJson`),
+//    with the failure encoded in the status code and `{ error: <code> }`.
+//  - Auth gates (`requireUser/requireAdmin/requireModerator`) return a Response
+//    to hand straight back: 401 when anonymous, 403 when signed in without the
+//    needed role. /api/* routes are not covered by the page-route middleware
+//    gate, so every handler that needs auth calls one of these itself.
 
 import type { APIContext } from 'astro';
-import { isModerator } from './auth';
+import { hasRole } from './auth';
 
 /**
  * True for a strictly-positive integer. Use this — not bare
@@ -62,23 +73,25 @@ export function requireUser(locals: APIContext['locals']): Response | null {
 }
 
 /**
- * Returns a 403 Response if the current request isn't from an admin, or
- * `null` if the caller may proceed.
+ * Returns a 401 Response for an anonymous request, a 403 Response if the
+ * user isn't an admin, or `null` if the caller may proceed.
  */
 export function requireAdmin(locals: APIContext['locals']): Response | null {
-	if (locals.user?.role !== 'admin') {
+	if (!locals.user) return new Response('Unauthorized', { status: 401 });
+	if (!hasRole(locals.user.role, 'admin')) {
 		return new Response('Forbidden', { status: 403 });
 	}
 	return null;
 }
 
 /**
- * Returns a 403 Response if the current request isn't from at least a
- * moderator (admins included — see `isModerator`), or `null` if the caller
- * may proceed.
+ * Returns a 401 Response for an anonymous request, a 403 Response if the
+ * user isn't at least a moderator (board and admins included — see `hasRole`), or
+ * `null` if the caller may proceed.
  */
 export function requireModerator(locals: APIContext['locals']): Response | null {
-	if (!isModerator(locals.user?.role)) {
+	if (!locals.user) return new Response('Unauthorized', { status: 401 });
+	if (!hasRole(locals.user.role, 'moderator')) {
 		return new Response('Forbidden', { status: 403 });
 	}
 	return null;
@@ -99,8 +112,7 @@ export function requireModerator(locals: APIContext['locals']): Response | null 
  * caller passing a non-canonical value (a trailing slash, or a full URL with
  * a path) still compares correctly instead of always falling back.
  *
- * Despite the "wizard" module name, this is shared by any admin form using
- * the same `redirectTo` pattern — not wizard-specific.
+ * Shared by any form using the `redirectTo` field pattern.
  */
 export function safeRedirectTarget(form: FormData, origin: string, fallback = '/admin/items'): string {
 	const redirectTo = form.get('redirectTo');
@@ -121,4 +133,52 @@ export function safeRedirectTarget(form: FormData, origin: string, fallback = '/
 	if (resolved.origin !== normalizedOrigin) return fallback;
 
 	return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+}
+
+/** JSON response with the right Content-Type. */
+export function json(data: unknown, status = 200): Response {
+	return new Response(JSON.stringify(data), {
+		status,
+		headers: { 'Content-Type': 'application/json' },
+	});
+}
+
+/** JSON error response: `{ error: code }` with the given status. */
+export function jsonError(code: string, status: number): Response {
+	return json({ error: code }, status);
+}
+
+/**
+ * Appends `?error=<code>` to a (relative) redirect target, preserving any
+ * existing query string and hash. Returns a path, safe to hand to `redirect()`.
+ */
+export function redirectWithError(target: string, code: string): string {
+	const url = new URL(target, 'https://internal');
+	url.searchParams.set('error', code);
+	return `${url.pathname}${url.search}${url.hash}`;
+}
+
+/**
+ * Parses a route param (e.g. `params.id`) as a positive integer id, or
+ * returns `null` when it's missing or invalid.
+ */
+export function parseIdParam(value: string | undefined | null): number | null {
+	if (value === undefined || value === null || !/^\d+$/.test(value)) return null;
+	const n = Number(value);
+	return isPositiveInteger(n) ? n : null;
+}
+
+/**
+ * Reads a request's JSON body. Returns `null` for a malformed body or one
+ * that isn't a JSON object (including a literal `null`), so callers can't
+ * crash on property access.
+ */
+export async function readJson(request: Request): Promise<Record<string, unknown> | null> {
+	try {
+		const body: unknown = await request.json();
+		if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
+		return body as Record<string, unknown>;
+	} catch {
+		return null;
+	}
 }

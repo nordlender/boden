@@ -1,6 +1,4 @@
 ---
-export const prerender = false;
-
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ReservationForm from '../components/reservation/ReservationForm.astro';
 import { getCartLines } from '../lib/cart';
@@ -8,14 +6,19 @@ import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
 import { getMaxRentalDays } from '../lib/rental-policy';
 import { todayIsoInOslo } from '../lib/dates';
 import { getSession } from 'auth-astro/server';
+import { fetchOwnMemberFeeStatus } from '../lib/blocFeeStatus';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
 const cartLines = await getCartLines(Astro.cookies);
-const session = await getSession(Astro.request);
 
 if (cartLines.length === 0) {
 	return Astro.redirect('/cart');
 }
+
+// Fetched live on every visit (not carried in the JWT) so a fee paid or
+// falling due mid-session is reflected when the order is placed. After the
+// empty-cart redirect so that path never waits on bloc; parallel with the session.
+const [session, feeStatus] = await Promise.all([getSession(Astro.request), fetchOwnMemberFeeStatus(Astro.request)]);
 
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
 const todayIso = todayIsoInOslo();
@@ -29,7 +32,7 @@ const errorMessage =
 	error === 'invalid_dates'
 		? `Your selected dates were invalid, the pick-up date has already passed, or the range was longer than the maximum ${getMaxRentalDays()} days — please choose your dates again.`
 		: error === 'unavailable'
-			? "One or more items in your cart are no longer available for the selected dates — check the availability badges below and adjust your dates, or split off the unavailable item(s), before submitting again."
+			? "One or more items in your cart are no longer available for the selected dates — check the availability badges below and adjust your dates, or remove the unavailable item(s) from your cart, before submitting again."
 			: error === 'disclaimer_required'
 				? 'You must accept the disclaimer before submitting the order.'
 				: null;
@@ -48,8 +51,8 @@ const errorMessage =
 			name={session?.user?.name ?? null}
 			email={session?.user?.email ?? null}
 			mobile={session?.bloc?.mobile ?? null}
-			hasUnpaidFees={session?.bloc?.hasUnpaidFees ?? null}
-			userIsMember={session?.bloc?.userIsMember ?? null}
+			hasUnpaidFees={feeStatus.hasUnpaidFees}
+			userIsMember={feeStatus.userIsMember}
 		/>
 	</div>
 </BaseLayout>

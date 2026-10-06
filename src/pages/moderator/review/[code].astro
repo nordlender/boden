@@ -1,8 +1,6 @@
 ---
-export const prerender = false;
-
 // Accept/reject an order still pending moderator review. Gated by
-// src/middleware/index.ts (MOD_ROUTE_PREFIXES via /moderator) — reached only
+// src/middleware/prefixes.ts (ROUTE_RULES via /moderator) — reached only
 // when logged in with role 'moderator' or 'admin'.
 import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
 import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro';

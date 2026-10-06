@@ -15,36 +15,28 @@ page — this review step happens earlier.
 Design goal: very user-friendly, scannable at a glance. Good/bad values are
 indicated with color, not just raw text.
 
-## Known issue — bloc API defect (2026-09-02)
+## Resolved — bloc API defect (2026-09-02)
 
-`hasUnpaidFees` and `userIsMember`, the two flagged fields below, currently
-come back `null`/empty from **every** bloc method that exposes them
-(`account/listmypages`, `Account/MyAccount`, `Profile/GetPage`,
-`account/listmypersonprofiles`) — confirmed against a real logged-in account,
-not a caching or client-side issue. This is an external API defect on bloc's
-side; the user has contacted the provider to request a fix. Until that's
-resolved, this page cannot show real values for either field — see
-`docs/bloc-api.md`'s "Addendum" for the investigation and
-`docs/auth-testing.md`'s "Known, still-open items" for the retest procedure.
-Don't
-mistake `null` for "no data submitted yet" once order persistence exists —
-it may just be bloc still not returning real values.
+`hasUnpaidFees` and `userIsMember` used to come back `null` from every bloc
+profile method. They now come from bloc's dedicated `GetMemberFeeStatus`
+method, fetched live on `/reservation` — see `docs/bloc-api.md`'s "Update". A
+stored `null` now means the live call failed (timeout/error), not a bloc
+defect.
 
 ## Fields to display (so far)
 
-Sourced from the bloc session profile (`session.bloc`, set in `src/auth.ts`),
-already autofilled — immutable, Yes/No — on the member's checkout form
-(`src/components/cart/CheckoutForm.astro`). **Decision (2026-08-26): these are
-submitted as part of the checkout form itself** — a snapshot of the session
-value at the moment the member places the order, not something the review
-page re-fetches live from bloc later. This is a different call from the
-earlier "don't persist" decision on name/email/mobile — those stay
-session-only, but `hasUnpaidFees`/`userIsMember` need to survive past the
-member's live session so a moderator can review them afterward. The form's
-`hasUnpaidFees`/`userIsMember` inputs already exist with the right `name`
-attributes for this (readonly, not disabled, so they submit); they still need
-an actual column on `orders` once order persistence is built, since nothing
-is persisted yet at all:
+Shown (display-only, Yes/No) on the member's checkout form
+(`src/components/cart/CheckoutForm.astro`), fetched live from bloc's
+`GetMemberFeeStatus` when the reservation page opens
+(`src/lib/blocFeeStatus.ts`). **Decision (2026-08-26): they are snapshotted on
+the order** — the value at the moment the member places the order, not
+something the review page re-fetches live from bloc later. This is a different
+call from the earlier "don't persist" decision on name/email/mobile — those
+stay session-only, but `hasUnpaidFees`/`userIsMember` need to survive past the
+member's live session so a moderator can review them afterward. The snapshot
+is **not** taken from the posted form (a member could forge it): 
+`/api/orders/create` re-fetches it server-side at submit time and stores it in
+the `orders` columns:
 
 - **`hasUnpaidFees`** → shown as Yes/No.
   - **Yes → red.** This is the same flag that triggers the member-facing

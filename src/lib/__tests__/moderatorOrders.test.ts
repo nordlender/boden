@@ -48,7 +48,7 @@ vi.mock('../../db/client', async () => {
 	// so any order under test sharing that item/range comes back doubleBooked.
 	const [competingOrder] = await db
 		.insert(schema.orders)
-		.values({ orderCode: 'COMPETE', checkoutToken: 'COMPETETK', userId: 'member-1', fromDate: '2026-03-01', toDate: '2026-03-05' })
+		.values({ orderCode: 'COMPETE', userId: 'member-1', fromDate: '2026-03-01', toDate: '2026-03-05' })
 		.returning();
 	// itemId 4 = the "Double Book Item" inserted above (see the module-level
 	// ITEM_DOUBLE_BOOK_ID comment) — hardcoded rather than referencing that
@@ -80,7 +80,6 @@ async function seedOrder(opts: {
 		.insert(schema.orders)
 		.values({
 			orderCode,
-			checkoutToken: `${orderCode}TK`,
 			userId: 'member-1',
 			fromDate: opts.fromDate ?? '2026-04-01',
 			toDate: opts.toDate ?? '2026-04-05',
@@ -244,7 +243,7 @@ describe('getFollowingRentalWorries', () => {
 		const schema = await import('../../db/schema');
 		const [followingOrder] = await db
 			.insert(schema.orders)
-			.values({ orderCode: 'FOLLOW1', checkoutToken: 'FOLLOW1TK', userId: 'member-1', fromDate: '2026-05-05', toDate: '2026-05-10' })
+			.values({ orderCode: 'FOLLOW1', userId: 'member-1', fromDate: '2026-05-05', toDate: '2026-05-10' })
 			.returning();
 		await db.insert(schema.orderItems).values({ orderId: followingOrder.id, itemId: ITEM_FOLLOWING_ID, requestedQuantity: 1 });
 

@@ -3,7 +3,7 @@
 // ProductForm.astro. Kept separate from products.ts's DB layer so it can be
 // unit tested without a database.
 import type { ProductInput } from './products';
-import { isPositiveInteger } from './wizard-http';
+import { isPositiveInteger } from './http';
 
 export type ParsedProductForm = { ok: true; input: ProductInput } | { ok: false; error: string };
 

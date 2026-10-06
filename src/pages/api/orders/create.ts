@@ -10,9 +10,10 @@ import { redirectWithError, requireUser } from '../../../lib/http';
 // "Yes"/"No" (including "Unknown", missing, or a tampered value) is treated
 // as unknown/null rather than guessed at.
 function parseYesNo(value: FormDataEntryValue | null): boolean | null {
-  const s = value?.toString();
-  if (s === 'Yes') return true;
-  if (s === 'No') return false;
+  // A File entry (tampered upload) stringifies to '[object File]' — treat it
+  // like any other unrecognised value instead of stringifying it.
+  if (value === 'Yes') return true;
+  if (value === 'No') return false;
   return null;
 }
 

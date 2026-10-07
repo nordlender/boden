@@ -1,9 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { addDaysIso, daysInclusive } from '../dates';
-import { getAvailableForRange, getClaims, getDailyAvailability, getHandedOut, getRealAvailability, occupiedByDay, setDailyAvailability } from '../availability';
+import {
+	effectiveEnd,
+	getAvailableForRange,
+	getClaims,
+	getDailyAvailability,
+	getHandedOut,
+	getRealAvailability,
+	occupiedByDay,
+	setDailyAvailability,
+} from '../availability';
+import { getReservationAvailability } from '../reservation';
 
-// Fixture: item 1 (stock 4), item 2 (stock 2). Orders below are inserted in
-// the vi.mock factory so the module under test sees the seeded db.
+// Fixture: item 1 (stock 4), item 2 (stock 2), item 3 (stock 1). Orders
+// below are inserted in the vi.mock factory so the module under test sees
+// the seeded db.
 // "Today" is passed explicitly as TODAY to every call, so nothing here
 // depends on the real clock.
 const TODAY = '2026-03-10';
@@ -17,6 +28,7 @@ vi.mock('../../db/client', async () => {
 	await db.insert(schema.items).values([
 		{ productId: product.id, slug: 'a', name: 'A', stockCount: 4 },
 		{ productId: product.id, slug: 'b', name: 'B', stockCount: 2 },
+		{ productId: product.id, slug: 'c', name: 'C', stockCount: 1 },
 	]);
 	await db.insert(schema.users).values({ id: 'u', name: 'U', email: 'u@example.com' });
 
@@ -49,6 +61,9 @@ vi.mock('../../db/client', async () => {
 	// 5 and 6: returned / rejected — occupy nothing
 	await order('returned', '2026-03-10', '2026-03-20', [{ itemId: 1, requested: 4, retrieved: 4 }]);
 	await order('rejected', '2026-03-10', '2026-03-20', [{ itemId: 2, requested: 2 }]);
+	// 7: active and overdue (ended the 5th, never returned), the only C —
+	// same dates as order 4, but on a stock-1 item so "free" means bookable
+	await order('active', '2026-03-01', '2026-03-05', [{ itemId: 3, requested: 1, retrieved: 1 }]);
 
 	return { db };
 });
@@ -78,8 +93,9 @@ describe('getDailyAvailability', () => {
 		// 1 day overdue (the 6th) and 5 days overdue (TODAY, the 10th): end = 5th + 7 = 12th.
 		expect(getDailyAvailability([2], '2026-03-11', 3, { today: '2026-03-06' }).get(2)).toEqual([1, 1, 2]);
 		expect(getDailyAvailability([2], TODAY, 4, { today: TODAY }).get(2)).toEqual([1, 1, 1, 2]);
-		// Exactly 7 days overdue (the 12th): still the 12th.
-		expect(getDailyAvailability([2], '2026-03-11', 3, { today: '2026-03-12' }).get(2)).toEqual([1, 1, 2]);
+		// Exactly 7 days overdue (the 12th): end = 5th + 14 = 19th, not the
+		// 12th itself — today must never be the last claimed day (#311).
+		expect(getDailyAvailability([2], '2026-03-18', 3, { today: '2026-03-12' }).get(2)).toEqual([1, 1, 2]);
 		// 8 days overdue (the 13th): end = 5th + 14 = 19th.
 		expect(getDailyAvailability([2], '2026-03-18', 3, { today: '2026-03-13' }).get(2)).toEqual([1, 1, 2]);
 		// Also seen by a window entirely after the original toDate.
@@ -154,5 +170,61 @@ describe('setDailyAvailability', () => {
 		// One set = 2x item 1 + 1x item 2.
 		expect(setDailyAvailability([{ itemId: 1, quantity: 2 }, { itemId: 2, quantity: 1 }], daily, 3)).toEqual([2, 1, 0]);
 		expect(setDailyAvailability([], daily, 3)).toEqual([0, 0, 0]);
+	});
+});
+
+describe('effectiveEnd (overdue extension, #311)', () => {
+	const toDate = '2026-03-05';
+	const todayAfter = (days: number) => addDaysIso(toDate, days);
+
+	it('keeps toDate for orders that are not overdue or not active', () => {
+		expect(effectiveEnd('active', toDate, todayAfter(-1))).toBe(toDate);
+		expect(effectiveEnd('active', toDate, todayAfter(0))).toBe(toDate); // 0 days overdue
+		expect(effectiveEnd('scheduled', toDate, todayAfter(7))).toBe(toDate);
+		expect(effectiveEnd('requested', toDate, todayAfter(14))).toBe(toDate);
+	});
+
+	it('extends in whole weeks to the first boundary strictly after today', () => {
+		expect(effectiveEnd('active', toDate, todayAfter(1))).toBe(todayAfter(7));
+		expect(effectiveEnd('active', toDate, todayAfter(6))).toBe(todayAfter(7));
+		expect(effectiveEnd('active', toDate, todayAfter(7))).toBe(todayAfter(14));
+		expect(effectiveEnd('active', toDate, todayAfter(8))).toBe(todayAfter(14));
+		expect(effectiveEnd('active', toDate, todayAfter(13))).toBe(todayAfter(14));
+		expect(effectiveEnd('active', toDate, todayAfter(14))).toBe(todayAfter(21));
+	});
+
+	it('always ends after today once overdue', () => {
+		for (let days = 1; days <= 60; days++) {
+			const today = todayAfter(days);
+			expect(effectiveEnd('active', toDate, today) > today).toBe(true);
+		}
+	});
+});
+
+describe('overdue rental on an exact week boundary (#311)', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('still blocks a booking starting tomorrow when exactly 7 days overdue', () => {
+		// Item 3 has stock 1, out on order 7 (toDate the 5th). Today is the 12th.
+		const today = '2026-03-12';
+		expect(getClaims([3], '2026-03-13', '2026-03-13', { today })).toHaveLength(1);
+		expect(getAvailableForRange([3], '2026-03-13', '2026-03-15', { today }).get(3)).toBe(0);
+
+		// Same check through the reservation path, which uses Oslo's real
+		// "today": pin the clock to midday on the 12th.
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2026-03-12T12:00:00Z'));
+		const [result] = getReservationAvailability({ from: '2026-03-13', to: '2026-03-15' }, [{ itemId: 3, quantity: 1 }]);
+		expect(result.available).toBe(false);
+		expect(result.peakReserved).toBe(1);
+	});
+
+	it('still blocks a booking starting tomorrow when exactly 14 days overdue', () => {
+		const today = '2026-03-19';
+		expect(getAvailableForRange([3], '2026-03-20', '2026-03-20', { today }).get(3)).toBe(0);
+		// ...and frees up only after the extended end (the 26th).
+		expect(getAvailableForRange([3], '2026-03-27', '2026-03-27', { today }).get(3)).toBe(1);
 	});
 });

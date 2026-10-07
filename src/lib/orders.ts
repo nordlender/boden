@@ -256,7 +256,9 @@ export type DeleteOrderResult =
   | { ok: false; error: 'not_deletable'; status: string };
 
 // Hard delete — only ever offered to a member while their order is still
-// 'requested' (i.e. before a moderator has acted on it). Ownership and
+// 'requested', which includes a moderator-accepted ("scheduled") order:
+// acceptance only sets `acceptedAt`, so members may still cancel it until it
+// becomes 'active' at pick-up. Ownership and
 // status are filtered directly in the DELETE's WHERE clause rather than
 // checked beforehand, so there's no gap for a moderator action to land
 // between an ownership/status check and the delete itself. orderItems rows
@@ -312,8 +314,10 @@ class OrderGoneError extends Error {
   }
 }
 
-// Only ever offered to a member while their order is still 'requested',
-// same restriction as deleteOrder. Reuses getReservationAvailability's
+// Only ever offered to a member while their order is still 'requested' AND
+// not yet accepted by a moderator (`acceptedAt` unset) — unlike deleteOrder,
+// since rescheduling an accepted order would silently carry the acceptance
+// over to dates the moderator never reviewed (#242). Reuses getReservationAvailability's
 // `excludeOrderId` param so the order's own current reservation doesn't
 // count against itself when checking the new date range.
 export async function rescheduleOrder(input: RescheduleOrderInput): Promise<RescheduleOrderResult> {
@@ -331,6 +335,9 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
   if (order.status !== 'requested') {
     return { ok: false, error: 'not_modifiable', status: order.status };
   }
+  if (order.acceptedAt) {
+    return { ok: false, error: 'not_modifiable', status: 'scheduled' };
+  }
 
   try {
     // Re-check status and availability inside the same transaction as the
@@ -338,12 +345,15 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
     // advisory only; this is the actual enforcement point against a
     // concurrent moderator action or a competing reservation.
     db.transaction((tx) => {
-      const current = tx.select({ status: orders.status }).from(orders).where(eq(orders.id, order.id)).get();
+      const current = tx.select({ status: orders.status, acceptedAt: orders.acceptedAt }).from(orders).where(eq(orders.id, order.id)).get();
       if (!current) {
         throw new OrderGoneError();
       }
       if (current.status !== 'requested') {
         throw new OrderNotModifiableError(current.status);
+      }
+      if (current.acceptedAt) {
+        throw new OrderNotModifiableError('scheduled');
       }
 
       const availabilities = getReservationAvailability(

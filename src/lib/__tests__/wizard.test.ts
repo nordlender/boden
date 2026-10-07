@@ -19,7 +19,7 @@ vi.mock('../../db/client', () => ({
 
 // Import after the mock is set up so wizard.ts's `import { db }` resolves to
 // the mocked module.
-const { setItemsProduct, setBulkAttributeValues } = await import('../wizard');
+const { getWizardItems, setItemsProduct, setBulkAttributeValues } = await import('../wizard');
 
 function seedProduct(database: BetterSQLite3Database<typeof schema>, opts: { slug: string; title: string; keys?: string[] }) {
 	const [product] = database
@@ -46,6 +46,27 @@ function seedItem(database: BetterSQLite3Database<typeof schema>, opts: { slug: 
 		.returning({ id: schema.items.id })
 		.all();
 	return item.id;
+}
+
+function seedOrder(
+	database: BetterSQLite3Database<typeof schema>,
+	opts: {
+		code: string;
+		status: (typeof schema.orders.$inferSelect)['status'];
+		itemId: number;
+		requestedQuantity: number;
+		retrievedQuantity?: number;
+	},
+) {
+	const [order] = database
+		.insert(schema.orders)
+		.values({ orderCode: opts.code, checkoutToken: `${opts.code}TK`, userId: 'member-1', status: opts.status, fromDate: '2026-04-01', toDate: '2026-04-05' })
+		.returning({ id: schema.orders.id })
+		.all();
+	database
+		.insert(schema.orderItems)
+		.values({ orderId: order.id, itemId: opts.itemId, requestedQuantity: opts.requestedQuantity, retrievedQuantity: opts.retrievedQuantity })
+		.run();
 }
 
 function attributeValues(database: BetterSQLite3Database<typeof schema>, itemId: number) {
@@ -206,6 +227,25 @@ describe('wizard', () => {
 
 			const result = await setBulkAttributeValues([item1, item2], [{ key: 'Weight', value: '1kg' }]);
 			expect(result).toEqual({ ok: false, error: 'no_shared_product' });
+		});
+	});
+
+	describe('getWizardItems', () => {
+		it('subtracts only what is handed out on active orders from inStock', async () => {
+			testDb.insert(schema.users).values({ id: 'member-1', name: 'Member', email: 'member@example.com' }).run();
+			const itemId = seedItem(testDb, { slug: 'item-1', name: 'Item 1' });
+			testDb.update(schema.items).set({ stockCount: 10 }).where(eq(schema.items.id, itemId)).run();
+
+			// Handed out: 3 requested, but the moderator only handed out 2.
+			seedOrder(testDb, { code: 'ACTIVE1', status: 'active', itemId, requestedQuantity: 3, retrievedQuantity: 2 });
+			// Future claims and finished orders don't touch current stock.
+			seedOrder(testDb, { code: 'REQ1', status: 'requested', itemId, requestedQuantity: 1 });
+			seedOrder(testDb, { code: 'SCHED1', status: 'scheduled', itemId, requestedQuantity: 4 });
+			seedOrder(testDb, { code: 'RET1', status: 'returned', itemId, requestedQuantity: 5, retrievedQuantity: 5 });
+			seedOrder(testDb, { code: 'REJ1', status: 'rejected', itemId, requestedQuantity: 5 });
+
+			const { unassigned } = await getWizardItems();
+			expect(unassigned).toEqual([expect.objectContaining({ id: itemId, inStock: 8, totalStock: 10 })]);
 		});
 	});
 });

@@ -119,7 +119,9 @@ export const items = sqliteTable('items', {
   // computed as stockCount minus quantities on currently active/scheduled/
   // requested rentals (see docs/schema-legacy-fixes.md's original `available`
   // derivation, carried forward unchanged): a stored second number can only
-  // drift out of sync.
+  // drift out of sync. The admin items table instead shows *current* stock:
+  // stockCount minus only what's handed out on active orders (see
+  // src/lib/stock.ts's checkedOutQuantitiesByItem).
   stockCount: integer('stock_count').notNull().default(1),
   // Soft delete: items referenced by orderItems can't be hard-deleted.
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),

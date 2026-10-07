@@ -2,7 +2,7 @@
 // Column labels, sharing ItemRow's exact grid so SelectMenu lands directly
 // above every row's select icon.
 import SelectMenu from './SelectMenu.astro';
-import { GRID_TEMPLATE, type PanelVariant } from './grid';
+import { DESKTOP_ONLY_CLASS, GRID_COLUMNS_CLASS, gridColumnsStyle, type PanelVariant } from './grid';
 
 interface Props {
 	variant: PanelVariant;
@@ -12,14 +12,14 @@ interface Props {
 const { variant, formId } = Astro.props;
 ---
 <div
-	class="grid items-center gap-3 border-b border-border px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-text-muted"
-	style={`grid-template-columns: ${GRID_TEMPLATE[variant]}`}
+	class:list={['grid items-center gap-3 border-b border-border px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-text-muted', GRID_COLUMNS_CLASS]}
+	style={gridColumnsStyle(variant)}
 >
 	<SelectMenu formId={formId} />
 	<span></span>
 	<span>Item</span>
-	{variant === 'assigned' && <span>Sub-category</span>}
-	{variant === 'assigned' && <span>Product</span>}
+	{variant === 'assigned' && <span class={DESKTOP_ONLY_CLASS}>Sub-category</span>}
+	{variant === 'assigned' && <span class={DESKTOP_ONLY_CLASS}>Product</span>}
 	<span class="text-right">Stock</span>
 	<span></span>
 </div>

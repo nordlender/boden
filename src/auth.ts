@@ -2,6 +2,7 @@ import type { OAuthConfig, OAuthUserConfig } from '@auth/core/providers';
 import type { TokenSet } from '@auth/core/types';
 import { defineConfig } from 'auth-astro';
 import { db } from './db/client';
+import { BLOC_API_BASE_URL, BLOC_OAUTH_AUTHORIZE_URL, BLOC_OAUTH_TOKEN_URL } from './lib/bloc';
 import { getBlocProfile, type BlocProfile } from './lib/blocProfile';
 import { upsertSignedInUser } from './lib/upsertUser';
 
@@ -37,10 +38,6 @@ declare module '@auth/core/types' {
   }
 }
 
-// Base for every bloc REST API method — append the method path (e.g.
-// `account/listmypages`) to build a full endpoint URL.
-const BLOC_API_BASE_URL = 'https://rest.bloc.net/api/';
-
 // Where auth-astro/Auth.js actually listens for bloc's redirect: the
 // provider's callback route, fixed by the `id: 'bloc'` below — not something
 // that changes per deployment. Only the app's own base URL (REDIRECT_URL)
@@ -58,7 +55,7 @@ function Bloc(config: OAuthUserConfig<BlocProfile> & { redirectUri: string }): O
     clientId: config.clientId,
     clientSecret: config.clientSecret,
     authorization: {
-      url: 'https://rest.bloc.net/OAuth/Authorize',
+      url: BLOC_OAUTH_AUTHORIZE_URL,
       // bloc's authorize endpoint takes client_id, response_type,
       // redirect_uri. redirect_uri is explicit here (built from REDIRECT_URL +
       // BLOC_CALLBACK_PATH below) rather than Auth.js's auto-computed callback
@@ -66,7 +63,7 @@ function Bloc(config: OAuthUserConfig<BlocProfile> & { redirectUri: string }): O
       // it must match this exactly, including the callback path.
       params: { response_type: 'code', redirect_uri: config.redirectUri },
     },
-    token: 'https://rest.bloc.net/OAuth/Token',
+    token: BLOC_OAUTH_TOKEN_URL,
     // bloc's authorize endpoint isn't confirmed to support PKCE (only client_id /
     // response_type / redirect_uri are documented) — using 'state' only until that's
     // verified. Revisit if bloc turns out to support/require code_challenge.

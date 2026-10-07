@@ -1,7 +1,6 @@
 import { getToken } from '@auth/core/jwt';
+import { BLOC_ORIGIN } from './bloc';
 import { json } from './http';
-
-const BLOC_BASE_URL = 'https://rest.bloc.net';
 
 /**
  * Shared plumbing for the permanent live-test routes under
@@ -41,7 +40,7 @@ export async function callBlocAsSelf(
   }
 
   try {
-    const res = await fetch(`${BLOC_BASE_URL}${path}`, {
+    const res = await fetch(`${BLOC_ORIGIN}${path}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const bodyText = await res.text();

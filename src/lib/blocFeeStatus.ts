@@ -1,10 +1,10 @@
 import { getToken } from '@auth/core/jwt';
+import { BLOC_API_BASE_URL } from './bloc';
 
 // bloc's dedicated fee/membership method (api/fee/GetMemberFeeStatus?userId=...).
 // The only source of hasUnpaidFees/userIsMember — the account/* profile
 // responses return them as null (see docs/bloc-api.md addendum 2026-09-02) and
 // are no longer read for them.
-const BLOC_API_BASE_URL = 'https://rest.bloc.net/api/';
 const FETCH_TIMEOUT_MS = 5000;
 
 export interface MemberFeeStatus {

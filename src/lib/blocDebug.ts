@@ -1,12 +1,10 @@
-import { getToken } from '@auth/core/jwt';
+import { BLOC_ORIGIN } from './bloc';
 import { json } from './http';
-
-const BLOC_BASE_URL = 'https://rest.bloc.net';
 
 /**
  * Shared plumbing for the permanent live-test routes under
- * src/pages/api/debug/. Fetches the caller's own bloc access token from
- * their session cookie and forwards it as a Bearer token to `path`.
+ * src/pages/api/debug/. Takes the caller's own bloc access token from
+ * their session (via locals.blocAccess()) and forwards it as a Bearer token to `path`.
  *
  * HARD RULE — only wrap bloc endpoints that are scoped to the CALLER'S OWN
  * token/account (no other-user identifier param). This helper does not and
@@ -18,31 +16,33 @@ const BLOC_BASE_URL = 'https://rest.bloc.net';
  * a route here, and skip it if found.
  */
 export async function callBlocAsSelf(
-  request: Request,
+  // The route's `locals`: its blocAccess() supplies the caller's own token,
+  // refreshed first if due (src/lib/blocSession.ts).
+  locals: App.Locals,
   // A builder receives the caller's own bloc userId (JWT `sub`) for endpoints
   // that need one, so callers never decode the JWT a second time.
   pathOrBuilder: string | ((ownUserId: string) => string),
 ): Promise<Response> {
-  const token = await getToken({ req: request, secret: import.meta.env.AUTH_SECRET });
-  const accessToken = typeof token?.accessToken === 'string' ? token.accessToken : undefined;
+  const access = await locals.blocAccess();
 
-  if (!accessToken) {
-    return json({ error: 'Not logged in (no session access token found).' }, 401);
+  if (access.accessToken === null) {
+    const reason = access.error === 'NoSession' ? 'Not logged in' : 'No usable bloc access token';
+    return json({ error: `${reason} (${access.error}).` }, 401);
   }
 
   let path: string;
   if (typeof pathOrBuilder === 'string') {
     path = pathOrBuilder;
   } else {
-    if (!token?.sub || !/^\d+$/.test(token.sub)) {
+    if (!/^\d+$/.test(access.userId)) {
       return json({ error: 'No bloc user id in session.' }, 401);
     }
-    path = pathOrBuilder(token.sub);
+    path = pathOrBuilder(access.userId);
   }
 
   try {
-    const res = await fetch(`${BLOC_BASE_URL}${path}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+    const res = await fetch(`${BLOC_ORIGIN}${path}`, {
+      headers: { Authorization: `Bearer ${access.accessToken}` },
     });
     const bodyText = await res.text();
     return json({ status: res.status, ok: res.ok, body: safeJsonParse(bodyText) }, 200);

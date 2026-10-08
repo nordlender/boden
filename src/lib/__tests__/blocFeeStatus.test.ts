@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchMemberFeeStatus } from '../blocFeeStatus';
+import { fetchMemberFeeStatus, fetchOwnMemberFeeStatus } from '../blocFeeStatus';
 
 const json = (body: unknown, ok = true) => vi.fn().mockResolvedValue({ ok, json: async () => body }) as any;
 const UNKNOWN = { hasUnpaidFees: null, userIsMember: null };
@@ -35,5 +35,15 @@ describe('fetchMemberFeeStatus', () => {
     expect(await fetchMemberFeeStatus(1, 't', vi.fn().mockRejectedValue(new Error('x')) as any)).toEqual(UNKNOWN);
     const timeout = vi.fn().mockRejectedValue(new DOMException('timed out', 'TimeoutError')) as any;
     expect(await fetchMemberFeeStatus(1, 't', timeout)).toEqual(UNKNOWN);
+  });
+});
+
+describe('fetchOwnMemberFeeStatus', () => {
+  it('returns unknown without calling bloc when there is no usable token', async () => {
+    const f = vi.spyOn(globalThis, 'fetch');
+    expect(await fetchOwnMemberFeeStatus({ userId: null, accessToken: null, error: 'NoSession' })).toEqual(UNKNOWN);
+    expect(await fetchOwnMemberFeeStatus({ userId: '12', accessToken: null, error: 'RefreshTokenError' })).toEqual(UNKNOWN);
+    expect(f).not.toHaveBeenCalled();
+    f.mockRestore();
   });
 });

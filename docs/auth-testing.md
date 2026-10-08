@@ -77,6 +77,44 @@ see bloc's raw response for your own account, using your real session's
 access token. See `src/lib/blocDebug.ts` for the shared helper and the hard
 rule on what's safe to wrap this way (only your-own-account endpoints).
 
+## bloc access-token refresh (#319)
+
+The bloc access token lives in the Auth.js JWT (server-side only, never on
+the `/api/auth/session` object), and that session cookie slides for 30 days.
+`src/lib/blocToken.ts` keeps the token usable for the session's lifetime:
+
+- At sign-in, `src/auth.ts`'s jwt callback stores `accessToken`, plus
+  `refreshToken` and `expiresAt` **if** bloc's OAuth/Token response contained
+  `refresh_token` / `expires_in` (bloc doesn't document either — see the PR
+  for #319; verify on a real login, below).
+- On later requests, when the token is within 60 s of `expiresAt`, it's
+  refreshed with the `refresh_token` grant (client_secret_basic, like the
+  code exchange). `Astro.locals.blocAccess()` (`src/lib/blocSession.ts`) does
+  this for server-side bloc calls and re-issues the session cookie; the jwt
+  callback does the same on `/api/auth/session` hits.
+- Refreshes are cached in-process per refresh token: concurrent requests
+  share one call, and a rotated-away refresh token keeps mapping to the
+  tokens it was exchanged for (24 h, bounded), so an old cookie that comes
+  back (lost Set-Cookie, in-flight request) never replays it.
+- Only a definitive OAuth rejection (400/401 from `OAuth/Token`, e.g.
+  `invalid_grant`) is permanent: the bloc tokens are dropped and
+  `blocTokenError = RefreshTokenError` is set on the JWT and session, never
+  retried. An expired token with no refresh token (same 60 s margin) gets
+  `AccessTokenExpired`. Either way fee status fails soft to Unknown,
+  `/reservation` shows a "Sign in again" notice (also for a signed-in
+  session that has no bloc token at all), and a fresh sign-in clears it.
+- A transient failure (timeout, network error, 5xx, unparseable body) keeps
+  the tokens and doesn't touch the cookie; it's cached only ~10 s, then the
+  next request retries. If the token is already expired meanwhile,
+  `/reservation` says bloc couldn't be reached and to reload.
+- If bloc sends no `expires_in`, nothing is scheduled: an expired token just
+  yields a 401 and Unknown, as before.
+
+To check what bloc actually issued, after a real login watch the dev log for
+`[bloc] access token refresh failed` warnings and, if you need the raw
+fields, temporarily log *only* `Boolean(account.refresh_token)` and
+`account.expires_in` in the jwt callback — never the token values.
+
 ## Getting a genuinely clean session for retesting
 
 Sessions are a JWT cookie. The `jwt()` callback in `src/auth.ts` only

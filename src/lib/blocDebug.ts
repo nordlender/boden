@@ -26,7 +26,8 @@ export async function callBlocAsSelf(
   const access = await locals.blocAccess();
 
   if (access.accessToken === null) {
-    return json({ error: `Not logged in (no usable session access token: ${access.error}).` }, 401);
+    const reason = access.error === 'NoSession' ? 'Not logged in' : 'No usable bloc access token';
+    return json({ error: `${reason} (${access.error}).` }, 401);
   }
 
   let path: string;

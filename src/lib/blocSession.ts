@@ -4,7 +4,7 @@ import { getToken } from '@auth/core/jwt';
 import authConfig from 'auth:config';
 import {
   blocClientCredentials,
-  ensureFreshBlocToken,
+  refreshBlocToken,
   getRefreshDecision,
   toBlocAccess,
   type BlocAccess,
@@ -29,7 +29,12 @@ import {
 async function persistRenewedSession(request: Request, cookies: AstroCookies): Promise<void> {
   const prefix = authConfig.prefix ?? '/api/auth';
   const url = new URL(`${prefix}/session`, request.url);
-  const res = await Auth(new Request(url, { headers: request.headers }), {
+  // A synthetic GET: keep cookies/host/forwarding headers, but not the body
+  // headers of e.g. the order-form POST this may run under.
+  const headers = new Headers(request.headers);
+  headers.delete('content-type');
+  headers.delete('content-length');
+  const res = await Auth(new Request(url, { headers }), {
     ...authConfig,
     secret: import.meta.env.AUTH_SECRET,
     trustHost: authConfig.trustHost ?? true,
@@ -47,13 +52,21 @@ export async function resolveBlocAccess(request: Request, cookies: AstroCookies)
   const decision = getRefreshDecision(token as BlocTokenFields);
   if (decision !== 'refresh' && decision !== 'expired') return toBlocAccess(token as BlocTokenFields & { sub: string });
 
-  const renewed = await ensureFreshBlocToken(token as BlocTokenFields & { sub: string }, blocClientCredentials());
-  try {
-    await persistRenewedSession(request, cookies);
-  } catch (err) {
-    // The renewed token still serves this request; the next one retries
-    // (and hits the refresh cache instead of spending the refresh token again).
-    console.warn('[bloc] could not re-issue the session cookie after a token refresh:', err);
+  const { token: renewed, outcome } = await refreshBlocToken(
+    token as BlocTokenFields & { sub: string },
+    blocClientCredentials(),
+  );
+  // Transient failure: tokens untouched, nothing to persist — the next
+  // request retries. Otherwise re-issue the cookie with the new state.
+  if (outcome === 'refreshed' || outcome === 'invalidated') {
+    try {
+      await persistRenewedSession(request, cookies);
+    } catch (err) {
+      // The renewed token still serves this request; a later request with the
+      // old cookie maps to the same result via blocToken.ts's refresh cache
+      // instead of spending the (possibly rotated) refresh token again.
+      console.warn('[bloc] could not re-issue the session cookie after a token refresh:', err);
+    }
   }
   return toBlocAccess(renewed);
 }

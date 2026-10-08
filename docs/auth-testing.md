@@ -91,13 +91,22 @@ the `/api/auth/session` object), and that session cookie slides for 30 days.
   refreshed with the `refresh_token` grant (client_secret_basic, like the
   code exchange). `Astro.locals.blocAccess()` (`src/lib/blocSession.ts`) does
   this for server-side bloc calls and re-issues the session cookie; the jwt
-  callback does the same on `/api/auth/session` hits. Refreshes are deduped
-  in-process per refresh token, so parallel requests don't replay it.
-- A failed refresh, or an expired token with no refresh token, drops the bloc
-  tokens and sets `blocTokenError` (`RefreshTokenError` /
-  `AccessTokenExpired`) on the JWT and session. It's never retried — fee
-  status fails soft to Unknown, `/reservation` shows a "Sign in again"
-  notice, and a fresh sign-in clears it.
+  callback does the same on `/api/auth/session` hits.
+- Refreshes are cached in-process per refresh token: concurrent requests
+  share one call, and a rotated-away refresh token keeps mapping to the
+  tokens it was exchanged for (24 h, bounded), so an old cookie that comes
+  back (lost Set-Cookie, in-flight request) never replays it.
+- Only a definitive OAuth rejection (400/401 from `OAuth/Token`, e.g.
+  `invalid_grant`) is permanent: the bloc tokens are dropped and
+  `blocTokenError = RefreshTokenError` is set on the JWT and session, never
+  retried. An expired token with no refresh token (same 60 s margin) gets
+  `AccessTokenExpired`. Either way fee status fails soft to Unknown,
+  `/reservation` shows a "Sign in again" notice (also for a signed-in
+  session that has no bloc token at all), and a fresh sign-in clears it.
+- A transient failure (timeout, network error, 5xx, unparseable body) keeps
+  the tokens and doesn't touch the cookie; it's cached only ~10 s, then the
+  next request retries. If the token is already expired meanwhile,
+  `/reservation` says bloc couldn't be reached and to reload.
 - If bloc sends no `expires_in`, nothing is scheduled: an expired token just
   yields a 401 and Unknown, as before.
 

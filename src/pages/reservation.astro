@@ -7,6 +7,7 @@ import { getMaxRentalDays } from '../lib/rental-policy';
 import { todayIsoInOslo } from '../lib/dates';
 import { getSession } from 'auth-astro/server';
 import { fetchOwnMemberFeeStatus } from '../lib/blocFeeStatus';
+import { isReauthError } from '../lib/blocToken';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
 const cartLines = await getCartLines(Astro.cookies);
@@ -22,9 +23,10 @@ if (cartLines.length === 0) {
 // callback run then reuses that result instead of racing it.
 const blocAccess = await Astro.locals.blocAccess();
 const [session, feeStatus] = await Promise.all([getSession(Astro.request), fetchOwnMemberFeeStatus(blocAccess)]);
-// The bloc token expired or couldn't be refreshed: fee/membership show as
-// Unknown, so say why and offer a fresh sign-in (which restores it).
-const blocSignInExpired = blocAccess.error === 'AccessTokenExpired' || blocAccess.error === 'RefreshTokenError';
+// No usable bloc token: fee/membership show as Unknown, so say why — a
+// fresh sign-in restores it, unless bloc is just temporarily unreachable.
+const blocSignInExpired = isReauthError(blocAccess.error);
+const blocUnavailable = blocAccess.error === 'RefreshUnavailable';
 const reLoginHref = `/auth/login?next=${encodeURIComponent('/reservation')}`;
 
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
@@ -57,6 +59,14 @@ const errorMessage =
 				<p class="mb-6 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-warning-text">
 					Your bloc sign-in has expired, so we couldn't check your membership and fee status (shown as Unknown below).{' '}
 					<a href={reLoginHref} class="font-medium underline">Sign in again</a> to refresh it.
+				</p>
+			)
+		}
+
+		{
+			blocUnavailable && (
+				<p class="mb-6 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-warning-text">
+					We couldn't reach bloc to check your membership and fee status (shown as Unknown below). Reload the page in a moment to try again.
 				</p>
 			)
 		}

@@ -1,6 +1,7 @@
 /// <reference types="astro/client" />
 
 import type { Role } from './lib/auth';
+import type { BlocAccess } from './lib/blocToken';
 
 interface ImportMetaEnv {
   readonly BLOC_APPID: string;
@@ -26,6 +27,11 @@ declare global {
         name: string | null;
         role: Role; // see src/lib/auth.ts's getRole() — allowlist for now, live API later
       } | null;
+      // The caller's bloc access token for server-side bloc calls, refreshed
+      // first if due (src/lib/blocSession.ts, #319). Lazy + memoized: the
+      // JWT is only decoded (and a refresh only attempted) when a route
+      // actually calls it. Never pass the token to client code.
+      blocAccess: () => Promise<BlocAccess>;
     }
   }
 }

@@ -1,5 +1,6 @@
 import { defineMiddleware } from 'astro:middleware';
 import { validateSession, hasRole } from '../lib/auth';
+import type { BlocAccess } from '../lib/blocToken';
 import { requiredRole, isApiRoute } from './prefixes';
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
@@ -9,8 +10,20 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   // ("Astro.request.headers ... not available on prerendered pages").
   if (ctx.isPrerendered) {
     ctx.locals.user = null;
+    ctx.locals.blocAccess = async () => ({ userId: null, accessToken: null, error: 'NoSession' });
     return next();
   }
+
+  // Must be called before the response starts streaming (page frontmatter /
+  // endpoint body), since a refresh re-issues the session cookie. Imported
+  // lazily: blocSession.ts pulls in the whole Auth.js config (src/auth.ts),
+  // which shouldn't load for every middleware run — or at all while
+  // prerendering.
+  let blocAccess: Promise<BlocAccess> | undefined;
+  ctx.locals.blocAccess = () =>
+    (blocAccess ??= import('../lib/blocSession').then(({ resolveBlocAccess }) =>
+      resolveBlocAccess(ctx.request, ctx.cookies),
+    ));
 
   const user = await validateSession(ctx.request);
   ctx.locals.user = user;

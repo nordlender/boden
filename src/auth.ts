@@ -4,15 +4,24 @@ import { defineConfig } from 'auth-astro';
 import { db } from './db/client';
 import { BLOC_API_BASE_URL, BLOC_OAUTH_AUTHORIZE_URL, BLOC_OAUTH_TOKEN_URL } from './lib/bloc';
 import { getBlocProfile, type BlocProfile } from './lib/blocProfile';
+import { blocClientCredentials, ensureFreshBlocToken, tokenFieldsFromResponse, type BlocTokenError, type BlocTokenFields } from './lib/blocToken';
 import { upsertSignedInUser } from './lib/upsertUser';
+
+// bloc access/refresh token + expiry, JWT-only (server-side) — see
+// src/lib/blocToken.ts.
+declare module '@auth/core/jwt' {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  interface JWT extends BlocTokenFields {}
+}
 
 declare module '@auth/core/types' {
   interface Session {
     // No accessToken here deliberately: `session` is what getSession()/
     // useSession() return, which is also served to client-side JS via
-    // /api/auth/session. The raw bloc access token stays JWT-only
-    // (token.accessToken) and is read server-side via @auth/core/jwt's
-    // getToken() in src/lib/auth.ts — never echoed to the client.
+    // /api/auth/session. The raw bloc access/refresh tokens stay JWT-only
+    // (token.accessToken / token.refreshToken) and are read server-side via
+    // @auth/core/jwt's getToken() (src/lib/blocSession.ts) — never echoed to
+    // the client.
     user: {
       // Auth.js's default Session.user has no `id` — expose it (from the JWT's
       // `sub`) since the role gate (src/lib/auth.ts validateSession) and the
@@ -22,6 +31,9 @@ declare module '@auth/core/types' {
       email?: string | null;
       image?: string | null;
     };
+    // Set when the bloc access token expired or failed to refresh: server-side
+    // bloc calls (e.g. fee status) fail soft until the member signs in again.
+    blocTokenError?: BlocTokenError;
     // bloc profile fields carried through the session for the auth session's
     // lifetime, for later order-form autofill — see session_variables.json.
     // Nested under `bloc` (rather than flattened) because Auth.js's built-in
@@ -157,9 +169,19 @@ export default defineConfig({
     // available on every request for the lifetime of the auth session
     // (session_variables.json — name/email travel via the standard user/token
     // fields already, so only the bloc-specific extras are added here).
+    //
+    // Sign-in (`account` present) also stores the bloc refresh token and
+    // expiry when bloc returned them; every later call (each
+    // /api/auth/session hit, getSession(), and src/lib/blocSession.ts)
+    // refreshes the access token when it's near expiry, or marks it
+    // `blocTokenError` when it can't — see src/lib/blocToken.ts (#319).
+    // The tokens stay JWT-only; session() below never copies them.
     async jwt({ token, account, profile }) {
-      if (account?.access_token) {
-        token.accessToken = account.access_token;
+      if (!account) {
+        return ensureFreshBlocToken(token, blocClientCredentials());
+      }
+      if (account.access_token) {
+        Object.assign(token, tokenFieldsFromResponse(account));
       }
       const p = getBlocProfile(profile);
       if (p) {
@@ -182,6 +204,9 @@ export default defineConfig({
     },
     async session({ session, token }) {
       session.bloc = token.bloc as typeof session.bloc;
+      // Only *why* bloc access is gone (never the tokens), so the UI can
+      // prompt a fresh sign-in.
+      if (token.blocTokenError) session.blocTokenError = token.blocTokenError;
       // token.sub is set from the profile's `id` on sign-in — expose it so
       // consumers (role gate, users-table upsert) have a stable user id.
       if (token.sub) session.user.id = token.sub;

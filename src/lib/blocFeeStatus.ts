@@ -1,5 +1,5 @@
-import { getToken } from '@auth/core/jwt';
 import { BLOC_API_BASE_URL } from './bloc';
+import type { BlocAccess } from './blocToken';
 
 // bloc's dedicated fee/membership method (api/fee/GetMemberFeeStatus?userId=...).
 // The only source of hasUnpaidFees/userIsMember — the account/* profile
@@ -48,12 +48,12 @@ export async function fetchMemberFeeStatus(
   }
 }
 
-// Live status for the signed-in caller, from their session cookie: the JWT's
-// `sub` is bloc's userId (set in src/auth.ts) and `accessToken` stays
-// server-side only. Unknown if there's no session.
-export async function fetchOwnMemberFeeStatus(request: Request): Promise<MemberFeeStatus> {
-  const token = await getToken({ req: request, secret: import.meta.env.AUTH_SECRET });
-  const accessToken = typeof token?.accessToken === 'string' ? token.accessToken : undefined;
-  if (!token?.sub || !accessToken) return UNKNOWN;
-  return fetchMemberFeeStatus(token.sub, accessToken);
+// Live status for the signed-in caller, from `Astro.locals.blocAccess()`
+// (src/lib/blocSession.ts): its userId is the JWT's `sub` (bloc's userId, set
+// in src/auth.ts) and the access token, already refreshed if it was due,
+// stays server-side only. Unknown if there's no session or no usable token
+// (expired / refresh failed — see `access.error`).
+export async function fetchOwnMemberFeeStatus(access: BlocAccess): Promise<MemberFeeStatus> {
+  if (!access.userId || !access.accessToken) return UNKNOWN;
+  return fetchMemberFeeStatus(access.userId, access.accessToken);
 }

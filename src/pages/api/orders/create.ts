@@ -43,7 +43,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   // from the posted form, whose readonly inputs a member could forge. null
   // (Unknown) if the call failed. After the cheap validation redirects so
   // those never wait on bloc.
-  const { hasUnpaidFees, userIsMember } = await fetchOwnMemberFeeStatus(request);
+  const { hasUnpaidFees, userIsMember } = await fetchOwnMemberFeeStatus(await locals.blocAccess());
 
   const result = await createOrder({
     userId: locals.user!.id,

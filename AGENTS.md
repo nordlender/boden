@@ -33,7 +33,7 @@ Consult these guides before working on related tasks:
 
 ### Styling
 
-This project uses a semantic theme-token system (`--ui-*`/`--color-*` in `src/styles/global.css`) for all colors, with light/dark mode support. Never use raw Tailwind palette classes (`bg-slate-100`, `text-gray-500`, literal `white`/`black`, etc.) in components or pages — use the semantic utilities (`bg-surface`, `text-text-muted`, `border-selected-border`, ...) instead. See `docs/styling.md` for the full token reference and rules.
+This project uses a semantic theme-token system (`--ui-*`/`--color-*` in `src/styles/global.css`) for all colors, with light/dark mode support. Never use raw Tailwind palette classes (`bg-slate-100`, `text-gray-500`, literal `white`/`black`, etc.) in components or pages — use the semantic utilities (`bg-surface`, `text-text-muted`, `border-border-strong`, ...) instead. See `docs/styling.md` for the full token reference and rules.
 
 ## Workflow
 ### Tasks

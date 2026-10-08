@@ -15,179 +15,72 @@
 :root {
 	color-scheme: light dark;
 
-	--ui-bg: var(--color-white);
-	--ui-bg-subtle: var(--color-slate-50);
-	--ui-surface: var(--color-white);
-	--ui-border: var(--color-slate-200);
-	--ui-border-strong: var(--color-slate-300);
+	--ui-bg: light-dark(var(--color-white), var(--color-slate-950));
+	--ui-bg-subtle: light-dark(var(--color-slate-50), var(--color-slate-900));
+	--ui-surface: light-dark(var(--color-white), var(--color-slate-900));
+	--ui-border: light-dark(var(--color-slate-200), var(--color-slate-800));
+	--ui-border-strong: light-dark(var(--color-slate-300), var(--color-slate-700));
 	/* Not just a stronger divider: this is for borders that are the *only*
 	 * boundary cue on an interactive control (inputs, checkboxes), so it's
 	 * held to WCAG 1.4.11's 3:1 non-text contrast minimum in both themes. */
 	--ui-border-interactive: var(--color-slate-500);
 
-	--ui-text: var(--color-slate-900);
-	--ui-text-muted: var(--color-slate-500);
-	--ui-text-inverted: var(--color-white);
+	--ui-text: light-dark(var(--color-slate-900), var(--color-slate-100));
+	--ui-text-muted: light-dark(var(--color-slate-500), var(--color-slate-400));
+	--ui-text-inverted: light-dark(var(--color-white), var(--color-slate-900));
 
-	--ui-disabled-bg: var(--color-slate-100);
-	--ui-disabled-text: var(--color-slate-400);
+	--ui-disabled-bg: light-dark(var(--color-slate-100), var(--color-slate-800));
+	--ui-disabled-text: light-dark(var(--color-slate-400), var(--color-slate-600));
 
-	--ui-overlay: color-mix(in oklab, var(--color-black) 40%, transparent);
+	--ui-overlay: light-dark(color-mix(in oklab, var(--color-black) 40%, transparent), color-mix(in oklab, var(--color-black) 60%, transparent));
 
-	--ui-accent: var(--color-blue-600);
-	--ui-accent-hover: var(--color-blue-700);
-	--ui-accent-subtle: var(--color-blue-50);
-	--ui-accent-text: var(--color-blue-700);
-	--ui-focus-ring: var(--color-blue-500);
+	--ui-accent: light-dark(var(--color-blue-600), var(--color-blue-500));
+	--ui-accent-hover: light-dark(var(--color-blue-700), var(--color-blue-400));
+	--ui-accent-subtle: light-dark(var(--color-blue-50), color-mix(in oklab, var(--color-blue-500) 15%, transparent));
+	--ui-accent-text: light-dark(var(--color-blue-700), var(--color-blue-300));
 
 	/* Same hue as accent today, but its own token: a rebrand could change the
 	 * brand color without touching what "this is selected" looks like (and
 	 * vice versa). Shared by wizard row-selection and calendar day-selection. */
-	--ui-selected: var(--color-blue-600);
-	--ui-selected-subtle: var(--color-blue-50);
-	--ui-selected-border: var(--color-blue-200);
-	--ui-selected-text: var(--color-blue-700);
+	--ui-selected: light-dark(var(--color-blue-600), var(--color-blue-500));
+	--ui-selected-subtle: light-dark(var(--color-blue-50), color-mix(in oklab, var(--color-blue-500) 15%, transparent));
+	--ui-selected-text: light-dark(var(--color-blue-700), var(--color-blue-300));
 
-	--ui-success: var(--color-emerald-600);
-	--ui-success-subtle: var(--color-emerald-50);
-	--ui-success-border: var(--color-emerald-200);
-	--ui-success-text: var(--color-emerald-800);
+	--ui-success: light-dark(var(--color-emerald-600), var(--color-emerald-500));
+	--ui-success-subtle: light-dark(var(--color-emerald-50), var(--color-emerald-950));
+	--ui-success-border: light-dark(var(--color-emerald-200), var(--color-emerald-800));
+	--ui-success-text: light-dark(var(--color-emerald-800), var(--color-emerald-200));
 
-	--ui-info: var(--color-blue-600);
-	--ui-info-subtle: var(--color-blue-50);
-	--ui-info-border: var(--color-blue-200);
-	--ui-info-text: var(--color-blue-800);
+	--ui-info: light-dark(var(--color-blue-600), var(--color-blue-500));
+	--ui-info-subtle: light-dark(var(--color-blue-50), var(--color-blue-950));
+	--ui-info-border: light-dark(var(--color-blue-200), var(--color-blue-800));
+	--ui-info-text: light-dark(var(--color-blue-800), var(--color-blue-200));
 
-	--ui-warning: var(--color-amber-600);
-	--ui-warning-subtle: var(--color-amber-50);
-	--ui-warning-border: var(--color-amber-200);
-	--ui-warning-text: var(--color-amber-800);
+	--ui-warning: light-dark(var(--color-amber-600), var(--color-amber-500));
+	--ui-warning-subtle: light-dark(var(--color-amber-50), var(--color-amber-950));
+	--ui-warning-border: light-dark(var(--color-amber-200), var(--color-amber-800));
+	--ui-warning-text: light-dark(var(--color-amber-800), var(--color-amber-200));
 
-	--ui-error: var(--color-red-600);
-	--ui-error-subtle: var(--color-red-50);
-	--ui-error-border: var(--color-red-200);
-	--ui-error-text: var(--color-red-800);
+	--ui-error: light-dark(var(--color-red-600), var(--color-red-500));
+	--ui-error-subtle: light-dark(var(--color-red-50), var(--color-red-950));
+	--ui-error-border: light-dark(var(--color-red-200), var(--color-red-800));
+	--ui-error-text: light-dark(var(--color-red-800), var(--color-red-200));
 
-	--ui-help: var(--color-violet-600);
-	--ui-help-subtle: var(--color-violet-50);
-	--ui-help-border: var(--color-violet-200);
-	--ui-help-text: var(--color-violet-800);
+	--ui-help: light-dark(var(--color-violet-600), var(--color-violet-500));
+	--ui-help-subtle: light-dark(var(--color-violet-50), var(--color-violet-950));
+	--ui-help-border: light-dark(var(--color-violet-200), var(--color-violet-800));
+	--ui-help-text: light-dark(var(--color-violet-800), var(--color-violet-200));
 }
 
-/* Follow OS preference unless the user has picked an explicit theme. */
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) {
-		--ui-bg: var(--color-slate-950);
-		--ui-bg-subtle: var(--color-slate-900);
-		--ui-surface: var(--color-slate-900);
-		--ui-border: var(--color-slate-800);
-		--ui-border-strong: var(--color-slate-700);
-
-		--ui-text: var(--color-slate-100);
-		--ui-text-muted: var(--color-slate-400);
-		--ui-text-inverted: var(--color-slate-900);
-
-		--ui-disabled-bg: var(--color-slate-800);
-		--ui-disabled-text: var(--color-slate-600);
-
-		--ui-overlay: color-mix(in oklab, var(--color-black) 60%, transparent);
-
-		--ui-accent: var(--color-blue-500);
-		--ui-accent-hover: var(--color-blue-400);
-		--ui-accent-subtle: color-mix(in oklab, var(--color-blue-500) 15%, transparent);
-		--ui-accent-text: var(--color-blue-300);
-		--ui-focus-ring: var(--color-blue-400);
-
-		--ui-selected: var(--color-blue-500);
-		--ui-selected-subtle: color-mix(in oklab, var(--color-blue-500) 15%, transparent);
-		--ui-selected-border: var(--color-blue-800);
-		--ui-selected-text: var(--color-blue-300);
-
-		--ui-success: var(--color-emerald-500);
-		--ui-success-subtle: var(--color-emerald-950);
-		--ui-success-border: var(--color-emerald-800);
-		--ui-success-text: var(--color-emerald-200);
-
-		--ui-info: var(--color-blue-500);
-		--ui-info-subtle: var(--color-blue-950);
-		--ui-info-border: var(--color-blue-800);
-		--ui-info-text: var(--color-blue-200);
-
-		--ui-warning: var(--color-amber-500);
-		--ui-warning-subtle: var(--color-amber-950);
-		--ui-warning-border: var(--color-amber-800);
-		--ui-warning-text: var(--color-amber-200);
-
-		--ui-error: var(--color-red-500);
-		--ui-error-subtle: var(--color-red-950);
-		--ui-error-border: var(--color-red-800);
-		--ui-error-text: var(--color-red-200);
-
-		--ui-help: var(--color-violet-500);
-		--ui-help-subtle: var(--color-violet-950);
-		--ui-help-border: var(--color-violet-800);
-		--ui-help-text: var(--color-violet-200);
-	}
-}
-
-/* Explicit user choice (via the theme toggle) always wins over OS preference. */
+/* Explicit user choice (via the theme toggle) overrides the OS preference.
+ * `light-dark()` in the tokens above follows `color-scheme`, so this is all
+ * that's needed. */
 :root[data-theme="light"] {
 	color-scheme: light;
 }
 
 :root[data-theme="dark"] {
 	color-scheme: dark;
-
-	--ui-bg: var(--color-slate-950);
-	--ui-bg-subtle: var(--color-slate-900);
-	--ui-surface: var(--color-slate-900);
-	--ui-border: var(--color-slate-800);
-	--ui-border-strong: var(--color-slate-700);
-
-	--ui-text: var(--color-slate-100);
-	--ui-text-muted: var(--color-slate-400);
-	--ui-text-inverted: var(--color-slate-900);
-
-	--ui-disabled-bg: var(--color-slate-800);
-	--ui-disabled-text: var(--color-slate-600);
-
-	--ui-overlay: color-mix(in oklab, var(--color-black) 60%, transparent);
-
-	--ui-accent: var(--color-blue-500);
-	--ui-accent-hover: var(--color-blue-400);
-	--ui-accent-subtle: color-mix(in oklab, var(--color-blue-500) 15%, transparent);
-	--ui-accent-text: var(--color-blue-300);
-	--ui-focus-ring: var(--color-blue-400);
-
-	--ui-selected: var(--color-blue-500);
-	--ui-selected-subtle: color-mix(in oklab, var(--color-blue-500) 15%, transparent);
-	--ui-selected-border: var(--color-blue-800);
-	--ui-selected-text: var(--color-blue-300);
-
-	--ui-success: var(--color-emerald-500);
-	--ui-success-subtle: var(--color-emerald-950);
-	--ui-success-border: var(--color-emerald-800);
-	--ui-success-text: var(--color-emerald-200);
-
-	--ui-info: var(--color-blue-500);
-	--ui-info-subtle: var(--color-blue-950);
-	--ui-info-border: var(--color-blue-800);
-	--ui-info-text: var(--color-blue-200);
-
-	--ui-warning: var(--color-amber-500);
-	--ui-warning-subtle: var(--color-amber-950);
-	--ui-warning-border: var(--color-amber-800);
-	--ui-warning-text: var(--color-amber-200);
-
-	--ui-error: var(--color-red-500);
-	--ui-error-subtle: var(--color-red-950);
-	--ui-error-border: var(--color-red-800);
-	--ui-error-text: var(--color-red-200);
-
-	--ui-help: var(--color-violet-500);
-	--ui-help-subtle: var(--color-violet-950);
-	--ui-help-border: var(--color-violet-800);
-	--ui-help-text: var(--color-violet-200);
 }
 
 @theme inline {
@@ -211,11 +104,9 @@
 	--color-accent-hover: var(--ui-accent-hover);
 	--color-accent-subtle: var(--ui-accent-subtle);
 	--color-accent-text: var(--ui-accent-text);
-	--color-focus-ring: var(--ui-focus-ring);
 
 	--color-selected: var(--ui-selected);
 	--color-selected-subtle: var(--ui-selected-subtle);
-	--color-selected-border: var(--ui-selected-border);
 	--color-selected-text: var(--ui-selected-text);
 
 	--color-success: var(--ui-success);

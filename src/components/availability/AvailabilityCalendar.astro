@@ -1,0 +1,67 @@
+---
+// Four-week availability strip: one cell per day, starting today, laid out
+// under Monday–Sunday column headers. Each cell shows how many are
+// available that day instead of a date (the date is in the cell's
+// tooltip/accessible label). Purely presentational — data comes from
+// src/lib/availabilityCalendar.ts.
+import { addDaysIso } from '../../lib/dates';
+import { formatDateDisplay } from '../../lib/dates';
+
+interface Props {
+	start: string; // YYYY-MM-DD, the first cell
+	daily: number[];
+	total: number;
+	// e.g. "sets" — used in the accessible labels ("3 of 4 sets available").
+	unit?: string;
+	class?: string;
+}
+
+const { start, daily, total, unit, class: className } = Astro.props;
+
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// Monday-based column of the first day (getUTCDay: Sunday = 0).
+const leadingBlanks = (new Date(`${start}T00:00:00Z`).getUTCDay() + 6) % 7;
+
+// Five-step scale from red (none available) through yellow to green (4+
+// available) — the semi-transparent availability-* tokens in global.css.
+// The count itself always uses the normal text colour. Written out in full
+// so Tailwind sees every class.
+const TONES = ['bg-availability-0', 'bg-availability-1', 'bg-availability-2', 'bg-availability-3', 'bg-availability-4'];
+
+// Fixed counts, not a share of stock: red = none, orange = 1, yellow = 2,
+// lime = 3, green = 4 or more available.
+function tone(count: number): string {
+	return TONES[Math.min(4, Math.max(0, count))];
+}
+
+const days = daily.map((count, i) => {
+	const date = addDaysIso(start, i);
+	const label = `${formatDateDisplay(date, { weekday: true })}${i === 0 ? ' (today)' : ''}: ${count} of ${total}${unit ? ` ${unit}` : ''} available`;
+	return { date, count, label, today: i === 0 };
+});
+---
+<div class:list={['flex flex-col gap-1.5', className]}>
+	<div class="grid grid-cols-7 gap-1 text-center text-xs text-text-muted" aria-hidden="true">
+		{WEEKDAYS.map((day) => <span>{day}</span>)}
+	</div>
+	<ol class="grid grid-cols-7 gap-1" aria-label="Availability for the next four weeks">
+		{Array.from({ length: leadingBlanks }, () => <li aria-hidden="true" />)}
+		{days.map((day) => (
+			<li
+				class:list={['flex h-8 items-center justify-center rounded text-sm font-medium tabular-nums text-text', tone(day.count), day.today && 'ring-2 ring-accent ring-offset-1 ring-offset-surface']}
+				title={day.label}
+			>
+				<span aria-hidden="true">{day.count}</span>
+				<span class="sr-only">{day.label}</span>
+			</li>
+		))}
+	</ol>
+	<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
+		<p>Each day shows how many are available. Today is outlined.</p>
+		<p class="flex items-center gap-1" aria-hidden="true">
+			0
+			{TONES.map((t) => <span class:list={["h-3 w-3 rounded-sm", t]} />)}
+			4+
+		</p>
+	</div>
+</div>

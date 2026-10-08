@@ -404,6 +404,10 @@ function optionLabel(variant: Variant): string {
 
 		renderAttributes(option.dataset.attributes);
 		renderSetIncludes(kind, option.dataset.componentDisplay);
+
+		// Shows this variant's availability calendar (ProductAvailability.astro).
+		const variantScope = document.querySelector<HTMLElement>('[data-selected-variant]');
+		if (variantScope && kind && id) variantScope.dataset.selectedVariant = `${kind}-${id}`;
 	}
 
 	if (select) {

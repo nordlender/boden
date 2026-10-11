@@ -30,8 +30,6 @@ declare module '@auth/core/types' {
       userId: number;
       mobile: string | null;
       profileTypeId: number;
-      hasUnpaidFees: boolean | null;
-      userIsMember: boolean | null;
       success: boolean;
       code: number;
       message: string | null;
@@ -120,8 +118,6 @@ function Bloc(config: OAuthUserConfig<BlocProfile> & { redirectUri: string }): O
         userId: profile.userId,
         mobile: profile.mobile,
         profileTypeId: profile.profileTypeId,
-        hasUnpaidFees: profile.hasUnpaidFees,
-        userIsMember: profile.userIsMember,
         success: profile.success,
         code: profile.code,
         message: profile.message,
@@ -174,8 +170,6 @@ export default defineConfig({
           userId: p.userId,
           mobile: p.mobile,
           profileTypeId: p.profileTypeId,
-          hasUnpaidFees: p.hasUnpaidFees,
-          userIsMember: p.userIsMember,
           success: p.success,
           code: p.code,
           message: p.message,

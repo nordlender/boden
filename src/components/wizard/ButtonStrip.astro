@@ -7,15 +7,17 @@
 //
 // Assign/Unassign are gone — "Set product" now handles both assigning an
 // unassigned item and reassigning an already-assigned one.
-// Unassigned: | Set | ---- | Add item | Delete n item(s) |
-// Assigned:   | Set | ---- | Delete n item(s)
+// | Set | ---- | (trash)
+// Delete is icon-only and asks for confirmation via a popover. Adding items
+// is done from AddItemPanel above, not from this strip.
 import MorphIcon from 'morphicons/astro';
 import { dropdownChevron } from '../../lib/icon-nodes';
 import AppIcon from '../icons/AppIcon.astro';
 import Button from '../ui/Button.astro';
 import Callout from '../ui/Callout.astro';
 import Popover from '../ui/Popover.astro';
-import TextMorphButton from '../ui/TextMorphButton.astro';
+import ActionPopover from '../ui/ActionPopover.astro';
+import MorphButton from '../ui/MorphButton.astro';
 import ImageMenu from './ImageMenu.astro';
 import type { PanelVariant } from './grid';
 
@@ -26,9 +28,10 @@ interface Props {
 	redirectTo: string;
 }
 
-const { variant, formId, products, redirectTo } = Astro.props;
+const { formId, products, redirectTo } = Astro.props;
 
 const archiveHintId = `archive-hint-${formId}`;
+const confirmId = `archive-confirm-${formId}`;
 ---
 <div class="flex items-center gap-2 border-b border-border bg-bg-subtle px-3 py-2">
 	<details class="set-dropdown relative inline-block">
@@ -70,21 +73,24 @@ const archiveHintId = `archive-hint-${formId}`;
 
 	<div class="flex-1"></div>
 
-	{variant === 'unassigned' && (
-		<TextMorphButton variant="primary" action="add" href="#add-item-name" data-expand-open="add-item-panel">
-			Add item
-		</TextMorphButton>
-	)}
-	<TextMorphButton
-		variant="danger-filled"
-		action="delete"
-		type="submit"
-		form={formId}
-		formaction="/api/wizard/archive"
-		data-archive-trigger={formId}
-	>
-		Delete <span class="selected-count" data-form-id={formId}>0</span> item(s)
-	</TextMorphButton>
+	{/* Trigger stays a plain type="button" with `popovertarget` — the click
+	    handler below cancels the popover's native open when nothing is
+	    selected (showing the hint instead). Variant flips secondary →
+	    danger-filled once something is selected. */}
+	<ActionPopover id={confirmId} title="Delete selected items?" confirmLabel="Delete" confirmVariant="danger" side="bottom">
+		<Fragment slot="trigger">
+			<MorphButton
+				variant="secondary"
+				action="delete"
+				label="Delete selected items"
+				popovertarget={confirmId}
+				data-archive-trigger={formId}
+			/>
+		</Fragment>
+		<p class="text-sm text-text-muted">
+			<span class="selected-count" data-form-id={formId}>0</span> item(s) will be deleted.
+		</p>
+	</ActionPopover>
 </div>
 
 {/* No `popovertarget` invoker element points at this — the archive button below
@@ -100,6 +106,7 @@ const archiveHintId = `archive-hint-${formId}`;
 	// reused because this trigger's menu content isn't a simple item list.
 	import type { MorphIconElement } from 'morphicons/element';
 	import { dropdownChevron } from '../../lib/icon-nodes';
+	import { variantClasses } from '../../lib/button-styles';
 
 	document.addEventListener(
 		'toggle',
@@ -130,6 +137,12 @@ const archiveHintId = `archive-hint-${formId}`;
 		document.querySelectorAll(`.selected-count[data-form-id="${formId}"]`).forEach((el) => {
 			el.textContent = String(count);
 		});
+		// Secondary when nothing is selected, filled once something is.
+		document.querySelectorAll<HTMLElement>(`[data-archive-trigger="${formId}"]`).forEach((btn) => {
+			const [off, on] = count > 0 ? ['secondary', 'danger-filled'] : ['danger-filled', 'secondary'];
+			btn.classList.remove(...variantClasses[off as 'secondary'].split(' '));
+			btn.classList.add(...variantClasses[on as 'secondary'].split(' '));
+		});
 		// The hint is only relevant while the selection is empty — dismiss it
 		// as soon as the user checks an item, per HintPopover.astro's guidance
 		// for hints shown in response to a transient condition.
@@ -138,29 +151,27 @@ const archiveHintId = `archive-hint-${formId}`;
 		}
 	});
 
-	// Guard against archiving with nothing selected — without this the form
-	// still submits to /api/wizard/archive with an empty selection, which
-	// just redirects back with no visible effect (see issue #200). The
-	// trigger stays a plain `type="submit"` button (no `popovertarget`) so it
-	// still submits natively if this script fails to run; when it does run,
-	// it takes over entirely so the hint popover can intercept the empty case.
+	// Empty selection: cancel the trigger's native `popovertarget` open and
+	// show the hint instead (see issue #200). Otherwise the confirm popover
+	// opens natively and its Delete button submits the selection form.
 	document.querySelectorAll<HTMLElement>('[data-archive-trigger]').forEach((trigger) => {
+		const formId = trigger.getAttribute('data-archive-trigger');
+		if (!formId) return;
 		trigger.addEventListener('click', (event) => {
-			const formId = trigger.getAttribute('data-archive-trigger');
-			if (!formId) return;
+			if (countSelected(formId) > 0) return;
 			event.preventDefault();
+			const hint = document.getElementById(`archive-hint-${formId}`);
+			if (!hint) return;
+			const rect = trigger.getBoundingClientRect();
+			hint.style.left = `${rect.left}px`;
+			hint.style.top = `${rect.bottom + 8}px`;
+			hint.showPopover();
+		});
 
-			if (countSelected(formId) === 0) {
-				const hint = document.getElementById(`archive-hint-${formId}`);
-				if (hint) {
-					const rect = trigger.getBoundingClientRect();
-					hint.style.left = `${rect.left}px`;
-					hint.style.top = `${rect.bottom + 8}px`;
-					hint.showPopover();
-				}
-				return;
-			}
-			(document.getElementById(formId) as HTMLFormElement | null)?.requestSubmit(trigger as HTMLButtonElement);
+		const confirmPopover = document.getElementById(`archive-confirm-${formId}`);
+		confirmPopover?.querySelector('[data-action-popover-confirm]')?.addEventListener('click', () => {
+			confirmPopover.hidePopover();
+			(document.getElementById(formId) as HTMLFormElement | null)?.requestSubmit();
 		});
 	});
 </script>

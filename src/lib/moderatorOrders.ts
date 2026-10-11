@@ -6,7 +6,7 @@ import { getReservationAvailability } from './reservation';
 import { RESERVING_STATUSES, type OrderStatus } from './orderStatus';
 
 // Moderator-side order operations — kept separate from member-side
-// src/lib/orders.ts (createOrder/createSplitOrders/deleteOrder/
+// src/lib/orders.ts (createOrder/deleteOrder/
 // rescheduleOrder), which only ever acts on an order its caller owns.
 // Everything here acts across all members' orders, gated by
 // requireModerator() (src/lib/http.ts) at the API-route layer.
@@ -133,8 +133,9 @@ export interface PendingRequestRow {
 export async function getPendingRequestRows(): Promise<PendingRequestRow[]> {
 	const pendingOrders = await db.query.orders.findMany({
 		where: (t, { eq: eqCol }) => eqCol(t.status, 'requested'),
-		// Soonest pick-up first — that's what needs reviewing soonest.
-		orderBy: (t, { asc: ascCol }) => [ascCol(t.fromDate)],
+		// Earliest submitted first (first come, first served); id breaks
+		// ties since createdAt only has one-second resolution.
+		orderBy: (t, { asc: ascCol }) => [ascCol(t.createdAt), ascCol(t.id)],
 		with: { user: true, orderItems: { with: { item: true } } },
 	});
 

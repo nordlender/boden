@@ -37,7 +37,7 @@ export function isValidDateRange(range: Partial<ReservationDateRange>): range is
 	const todayIso = todayIsoInOslo();
 	if (range.from < todayIso) return false;
 	if (range.from > range.to) return false;
-	// Single gate shared by order creation, split-order creation, the
+	// Single gate shared by order creation, the
 	// reservation-availability preview, and reschedule — so the max rental
 	// duration cap (src/lib/rental-policy.ts) applies everywhere at once.
 	return daysInclusive(range.from, range.to) <= getMaxRentalDays();
@@ -149,15 +149,6 @@ function peakConcurrentQuantity(intervals: { start: string; end: string; quantit
 		if (running > peak) peak = running;
 	}
 	return peak;
-}
-
-// True when some (but not all) items are unavailable for their requested
-// quantity in the chosen range — the trigger for the mixed-availability
-// warning banner and the per-item "split into a separate order" action.
-export function hasMixedAvailability(availabilities: ReservationAvailability[]): boolean {
-	const someAvailable = availabilities.some((a) => a.available);
-	const someUnavailable = availabilities.some((a) => !a.available);
-	return someAvailable && someUnavailable;
 }
 
 // A cart line (see cart.ts's CartLine) at the granularity the reservation

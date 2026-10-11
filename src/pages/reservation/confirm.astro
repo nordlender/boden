@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Button from '../../components/ui/Button.astro';
 import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
 import ItemQtyLine from '../../components/ui/ItemQtyLine.astro';
-import { getCartLines, entryKey, type CartLine } from '../../lib/cart';
+import { getCartLines, type CartLine } from '../../lib/cart';
 import { isValidDateRange } from '../../lib/reservation';
 import { listPickupDaysOn } from '../../lib/pickupDays';
 import { formatDateDisplay } from '../../lib/dates';
@@ -35,16 +35,8 @@ if (form.get('disclaimerAccepted') !== 'on') {
 const text = (name: string) => form.get(name)?.toString().trim() ?? '';
 const contact = { name: text('name'), email: text('email'), mobile: text('mobile') };
 const note = text('note');
-const splitKeys = new Set(
-	text('splitLineKeys')
-		.split(',')
-		.map((s) => s.trim())
-		.filter(Boolean),
-);
-
 const pickupWindows = await listPickupDaysOn(fromDate);
 
-const lineKey = (line: CartLine) => entryKey('setId' in line ? { setId: line.setId } : { itemId: line.itemId });
 // ItemQtyLine only renders "name × qty", so the variant (item attributes, or a
 // set's label) is folded into the name.
 const lineLabel = (line: CartLine) => {
@@ -52,21 +44,14 @@ const lineLabel = (line: CartLine) => {
 	const title = 'setId' in line ? `${line.productTitle} (set)` : line.productTitle;
 	return detail ? `${title} — ${detail}` : title;
 };
-const groups = [
-	{ title: 'Order', lines: cartLines.filter((l) => !splitKeys.has(lineKey(l))) },
-	{ title: 'Separate order', lines: cartLines.filter((l) => splitKeys.has(lineKey(l))) },
-].filter((g) => g.lines.length > 0);
-
-// Everything the API route needs, passed through unchanged.
+// Everything the API route needs, passed through unchanged. Fee/membership
+// status is deliberately absent: /api/orders/create fetches it from bloc itself.
 const hiddenFields: Record<string, string> = {
 	fromDate,
 	toDate,
-	splitLineKeys: [...splitKeys].join(','),
 	name: contact.name,
 	email: contact.email,
 	mobile: contact.mobile,
-	hasUnpaidFees: text('hasUnpaidFees'),
-	userIsMember: text('userIsMember'),
 	note,
 	disclaimerAccepted: 'on',
 };
@@ -98,23 +83,12 @@ const hiddenFields: Record<string, string> = {
 			</dd>
 		</dl>
 
-		<div class="mb-8 flex flex-col gap-4">
-			{
-				groups.map((group) => (
-					<section class="flex flex-col gap-2">
-						{groups.length > 1 && (
-							<h2 class="text-sm font-semibold tracking-wide text-text-muted uppercase">{group.title}</h2>
-						)}
-						<OrdersTableRow fromDate={fromDate} toDate={toDate} customerName={contact.name}>
-							<ul class="flex flex-col gap-1 pl-1 text-text-muted">
-								{group.lines.map((line) => (
-									<ItemQtyLine name={lineLabel(line)} quantity={line.quantity} />
-								))}
-							</ul>
-						</OrdersTableRow>
-					</section>
-				))
-			}
+		<div class="mb-8">
+			<OrdersTableRow fromDate={fromDate} toDate={toDate} customerName={contact.name}>
+				<ul class="flex flex-col gap-1 pl-1 text-text-muted">
+					{cartLines.map((line) => <ItemQtyLine name={lineLabel(line)} quantity={line.quantity} />)}
+				</ul>
+			</OrdersTableRow>
 		</div>
 
 		<section class="mb-8 text-sm text-text">

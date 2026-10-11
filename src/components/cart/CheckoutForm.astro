@@ -25,6 +25,11 @@ const labelClass = 'block text-sm font-medium text-text';
 <form class="checkout-form flex flex-col gap-4" method="POST" action="/reservation/confirm">
 	<input type="hidden" name="fromDate" data-checkout-from-date />
 	<input type="hidden" name="toDate" data-checkout-to-date />
+	{/* Filled in by ReservationTimePicker.astro's script. */}
+	<input type="hidden" name="pickupDayId" />
+	<input type="hidden" name="pickupRequestedTime" />
+	<input type="hidden" name="returnDayId" />
+	<input type="hidden" name="returnRequestedTime" />
 	{hasUnpaidFees && (
 		<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
 			Note: you have an unpaid fee. You can still submit the form. Please check your payments on osiklatring.no. If you have paid the current semester fee, this could be an error.

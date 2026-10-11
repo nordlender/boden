@@ -1,0 +1,161 @@
+---
+// Pick-up and return time section on /reservation, shown once a date range
+// is chosen. For each of the two days it lists the windows moderators have
+// offered that date (pickup_days rows — the same ones PickupDaysTable.astro
+// shows on the moderator page) plus a "Request ... time" option with a
+// free time input (PickupTimeInput.astro, shared with the moderator form).
+// When no window is offered that day, only the request input is shown.
+//
+// The choice is mirrored into the checkout form's hidden pickupDayId /
+// pickupRequestedTime / returnDayId / returnRequestedTime inputs, and a
+// 'reservation-times-change' event tells reservationFormState.ts whether
+// both choices are complete (it gates submit on that).
+import PickupTimeInput from '../pickup-days/PickupTimeInput.astro';
+import type { PickupDayRow } from '../../lib/pickupDays';
+
+interface Props {
+	// Every upcoming pickup_days row, of any kind/moderator.
+	windows: PickupDayRow[];
+}
+
+const { windows } = Astro.props;
+
+// date -> [{ id, startTime, endTime, where }], as the client script reads it.
+const windowsByDate: Record<string, { id: number; startTime: string; endTime: string; where: string | null }[]> = {};
+for (const w of windows) {
+	(windowsByDate[w.date] ??= []).push({ id: w.id, startTime: w.startTime, endTime: w.endTime, where: w.where });
+}
+
+const sections = [
+	{ kind: 'pickup', title: 'Pick-up time', requestLabel: 'Request pick-up time' },
+	{ kind: 'return', title: 'Return time', requestLabel: 'Request return time' },
+] as const;
+---
+
+<div data-time-picker data-windows={JSON.stringify(windowsByDate)} hidden class="flex flex-col gap-6">
+	{
+		sections.map((section) => (
+			<fieldset data-time-section={section.kind} data-request-label={section.requestLabel} class="flex flex-col gap-2">
+				<legend class="mb-1 text-sm font-medium text-text">
+					{section.title} <span data-time-date class="font-normal text-text-muted" />
+				</legend>
+				<div data-time-options class="flex flex-col gap-2" />
+				<label data-request-row class="flex flex-wrap items-center gap-2 text-sm text-text">
+					<input type="radio" data-request-radio name={`${section.kind}-choice`} value="request" class="accent-accent" />
+					<span data-request-text>{section.requestLabel}</span>
+					<PickupTimeInput data-request-time aria-label={section.requestLabel} />
+				</label>
+			</fieldset>
+		))
+	}
+</div>
+
+<script>
+	import { formatDateDisplay } from '../../lib/dates';
+
+	interface OfferedWindow {
+		id: number;
+		startTime: string;
+		endTime: string;
+		where: string | null;
+	}
+
+	const root = document.querySelector<HTMLElement>('[data-time-picker]');
+	const placeholder = document.querySelector<HTMLElement>('[data-time-picker-placeholder]');
+	const checkoutForm = document.querySelector('.checkout-form');
+
+	if (root) {
+		const windowsByDate: Record<string, OfferedWindow[]> = JSON.parse(root.dataset.windows ?? '{}');
+		const kinds = ['pickup', 'return'] as const;
+		type Kind = (typeof kinds)[number];
+
+		const section = (kind: Kind) => root.querySelector<HTMLElement>(`[data-time-section="${kind}"]`)!;
+		const hidden = (name: string) => checkoutForm?.querySelector<HTMLInputElement>(`[name="${name}"]`);
+		const requestTime = (kind: Kind) => section(kind).querySelector<HTMLInputElement>('[data-request-time]')!;
+		const requestRadio = (kind: Kind) => section(kind).querySelector<HTMLInputElement>('[data-request-radio]')!;
+		const requestRow = (kind: Kind) => section(kind).querySelector<HTMLElement>('[data-request-row]')!;
+
+		// Reads the current choice of one section: a window id, a requested
+		// HH:MM, or neither yet.
+		function readChoice(kind: Kind): { dayId: string; time: string } {
+			const checked = section(kind).querySelector<HTMLInputElement>('input[type="radio"]:checked');
+			if (!checked) return { dayId: '', time: '' };
+			if (checked.value === 'request') return { dayId: '', time: requestTime(kind).value };
+			return { dayId: checked.value, time: '' };
+		}
+
+		function sync() {
+			let complete = true;
+			for (const kind of kinds) {
+				const { dayId, time } = readChoice(kind);
+				const radioIsRequest = requestRadio(kind).checked;
+				requestTime(kind).hidden = !radioIsRequest && !requestRadio(kind).hidden;
+				if (hidden(`${kind}DayId`)) hidden(`${kind}DayId`)!.value = dayId;
+				if (hidden(`${kind}RequestedTime`)) hidden(`${kind}RequestedTime`)!.value = time;
+				if (!dayId && !time) complete = false;
+			}
+			document.dispatchEvent(new CustomEvent('reservation-times-change', { detail: { complete } }));
+		}
+
+		function renderSection(kind: Kind, date: string) {
+			const el = section(kind);
+			el.querySelector<HTMLElement>('[data-time-date]')!.textContent = `· ${formatDateDisplay(date, { weekday: true })}`;
+			const options = el.querySelector<HTMLElement>('[data-time-options]')!;
+			options.replaceChildren();
+			requestTime(kind).value = '';
+			requestRadio(kind).checked = false;
+
+			const offered = windowsByDate[date] ?? [];
+			for (const w of offered) {
+				const label = document.createElement('label');
+				label.className = 'flex flex-wrap items-center gap-2 text-sm text-text';
+				const radio = document.createElement('input');
+				radio.type = 'radio';
+				radio.name = `${kind}-choice`;
+				radio.value = String(w.id);
+				radio.className = 'accent-accent';
+				const text = document.createElement('span');
+				text.textContent = `${w.startTime} – ${w.endTime}`;
+				label.append(radio, text);
+				if (w.where) {
+					const where = document.createElement('span');
+					where.className = 'text-text-muted';
+					where.textContent = `· ${w.where}`;
+					label.append(where);
+				}
+				options.append(label);
+			}
+
+			// Nothing offered that day: no radio to choose, the request input is
+			// simply the only way and always visible.
+			const noneOffered = offered.length === 0;
+			requestRadio(kind).hidden = noneOffered;
+			requestRadio(kind).checked = noneOffered;
+			requestTime(kind).hidden = !noneOffered;
+			const text = el.querySelector<HTMLElement>('[data-request-text]')!;
+			text.textContent = el.dataset.requestLabel ?? '';
+			requestRow(kind).classList.toggle('font-medium', noneOffered);
+		}
+
+		document.addEventListener('reservation-range-change', (event) => {
+			const { from, to } = (event as CustomEvent<{ from?: string; to?: string }>).detail;
+			placeholder?.toggleAttribute('hidden', Boolean(from && to));
+			if (!from || !to) {
+				root.hidden = true;
+				for (const kind of kinds) {
+					if (hidden(`${kind}DayId`)) hidden(`${kind}DayId`)!.value = '';
+					if (hidden(`${kind}RequestedTime`)) hidden(`${kind}RequestedTime`)!.value = '';
+				}
+				document.dispatchEvent(new CustomEvent('reservation-times-change', { detail: { complete: false } }));
+				return;
+			}
+			renderSection('pickup', from);
+			renderSection('return', to);
+			root.hidden = false;
+			sync();
+		});
+
+		root.addEventListener('change', sync);
+		root.addEventListener('input', sync);
+	}
+</script>

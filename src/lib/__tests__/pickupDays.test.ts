@@ -17,6 +17,7 @@ const {
 	listRecurringRules,
 	createRecurringRule,
 	deleteRecurringRule,
+	resolvePickupTimeChoice,
 } = await import('../pickupDays');
 
 const MODERATOR_A = 'moderator-a';
@@ -178,5 +179,22 @@ describe('single and recurring days union for the reservation calendar', () => {
 			endDate: '2026-09-07',
 		});
 		expect(await getUpcomingAvailablePickupDates('2026-01-01')).toEqual(['2026-09-07']);
+	});
+});
+
+describe('resolvePickupTimeChoice', () => {
+	it('accepts an offered window on the same date, a well-formed requested time, and rejects the rest', async () => {
+		await createSingleDays(MODERATOR_A, [{ date: '2026-09-10', startTime: '12:00', endTime: '14:00', where: 'Vulkan' }]);
+		const [row] = await listUpcomingPickupDays('2026-09-10');
+
+		expect(await resolvePickupTimeChoice('2026-09-10', String(row.id), '')).toEqual({ dayId: row.id, requestedTime: null });
+		expect(await resolvePickupTimeChoice('2026-09-10', '', '17:30')).toEqual({ dayId: null, requestedTime: '17:30' });
+
+		// Window belongs to a different date, both supplied, neither supplied, malformed.
+		expect(await resolvePickupTimeChoice('2026-09-11', String(row.id), '')).toBeNull();
+		expect(await resolvePickupTimeChoice('2026-09-10', String(row.id), '17:30')).toBeNull();
+		expect(await resolvePickupTimeChoice('2026-09-10', '', '')).toBeNull();
+		expect(await resolvePickupTimeChoice('2026-09-10', '', '25:00')).toBeNull();
+		expect(await resolvePickupTimeChoice('2026-09-10', '1; DROP', '')).toBeNull();
 	});
 });

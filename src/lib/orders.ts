@@ -3,6 +3,7 @@ import { items, orders, orderItems } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
 import type { Role } from './auth';
+import type { PickupTimeChoice } from './pickupDays';
 import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
@@ -88,6 +89,11 @@ export type CreateOrderInput = {
   // see schema.ts's orders.disclaimerAcceptedAt doc comment. Required for
   // every submitter at the API layer, so real submissions always pass true.
   disclaimerAccepted: boolean;
+  // Pick-up / return time choices — see schema.ts's orders.pickupDayId doc
+  // comment. Optional so callers that don't collect them (tests, future
+  // admin-created orders) leave all four columns null.
+  pickupTime?: PickupTimeChoice | null;
+  returnTime?: PickupTimeChoice | null;
 };
 
 export type CreateOrderResult =
@@ -114,6 +120,8 @@ function insertOrder(
     hasUnpaidFees: boolean | null;
     userIsMember: boolean | null;
     disclaimerAccepted: boolean;
+    pickupTime?: PickupTimeChoice | null;
+    returnTime?: PickupTimeChoice | null;
   },
 ) {
   // Re-check availability inside the same transaction as the insert below —
@@ -146,6 +154,10 @@ function insertOrder(
           hasUnpaidFees: input.hasUnpaidFees,
           userIsMember: input.userIsMember,
           disclaimerAcceptedAt: input.disclaimerAccepted ? new Date() : null,
+          pickupDayId: input.pickupTime?.dayId ?? null,
+          pickupRequestedTime: input.pickupTime?.requestedTime ?? null,
+          returnDayId: input.returnTime?.dayId ?? null,
+          returnRequestedTime: input.returnTime?.requestedTime ?? null,
         })
         .returning({ id: orders.id, orderCode: orders.orderCode })
         .get();
@@ -231,6 +243,8 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         hasUnpaidFees: input.hasUnpaidFees,
         userIsMember: input.userIsMember,
         disclaimerAccepted: input.disclaimerAccepted,
+        pickupTime: input.pickupTime,
+        returnTime: input.returnTime,
       }),
     );
     return { ok: true, orderId: result.id, orderCode: result.orderCode };

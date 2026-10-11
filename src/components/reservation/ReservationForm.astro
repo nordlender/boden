@@ -1,14 +1,17 @@
 ---
 import ReservationCalendar from './ReservationCalendar.astro';
+import ReservationTimePicker from './ReservationTimePicker.astro';
 import ReservationItemRow from './ReservationItemRow.astro';
 import CheckoutForm from '../cart/CheckoutForm.astro';
 import { entryKey, type CartLine } from '../../lib/cart';
 import { formatAttributes } from '../../lib/attributes';
+import type { PickupDayRow } from '../../lib/pickupDays';
 import type { ReservationCartLineRef } from './reservationFormState';
 
 interface Props {
 	cartLines: CartLine[];
 	availablePickupDates: string[];
+	pickupWindows: PickupDayRow[];
 	name: string | null;
 	email: string | null;
 	mobile: string | null;
@@ -16,7 +19,7 @@ interface Props {
 	userIsMember: boolean | null;
 }
 
-const { cartLines, availablePickupDates, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
+const { cartLines, availablePickupDates, pickupWindows, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
 
 const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 	'setId' in line
@@ -32,7 +35,13 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 	</section>
 
 	<section>
-		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">2. Your items</h2>
+		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">2. Pick-up &amp; return times</h2>
+		<p data-time-picker-placeholder class="text-sm text-text-muted">Select your dates above to choose pick-up and return times.</p>
+		<ReservationTimePicker windows={pickupWindows} />
+	</section>
+
+	<section>
+		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">3. Your items</h2>
 
 		<p
 			data-unavailable-warning
@@ -75,7 +84,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 	</section>
 
 	<section>
-		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">3. Your details</h2>
+		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">4. Your details</h2>
 		<CheckoutForm name={name} email={email} mobile={mobile} hasUnpaidFees={hasUnpaidFees} userIsMember={userIsMember} />
 		<p data-submit-hint class="mt-2 text-sm text-text-muted">Select your pick-up and return dates above to continue.</p>
 	</section>

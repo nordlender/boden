@@ -296,11 +296,24 @@ export const orders = sqliteTable('orders', {
   // plain boolean) so there's a record of *when*, same pattern as acceptedAt
   // above. Nullable only for orders created before the disclaimer existed.
   disclaimerAcceptedAt: integer('disclaimer_accepted_at', { mode: 'timestamp' }),
+  // How the member wants to hand over / get back the order, chosen on
+  // /reservation. For each of pick-up (on fromDate) and return (on toDate)
+  // exactly one of the pair is set: a moderator-offered window
+  // (pickupDays row — onDelete 'set null' so a moderator withdrawing the day
+  // later leaves the order readable) or a free "request a time" HH:MM, used
+  // when no window suits or none is offered that day. Nullable only for
+  // orders created before these existed.
+  pickupDayId: integer('pickup_day_id').references(() => pickupDays.id, { onDelete: 'set null' }),
+  pickupRequestedTime: text('pickup_requested_time'), // HH:MM, 24h
+  returnDayId: integer('return_day_id').references(() => pickupDays.id, { onDelete: 'set null' }),
+  returnRequestedTime: text('return_requested_time'), // HH:MM, 24h
   // TODO: dueAt (rental due date) — not yet confirmed, see docs/schema-legacy-fixes.md #9
 }, (table) => [
   index('orders_user_id_idx').on(table.userId),
   index('orders_status_idx').on(table.status),
   index('orders_date_range_idx').on(table.fromDate, table.toDate),
+  index('orders_pickup_day_id_idx').on(table.pickupDayId),
+  index('orders_return_day_id_idx').on(table.returnDayId),
   check('order_date_range_valid', sql`${table.toDate} >= ${table.fromDate}`),
 ]);
 

@@ -139,6 +139,26 @@ describe('createOrder', () => {
 		expect(row?.disclaimerAcceptedAt).toBeInstanceOf(Date);
 	});
 
+	it('persists the chosen pick-up / return time choices, and leaves them null when none are given', async () => {
+		const { db } = await import('../../db/client');
+		const { orders } = await import('../../db/schema');
+		const base = { userId: 'member-1', note: null, cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }], fromDate: '2026-04-01', toDate: '2026-04-02', ...CONTACT };
+
+		const withTimes = await createOrder({
+			...base,
+			pickupTime: { dayId: null, requestedTime: '17:30' },
+			returnTime: { dayId: null, requestedTime: '09:00' },
+		});
+		const without = await createOrder(base);
+		expect(withTimes.ok && without.ok).toBe(true);
+		if (!withTimes.ok || !without.ok) return;
+
+		const a = db.select().from(orders).where(eq(orders.id, withTimes.orderId)).get();
+		expect([a?.pickupDayId, a?.pickupRequestedTime, a?.returnDayId, a?.returnRequestedTime]).toEqual([null, '17:30', null, '09:00']);
+		const b = db.select().from(orders).where(eq(orders.id, without.orderId)).get();
+		expect([b?.pickupDayId, b?.pickupRequestedTime, b?.returnDayId, b?.returnRequestedTime]).toEqual([null, null, null, null]);
+	});
+
 	it('rejects with "unavailable" instead of creating an order when an item is already fully booked', async () => {
 		// Overlaps the existing order's 2026-01-05..2026-01-10 booking of item
 		// A's only unit.

@@ -3,6 +3,7 @@ import { fetchOwnMemberFeeStatus } from '../../../lib/blocFeeStatus';
 import { getCart, setCart } from '../../../lib/cart';
 import { createOrder } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
+import { resolvePickupTimeChoice } from '../../../lib/pickupDays';
 import { redirectWithError, requireUser } from '../../../lib/http';
 
 export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => {
@@ -20,6 +21,14 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const toDate = form.get('toDate')?.toString() ?? '';
   if (!isValidDateRange({ from: fromDate, to: toDate })) {
     return redirect(redirectWithError('/reservation', 'invalid_dates'));
+  }
+
+  // Pick-up (on fromDate) and return (on toDate) time choices — re-validated
+  // here against the real pickup_days rows rather than trusting the form.
+  const pickupTime = await resolvePickupTimeChoice(fromDate, form.get('pickupDayId')?.toString() ?? '', form.get('pickupRequestedTime')?.toString() ?? '');
+  const returnTime = await resolvePickupTimeChoice(toDate, form.get('returnDayId')?.toString() ?? '', form.get('returnRequestedTime')?.toString() ?? '');
+  if (!pickupTime || !returnTime) {
+    return redirect(redirectWithError('/reservation', 'invalid_times'));
   }
 
   // Snapshot of the checkout form's contact fields, persisted on the order
@@ -58,6 +67,8 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     hasUnpaidFees,
     userIsMember,
     disclaimerAccepted,
+    pickupTime,
+    returnTime,
   });
   if (!result.ok) {
     // 'unavailable': re-checked at insert time (see orders.ts's insertOrder)

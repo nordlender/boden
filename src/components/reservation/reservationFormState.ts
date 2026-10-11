@@ -36,6 +36,7 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 	const fromDateInput = checkoutForm?.querySelector('[data-checkout-from-date]');
 	const toDateInput = checkoutForm?.querySelector('[data-checkout-to-date]');
 
+	let timesComplete = false;
 	let lastAllAvailable = false;
 	let lastSomeUnavailable = false;
 	// Guards against an in-flight request landing after a later one (rapid
@@ -47,12 +48,14 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 	}
 
 	function refreshSubmitState() {
-		const enabled = lastAllAvailable && cartLines.length > 0;
+		const enabled = lastAllAvailable && timesComplete && cartLines.length > 0;
 		setSubmitEnabled(submitButton, enabled);
 		if (enabled) {
 			setSubmitHint(submitHint, '');
 		} else if (lastSomeUnavailable) {
 			setSubmitHint(submitHint, 'Remove the unavailable item(s) from your cart to continue, or choose different dates.');
+		} else if (lastAllAvailable && !timesComplete) {
+			setSubmitHint(submitHint, 'Choose a pick-up and return time to continue.');
 		} else {
 			setSubmitHint(submitHint, 'Select your pick-up and return dates above to continue.');
 		}
@@ -139,6 +142,11 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 		}
 		await refreshAvailability(lastFrom, lastTo);
 	}
+
+	document.addEventListener('reservation-times-change', (event) => {
+		timesComplete = (event as CustomEvent<{ complete: boolean }>).detail.complete;
+		refreshSubmitState();
+	});
 
 	document.addEventListener('reservation-range-change', (event) => {
 		const { from, to } = (event as CustomEvent<{ from?: string; to?: string }>).detail;

@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ReservationForm from '../../components/reservation/ReservationForm.astro';
 import { getCartLines } from '../../lib/cart';
-import { getUpcomingAvailablePickupDates } from '../../lib/pickupDays';
+import { listUpcomingPickupDays } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
 import { todayIsoInOslo } from '../../lib/dates';
 import { getSession } from 'auth-astro/server';
@@ -21,7 +21,8 @@ const [session, feeStatus] = await Promise.all([
 
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
 const todayIso = todayIsoInOslo();
-const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
+const pickupWindows = await listUpcomingPickupDays(todayIso);
+const availablePickupDates = [...new Set(pickupWindows.map((w) => w.date))];
 
 // Surfaces the error redirects /api/orders/create (and /reservation/confirm)
 // can send back here — see the keys of errorMessages below. Without this the
@@ -29,6 +30,8 @@ const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
 const error = Astro.url.searchParams.get('error');
 const errorMessages: Record<string, string> = {
 	invalid_dates: `Your selected dates were invalid, the pick-up date has already passed, or the range was longer than the maximum ${getMaxRentalDays()} days — please choose your dates again.`,
+	invalid_times:
+		'Your pick-up or return time was missing or no longer valid — please choose your times again.',
 	unavailable:
 		'One or more items in your cart are no longer available for the selected dates — check the availability badges below and adjust your dates, or remove the unavailable item(s) from your cart, before submitting again.',
 	disclaimer_required: 'You must accept the disclaimer before submitting the order.',
@@ -54,6 +57,7 @@ const errorMessage = error ? (errorMessages[error] ?? null) : null;
 		{cartLines.length > 0 && <ReservationForm
 			cartLines={cartLines}
 			availablePickupDates={availablePickupDates}
+			pickupWindows={pickupWindows}
 			name={session?.user?.name ?? null}
 			email={session?.user?.email ?? null}
 			mobile={session?.bloc?.mobile ?? null}

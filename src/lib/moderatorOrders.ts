@@ -133,8 +133,9 @@ export interface PendingRequestRow {
 export async function getPendingRequestRows(): Promise<PendingRequestRow[]> {
 	const pendingOrders = await db.query.orders.findMany({
 		where: (t, { eq: eqCol }) => eqCol(t.status, 'requested'),
-		// Soonest pick-up first — that's what needs reviewing soonest.
-		orderBy: (t, { asc: ascCol }) => [ascCol(t.fromDate)],
+		// Earliest submitted first (first come, first served); id breaks
+		// ties since createdAt only has one-second resolution.
+		orderBy: (t, { asc: ascCol }) => [ascCol(t.createdAt), ascCol(t.id)],
 		with: { user: true, orderItems: { with: { item: true } } },
 	});
 

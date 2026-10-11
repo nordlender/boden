@@ -7,9 +7,17 @@ import icon from 'astro-icon';
 
 // https://astro.build/config
 export default defineConfig({
-  // Static by default (catalogue + item pages are pre-rendered at build time).
-  // Every other route opts into per-request rendering with `export const prerender = false`.
-  output: 'static',
+  // Rendered per request by default — almost every page depends on the
+  // session, the cart cookie or live catalogue/order data. The few pages
+  // that don't (the shop grid's shell, login, 404) opt into build-time
+  // rendering with `export const prerender = true`.
+  output: 'server',
+  redirects: {
+    // A bare /moderator/review (no order code) has nowhere useful to land
+    // but the requests queue. Still gated by the middleware's /moderator
+    // prefix like any other request.
+    '/moderator/review': '/moderator/requests',
+  },
   adapter: node({ mode: 'standalone' }),
   integrations: [auth({ configFile: './src/auth.ts' }), icon()],
   vite: {

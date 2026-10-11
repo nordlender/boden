@@ -1,5 +1,3 @@
-export const prerender = false;
-
 // Bulk counterpart of ./update.ts for the cart sidebar's single "Update cart"
 // button: every `quantity_<itemId>` / `quantity_set_<setId>` field is applied
 // at once, and 0 removes the line. Same availability rules as update.ts,

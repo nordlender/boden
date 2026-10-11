@@ -60,7 +60,7 @@ a multi-line payload, read the raw log directly instead:
 4. Visit `/api/auth/session` and check the JSON. This is safe to read/share —
    it does not carry the raw bloc access token (kept server-only, decoded via
    `@auth/core/jwt`'s `getToken()` in `src/lib/auth.ts`); it only exposes
-   `user.{id,name,email}` and `bloc.{mobile,hasUnpaidFees,userIsMember,...}`.
+   `user.{id,name,email}` and `bloc.{mobile,...}` (fee/membership flags aren't in the session — they're fetched live on `/reservation`).
 5. To check the route gate itself: while logged out, visit a protected route
    (`/cart`, `/reservation`, `/admin/items` — `/moderator/*` don't have pages
    built yet, see `docs/rental-shop.md` §10, so they 404 regardless of login
@@ -106,10 +106,9 @@ happens on an actual new sign-in, not on ordinary requests. So:
   profile email`** are both unconfirmed as *correct* for bloc — they haven't
   caused an observed failure, but nobody's checked bloc's own docs to confirm
   they're right rather than just working.
-- **`hasUnpaidFees`/`userIsMember` come back `null` from bloc** for every
-  account tested so far — confirmed an external API defect on bloc's side
-  (not a caching or client bug), reported to bloc by the user. See
-  `docs/bloc-api.md`'s "Addendum" for the investigation and
-  `docs/moderator-review.md`'s "Known issue" for what this blocks. Don't
-  mistake a `null` you see here for a local bug — check whether bloc has
-  shipped a fix before assuming otherwise.
+- **`hasUnpaidFees`/`userIsMember`** used to come back `null` from every bloc
+  profile method (external API defect — see `docs/bloc-api.md`'s "Addendum").
+  They're now fetched live from `GetMemberFeeStatus` on `/reservation`; use
+  `/api/debug/getmemberfeestatus` to inspect the raw response, and check the
+  dev server log for `[bloc] GetMemberFeeStatus` warnings if the form shows
+  "Unknown".

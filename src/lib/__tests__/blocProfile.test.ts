@@ -16,8 +16,6 @@ describe('getBlocProfile', () => {
     mobile: '+1234567890',
     image: null,
     profileTypeId: 0,
-    hasUnpaidFees: false,
-    userIsMember: true,
     success: true,
     code: 0,
     message: null,

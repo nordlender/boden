@@ -31,7 +31,7 @@ vi.mock('../../db/client', async () => {
 	// 2x A booked for tomorrow and the day after.
 	const [order] = await db
 		.insert(schema.orders)
-		.values({ orderCode: '01AAM', checkoutToken: 'T1', userId: 'u', status: 'scheduled', fromDate: '2026-03-11', toDate: '2026-03-12' })
+		.values({ orderCode: '01AAM', userId: 'u', status: 'scheduled', fromDate: '2026-03-11', toDate: '2026-03-12' })
 		.returning();
 	await db.insert(schema.orderItems).values({ orderId: order.id, itemId: 1, requestedQuantity: 2 });
 	return { db };

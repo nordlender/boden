@@ -4,15 +4,15 @@
 // separate near-identical implementations: reservation/ReservationItemRow,
 // moderator/OrderItemRow, and moderator/BlindCountList's inline row.
 //
-// Per-context extras (availability badges, a split-order button, an
+// Per-context extras (availability badges, a remove button, an
 // adjustable quantity input, a retrieved/correction readout, ...) are left to
 // the caller via slots rather than a growing pile of boolean props:
 //   - default slot: extra stacked lines under the name/attributes/quantity
 //     (e.g. OrderItemRow's availability badges, BlindCountList's correction)
 //   - "badge" slot: trailing pill(s) next to the text block (e.g.
-//     ReservationItemRow's availability badge + split tag)
+//     ReservationItemRow's availability badge)
 //   - "action" slot: trailing control at the end of the row (e.g. a remove
-//     button, a split-order button, an adjustable qty input)
+//     button, an adjustable qty input)
 import Thumbnail from './Thumbnail.astro';
 import { formatAttributes, type Attribute } from '../../lib/attributes';
 

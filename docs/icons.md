@@ -92,7 +92,6 @@ const iconName = typeof entry === 'string' ? entry : entry[variant as keyof type
 | *(not a wizard-doc placeholder)* | trash / "Delete n item(s)" button | `tabler:trash` | `icons.ts`'s `trash` key |
 | *(not a wizard-doc placeholder)* | inline edit trigger next to an attribute's value in the details box | `tabler:pencil` | `icons.ts`'s `edit` key |
 | *(not a wizard-doc placeholder)* | main-section search bar | `tabler:search` | `docs/wizard.md` calls for a search bar but doesn't assign it an icon; added here |
-| `{separate_order_icon}` | reservation page: split a mixed-availability item into its own order | `tabler:arrows-split-2` | not part of the admin wizard — `icons.ts`'s `splitOrder` key, used on `/reservation` |
 
 All of the above exist in the installed Tabler set — checked against
 `@iconify-json/tabler`'s `icons.json` directly, not just assumed from the

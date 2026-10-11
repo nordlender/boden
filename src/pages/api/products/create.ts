@@ -5,7 +5,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { createProduct } from '../../../lib/products';
-import { requireAdmin, safeRedirectTarget } from '../../../lib/wizard-http';
+import { requireAdmin, safeRedirectTarget } from '../../../lib/http';
 import { parseProductForm } from '../../../lib/productForm';
 import { saveOr400 } from '../../../lib/productHttp';
 

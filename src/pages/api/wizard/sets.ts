@@ -5,7 +5,7 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { createSet } from '../../../lib/setWizard';
-import { parseNamedEntityForm, requireAdmin, safeRedirectTarget } from '../../../lib/wizard-http';
+import { parseNamedEntityForm, requireAdmin, safeRedirectTarget } from '../../../lib/http';
 
 export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 	const forbidden = requireAdmin(locals);

@@ -1,0 +1,14 @@
+---
+// The shop grid with live catalogue data. Rendered as a server island
+// (`<ShopGrid server:defer>` in src/pages/index.astro): the page around it
+// is prerendered and ships a build-time snapshot of this same grid as its
+// fallback, which this component replaces once the browser fetches it — so
+// first paint is instant, and products published/hidden since the last
+// build still show up (or disappear) right after load.
+import ItemGrid from './ItemGrid.astro';
+import { getShopGridProducts } from '../../lib/shop';
+
+const products = await getShopGridProducts();
+---
+
+<ItemGrid products={products} />

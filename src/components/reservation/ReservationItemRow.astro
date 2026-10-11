@@ -1,7 +1,6 @@
 ---
 import ItemLine from '../ui/ItemLine.astro';
 import Badge from '../ui/Badge.astro';
-import AppIcon from '../icons/AppIcon.astro';
 import SetChildrenList from '../cart/SetChildrenList.astro';
 
 interface Props {
@@ -17,7 +16,7 @@ interface Props {
 	// its own to join).
 	subtitle: string | null;
 	// Only for a set row — its resolved components, shown indented and
-	// smaller underneath, read-only (never independently split/removed —
+	// smaller underneath, read-only (never independently removed —
 	// see cart.ts's CartSetChild).
 	components?: { productTitle: string; quantityPerSet: number }[];
 }
@@ -40,23 +39,18 @@ const lineKey = `${kind}:${id}`;
 		{kind === 'set' && <Badge class="mt-0.5 inline-block">Set</Badge>}
 		<Fragment slot="badge">
 			<p data-availability-badge hidden class="rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"></p>
-
-			<p data-split-tag hidden class="rounded-full bg-selected px-2 py-0.5 text-xs font-medium text-text-inverted">
-				Separate order
-			</p>
 		</Fragment>
 
 		<Fragment slot="action">
 			<button
 				type="button"
-				data-split-order-button
+				data-remove-item-button
 				hidden
-				aria-pressed="false"
-				title="Move this item to a separate order"
-				class="shrink-0 rounded-md border border-border-strong p-1.5 text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-selected aria-pressed:bg-selected aria-pressed:text-text-inverted"
+				title={`Remove this ${kind} from your cart`}
+				class="shrink-0 rounded-md border border-border-strong px-2 py-1 text-sm text-text-muted hover:bg-bg-subtle hover:text-text"
 			>
-				<AppIcon name="splitOrder" size={16} />
-				<span class="sr-only">Move {productTitle} to a separate order</span>
+				Remove
+				<span class="sr-only">{productTitle} from your cart</span>
 			</button>
 		</Fragment>
 	</ItemLine>

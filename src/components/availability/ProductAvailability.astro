@@ -1,8 +1,9 @@
 ---
 // The product page's "Availability" section — rendered as a server island
-// (`<ProductAvailability server:defer>` in src/pages/products/[slug].astro)
-// so the counts are always live even though the page around it is built
-// ahead of time.
+// (`<ProductAvailability server:defer>` in src/pages/products/[slug].astro).
+// The page itself renders per request, so the island isn't needed for
+// freshness any more; it's kept so the rest of the page shows straight away
+// with a skeleton while the per-day counts load.
 //
 // One calendar per variant is rendered; only the selected one shows. The
 // page wrapper carries `data-selected-variant="item-<id>"`/"set-<id>" (set

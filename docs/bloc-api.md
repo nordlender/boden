@@ -107,6 +107,18 @@ API, reported to the provider by the user — see `docs/moderator-review.md`'s
 "Known issue" section for what this blocks and `docs/auth-testing.md`'s
 "Known, still-open items" for the retest procedure.
 
+### Update — `api/fee/GetMemberFeeStatus?userId=...`
+
+The provider fixed the defect above with a dedicated method for these flags.
+`src/lib/blocFeeStatus.ts` calls it live on every `/reservation` visit (not at
+sign-in — the values are not stored in the JWT/session, so they can't go
+stale). The `account/*` profile responses are no longer read for these fields.
+Confirmed live response: `{ userId, siteId, isMember, hasUnpaidFees, success,
+message, errorCode, errorMessage }` — `isMember` maps to our `userIsMember`.
+Anything but an explicit `success: true`, a non-OK status, a timeout (5 s) or a
+non-boolean flag yields `null` ("Unknown"), never a failed page. Try it with the
+caller-scoped `/api/debug/getmemberfeestatus`.
+
 ## Reference
 
 - `docs/rental-shop.md` §6 "Upsert user on sign-in", §7 "Role API integration",

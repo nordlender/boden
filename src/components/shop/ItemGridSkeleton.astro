@@ -1,0 +1,23 @@
+---
+// Placeholder tiles shaped like ItemGrid/ItemCard, shown while the shop
+// grid's server island loads when there's no build-time snapshot to show
+// instead (e.g. a build against an empty database).
+interface Props {
+	count?: number;
+}
+
+const { count = 8 } = Astro.props;
+---
+
+<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4" aria-busy="true" aria-label="Loading products">
+	{
+		Array.from({ length: count }, () => (
+			<div class="flex animate-pulse flex-col overflow-hidden rounded-lg border border-border bg-surface">
+				<div class="aspect-square bg-bg-subtle" />
+				<div class="p-3">
+					<div class="h-4 w-2/3 rounded bg-bg-subtle" />
+				</div>
+			</div>
+		))
+	}
+</div>

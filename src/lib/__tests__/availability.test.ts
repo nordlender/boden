@@ -43,7 +43,7 @@ vi.mock('../../db/client', async () => {
 		n++;
 		const [row] = await db
 			.insert(schema.orders)
-			.values({ orderCode: `0${n}AAM`, checkoutToken: `T${n}`, userId: 'u', status, fromDate, toDate })
+			.values({ orderCode: `0${n}AAM`, userId: 'u', status, fromDate, toDate })
 			.returning();
 		for (const line of lines) {
 			await db.insert(schema.orderItems).values({ orderId: row.id, itemId: line.itemId, requestedQuantity: line.requested, retrievedQuantity: line.retrieved ?? null });

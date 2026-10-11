@@ -1,0 +1,10 @@
+---
+// Placeholder shaped like ProductAvailability's section, shown while its
+// server island loads.
+---
+<section class="flex flex-col gap-2 border-t border-border pt-4" aria-busy="true" aria-label="Loading availability">
+	<p class="text-sm font-medium text-text">Availability</p>
+	<div class="grid animate-pulse grid-cols-7 gap-1 pt-5">
+		{Array.from({ length: 28 }, () => <div class="h-8 rounded bg-bg-subtle" />)}
+	</div>
+</section>

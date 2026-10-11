@@ -8,9 +8,14 @@ import WizardHeader from '../../components/wizard/WizardHeader.astro';
 import ItemPanel from '../../components/wizard/ItemPanel.astro';
 import AddItemPanel from '../../components/wizard/AddItemPanel.astro';
 import { getWizardItems, listProductOptions } from '../../lib/wizard';
+import { getDailyAvailability } from '../../lib/availability';
+import { CALENDAR_DAYS } from '../../lib/availabilityCalendar';
+import { todayIsoInOslo } from '../../lib/dates';
 
 const redirectTo = Astro.url.pathname;
 const [{ unassigned, assigned }, products] = await Promise.all([getWizardItems(), listProductOptions()]);
+const today = todayIsoInOslo();
+const dailyByItem = getDailyAvailability([...unassigned, ...assigned].map((item) => item.id), today, CALENDAR_DAYS, { today });
 
 const toItemView = (item: Awaited<ReturnType<typeof getWizardItems>>['unassigned'][number]) => ({
 	itemId: item.id,
@@ -23,6 +28,7 @@ const toItemView = (item: Awaited<ReturnType<typeof getWizardItems>>['unassigned
 	description: item.description,
 	attributes: item.attributes,
 	missingAttributeTemplate: item.missingAttributeTemplate,
+	availability: { start: today, daily: dailyByItem.get(item.id) ?? [] },
 });
 ---
 <AdminLayout title="Items">

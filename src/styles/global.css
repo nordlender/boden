@@ -52,6 +52,22 @@
 	--ui-success-subtle: var(--color-emerald-50);
 	--ui-success-border: var(--color-emerald-200);
 	--ui-success-text: var(--color-emerald-800);
+	/* Availability scale (AvailabilityCalendar): units available that day,
+	   0 (red) … 4+ (green). Hues mixed with transparent, so each cell blends
+	   with whatever it sits on — tints on light surfaces, glows on dark ones.
+	   Opacity rises toward red, so lightness changes steadily step to step
+	   (readable without telling the hues apart) and "none left" stands out
+	   most. Dark mode has its own opacities (see the dark blocks): there a
+	   stronger fill reads *lighter*, so the steps need different spacing.
+	   Step 2 is amber, not yellow: yellow is so light it breaks the lightness
+	   order. Light mode: L 71→96, text contrast >= 5.9:1. Counts on top use
+	   normal text tokens, never these colours. Alternatives considered:
+	   stepped solid colours per mode, or a single-hue (GitHub-style) ramp. */
+	--ui-availability-0: color-mix(in oklch, var(--color-red-500) 50%, transparent);
+	--ui-availability-1: color-mix(in oklch, var(--color-orange-500) 50%, transparent);
+	--ui-availability-2: color-mix(in oklch, var(--color-amber-500) 45%, transparent);
+	--ui-availability-3: color-mix(in oklch, var(--color-lime-500) 30%, transparent);
+	--ui-availability-4: color-mix(in oklch, var(--color-green-500) 12%, transparent);
 
 	--ui-info: var(--color-blue-600);
 	--ui-info-subtle: var(--color-blue-50);
@@ -107,6 +123,14 @@
 		--ui-success-subtle: var(--color-emerald-950);
 		--ui-success-border: var(--color-emerald-800);
 		--ui-success-text: var(--color-emerald-200);
+		/* Availability scale, dark: a stronger fill reads lighter here, so these are
+		   spaced for an even lightness ramp on dark surfaces (min ~7 L between steps,
+		   text contrast >= 5:1) — see :root for the scale itself. */
+		--ui-availability-0: color-mix(in oklch, var(--color-red-600) 40%, transparent);
+		--ui-availability-1: color-mix(in oklch, var(--color-orange-600) 40%, transparent);
+		--ui-availability-2: color-mix(in oklch, var(--color-yellow-600) 35%, transparent);
+		--ui-availability-3: color-mix(in oklch, var(--color-lime-600) 25%, transparent);
+		--ui-availability-4: color-mix(in oklch, var(--color-green-600) 10%, transparent);
 
 		--ui-info: var(--color-blue-500);
 		--ui-info-subtle: var(--color-blue-950);
@@ -168,6 +192,14 @@
 	--ui-success-subtle: var(--color-emerald-950);
 	--ui-success-border: var(--color-emerald-800);
 	--ui-success-text: var(--color-emerald-200);
+	/* Availability scale, dark: a stronger fill reads lighter here, so these are
+	   spaced for an even lightness ramp on dark surfaces (min ~7 L between steps,
+	   text contrast >= 5:1) — see :root for the scale itself. */
+	--ui-availability-0: color-mix(in oklch, var(--color-red-600) 40%, transparent);
+	--ui-availability-1: color-mix(in oklch, var(--color-orange-600) 40%, transparent);
+	--ui-availability-2: color-mix(in oklch, var(--color-yellow-600) 35%, transparent);
+	--ui-availability-3: color-mix(in oklch, var(--color-lime-600) 25%, transparent);
+	--ui-availability-4: color-mix(in oklch, var(--color-green-600) 10%, transparent);
 
 	--ui-info: var(--color-blue-500);
 	--ui-info-subtle: var(--color-blue-950);
@@ -222,6 +254,11 @@
 	--color-success-subtle: var(--ui-success-subtle);
 	--color-success-border: var(--ui-success-border);
 	--color-success-text: var(--ui-success-text);
+	--color-availability-0: var(--ui-availability-0);
+	--color-availability-1: var(--ui-availability-1);
+	--color-availability-2: var(--ui-availability-2);
+	--color-availability-3: var(--ui-availability-3);
+	--color-availability-4: var(--ui-availability-4);
 
 	--color-info: var(--ui-info);
 	--color-info-subtle: var(--ui-info-subtle);

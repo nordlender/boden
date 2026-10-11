@@ -1,0 +1,16 @@
+---
+// The 24h time input shared by the moderator's "Selected days" rows
+// (SelectedPickupDaysForm.astro) and the member-facing time picker on
+// /reservation (ReservationTimePicker.astro), so a time is entered the same
+// way on both sides. Any extra attributes (name, required, data-field, ...)
+// are passed straight through to the <input>.
+interface Props {
+	class?: string;
+	[attr: string]: unknown;
+}
+
+const { class: className, ...attrs } = Astro.props;
+---
+
+{/* lang="en-GB" forces the native time picker to 24h — a bare type="time" instead follows the browser/OS locale, which shows AM/PM on a US-locale Chrome. Fixed width (w-24) so the input doesn't grow once a value is typed in — a bare w-full lets the native picker's intrinsic width stretch the cell. */}
+<input type="time" lang="en-GB" class:list={['w-24 rounded border border-border-interactive px-1.5 py-1 text-xs', className]} {...attrs} />

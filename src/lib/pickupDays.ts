@@ -72,6 +72,31 @@ export async function listPickupDaysOn(date: string): Promise<PickupDayRow[]> {
 	return rows;
 }
 
+// A member's pick-up or return time choice on /reservation: either one of
+// the windows offered on that date (`dayId`) or a free "request a time"
+// (`requestedTime`, HH:MM) — exactly one of the two is set.
+export interface PickupTimeChoice {
+	dayId: number | null;
+	requestedTime: string | null;
+}
+
+// Validates a posted choice against `date` (the order's fromDate for
+// pick-up, toDate for return): a window id must be a real pickup_days row
+// on exactly that date, a requested time must be well-formed HH:MM. Returns
+// null for anything else — including both/neither being supplied — so the
+// caller can't persist a choice the member couldn't have made in the UI.
+export async function resolvePickupTimeChoice(date: string, rawDayId: string, rawTime: string): Promise<PickupTimeChoice | null> {
+	if (rawDayId && rawTime) return null;
+	if (rawDayId) {
+		if (!/^\d+$/.test(rawDayId)) return null;
+		const dayId = Number(rawDayId);
+		const row = await db.select({ id: pickupDays.id }).from(pickupDays).where(and(eq(pickupDays.id, dayId), eq(pickupDays.date, date))).get();
+		return row ? { dayId, requestedTime: null } : null;
+	}
+	if (rawTime && isValidTimeString(rawTime)) return { dayId: null, requestedTime: rawTime };
+	return null;
+}
+
 export interface NewSingleDay {
 	date: string;
 	startTime: string;

@@ -5,7 +5,7 @@ import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
 import ItemQtyLine from '../../components/ui/ItemQtyLine.astro';
 import { getCartLines, type CartLine } from '../../lib/cart';
 import { isValidDateRange } from '../../lib/reservation';
-import { listPickupDaysOn } from '../../lib/pickupDays';
+import { listPickupDaysOn, resolvePickupTimeChoice } from '../../lib/pickupDays';
 import { formatDateDisplay } from '../../lib/dates';
 import { formatAttributes } from '../../lib/attributes';
 
@@ -35,7 +35,17 @@ if (form.get('disclaimerAccepted') !== 'on') {
 const text = (name: string) => form.get(name)?.toString().trim() ?? '';
 const contact = { name: text('name'), email: text('email'), mobile: text('mobile') };
 const note = text('note');
-const pickupWindows = await listPickupDaysOn(fromDate);
+const pickupChoice = await resolvePickupTimeChoice(fromDate, text('pickupDayId'), text('pickupRequestedTime'));
+const returnChoice = await resolvePickupTimeChoice(toDate, text('returnDayId'), text('returnRequestedTime'));
+if (!pickupChoice || !returnChoice) {
+	return Astro.redirect('/reservation?error=invalid_times');
+}
+const [pickupWindows, returnWindows] = await Promise.all([listPickupDaysOn(fromDate), listPickupDaysOn(toDate)]);
+// What the member chose, as display text: the offered window, or their request.
+const describeChoice = (choice: typeof pickupChoice, windows: typeof pickupWindows) => {
+	const window = windows.find((w) => w.id === choice.dayId);
+	return window ? `${window.startTime}–${window.endTime}${window.where ? ` · ${window.where}` : ''}` : `${choice.requestedTime} (requested)`;
+};
 
 // ItemQtyLine only renders "name × qty", so the variant (item attributes, or a
 // set's label) is folded into the name.
@@ -53,6 +63,10 @@ const hiddenFields: Record<string, string> = {
 	email: contact.email,
 	mobile: contact.mobile,
 	note,
+	pickupDayId: pickupChoice.dayId?.toString() ?? '',
+	pickupRequestedTime: pickupChoice.requestedTime ?? '',
+	returnDayId: returnChoice.dayId?.toString() ?? '',
+	returnRequestedTime: returnChoice.requestedTime ?? '',
 	disclaimerAccepted: 'on',
 };
 ---
@@ -62,25 +76,19 @@ const hiddenFields: Record<string, string> = {
 		<h1 class="mb-2 text-2xl font-semibold tracking-tight text-text">Confirm your order</h1>
 		<p class="mb-6 text-sm text-text-muted">Check everything below, then confirm to submit your request.</p>
 
-		<dl class="mb-8 rounded-lg border border-border bg-surface p-4">
-			<dt class="text-xs font-semibold tracking-wide text-text-muted uppercase">Pick-up time</dt>
-			<dd class="mt-1 text-sm text-text">
-				{formatDateDisplay(fromDate, { weekday: true })}
-				{
-					pickupWindows.length === 0 ? (
-						<span class="text-text-muted">· time to be announced</span>
-					) : (
-						<ul>
-							{pickupWindows.map((w) => (
-								<li>
-									{w.startTime}–{w.endTime}
-									{w.where && <span class="text-text-muted"> · {w.where}</span>}
-								</li>
-							))}
-						</ul>
-					)
-				}
-			</dd>
+		<dl class="mb-8 flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
+			<div>
+				<dt class="text-xs font-semibold tracking-wide text-text-muted uppercase">Pick-up time</dt>
+				<dd class="mt-1 text-sm text-text">
+					{formatDateDisplay(fromDate, { weekday: true })} · {describeChoice(pickupChoice, pickupWindows)}
+				</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-semibold tracking-wide text-text-muted uppercase">Return time</dt>
+				<dd class="mt-1 text-sm text-text">
+					{formatDateDisplay(toDate, { weekday: true })} · {describeChoice(returnChoice, returnWindows)}
+				</dd>
+			</div>
 		</dl>
 
 		<div class="mb-8">

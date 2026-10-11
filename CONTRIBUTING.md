@@ -29,5 +29,5 @@ See also this [merge-commit convention gist](https://gist.github.com/qoomon/5dfc
 Enforcement:
 
 - Locally, a `commit-msg` git hook (via husky + commitlint) rejects non-conforming commit messages. It's installed automatically on `npm install` (`prepare` script).
-- In CI, the `commitlint` job on pull requests lints every commit on the PR branch.
-- The `commitlint` check is required in GitHub branch protection for `main`, so non-conforming PRs can't merge.
+- In CI, the `pr-title-lint` job validates the PR title. Squash-merge is the only allowed merge method, so the title becomes the commit message on `main`.
+- The `pr-title-lint` check is required for merging into `main`, so non-conforming PRs can't merge.

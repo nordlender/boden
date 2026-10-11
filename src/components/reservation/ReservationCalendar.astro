@@ -27,11 +27,15 @@ interface Props {
 	// usage) leaves selection unbounded client-side; the server-side cap in
 	// isValidDateRange (src/lib/reservation.ts) always applies regardless.
 	maxRangeDays?: number;
+	// Days that can't be part of the reservation because something in the
+	// cart is already fully booked (src/lib/availability.ts's getUnmetDays).
+	// Greyed out and unselectable as a pick-up or return day.
+	unavailableDates?: string[];
 }
 
 import { todayIsoInOslo } from '../../lib/dates';
 
-const { availablePickupDates = [], value, maxRangeDays } = Astro.props;
+const { availablePickupDates = [], value, maxRangeDays, unavailableDates = [] } = Astro.props;
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
 const todayIso = todayIsoInOslo();
 ---
@@ -46,6 +50,12 @@ const todayIso = todayIsoInOslo();
 			<span class="h-3 w-3 rounded-full border border-border-strong" aria-hidden="true"></span>
 			Request pick up
 		</li>
+		{unavailableDates.length > 0 && (
+			<li class="flex items-center gap-1.5">
+				<span class="h-3 w-3 rounded-full bg-disabled-bg" aria-hidden="true"></span>
+				Booked — not available
+			</li>
+		)}
 	</ul>
 
 	<calendar-range
@@ -56,6 +66,7 @@ const todayIso = todayIsoInOslo();
 		value={value}
 		data-available-pickup-dates={JSON.stringify(availablePickupDates)}
 		data-max-range-days={maxRangeDays}
+		data-unavailable-dates={JSON.stringify(unavailableDates)}
 	>
 		<svg slot="previous" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
 			<path d="M15 6l-6 6l6 6" />
@@ -170,6 +181,18 @@ const todayIso = todayIsoInOslo();
 		background-color: var(--color-selected);
 		color: var(--color-text-inverted);
 	}
+
+	/* Last, so a booked day never looks pickable or selected — not even
+	   inside a selected range. opacity resets cally's built-in 0.5 so the
+	   disabled tokens alone set the contrast. */
+	.reservation-calendar calendar-range::part(disallowed) {
+		background-color: var(--color-disabled-bg);
+		box-shadow: none;
+		color: var(--color-disabled-text);
+		text-decoration: line-through;
+		cursor: not-allowed;
+		opacity: 1;
+	}
 </style>
 
 <script>
@@ -180,19 +203,26 @@ const todayIso = todayIsoInOslo();
 		value?: string;
 		max?: string;
 		getDayParts?: (date: Date) => string;
+		isDateDisallowed?: (date: Date) => boolean;
 	};
 
 	const calendar = document.querySelector<RangeCalendar>('[data-reservation-calendar]');
 	const summary = document.querySelector<HTMLElement>('[data-range-summary]');
 	const maxRangeDays = calendar ? Number(calendar.dataset.maxRangeDays || '') || undefined : undefined;
 
-	if (calendar) {
-		let availableDates: Set<string>;
+	// A data-* attribute holding a JSON array of YYYY-MM-DD dates, as a Set
+	// (empty if the attribute is missing or malformed).
+	function parseDateSet(json: string | undefined): Set<string> {
 		try {
-			availableDates = new Set(JSON.parse(calendar.dataset.availablePickupDates ?? '[]'));
+			const parsed: unknown = JSON.parse(json ?? '[]');
+			return new Set(Array.isArray(parsed) ? parsed.filter((d): d is string => typeof d === 'string') : []);
 		} catch {
-			availableDates = new Set();
+			return new Set();
 		}
+	}
+
+	if (calendar) {
+		const availableDates = parseDateSet(calendar.dataset.availablePickupDates);
 
 		// Cally hands `getDayParts` a local-midnight Date for each rendered
 		// cell — deriving its date string via toISOString() (UTC) shifted the
@@ -201,6 +231,10 @@ const todayIso = todayIsoInOslo();
 		// (also Oslo-anchored — see src/lib/pickupDays.ts) regardless of the
 		// viewer's own device timezone.
 		calendar.getDayParts = (date) => (availableDates.has(dateToIsoInOslo(date)) ? 'pickup-available' : '');
+
+		const unavailableDates = parseDateSet(calendar.dataset.unavailableDates);
+		// Same Oslo-anchored date matching as getDayParts above.
+		if (unavailableDates.size > 0) calendar.isDateDisallowed = (date) => unavailableDates.has(dateToIsoInOslo(date));
 	}
 
 	// Fires once the calendar first upgrades even with a preselected `value`

@@ -54,6 +54,9 @@ export interface CartSetChild {
 	itemId: number;
 	productTitle: string;
 	quantityPerSet: number;
+	// The component item's own total owned — lets the cart total demand per
+	// item across lines (see findOvercommittedItems).
+	stockCount: number;
 }
 
 // Display shape for a cart line pointing at a set. stockCount/inStock are
@@ -76,6 +79,50 @@ export interface CartSetLine {
 }
 
 export type CartLine = CartItemLine | CartSetLine;
+
+export interface ItemDemand {
+	productTitle: string;
+	needed: number;
+	stockCount: number;
+}
+
+/**
+ * Units of each item the cart as a whole asks for, keyed by itemId —
+ * totalled across every line, so a loose item plus a set containing it are
+ * counted together (as checkout does).
+ */
+export function totalItemDemand(lines: CartLine[]): Map<number, ItemDemand> {
+	const totals = new Map<number, ItemDemand>();
+	const add = (itemId: number, productTitle: string, quantity: number, stockCount: number) => {
+		const current = totals.get(itemId) ?? { productTitle, needed: 0, stockCount };
+		current.needed += quantity;
+		totals.set(itemId, current);
+	};
+	for (const line of lines) {
+		if ('setId' in line) {
+			for (const child of line.children) add(child.itemId, child.productTitle, child.quantityPerSet * line.quantity, child.stockCount);
+		} else {
+			add(line.itemId, line.productTitle, line.quantity, line.stockCount);
+		}
+	}
+	return totals;
+}
+
+/**
+ * The items in a totalItemDemand() result that the cart asks for more of
+ * than we own. These can never be reserved for any date, unlike items that
+ * are merely booked. Takes the demand rather than the lines so a caller
+ * that also needs the totals (src/pages/reservation.astro) adds them up once.
+ */
+export function findOvercommittedItems(demand: Map<number, ItemDemand>): Map<number, ItemDemand> {
+	return new Map([...demand].filter(([, item]) => item.needed > item.stockCount));
+}
+
+/** The overcommitted items a given cart line contributes to. */
+export function overcommittedForLine(line: CartLine, overcommitted: Map<number, ItemDemand>): ItemDemand[] {
+	const itemIds = 'setId' in line ? line.children.map((child) => child.itemId) : [line.itemId];
+	return [...new Set(itemIds)].flatMap((id) => overcommitted.get(id) ?? []);
+}
 
 export function getCart(cookies: AstroCookies): CartEntry[] {
 	try {
@@ -200,8 +247,9 @@ async function buildSetLines(entries: { setId: number; quantity: number }[]): Pr
 			const children = childrenBySet.get(row.id) ?? [];
 			// Same rule as sets.ts's getValidSetIds: a set with no components, or
 			// an archived one, is dropped at checkout — so report it as having
-			// nothing in stock here (the cart page then flags it) instead of
-			// offering a line the order flow would silently discard.
+			// nothing in stock here. Nothing flags that to the member yet: the
+			// cart page only checks overcommitted items and today's bookings
+			// (see #308).
 			const orderable = children.length > 0 && children.every((child) => !child.archived);
 			const { stockCount, inStock } = orderable ? computeSetAvailability(children, reserved) : { stockCount: 0, inStock: 0 };
 			return {
@@ -217,6 +265,7 @@ async function buildSetLines(entries: { setId: number; quantity: number }[]): Pr
 					itemId: child.itemId,
 					productTitle: child.productTitle,
 					quantityPerSet: child.quantity,
+					stockCount: child.stockCount,
 				})),
 			};
 		})

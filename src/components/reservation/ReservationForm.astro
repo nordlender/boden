@@ -9,6 +9,8 @@ import type { ReservationCartLineRef } from './reservationFormState';
 interface Props {
 	cartLines: CartLine[];
 	availablePickupDates: string[];
+	// Days the whole cart can't be reserved for (see reservation.astro).
+	unavailableDates: string[];
 	name: string | null;
 	email: string | null;
 	mobile: string | null;
@@ -16,7 +18,7 @@ interface Props {
 	userIsMember: boolean | null;
 }
 
-const { cartLines, availablePickupDates, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
+const { cartLines, availablePickupDates, unavailableDates, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
 
 const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 	'setId' in line
@@ -28,7 +30,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 <div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} class="flex flex-col gap-8">
 	<section>
 		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">1. Pick-up &amp; return dates</h2>
-		<ReservationCalendar availablePickupDates={availablePickupDates} />
+		<ReservationCalendar availablePickupDates={availablePickupDates} unavailableDates={unavailableDates} />
 	</section>
 
 	<section>

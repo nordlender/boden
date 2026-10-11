@@ -7,6 +7,7 @@ import {
 	getDailyAvailability,
 	getHandedOut,
 	getRealAvailability,
+	getUnmetDays,
 	occupiedByDay,
 	setDailyAvailability,
 } from '../availability';
@@ -134,6 +135,16 @@ describe('getAvailableForRange', () => {
 		const result = getAvailableForRange([1, 999], '2026-03-16', '2026-03-12', { today: TODAY });
 		expect(result.get(1)).toBe(0);
 		expect(result.get(999)).toBe(0); // not Infinity, even with stock 0
+	});
+});
+
+describe('getUnmetDays', () => {
+	it('lists the days a combined requirement cannot be met', () => {
+		// 3x item 1 fits on the 9th–11th (3 left) but not the 12th–14th.
+		expect(getUnmetDays([{ itemId: 1, quantity: 3 }], '2026-03-09', 7, { today: TODAY })).toEqual(['2026-03-12', '2026-03-13', '2026-03-14']);
+		// Adding 2x item 2 makes every day unmet (the overdue order leaves 1).
+		expect(getUnmetDays([{ itemId: 1, quantity: 1 }, { itemId: 2, quantity: 2 }], TODAY, 2, { today: TODAY })).toEqual(['2026-03-10', '2026-03-11']);
+		expect(getUnmetDays([], TODAY, 2, { today: TODAY })).toEqual([]);
 	});
 });
 

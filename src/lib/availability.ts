@@ -26,10 +26,12 @@
 // - Overdue: an order not yet past its toDate is assumed returned on time
 //   (occupies fromDate..toDate). An active order past its toDate that hasn't
 //   been returned is still physically out, so its occupied period is
-//   extended one week at a time past toDate until it covers today:
-//   end = toDate + 7 * ceil(daysOverdue / 7) (1–7 days overdue → toDate+7,
-//   8–14 → toDate+14, …). It keeps occupying until a moderator marks it
-//   returned.
+//   extended one week at a time past toDate until it ends strictly after
+//   today: end = toDate + 7 * (floor(daysOverdue / 7) + 1) (1–6 days
+//   overdue → toDate+7, 7–13 → toDate+14, …). Never ending on today itself
+//   matters: otherwise, on every 7th overdue day a booking starting
+//   tomorrow would pass the checks while the item is still out (#311).
+//   It keeps occupying until a moderator marks it returned.
 //
 // All queries are synchronous (`.all()`) so callers that must check
 // availability atomically inside a better-sqlite3 transaction
@@ -73,13 +75,15 @@ export interface Claim {
 
 /**
  * Effective end of an order's occupied period. On time (or not active):
- * its toDate. Overdue: toDate pushed forward in whole weeks until it
- * reaches today — 1–7 days overdue → toDate+7, 8–14 → toDate+14, …
+ * its toDate. Overdue: toDate pushed forward in whole weeks until it lies
+ * strictly after today — 1–6 days overdue → toDate+7, 7–13 → toDate+14, …
+ * (never exactly today, or tomorrow would look free while the item is
+ * still out; see #311).
  */
-function effectiveEnd(status: string, toDate: string, today: string): string {
+export function effectiveEnd(status: string, toDate: string, today: string): string {
 	if (status !== 'active' || toDate >= today) return toDate;
 	const daysOverdue = daysInclusive(toDate, today) - 1;
-	return addDaysIso(toDate, 7 * Math.ceil(daysOverdue / 7));
+	return addDaysIso(toDate, 7 * (Math.floor(daysOverdue / 7) + 1));
 }
 
 /**

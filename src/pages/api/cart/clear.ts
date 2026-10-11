@@ -5,5 +5,5 @@ import { clearCart } from '../../../lib/cart';
 
 export const POST: APIRoute = async ({ cookies, redirect }) => {
 	clearCart(cookies);
-	return redirect('/cart');
+	return redirect('/reservation');
 };

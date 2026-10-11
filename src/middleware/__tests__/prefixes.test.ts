@@ -38,7 +38,7 @@ describe('requiredRole', () => {
   });
 
   it('requires member for signed-in routes', () => {
-    expect(requiredRole('/cart')).toBe('member');
+    expect(requiredRole('/reservation/confirm')).toBe('member');
     expect(requiredRole('/checkout/confirm')).toBe('member');
     expect(requiredRole('/orders/123')).toBe('member');
     expect(requiredRole('/api/orders')).toBe('member');
@@ -57,6 +57,6 @@ describe('isApiRoute', () => {
 
   it('does not treat page routes as API routes', () => {
     expect(isApiRoute('/admin')).toBe(false);
-    expect(isApiRoute('/cart')).toBe(false);
+    expect(isApiRoute('/reservation')).toBe(false);
   });
 });

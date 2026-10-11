@@ -1,0 +1,121 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Button from '../../components/ui/Button.astro';
+import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
+import ItemQtyLine from '../../components/ui/ItemQtyLine.astro';
+import { getCartLines, type CartLine } from '../../lib/cart';
+import { isValidDateRange } from '../../lib/reservation';
+import { listPickupDaysOn } from '../../lib/pickupDays';
+import { formatDateDisplay } from '../../lib/dates';
+import { formatAttributes } from '../../lib/attributes';
+
+// Gated by src/middleware/prefixes.ts (/reservation) — member-only. Only
+// reachable via the reservation form's POST: this page is a read-only
+// overview, the order itself is created by /api/orders/create when the
+// "Confirm order" button below is pressed.
+if (Astro.request.method !== 'POST') {
+	return Astro.redirect('/reservation');
+}
+
+const form = await Astro.request.formData();
+const cartLines = await getCartLines(Astro.cookies);
+if (cartLines.length === 0) {
+	return Astro.redirect('/reservation');
+}
+
+const fromDate = form.get('fromDate')?.toString() ?? '';
+const toDate = form.get('toDate')?.toString() ?? '';
+if (!isValidDateRange({ from: fromDate, to: toDate })) {
+	return Astro.redirect('/reservation?error=invalid_dates');
+}
+if (form.get('disclaimerAccepted') !== 'on') {
+	return Astro.redirect('/reservation?error=disclaimer_required');
+}
+
+const text = (name: string) => form.get(name)?.toString().trim() ?? '';
+const contact = { name: text('name'), email: text('email'), mobile: text('mobile') };
+const note = text('note');
+const pickupWindows = await listPickupDaysOn(fromDate);
+
+// ItemQtyLine only renders "name × qty", so the variant (item attributes, or a
+// set's label) is folded into the name.
+const lineLabel = (line: CartLine) => {
+	const detail = 'setId' in line ? line.label : formatAttributes(line.attributes);
+	const title = 'setId' in line ? `${line.productTitle} (set)` : line.productTitle;
+	return detail ? `${title} — ${detail}` : title;
+};
+// Everything the API route needs, passed through unchanged. Fee/membership
+// status is deliberately absent: /api/orders/create fetches it from bloc itself.
+const hiddenFields: Record<string, string> = {
+	fromDate,
+	toDate,
+	name: contact.name,
+	email: contact.email,
+	mobile: contact.mobile,
+	note,
+	disclaimerAccepted: 'on',
+};
+---
+
+<BaseLayout title="Confirm order">
+	<div class="mx-auto max-w-3xl px-4 py-8">
+		<h1 class="mb-2 text-2xl font-semibold tracking-tight text-text">Confirm your order</h1>
+		<p class="mb-6 text-sm text-text-muted">Check everything below, then confirm to submit your request.</p>
+
+		<dl class="mb-8 rounded-lg border border-border bg-surface p-4">
+			<dt class="text-xs font-semibold tracking-wide text-text-muted uppercase">Pick-up time</dt>
+			<dd class="mt-1 text-sm text-text">
+				{formatDateDisplay(fromDate, { weekday: true })}
+				{
+					pickupWindows.length === 0 ? (
+						<span class="text-text-muted">· time to be announced</span>
+					) : (
+						<ul>
+							{pickupWindows.map((w) => (
+								<li>
+									{w.startTime}–{w.endTime}
+									{w.where && <span class="text-text-muted"> · {w.where}</span>}
+								</li>
+							))}
+						</ul>
+					)
+				}
+			</dd>
+		</dl>
+
+		<div class="mb-8">
+			<OrdersTableRow fromDate={fromDate} toDate={toDate} customerName={contact.name}>
+				<ul class="flex flex-col gap-1 pl-1 text-text-muted">
+					{cartLines.map((line) => <ItemQtyLine name={lineLabel(line)} quantity={line.quantity} />)}
+				</ul>
+			</OrdersTableRow>
+		</div>
+
+		<section class="mb-8 text-sm text-text">
+			<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">Your details</h2>
+			<p>{contact.email}{contact.mobile && ` · ${contact.mobile}`}</p>
+			{note && <p class="mt-2 text-text-muted">Note: {note}</p>}
+		</section>
+
+		<form method="POST" action="/api/orders/create" class="flex items-center gap-4">
+			{Object.entries(hiddenFields).map(([name, value]) => <input type="hidden" name={name} value={value} />)}
+			<Button href="/reservation" variant="secondary" size="lg" data-back-link>Back</Button>
+			<Button type="submit" variant="primary" size="lg">Confirm order</Button>
+		</form>
+	</div>
+</BaseLayout>
+
+<script>
+	// Prefer real history navigation: it lets the browser restore the
+	// reservation form the member just came from. Falls back to the plain
+	// /reservation link (e.g. page opened directly).
+	document.querySelector<HTMLAnchorElement>('[data-back-link]')?.addEventListener('click', (event) => {
+		// Only when we really came from the reservation form (the form POST
+		// sends it as referrer) — otherwise history.back() could leave the flow.
+		const cameFromForm = document.referrer !== '' && new URL(document.referrer).pathname === '/reservation';
+		if (cameFromForm && history.length > 1) {
+			event.preventDefault();
+			history.back();
+		}
+	});
+</script>

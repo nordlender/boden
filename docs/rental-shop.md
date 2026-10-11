@@ -409,11 +409,12 @@ export async function getCartItems(cookies): Promise<CartItem[]> { /* joins agai
 
 ## 6. Reservation & checkout (implemented)
 
-Placing an order is a three-step flow, not a single "place order" action:
+Placing an order is a four-step flow, not a single "place order" action:
 
-1. **`/cart`** — review cart lines, adjust quantity, remove. Links to `/reservation`.
+1. **Cart sidebar** — review cart lines, adjust quantity (0 removes). Its primary action links to `/reservation`; there is no separate `/cart` page.
 2. **`/reservation`** — pick a pick-up (`fromDate`) and return (`toDate`) date. A live `POST /api/reservation/availability` preview flags any cart line that's unavailable for the chosen range; submit stays blocked while any item is unavailable, and the member either changes dates or removes the unavailable items from the cart (`POST /api/cart/remove`) — there are no split orders; one checkout is always one order. The form also displays (read-only, from the bloc session) name/email/mobile and the `hasUnpaidFees`/`userIsMember` flags.
-3. **`POST /api/orders/create`** — re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently). Generates an `NNAAX`-format `orderCode` (last letter always flags the creating member's role — A/B/I/M for admin/board member/instructor(moderator)/member), then redirects to `/checkout/success?order=<orderCode>`.
+3. **`/reservation/confirm`** — the form's submit POSTs here (not to the API). Read-only overview of the order: pick-up/return dates, the pick-up window(s) for the pick-up date, the items (an `OrdersTableRow` preview), contact details and note. Carries the form values forward as hidden fields; its "Confirm order" button posts to `/api/orders/create`. "Back" returns to `/reservation`.
+4. **`POST /api/orders/create`** — re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently). Generates an `NNAAX`-format `orderCode` (last letter always flags the creating member's role — A/B/I/M for admin/board member/instructor(moderator)/member), then redirects to `/checkout/success?order=<orderCode>`.
 
 ```ts
 // src/lib/orders.ts (signatures)
@@ -526,7 +527,6 @@ export const ROUTE_RULES: RouteRule[] = [
   { prefix: '/api/moderator', minRole: 'moderator' },
   { prefix: '/api/messages/add', minRole: 'moderator' },
   { prefix: '/api/messages/delete', minRole: 'moderator' },
-  { prefix: '/cart', minRole: 'member' },
   { prefix: '/checkout', minRole: 'member' },
   { prefix: '/orders', minRole: 'member' },
   { prefix: '/reservation', minRole: 'member' },

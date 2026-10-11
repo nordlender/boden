@@ -123,7 +123,7 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 		if ('itemId' in line) body.set('itemId', String(line.itemId));
 		else body.set('setId', String(line.setId));
 		try {
-			// The endpoint answers with a redirect to /cart, which we don't
+			// The endpoint answers with a redirect to /reservation, which we don't
 			// want to follow — only the cookie update matters here.
 			const res = await fetch('/api/cart/remove', { method: 'POST', body, redirect: 'manual' });
 			if (!res.ok && res.type !== 'opaqueredirect') return;
@@ -134,7 +134,7 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 		cartLines = cartLines.filter((l) => l.key !== key);
 		row.remove();
 		if (cartLines.length === 0) {
-			window.location.href = '/cart';
+			window.location.href = '/reservation';
 			return;
 		}
 		await refreshAvailability(lastFrom, lastTo);

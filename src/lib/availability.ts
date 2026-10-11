@@ -219,7 +219,7 @@ export function getUnmetDays(
 	requirements: { itemId: number; quantity: number }[],
 	from: string,
 	days: number,
-	options: { excludeOrderId?: number; executor?: QueryExecutor; today?: string } = {},
+	options: AvailabilityOptions = {},
 ): string[] {
 	if (requirements.length === 0) return [];
 	const daily = getDailyAvailability(

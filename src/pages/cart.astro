@@ -7,13 +7,13 @@ import SetChildrenList from '../components/cart/SetChildrenList.astro';
 import Badge from '../components/ui/Badge.astro';
 import Button from '../components/ui/Button.astro';
 import ItemLine from '../components/ui/ItemLine.astro';
-import { findOvercommittedItems, getCartLines, overcommittedForLine } from '../lib/cart';
+import { findOvercommittedItems, getCartLines, overcommittedForLine, totalItemDemand } from '../lib/cart';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
 const cartLines = await getCartLines(Astro.cookies);
 // Totalled across lines (a loose item plus a set containing it), the same
 // way checkout counts them — a per-line check misses that.
-const overcommitted = findOvercommittedItems(cartLines);
+const overcommitted = findOvercommittedItems(totalItemDemand(cartLines));
 ---
 
 <BaseLayout title="Cart">

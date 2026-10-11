@@ -425,7 +425,7 @@ describe('findOvercommittedItems', () => {
 
   it('totals an item across a loose line and a set that contains it', () => {
     const lines = [itemLine(1, 2, 2), setLine(1, [{ itemId: 1, quantityPerSet: 1, stockCount: 2 }, { itemId: 2, quantityPerSet: 1, stockCount: 5 }])];
-    const result = findOvercommittedItems(lines);
+    const result = findOvercommittedItems(totalItemDemand(lines));
     expect([...result]).toEqual([[1, { productTitle: 'Item 1', needed: 3, stockCount: 2 }]]);
     // Both lines contribute to the overcommitted item.
     expect(overcommittedForLine(lines[0], result)).toHaveLength(1);
@@ -433,7 +433,7 @@ describe('findOvercommittedItems', () => {
   });
 
   it('reports nothing when the combined cart fits what we own', () => {
-    expect(findOvercommittedItems([itemLine(1, 1, 2), setLine(1, [{ itemId: 1, quantityPerSet: 1, stockCount: 2 }])]).size).toBe(0);
+    expect(findOvercommittedItems(totalItemDemand([itemLine(1, 1, 2), setLine(1, [{ itemId: 1, quantityPerSet: 1, stockCount: 2 }])])).size).toBe(0);
   });
 
   it('totalItemDemand counts every item, overcommitted or not, with set quantities multiplied out', () => {

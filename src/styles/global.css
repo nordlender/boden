@@ -64,11 +64,11 @@
 	   contrast >= 5.9:1. Counts on top use normal text tokens, never these
 	   colours. Alternatives considered: stepped solid colours per mode, or a
 	   single-hue (GitHub-style) ramp. */
-	--ui-availability-0: light-dark(color-mix(in oklch, var(--color-red-500) 50%, transparent), color-mix(in oklch, var(--color-red-600) 40%, transparent));
-	--ui-availability-1: light-dark(color-mix(in oklch, var(--color-orange-500) 50%, transparent), color-mix(in oklch, var(--color-orange-600) 40%, transparent));
-	--ui-availability-2: light-dark(color-mix(in oklch, var(--color-amber-500) 45%, transparent), color-mix(in oklch, var(--color-yellow-600) 35%, transparent));
-	--ui-availability-3: light-dark(color-mix(in oklch, var(--color-lime-500) 35%, transparent), color-mix(in oklch, var(--color-lime-600) 25%, transparent));
-	--ui-availability-4: light-dark(color-mix(in oklch, var(--color-green-500) 30%, transparent), color-mix(in oklch, var(--color-green-600) 10%, transparent));
+	--ui-availability-0: light-dark(color-mix(in oklch, var(--color-red-500) 55%, transparent), color-mix(in oklch, var(--color-red-600) 40%, transparent));
+	--ui-availability-1: light-dark(color-mix(in oklch, var(--color-orange-500) 50%, transparent), color-mix(in oklch, var(--color-orange-600) 37%, transparent));
+	--ui-availability-2: light-dark(color-mix(in oklch, var(--color-amber-500) 45%, transparent), color-mix(in oklch, var(--color-yellow-600) 37%, transparent));
+	--ui-availability-3: light-dark(color-mix(in oklch, var(--color-lime-500) 40%, transparent), color-mix(in oklch, var(--color-lime-600) 30%, transparent));
+	--ui-availability-4: light-dark(color-mix(in oklch, var(--color-green-500) 30%, transparent), color-mix(in oklch, var(--color-green-600) 23%, transparent));
 
 	--ui-info: light-dark(var(--color-blue-600), var(--color-blue-500));
 	--ui-info-subtle: light-dark(var(--color-blue-50), var(--color-blue-950));

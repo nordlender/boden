@@ -11,7 +11,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
 
   const cart = getCart(cookies);
   if (cart.length === 0) {
-    return redirect(redirectWithError('/cart', 'empty_cart'));
+    return redirect(redirectWithError('/reservation', 'cart_empty'));
   }
 
   const form = await request.formData();
@@ -34,7 +34,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   // timestamp is persisted on the order for moderators to see.
   const disclaimerAccepted = form.get('disclaimerAccepted') === 'on';
   if (!disclaimerAccepted) {
-    return redirect('/reservation?error=disclaimer_required');
+    return redirect(redirectWithError('/reservation', 'disclaimer_required'));
   }
 
   // Snapshot of bloc's fee/membership status (see schema.ts's
@@ -70,9 +70,12 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     // resolve for locals.user.id, which upsertUser guarantees exists in
     // normal operation. See orders.ts's createOrder.
     if (result.error === 'user_not_found') {
-      return redirect(redirectWithError('/cart', 'account_not_found'));
+      return redirect(redirectWithError('/reservation', 'account_not_found'));
     }
-    return redirect(redirectWithError('/cart', 'empty_cart'));
+    // 'empty_cart' from createOrder means every line was dropped as
+    // unrentable (archived item/unpublished product) — see orders.ts. Distinct
+    // from the 'cart_empty' check above, where the cart cookie itself was empty.
+    return redirect(redirectWithError('/reservation', result.error === 'empty_cart' ? 'items_unrentable' : 'order_failed'));
   }
 
   setCart(cookies, []);

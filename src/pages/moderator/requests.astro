@@ -1,6 +1,6 @@
 ---
 // Review-stage entry point: every order still pending moderator review,
-// soonest pick-up date first — see src/pages/admin/orders.astro for the
+// earliest submitted first — see src/pages/admin/orders.astro for the
 // OrdersTable pattern this mirrors. Gated by src/middleware/prefixes.ts
 // (ROUTE_RULES via /moderator).
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
@@ -24,7 +24,7 @@ const rows: OrdersTableRow[] = pendingRequests.map((order) => ({
 	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
 		<div>
 			<h1 class="text-xl font-semibold text-text">Order requests</h1>
-			<p class="mt-1 text-sm text-text-muted">Orders waiting for review, soonest pick-up first.</p>
+			<p class="mt-1 text-sm text-text-muted">Orders waiting for review, earliest submitted first.</p>
 		</div>
 
 		<OrdersTable

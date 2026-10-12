@@ -3,7 +3,7 @@
 // unit directly; everything else only sees the stock count derived here.
 import { asc, eq, getTableName, inArray, sql, type Column } from 'drizzle-orm';
 import { db } from '../db/client';
-import { units, users, UNIT_STATUSES, type UnitNote, type UnitStatus } from '../db/schema';
+import { items, units, users, UNIT_STATUSES, type UnitNote, type UnitStatus } from '../db/schema';
 
 // Always "table"."column". Drizzle renders a column inside a select list
 // unqualified ("id"), which inside the correlated subquery below would bind
@@ -118,6 +118,16 @@ export async function getUnitsPageItem(itemId: number) {
 
 export async function listUnitsForItem(itemId: number): Promise<Unit[]> {
 	return db.select().from(units).where(eq(units.itemId, itemId)).orderBy(asc(units.id)).all();
+}
+
+/** Every unit of every item, by id — the flat /admin/units listing. */
+export async function listAllUnits() {
+	return db
+		.select({ unit: units, itemName: items.name, itemArchived: items.archived })
+		.from(units)
+		.innerJoin(items, eq(units.itemId, items.id))
+		.orderBy(asc(units.id))
+		.all();
 }
 
 export async function getUnit(unitId: number): Promise<Unit | undefined> {

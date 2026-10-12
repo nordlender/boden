@@ -5,7 +5,7 @@ import { orderItems, orders, units, users } from '../../db/schema';
 import { insertItems } from '../../db/testDb';
 import { getOverbookedOrders, getStockCounts } from '../availability';
 import { createItem } from '../wizard';
-import { addUnitNote, createUnits, getUnit, listUnitsForItem, normalizeOpts, parseOptsText, setUnitStatus, updateUnit } from '../units';
+import { addUnitNote, createUnits, getUnit, listAllUnits, listUnitsForItem, normalizeOpts, parseOptsText, setUnitStatus, updateUnit } from '../units';
 
 // Fixture: item 1 with 3 blank active units (ids 1..3).
 vi.mock('../../db/client', async () => {
@@ -116,6 +116,14 @@ describe('unit fields', () => {
 		expect(sqliteError(() => db.update(units).set({ opts: [] as unknown as Record<string, string> }).where(eq(units.id, 3)).run())).toMatch(
 			/CHECK constraint failed: units_opts_is_object/,
 		);
+	});
+
+	it('listAllUnits lists every unit across items, by id, with its item name', async () => {
+		const rows = await listAllUnits();
+		const ids = rows.map((row) => row.unit.id);
+		expect(ids).toEqual([...ids].sort((a, b) => a - b));
+		expect(ids).toHaveLength((await db.select().from(units).all()).length);
+		expect(new Set(rows.map((row) => row.itemName))).toEqual(new Set(['Dragon Cam #2', 'Ice Axe', 'Rope', 'Harness']));
 	});
 
 	it('normalizeOpts trims and drops empty keys', () => {

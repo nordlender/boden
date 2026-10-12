@@ -8,6 +8,7 @@
 // to what a shopper should see rather than the admin wizard's full set.
 import { db } from '../db/client';
 import { getOccupiedToday } from './availability';
+import { itemStockExtras } from './units';
 import { computeSetAvailability, getSetChildrenDetailedBulk, getSetComponentDisplayBulk, type SetChildDetail, type SetComponentDisplay } from './sets';
 
 export interface ShopAttribute {
@@ -165,6 +166,7 @@ export async function getShopItems(): Promise<ShopItem[]> {
 	const rows = await db.query.items.findMany({
 		where: (t, { eq }) => eq(t.archived, false),
 		orderBy: (t, { asc }) => asc(t.id),
+		extras: itemStockExtras,
 		with: {
 			product: {
 				with: { category: true, subcategory: true },
@@ -318,6 +320,7 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 			links: true,
 			attributeKeys: { orderBy: (t, { asc }) => asc(t.sortOrder) },
 			items: {
+				extras: itemStockExtras,
 				with: { attributeValues: { with: { attribute: true } } },
 			},
 			sets: true,

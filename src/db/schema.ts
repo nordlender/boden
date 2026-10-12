@@ -115,10 +115,11 @@ export const items = sqliteTable('items', {
   // from this field.
   name: text('name').notNull(),
   imageUrl: text('image_url'),
-  // Total owned. Availability is never stored — it's derived per day from
-  // the orders occupying the item on that day (src/lib/availability.ts): a
-  // stored second number can only drift out of sync.
-  stockCount: integer('stock_count').notNull().default(1),
+  // No stock column: how many of an item exist is the number of its
+  // `units` with status 'active' (src/lib/units.ts's activeUnitCount), and
+  // availability is derived per day from the orders occupying the item on
+  // that day (src/lib/availability.ts). A stored count could only drift out
+  // of sync with the units table.
   // Soft delete: items referenced by orderItems can't be hard-deleted.
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -150,6 +151,64 @@ export const itemAttributeValues = sqliteTable('item_attribute_values', {
   uniqueIndex('item_attribute_values_item_attribute_unique').on(table.itemId, table.attributeId),
   index('item_attribute_values_item_id_idx').on(table.itemId),
   index('item_attribute_values_attribute_id_idx').on(table.attributeId),
+]);
+
+// ---------------------------------------------------------------------------
+// Units — one physical object of an item (e.g. one specific Dragon Cam #2,
+// bought and manufactured at its own time), tracked individually because
+// this is safety equipment: service, retirement and its lifetime history
+// belong to the physical object, not to the item as a whole. Admin-only —
+// rentals never see units: orderItems keep referencing items, and a
+// moderator hands out "a Dragon Cam #2", not a particular unit (see #276).
+//
+// An item's stock is derived from these rows: count(status = 'active').
+// Taking a unit out of service or retiring it shrinks availability with no
+// other bookkeeping. Units are never hard-deleted — a retired unit stays as
+// the record of what happened to it.
+// ---------------------------------------------------------------------------
+
+export const UNIT_STATUSES = ['active', 'out_of_service', 'retired'] as const;
+export type UnitStatus = (typeof UNIT_STATUSES)[number];
+
+// One entry in a unit's lifetime log. `date` is chosen by the admin (it can
+// be backdated, e.g. "inspected 2025-03-01"), not the time it was typed in.
+// Admin/moderator-authored only — member/moderator damage *reports* will be
+// their own table later, kept separate from this log.
+export interface UnitNote {
+  date: string; // YYYY-MM-DD
+  text: string;
+  authorId?: string | null; // users.id of whoever wrote it, when known
+}
+
+export const units = sqliteTable('units', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  // No onDelete: an item can't be hard-deleted out from under its units
+  // (items are soft-deleted via `archived` anyway).
+  itemId: integer('item_id').notNull().references(() => items.id),
+  brand: text('brand'),
+  model: text('model'),
+  // Physical marking on the unit itself (engraving, tape, tag number) — how
+  // an admin holding it in their hand finds its row.
+  marking: text('marking'),
+  serialNumber: text('serial_number'),
+  manufacturedAt: text('manufactured_at'), // YYYY-MM-DD
+  purchasedAt: text('purchased_at'), // YYYY-MM-DD
+  status: text('status', { enum: UNIT_STATUSES }).notNull().default('active'),
+  // Append-only lifetime log, oldest first — see UnitNote.
+  notes: text('notes', { mode: 'json' }).$type<UnitNote[]>().notNull().default(sql`'[]'`),
+  // Optional per-unit key/value facts that only some units have (e.g. a
+  // rope cut down to `{ "length": "58 m" }`). Normally empty.
+  opts: text('opts', { mode: 'json' }).$type<Record<string, string>>().notNull().default(sql`'{}'`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  // Covers the itemId FK too (leftmost column), and is exactly the shape of
+  // the stock-count subquery: where item_id = ? and status = 'active'.
+  index('units_item_id_status_idx').on(table.itemId, table.status),
+  index('units_serial_number_idx').on(table.serialNumber),
+  // Drizzle's text enum is TypeScript-only; this makes SQLite enforce it too.
+  check('units_status_valid', sql`${table.status} IN ('active', 'out_of_service', 'retired')`),
+  check('units_notes_is_array', sql`json_valid(${table.notes}) AND json_type(${table.notes}) = 'array'`),
+  check('units_opts_is_object', sql`json_valid(${table.opts}) AND json_type(${table.opts}) = 'object'`),
 ]);
 
 // ---------------------------------------------------------------------------
@@ -476,6 +535,14 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   attributeValues: many(itemAttributeValues),
   orderItems: many(orderItems),
   setItems: many(setItems),
+  units: many(units),
+}));
+
+export const unitsRelations = relations(units, ({ one }) => ({
+  item: one(items, {
+    fields: [units.itemId],
+    references: [items.id],
+  }),
 }));
 
 export const itemAttributeValuesRelations = relations(itemAttributeValues, ({ one }) => ({

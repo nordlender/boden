@@ -20,12 +20,12 @@ import { getReservationAvailability } from '../reservation';
 const TODAY = '2026-03-10';
 
 vi.mock('../../db/client', async () => {
-	const { createTestDb } = await import('../../db/testDb');
+	const { createTestDb, insertItems } = await import('../../db/testDb');
 	const schema = await import('../../db/schema');
 	const db = createTestDb();
 
 	const [product] = await db.insert(schema.products).values({ slug: 'p', title: 'P', status: 'published' }).returning();
-	await db.insert(schema.items).values([
+	await insertItems(db, [
 		{ productId: product.id, slug: 'a', name: 'A', stockCount: 4 },
 		{ productId: product.id, slug: 'b', name: 'B', stockCount: 2 },
 		{ productId: product.id, slug: 'c', name: 'C', stockCount: 1 },

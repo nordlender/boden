@@ -1,6 +1,7 @@
 import type { AstroCookies } from 'astro';
 import { db } from '../db/client';
 import { getOccupiedToday } from './availability';
+import { itemStockExtras } from './units';
 import { sortAttributes } from './shop';
 import { computeSetAvailability, getSetChildrenDetailedBulk } from './sets';
 
@@ -148,6 +149,7 @@ async function buildItemLines(entries: { itemId: number; quantity: number }[]): 
 	const itemIds = entries.map((e) => e.itemId);
 	const rows = await db.query.items.findMany({
 		where: (t, { inArray }) => inArray(t.id, itemIds),
+		extras: itemStockExtras,
 		with: {
 			product: true,
 			attributeValues: { with: { attribute: true } },

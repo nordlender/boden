@@ -495,3 +495,29 @@ design), so it effectively reads "in stock if any item in the group is
 available." `ItemGrid.astro`/`ItemCard.astro` take product-level props now;
 `ItemCard.astro` no longer renders a per-variant attribute label, since a
 tile can represent several variants at once.
+
+## Schema addition: units (physical objects behind an item) — #276
+`items.stockCount` is gone. A new `units` table (see `src/db/schema.ts`) has
+one row per physical object of an item: `itemId`, `brand`, `model`,
+`marking`, `serialNumber`, `manufacturedAt`, `purchasedAt`, `status`
+(`active` / `out_of_service` / `retired`), `notes` (JSON array of
+`{ date, text, authorId }`, the unit's lifetime log, appended to and never
+rewritten) and `opts` (JSON object of optional key/value facts, normally
+empty, e.g. `{ "length": "58 m" }` for a rope that was cut).
+
+- **Stock is derived**: an item's stock is `count(units where status =
+  'active')`, via `activeUnitCount` / `itemStockExtras` in
+  `src/lib/units.ts`. Taking a unit out of service or retiring it lowers
+  availability immediately, with no extra bookkeeping. Every former reader of
+  `items.stockCount` goes through it.
+- **Rentals are unchanged**: `orderItems` still reference items. Units are
+  admin-only bookkeeping (`/admin/items/[id]/units`).
+- **Never hard-deleted**: retired units stay as the record of what happened
+  to them (same reasoning as `items.archived`).
+- **Overbooking is a warning, not a block**: when stock drops below what's
+  already booked, the units page lists the affected orders
+  (`getOverbookedOrders` in `src/lib/availability.ts`). The admin decides what
+  to do; nothing is cancelled automatically.
+- **Separate from reports**: `notes` holds admin-written history only.
+  Member/moderator damage reports will be their own table later, assignable
+  to a unit.

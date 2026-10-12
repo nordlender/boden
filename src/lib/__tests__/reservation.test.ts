@@ -21,7 +21,7 @@ const ITEM_A_ID = 1;
 const ITEM_B_ID = 2;
 
 vi.mock('../../db/client', async () => {
-	const { createTestDb } = await import('../../db/testDb');
+	const { createTestDb, insertItems } = await import('../../db/testDb');
 	const schema = await import('../../db/schema');
 
 	const db = createTestDb();
@@ -32,8 +32,8 @@ vi.mock('../../db/client', async () => {
 		.values({ slug: 'test-rope', title: 'Test Rope', categoryId: category.id, status: 'published' })
 		.returning();
 	// Item A: 2 in stock. Item B: 5 in stock, never reserved by anyone.
-	await db.insert(schema.items).values({ productId: product.id, slug: 'item-a', name: 'Item A', stockCount: 2 });
-	await db.insert(schema.items).values({ productId: product.id, slug: 'item-b', name: 'Item B', stockCount: 5 });
+	await insertItems(db, { productId: product.id, slug: 'item-a', name: 'Item A', stockCount: 2 });
+	await insertItems(db, { productId: product.id, slug: 'item-b', name: 'Item B', stockCount: 5 });
 	const [user] = await db.insert(schema.users).values({ id: 'other-user', name: 'Other', email: 'other@example.com' }).returning();
 
 	// An existing order holds 1x item A for 2026-01-05..2026-01-10.

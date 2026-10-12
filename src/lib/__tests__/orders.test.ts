@@ -44,7 +44,7 @@ const SET_X_ID = 1;
 const SET_Y_ID = 2; // contains only item D, which is archived
 
 vi.mock('../../db/client', async () => {
-	const { createTestDb } = await import('../../db/testDb');
+	const { createTestDb, insertItems } = await import('../../db/testDb');
 	const schema = await import('../../db/schema');
 
 	const db = createTestDb();
@@ -56,9 +56,9 @@ vi.mock('../../db/client', async () => {
 		.returning();
 	// Item A: 1 in stock, so a single existing reservation fully books it.
 	// Item B and item C: 5 in stock each, never reserved by anyone.
-	await db.insert(schema.items).values({ productId: product.id, slug: 'item-a', name: 'Item A', stockCount: 1 });
-	await db.insert(schema.items).values({ productId: product.id, slug: 'item-b', name: 'Item B', stockCount: 5 });
-	await db.insert(schema.items).values({ productId: product.id, slug: 'item-c', name: 'Item C', stockCount: 5 });
+	await insertItems(db, { productId: product.id, slug: 'item-a', name: 'Item A', stockCount: 1 });
+	await insertItems(db, { productId: product.id, slug: 'item-b', name: 'Item B', stockCount: 5 });
+	await insertItems(db, { productId: product.id, slug: 'item-c', name: 'Item C', stockCount: 5 });
 	// vi.mock factories are hoisted above top-level const declarations, so
 	// these use literal ids (1/2/3) rather than the ITEM_*_ID/SET_X_ID
 	// constants declared above — same reason the item inserts below do too.
@@ -69,7 +69,7 @@ vi.mock('../../db/client', async () => {
 	]);
 	// Item D (archived) and Set Y (containing it) — for the "a set with an
 	// archived component is dropped whole, not partially resolved" case.
-	await db.insert(schema.items).values({ productId: product.id, slug: 'item-d', name: 'Item D', stockCount: 5, archived: true });
+	await insertItems(db, { productId: product.id, slug: 'item-d', name: 'Item D', stockCount: 5, archived: true });
 	await db.insert(schema.sets).values({ productId: product.id, slug: 'set-y', name: 'Set Y' });
 	await db.insert(schema.setItems).values({ setId: 2, itemId: 4, quantity: 1 });
 	await db.insert(schema.users).values({ id: 'member-1', name: 'Member', email: 'member@example.com' });

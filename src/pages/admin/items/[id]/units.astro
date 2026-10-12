@@ -1,0 +1,212 @@
+---
+export const prerender = false;
+
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin).
+// The physical units behind one item (src/db/schema.ts's `units`): add a
+// batch, edit a unit's fields/opts, take it out of service or retire it,
+// and keep its lifetime log. Every write goes to /api/wizard/units.
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import BackLink from '../../../../components/moderator/BackLink.astro';
+import Badge from '../../../../components/ui/Badge.astro';
+import Button from '../../../../components/ui/Button.astro';
+import Callout from '../../../../components/ui/Callout.astro';
+import { UNIT_STATUSES, type UnitStatus } from '../../../../db/schema';
+import { formatOptsText, getNoteAuthorNames, getUnitsPageItem, listUnitsForItem, UNIT_STATUS_LABELS } from '../../../../lib/units';
+import { getOverbookedOrders } from '../../../../lib/availability';
+import { todayIsoInOslo } from '../../../../lib/dates';
+import type { BadgeTone } from '../../../../lib/badge-styles';
+
+// How far ahead to look for orders a lowered stock can no longer cover.
+const OVERBOOK_HORIZON_DAYS = 180;
+
+const itemId = Number(Astro.params.id);
+if (!Number.isInteger(itemId) || itemId <= 0) return Astro.redirect('/admin/items');
+const item = await getUnitsPageItem(itemId);
+if (!item) return Astro.redirect('/admin/items');
+
+const today = todayIsoInOslo();
+const STATUS_ORDER: Record<UnitStatus, number> = { active: 0, out_of_service: 1, retired: 2 };
+const unitRows = (await listUnitsForItem(itemId)).sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || a.id - b.id);
+const authorNames = await getNoteAuthorNames(unitRows);
+const overbooked = getOverbookedOrders(itemId, OVERBOOK_HORIZON_DAYS, { today });
+const count = (status: UnitStatus) => unitRows.filter((unit) => unit.status === status).length;
+
+const STATUS_TONES: Record<UnitStatus, BadgeTone> = { active: 'success', out_of_service: 'warning', retired: 'neutral' };
+const redirectTo = Astro.url.pathname;
+const inputClass = 'min-w-0 rounded border border-border-interactive bg-surface px-2 py-1 text-sm text-text';
+const labelClass = 'flex flex-col gap-1 text-xs font-medium text-text-muted';
+const fields = [
+	{ name: 'brand', label: 'Brand', type: 'text' },
+	{ name: 'model', label: 'Model', type: 'text' },
+	{ name: 'marking', label: 'Marking', type: 'text' },
+	{ name: 'serialNumber', label: 'Serial number', type: 'text' },
+	{ name: 'manufacturedAt', label: 'Manufactured', type: 'date' },
+	{ name: 'purchasedAt', label: 'Purchased', type: 'date' },
+] as const;
+---
+
+<AdminLayout title={`Units · ${item.name}`}>
+	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-4 sm:p-8">
+		<BackLink href="/admin/items">Back to items</BackLink>
+
+		<div>
+			<h1 class="text-xl font-semibold text-text">{item.name}</h1>
+			<p class="mt-1 text-sm text-text-muted">
+				{item.product?.title ?? 'Unassigned'} · #{item.id}{item.archived && ' · archived'}
+			</p>
+			<p class="mt-2 text-sm text-text">
+				<strong>{count('active')}</strong> active (stock)
+				<span class="text-text-muted"> · {count('out_of_service')} out of service · {count('retired')} retired</span>
+			</p>
+		</div>
+
+		{overbooked.length > 0 && (
+			<Callout variant="warning" title="Stock no longer covers existing bookings">
+				<p>
+					With {count('active')} active unit{count('active') === 1 ? '' : 's'}, these orders overlap days where this item is overbooked. Contact the members or put a unit back in service.
+				</p>
+				<ul class="mt-2 list-disc pl-5">
+					{overbooked.map((order) => (
+						<li>
+							<a class="underline" href={`/moderator/review/${order.orderCode}`}>{order.orderCode}</a> — {order.fromDate} → {order.toDate} ({order.status})
+						</li>
+					))}
+				</ul>
+			</Callout>
+		)}
+
+		<details class="rounded-lg border border-border bg-surface">
+			<summary class="cursor-pointer px-4 py-3 text-sm font-medium text-text">Add units</summary>
+			<form method="post" action="/api/wizard/units" class="grid grid-cols-1 gap-3 border-t border-border p-4 sm:grid-cols-3">
+				<input type="hidden" name="action" value="create" />
+				<input type="hidden" name="itemId" value={item.id} />
+				<input type="hidden" name="redirectTo" value={redirectTo} />
+				<label class={labelClass}>
+					How many
+					<input class={inputClass} type="number" name="count" min="1" max="100" value="1" required />
+				</label>
+				{fields.map((field) => (
+					<label class={labelClass}>
+						{field.label}
+						<input class={inputClass} type={field.type} name={field.name} />
+					</label>
+				))}
+				<p class="text-xs text-text-muted sm:col-span-3">Every unit in the batch gets these fields; set markings and serials per unit afterwards.</p>
+				<div class="sm:col-span-3">
+					<Button type="submit" variant="primary" size="sm">Add</Button>
+				</div>
+			</form>
+		</details>
+
+		{unitRows.length === 0 && <p class="text-sm italic text-text-muted">No units yet, so this item has no stock.</p>}
+
+		<ul class="flex flex-col gap-3">
+			{unitRows.map((unit) => (
+				<li class:list={['rounded-lg border border-border bg-surface', unit.status === 'retired' && 'opacity-70']}>
+					<div class="flex flex-wrap items-start justify-between gap-2 px-4 py-3">
+						<div class="min-w-0">
+							<p class="text-sm font-medium text-text">
+								{unit.marking ?? <span class="italic text-text-muted">No marking</span>}
+								<span class="ml-1 font-mono text-xs text-text-muted">#{unit.id}</span>
+							</p>
+							<p class="text-xs text-text-muted">
+								{[unit.brand, unit.model].filter(Boolean).join(' ') || 'No brand/model'}
+								{unit.serialNumber && ` · S/N ${unit.serialNumber}`}
+								{unit.manufacturedAt && ` · made ${unit.manufacturedAt}`}
+								{unit.purchasedAt && ` · bought ${unit.purchasedAt}`}
+							</p>
+							{Object.keys(unit.opts).length > 0 && (
+								<p class="mt-1 flex flex-wrap gap-1">
+									{Object.entries(unit.opts).map(([key, value]) => <Badge tone="info">{key}: {value}</Badge>)}
+								</p>
+							)}
+						</div>
+						<Badge tone={STATUS_TONES[unit.status]}>{UNIT_STATUS_LABELS[unit.status]}</Badge>
+					</div>
+
+					{unit.notes.length > 0 && (
+						<ol class="border-t border-border px-4 py-2 text-sm">
+							{[...unit.notes].reverse().map((note) => (
+								<li class="flex gap-3 py-0.5">
+									<span class="shrink-0 font-mono text-xs leading-5 text-text-muted">{note.date}</span>
+									<span class="min-w-0 text-text">
+										{note.text}
+										{note.authorId && <span class="text-xs text-text-muted"> — {authorNames.get(note.authorId) ?? note.authorId}</span>}
+									</span>
+								</li>
+							))}
+						</ol>
+					)}
+
+					<div class="flex flex-col gap-2 border-t border-border px-4 py-2">
+						<details>
+							<summary class="cursor-pointer text-sm text-text-muted">Add note</summary>
+							<form method="post" action="/api/wizard/units" class="mt-2 flex flex-wrap items-end gap-2">
+								<input type="hidden" name="action" value="note" />
+								<input type="hidden" name="unitId" value={unit.id} />
+								<input type="hidden" name="redirectTo" value={redirectTo} />
+								<label class={labelClass}>
+									Date
+									<input class={inputClass} type="date" name="date" value={today} max={today} />
+								</label>
+								<label class:list={[labelClass, 'flex-1']}>
+									Note
+									<input class={inputClass} type="text" name="text" required placeholder="e.g. Inspected, no damage" />
+								</label>
+								<Button type="submit" size="sm">Add note</Button>
+							</form>
+						</details>
+
+						<details>
+							<summary class="cursor-pointer text-sm text-text-muted">Change status</summary>
+							<form method="post" action="/api/wizard/units" class="mt-2 flex flex-wrap items-end gap-2">
+								<input type="hidden" name="action" value="status" />
+								<input type="hidden" name="unitId" value={unit.id} />
+								<input type="hidden" name="redirectTo" value={redirectTo} />
+								<label class={labelClass}>
+									Status
+									<select class={inputClass} name="status">
+										{UNIT_STATUSES.map((status) => (
+											<option value={status} selected={status === unit.status}>{UNIT_STATUS_LABELS[status]}</option>
+										))}
+									</select>
+								</label>
+								<label class={labelClass}>
+									Date
+									<input class={inputClass} type="date" name="date" value={today} max={today} />
+								</label>
+								<label class:list={[labelClass, 'flex-1']}>
+									Reason (logged as a note)
+									<input class={inputClass} type="text" name="text" placeholder="e.g. Sling worn, sent for inspection" />
+								</label>
+								<Button type="submit" size="sm">Save status</Button>
+							</form>
+						</details>
+
+						<details>
+							<summary class="cursor-pointer text-sm text-text-muted">Edit details</summary>
+							<form method="post" action="/api/wizard/units" class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+								<input type="hidden" name="action" value="update" />
+								<input type="hidden" name="unitId" value={unit.id} />
+								<input type="hidden" name="redirectTo" value={redirectTo} />
+								{fields.map((field) => (
+									<label class={labelClass}>
+										{field.label}
+										<input class={inputClass} type={field.type} name={field.name} value={unit[field.name] ?? ''} />
+									</label>
+								))}
+								<label class:list={[labelClass, 'sm:col-span-3']}>
+									Extra fields (one <code>key = value</code> per line, e.g. <code>length = 58 m</code>)
+									<textarea class={inputClass} name="opts" rows="2">{formatOptsText(unit.opts)}</textarea>
+								</label>
+								<div class="sm:col-span-3">
+									<Button type="submit" variant="primary" size="sm">Save details</Button>
+								</div>
+							</form>
+						</details>
+					</div>
+				</li>
+			))}
+		</ul>
+	</div>
+</AdminLayout>

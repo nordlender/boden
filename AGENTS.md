@@ -1,9 +1,10 @@
 ## Terminology
 
-This project is being reworked around two distinct concepts — use these terms consistently, don't substitute "product" and "item" for each other:
+This project is being reworked around these distinct concepts — use these terms consistently, don't substitute "product", "item" and "unit" for each other:
 
 - **Product**: a category-level listing an admin creates (e.g. "Edelrid Harness"). Holds shared info (title, description, category) and the option rows (e.g. Size, Color) that define its variants.
 - **Item**: one specific permutation of a product's options (e.g. "Edelrid Harness, Green, M"). Items are what actually get rented — orders/rentals always reference items, never products. Products exist only to categorize and display items in the web shop.
+- **Unit**: one physical object of an item (e.g. the Dragon Cam #2 bought in 2023 with serial 0042). Admin-only: an item's stock is the number of its active units, and units carry the per-object history (brand, model, marking, serial, dates, status, notes, opts). Rentals never reference units — a moderator hands out an item, not a particular unit.
 
 See `docs/schema.md` for the full schema and design rationale.
 

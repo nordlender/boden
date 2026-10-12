@@ -12,12 +12,12 @@ afterAll(() => {
 
 // Product 1 has two items (A: stock 3, B: stock 2) and one set (2x A + 1x B).
 vi.mock('../../db/client', async () => {
-	const { createTestDb } = await import('../../db/testDb');
+	const { createTestDb, insertItems } = await import('../../db/testDb');
 	const schema = await import('../../db/schema');
 	const db = createTestDb();
 
 	const [product] = await db.insert(schema.products).values({ slug: 'p', title: 'P', status: 'published' }).returning();
-	await db.insert(schema.items).values([
+	await insertItems(db, [
 		{ productId: product.id, slug: 'a', name: 'A', stockCount: 3 },
 		{ productId: product.id, slug: 'b', name: 'B', stockCount: 2 },
 		{ productId: product.id, slug: 'gone', name: 'Archived', stockCount: 9, archived: true },

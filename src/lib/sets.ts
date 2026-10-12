@@ -7,6 +7,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '../db/client';
 import { sets } from '../db/schema';
+import { itemStockExtras } from './units';
 
 export interface SetChild {
 	itemId: number;
@@ -52,7 +53,7 @@ export async function getSetChildrenDetailedBulk(setIds: number[]): Promise<Map<
 	if (setIds.length === 0) return new Map();
 	const rows = await db.query.setItems.findMany({
 		where: (t, { inArray: inArrayCol }) => inArrayCol(t.setId, setIds),
-		with: { item: { with: { product: true } } },
+		with: { item: { extras: itemStockExtras, with: { product: true } } },
 	});
 
 	const bySet = new Map<number, SetChildDetail[]>();

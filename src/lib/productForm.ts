@@ -46,8 +46,9 @@ export function parseProductForm(form: FormData): ParsedProductForm {
 		.map((name) => name.trim())
 		.filter(Boolean);
 
-	// A radio today (one variant key), but read with getAll so a future
-	// multi-select needs no parser change.
+	// The form posts a single hidden `variantAttributeKey` (set by toggling a
+	// key's pill in ProductForm.astro; empty means none). Read with getAll
+	// anyway so supporting several variant keys later needs no parser change.
 	const variantAttributeKeys = formStrings(form, 'variantAttributeKey')
 		.map((name) => name.trim())
 		.filter(Boolean);

@@ -144,7 +144,15 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		</p>
 
 		<p class="text-xs text-text-muted">
-			Click a saved key to make it the <span class="font-medium text-text">variant</span> — shoppers choose between its values as buttons on the product page, and it's left out of the attribute list. Click it again to unset. New keys can be set as the variant after saving.
+			{mode === 'create' ? (
+				<>
+					Once saved, you can click a key to make it the <span class="font-medium text-text">variant</span> — shoppers choose between its values as buttons on the product page.
+				</>
+			) : (
+				<>
+					Click a key to make it the <span class="font-medium text-text">variant</span> — shoppers choose between its values as buttons on the product page, and it's left out of the attribute list. Click it again to unset. Newly added keys can be set as the variant after saving.
+				</>
+			)}
 		</p>
 
 		<input type="hidden" name="variantAttributeKey" value={existingAttributeKeys.find((key) => key.isVariant)?.name ?? ''} data-variant-input />

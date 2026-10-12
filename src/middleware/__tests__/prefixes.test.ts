@@ -25,14 +25,14 @@ describe('requiredRole', () => {
     expect(requiredRole('/api/products/[id]/update')).toBe('admin');
   });
 
-  it('requires moderator for moderator routes, incl. messages add/delete (#225)', () => {
+  it('requires moderator for moderator routes, incl. adding messages', () => {
     expect(requiredRole('/moderator/orders/[id]')).toBe('moderator');
     expect(requiredRole('/api/moderator/retrieve')).toBe('moderator');
     expect(requiredRole('/api/messages/add')).toBe('moderator');
-    expect(requiredRole('/api/messages/delete')).toBe('moderator');
   });
 
-  it('keeps messages pin/unpin admin-only', () => {
+  it('keeps messages delete and pin/unpin admin-only', () => {
+    expect(requiredRole('/api/messages/delete')).toBe('admin');
     expect(requiredRole('/api/messages/pin')).toBe('admin');
     expect(requiredRole('/api/messages/unpin')).toBe('admin');
   });

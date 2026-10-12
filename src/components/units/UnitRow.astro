@@ -2,8 +2,8 @@
 // One unit in the /admin/items/[id]/units table — modelled on
 // wizard/ItemRow.astro: a grid row, plus a details panel toggled by the
 // shared DetailsToggle (which finds [data-details-row]/[data-details-panel]).
-// The unit's notes (its lifetime log) are always shown under the row, not
-// hidden in the panel; the panel holds the actions: add note, change status,
+// Under the row sits the unit's notes dropdown (UnitNotes.astro), which
+// always shows the latest note; the details panel holds change status and
 // edit details.
 //
 // `marking` is a plain description of how the unit is physically marked
@@ -13,21 +13,23 @@ import Badge from '../ui/Badge.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
 import DetailsToggle from '../wizard/DetailsToggle.astro';
 import OptsFields from './OptsFields.astro';
+import UnitNotes from './UnitNotes.astro';
 import { UNIT_STATUSES } from '../../db/schema';
 import { UNIT_STATUS_LABELS, UNIT_STATUS_TONES, type Unit } from '../../lib/units';
+import type { MessageRow } from '../../lib/messages';
 import { DESKTOP_ONLY_CLASS, UNIT_FORM_FIELDS, UNIT_GRID_CLASS, UNIT_GRID_STYLE, inputClass, labelClass } from './unitTable';
 
 interface Props {
 	unit: Unit;
-	authorNames: Map<string, string>;
+	// Newest first (listUnitNotes).
+	notes: MessageRow[];
 	today: string;
 	redirectTo: string;
 }
 
-const { unit, authorNames, today, redirectTo } = Astro.props;
+const { unit, notes, today, redirectTo } = Astro.props;
 const brandModel = [unit.brand, unit.model].filter(Boolean).join(' ');
 const opts = Object.entries(unit.opts);
-const notesNewestFirst = [...unit.notes].reverse();
 ---
 <div class:list={['border-b border-border last:border-b-0', unit.status === 'retired' && 'text-text-muted']} data-details-row>
 	<div class:list={[UNIT_GRID_CLASS, 'py-2 hover:bg-bg-subtle']} style={UNIT_GRID_STYLE}>
@@ -49,57 +51,34 @@ const notesNewestFirst = [...unit.notes].reverse();
 		<DetailsToggle label={`Show actions for unit #${unit.id}`} />
 	</div>
 
-	{notesNewestFirst.length > 0 && (
-		<ol class="flex flex-col gap-0.5 pb-2 pl-[4.5rem] pr-3 text-sm">
-			{notesNewestFirst.map((note) => (
-				<li class="flex gap-3">
-					<span class="shrink-0 font-mono text-xs leading-5 text-text-muted">{note.date}</span>
-					<span class="min-w-0 text-text">
-						{note.text}
-						{note.authorId && <span class="text-xs text-text-muted"> — {authorNames.get(note.authorId) ?? note.authorId}</span>}
-					</span>
-				</li>
-			))}
-		</ol>
-	)}
+	{/* Indented to line up with the unit column: px-3 + the 3rem id column + gap-3. */}
+	<div class="pb-2 pl-[4.5rem] pr-3">
+		<UnitNotes unitId={unit.id} notes={notes} redirectTo={redirectTo} />
+	</div>
 
 	<div class="hidden border-t border-border bg-bg-subtle/60 px-4 py-4" data-details-panel>
 		<p class="mb-3 text-xs text-text-muted sm:hidden">
 			Made {unit.manufacturedAt ?? '—'} · Bought {unit.purchasedAt ?? '—'}
 		</p>
-		<div class="grid gap-4 md:grid-cols-2">
-			<form method="post" action="/api/wizard/units" class="flex flex-col gap-2">
-				<input type="hidden" name="action" value="note" />
-				<input type="hidden" name="unitId" value={unit.id} />
-				<input type="hidden" name="redirectTo" value={redirectTo} />
-				<p class="text-xs font-medium uppercase tracking-wide text-text-muted">Add note</p>
-				<div class="grid grid-cols-[9.5rem_1fr] gap-2">
-					<input class={inputClass} type="date" name="date" value={today} max={today} aria-label="Note date" />
-					<input class={inputClass} type="text" name="text" required placeholder="e.g. Inspected, no damage" aria-label="Note" />
-				</div>
-				<TextMorphButton type="submit" action="add" size="sm" class="self-start">Add note</TextMorphButton>
-			</form>
-
+		<div class="flex flex-col gap-4">
 			<form method="post" action="/api/wizard/units" class="flex flex-col gap-2">
 				<input type="hidden" name="action" value="status" />
 				<input type="hidden" name="unitId" value={unit.id} />
 				<input type="hidden" name="redirectTo" value={redirectTo} />
 				<p class="text-xs font-medium uppercase tracking-wide text-text-muted">Change status</p>
-				<div class="grid grid-cols-[9.5rem_1fr] gap-2">
-					<select class={inputClass} name="status" aria-label="Status">
+				<div class="flex flex-wrap items-center gap-2">
+					<select class:list={[inputClass, 'w-[9.5rem]']} name="status" aria-label="Status">
 						{UNIT_STATUSES.map((status) => (
 							<option value={status} selected={status === unit.status}>{UNIT_STATUS_LABELS[status]}</option>
 						))}
 					</select>
-					<input class={inputClass} type="text" name="text" placeholder="Reason (logged as a note)" aria-label="Reason" />
-				</div>
-				<div class="flex items-center gap-2">
-					<input class:list={[inputClass, 'w-[9.5rem]']} type="date" name="date" value={today} max={today} aria-label="Date of the change" />
+					<input class:list={[inputClass, 'flex-1']} type="text" name="reason" placeholder="Reason (posted as a note)" aria-label="Reason" />
 					<TextMorphButton type="submit" action="save" size="sm">Save status</TextMorphButton>
 				</div>
 			</form>
 
-			<form method="post" action="/api/wizard/units" class="flex flex-col gap-3 md:col-span-2">
+
+			<form method="post" action="/api/wizard/units" class="flex flex-col gap-3">
 				<input type="hidden" name="action" value="update" />
 				<input type="hidden" name="unitId" value={unit.id} />
 				<input type="hidden" name="redirectTo" value={redirectTo} />

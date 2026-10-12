@@ -485,8 +485,14 @@ const getItemBySlug = db.prepare('SELECT id FROM items WHERE slug = ?');
 // admin has edited since.
 const getUnitBySerial = db.prepare('SELECT id FROM units WHERE item_id = ? AND serial_number = ?');
 const insertUnit = db.prepare(
-  `INSERT INTO units (item_id, brand, model, marking, serial_number, manufactured_at, purchased_at, status, notes, opts)
-   VALUES (@itemId, @brand, @model, @marking, @serialNumber, @manufacturedAt, @purchasedAt, @status, @notes, @opts)`,
+  `INSERT INTO units (item_id, brand, model, marking, serial_number, manufactured_at, purchased_at, status, opts)
+   VALUES (@itemId, @brand, @model, @marking, @serialNumber, @manufacturedAt, @purchasedAt, @status, @opts)`,
+);
+// A unit's notes are messages with unit_id set (see the `messages` table in
+// src/db/schema.ts), dated by created_at.
+const insertUnitNote = db.prepare(
+  `INSERT INTO messages (content, author_name, unit_id, created_at)
+   VALUES (@content, 'Example admin', @unitId, unixepoch(@date))`,
 );
 
 const upsertAttributeValue = db.prepare(
@@ -552,7 +558,7 @@ function seedUnits(itemId, item, unitDefaults = {}) {
 
   for (const unit of [...numbered, ...(item.specialUnits ?? [])]) {
     if (getUnitBySerial.get(itemId, unit.serialNumber)) continue;
-    insertUnit.run({
+    const { lastInsertRowid: unitId } = insertUnit.run({
       itemId,
       brand: unit.brand ?? unitDefaults.brand ?? null,
       model: unit.model ?? unitDefaults.model ?? null,
@@ -561,9 +567,10 @@ function seedUnits(itemId, item, unitDefaults = {}) {
       manufacturedAt: unit.manufacturedAt ?? null,
       purchasedAt: unit.purchasedAt ?? null,
       status: unit.status ?? 'active',
-      notes: JSON.stringify((unit.notes ?? []).map((note) => ({ authorId: null, ...note }))),
       opts: JSON.stringify(unit.opts ?? {}),
     });
+    // Only with a freshly inserted unit, so re-running never duplicates notes.
+    for (const note of unit.notes ?? []) insertUnitNote.run({ content: note.text, unitId, date: note.date });
   }
 }
 

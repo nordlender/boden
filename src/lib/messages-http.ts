@@ -10,11 +10,9 @@ import { isPositiveInteger, safeRedirectTarget } from './http';
 /**
  * Returns a 403 Response if `locals`/`message` fail the route's
  * authorization rule, or `null` if the caller may proceed. Takes the loaded
- * message (not just `locals`) so a future per-message rule — e.g. "a
- * moderator may delete only their own message," which needs a stable
- * author id this table doesn't have yet (see issue #225) — can be added
- * at the call site without reshaping withMessageIdAction. Every call site
- * today is admin-only and ignores `message`.
+ * message (not just `locals`) so a per-message rule can be added at the
+ * call site without reshaping withMessageIdAction. Every call site today
+ * (delete, pin, unpin) is admin-only and ignores `message`.
  */
 export type AuthorizeMessageAction = (locals: APIContext['locals'], message: MessageRow) => Response | null;
 

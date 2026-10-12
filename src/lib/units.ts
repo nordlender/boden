@@ -1,11 +1,12 @@
 // Units — the physical objects behind an item (see src/db/schema.ts's
 // `units` comment). Admin-only: nothing customer- or rental-facing reads a
 // unit directly; everything else only sees the stock count derived here.
-import { asc, eq, getTableName, inArray, sql, type Column } from 'drizzle-orm';
+import { asc, eq, getTableName, sql, type Column } from 'drizzle-orm';
 import { db } from '../db/client';
-import { items, units, users, UNIT_STATUSES, type UnitNote, type UnitStatus } from '../db/schema';
+import { items, messages, units, UNIT_STATUSES, type UnitStatus } from '../db/schema';
 import type { BadgeTone } from './badge-styles';
 import { isIsoDate, todayIsoInOslo } from './dates';
+import { createMessage } from './messages';
 
 // Always "table"."column". Drizzle renders a column inside a select list
 // unqualified ("id"), which inside the correlated subquery below would bind
@@ -117,14 +118,6 @@ export function parseOptsFields(keys: string[], values: string[]): Record<string
 
 export type Unit = typeof units.$inferSelect;
 
-/** Display names for the users who wrote the given units' notes, keyed by user id. */
-export async function getNoteAuthorNames(unitRows: Unit[]): Promise<Map<string, string>> {
-	const ids = [...new Set(unitRows.flatMap((unit) => unit.notes.map((note) => note.authorId).filter((id): id is string => !!id)))];
-	if (ids.length === 0) return new Map();
-	const rows = await db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(inArray(users.id, ids));
-	return new Map(rows.map((row) => [row.id, row.name ?? row.email]));
-}
-
 /** The item a units page is about, with its product title (null if the item doesn't exist). */
 export async function getUnitsPageItem(itemId: number) {
 	return (
@@ -141,8 +134,8 @@ export async function listUnitsForItem(itemId: number): Promise<Unit[]> {
 }
 
 /**
- * Every unit of every item, by id — the flat /admin/units listing. Only the
- * notes' count is read (json_array_length), not the whole lifetime log.
+ * Every unit of every item, by id — the flat /admin/units listing, with how
+ * many notes (unit messages) each has.
  */
 export async function listAllUnits() {
 	return db
@@ -157,7 +150,7 @@ export async function listAllUnits() {
 			purchasedAt: units.purchasedAt,
 			status: units.status,
 			opts: units.opts,
-			noteCount: sql<number>`json_array_length(${units.notes})`,
+			noteCount: sql<number>`(select count(*) from ${messages} where ${qualified(messages.unitId)} = ${qualified(units.id)})`,
 			itemName: items.name,
 			itemArchived: items.archived,
 		})
@@ -193,59 +186,31 @@ export async function updateUnit(unitId: number, fields: UnitFields): Promise<bo
 	return db.update(units).set(values).where(eq(units.id, unitId)).run().changes > 0;
 }
 
-function noteEntry(text: string, date: string | undefined, authorId: string | null | undefined): UnitNote {
-	const day = date?.trim() || todayIsoInOslo();
-	assertPastDate(day, 'Note date');
-	return { date: day, text, authorId: authorId ?? null };
-}
-
-// Appends in SQL (json_insert at '$[#]') rather than read-modify-write in
-// JS, so two concurrent writers can't drop each other's note.
-function appendNoteSql(entry: UnitNote) {
-	return sql`json_insert(${units.notes}, '$[#]', json(${JSON.stringify(entry)}))`;
-}
-
 /**
- * Appends one entry to a unit's lifetime log. `date` defaults to today
- * (Oslo) and may be backdated, never future. Returns false if the unit
- * doesn't exist.
- */
-export async function addUnitNote(unitId: number, note: { text: string; date?: string; authorId?: string | null }): Promise<boolean> {
-	const text = note.text.trim();
-	if (!text) throw new Error('note text is required');
-	return (
-		db
-			.update(units)
-			.set({ notes: appendNoteSql(noteEntry(text, note.date, note.authorId)) })
-			.where(eq(units.id, unitId))
-			.run().changes > 0
-	);
-}
-
-/**
- * Changes a unit's status (e.g. takes it out of service) and logs the
- * change, with the optional reason, in the same statement — so the
- * lifetime log explains every status change. The item's stock follows
+ * Changes a unit's status (e.g. takes it out of service) and posts a note
+ * on the unit saying so, with the optional reason — in one transaction, so
+ * the unit's notes explain every status change. The item's stock follows
  * immediately, since it's derived from active units. Re-submitting the
- * current status with a reason still logs the reason. Returns false if the
- * unit doesn't exist.
+ * current status with a reason still posts the reason as a note. Returns
+ * false if the unit doesn't exist.
  */
 export async function setUnitStatus(
 	unitId: number,
 	status: UnitStatus,
-	note: { text?: string; date?: string; authorId?: string | null } = {},
+	author: { id: string; name: string },
+	reason = '',
 ): Promise<boolean> {
 	const current = await getUnit(unitId);
 	if (!current) return false;
-	const reason = note.text?.trim();
+	const trimmedReason = reason.trim();
 	if (current.status === status) {
-		if (reason) await addUnitNote(unitId, { text: reason, date: note.date, authorId: note.authorId });
+		if (trimmedReason) await createMessage(trimmedReason, author.name, author.id, unitId);
 		return true;
 	}
-	const text = `Status: ${UNIT_STATUS_LABELS[current.status]} → ${UNIT_STATUS_LABELS[status]}${reason ? ` — ${reason}` : ''}`;
-	await db
-		.update(units)
-		.set({ status, notes: appendNoteSql(noteEntry(text, note.date, note.authorId)) })
-		.where(eq(units.id, unitId));
+	const content = `Status: ${UNIT_STATUS_LABELS[current.status]} → ${UNIT_STATUS_LABELS[status]}${trimmedReason ? ` — ${trimmedReason}` : ''}`;
+	db.transaction((tx) => {
+		tx.update(units).set({ status }).where(eq(units.id, unitId)).run();
+		tx.insert(messages).values({ content, authorName: author.name, authorId: author.id, unitId }).run();
+	});
 	return true;
 }

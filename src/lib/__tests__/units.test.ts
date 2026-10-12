@@ -4,8 +4,12 @@ import { db } from '../../db/client';
 import { orderItems, orders, units, users } from '../../db/schema';
 import { insertItems } from '../../db/testDb';
 import { getOverbookedOrders, getStockCounts } from '../availability';
+import { createMessage, listMessages, listUnitNotes } from '../messages';
 import { createItem } from '../wizard';
-import { addUnitNote, createUnits, getUnit, listAllUnits, listUnitsForItem, normalizeOpts, parseOptsFields, setUnitStatus, updateUnit } from '../units';
+import { createUnits, getUnit, listAllUnits, listUnitsForItem, normalizeOpts, parseOptsFields, setUnitStatus, updateUnit } from '../units';
+
+const ADMIN = { id: 'admin-1', name: 'Ada Admin' };
+const notesOf = async (unitId: number) => (await listUnitNotes([unitId])).get(unitId) ?? [];
 
 // Fixture: item 1 with 3 blank active units (ids 1..3).
 vi.mock('../../db/client', async () => {
@@ -18,20 +22,21 @@ vi.mock('../../db/client', async () => {
 describe('stock derived from units', () => {
 	it('counts only active units, so out-of-service and retired units leave stock', async () => {
 		expect(getStockCounts([1]).get(1)).toBe(3);
-		await setUnitStatus(1, 'out_of_service', { text: 'Sling worn', date: '2026-10-01', authorId: 'admin-1' });
+		await setUnitStatus(1, 'out_of_service', ADMIN, 'Sling worn');
 		expect(getStockCounts([1]).get(1)).toBe(2);
-		await setUnitStatus(2, 'retired');
+		await setUnitStatus(2, 'retired', ADMIN);
 		expect(getStockCounts([1]).get(1)).toBe(1);
-		await setUnitStatus(1, 'active', { text: 'Sling replaced' });
+		await setUnitStatus(1, 'active', ADMIN, 'Sling replaced');
 		expect(getStockCounts([1]).get(1)).toBe(2);
 	});
 
-	it('logs every status change in the unit notes, oldest first', async () => {
-		const unit = await getUnit(1);
-		expect(unit?.notes).toEqual([
-			{ date: '2026-10-01', text: 'Status: Active → Out of service — Sling worn', authorId: 'admin-1' },
-			expect.objectContaining({ text: 'Status: Out of service → Active — Sling replaced', authorId: null }),
+	it('posts every status change as a note on the unit, newest first', async () => {
+		expect((await notesOf(1)).map((note) => note.content)).toEqual([
+			'Status: Out of service → Active — Sling replaced',
+			'Status: Active → Out of service — Sling worn',
 		]);
+		expect((await notesOf(1))[0]).toMatchObject({ authorId: 'admin-1', authorName: 'Ada Admin', unitId: 1, pinnedAt: null });
+		expect((await notesOf(2)).map((note) => note.content)).toEqual(['Status: Active → Retired']);
 	});
 
 	it('createUnits adds a batch sharing the given fields', async () => {
@@ -39,8 +44,8 @@ describe('stock derived from units', () => {
 		expect(ids).toHaveLength(2);
 		const rows = await listUnitsForItem(1);
 		expect(rows.filter((row) => ids.includes(row.id))).toEqual([
-			expect.objectContaining({ brand: 'DMM', model: 'Dragon 2', purchasedAt: '2026-05-01', serialNumber: null, status: 'active', notes: [], opts: {} }),
-			expect.objectContaining({ brand: 'DMM', model: 'Dragon 2', purchasedAt: '2026-05-01', serialNumber: null, status: 'active', notes: [], opts: {} }),
+			expect.objectContaining({ brand: 'DMM', model: 'Dragon 2', purchasedAt: '2026-05-01', serialNumber: null, status: 'active', opts: {} }),
+			expect.objectContaining({ brand: 'DMM', model: 'Dragon 2', purchasedAt: '2026-05-01', serialNumber: null, status: 'active', opts: {} }),
 		]);
 		expect(getStockCounts([1]).get(1)).toBe(4);
 	});
@@ -76,10 +81,31 @@ describe('getOverbookedOrders', () => {
 
 		expect(getOverbookedOrders(item.id, 60, { today: TODAY })).toEqual([]);
 
-		await setUnitStatus(harnessUnitA.id, 'out_of_service', { text: 'Inspection' });
+		await setUnitStatus(harnessUnitA.id, 'out_of_service', ADMIN, 'Inspection');
 		// One unit left: the two overlapping orders collide on 21–22 Oct; the
 		// November order alone fits.
 		expect(getOverbookedOrders(item.id, 60, { today: TODAY }).map((o) => o.orderCode)).toEqual(['11AAM', '22BBM']);
+	});
+});
+
+describe('unit notes are messages', () => {
+	it('keeps unit notes off the hub board, and hub posts out of unit notes', async () => {
+		await createMessage('Hub: closed Friday', 'Mod', 'mod-1');
+		await createMessage('Inspected, OK', ADMIN.name, ADMIN.id, 3);
+		expect((await listMessages()).map((m) => m.content)).toEqual(['Hub: closed Friday']);
+		expect((await notesOf(3)).map((m) => m.content)).toEqual(['Inspected, OK']);
+	});
+
+	it('posts the reason as a note even when the status is unchanged, and nothing without one', async () => {
+		await setUnitStatus(3, 'active', ADMIN, 'Re-inspected, still fine');
+		expect((await notesOf(3))[0].content).toBe('Re-inspected, still fine');
+		const before = (await notesOf(3)).length;
+		await setUnitStatus(3, 'active', ADMIN);
+		expect(await notesOf(3)).toHaveLength(before);
+	});
+
+	it('a note must point at a real unit', async () => {
+		await expect(createMessage('Orphan', ADMIN.name, ADMIN.id, 9999)).rejects.toThrow();
 	});
 });
 
@@ -89,45 +115,15 @@ describe('unit fields', () => {
 		expect(await getUnit(3)).toMatchObject({ marking: 'Red and white tape', opts: { length: '58 m' } });
 	});
 
-	it('appends notes without overwriting earlier ones', async () => {
-		await addUnitNote(3, { text: 'Inspected, OK', date: '2026-09-01' });
-		await addUnitNote(3, { text: 'Washed' });
-		const notes = (await getUnit(3))?.notes ?? [];
-		expect(notes.map((n) => n.text)).toEqual(['Inspected, OK', 'Washed']);
-	});
-
-	it('rejects malformed, impossible and future dates, and empty notes', async () => {
+	it('rejects malformed, impossible and future dates', async () => {
 		await expect(updateUnit(3, { manufacturedAt: '2026/01/01' })).rejects.toThrow(/real date/);
 		await expect(updateUnit(3, { purchasedAt: '2026-02-31' })).rejects.toThrow(/real date/);
 		await expect(updateUnit(3, { purchasedAt: '2999-01-01' })).rejects.toThrow(/future/);
-		await expect(addUnitNote(3, { text: '   ' })).rejects.toThrow();
-		await expect(addUnitNote(3, { text: 'x', date: 'yesterday' })).rejects.toThrow(/real date/);
-		await expect(addUnitNote(3, { text: 'x', date: '2999-01-01' })).rejects.toThrow(/future/);
-	});
-
-	it("defaults a note's date to today in Oslo, not UTC", async () => {
-		vi.useFakeTimers({ toFake: ['Date'] });
-		try {
-			vi.setSystemTime(new Date('2026-10-12T23:30:00Z')); // 01:30 on the 13th in Oslo
-			await addUnitNote(3, { text: 'Late-night check' });
-		} finally {
-			vi.useRealTimers();
-		}
-		expect((await getUnit(3))?.notes.at(-1)).toMatchObject({ date: '2026-10-13', text: 'Late-night check' });
-	});
-
-	it('logs the reason even when the status is unchanged', async () => {
-		await setUnitStatus(3, 'active', { text: 'Re-inspected, still fine', date: '2026-10-01' });
-		expect((await getUnit(3))?.notes.at(-1)).toMatchObject({ date: '2026-10-01', text: 'Re-inspected, still fine' });
-		const before = (await getUnit(3))?.notes.length;
-		await setUnitStatus(3, 'active');
-		expect((await getUnit(3))?.notes.length).toBe(before);
 	});
 
 	it('reports a missing unit instead of silently doing nothing', async () => {
 		expect(await updateUnit(9999, { brand: 'X' })).toBe(false);
-		expect(await addUnitNote(9999, { text: 'x' })).toBe(false);
-		expect(await setUnitStatus(9999, 'retired')).toBe(false);
+		expect(await setUnitStatus(9999, 'retired', ADMIN)).toBe(false);
 		expect(await updateUnit(3, { brand: 'DMM' })).toBe(true);
 	});
 
@@ -154,7 +150,8 @@ describe('unit fields', () => {
 		expect(ids).toHaveLength((await db.select().from(units).all()).length);
 		expect(new Set(rows.map((row) => row.itemName))).toEqual(new Set(['Dragon Cam #2', 'Ice Axe', 'Rope', 'Harness']));
 		const unit3 = rows.find((row) => row.id === 3);
-		expect(unit3?.noteCount).toBe((await getUnit(3))?.notes.length);
+		expect(unit3?.noteCount).toBe((await notesOf(3)).length);
+		expect(unit3?.noteCount).toBeGreaterThan(0);
 	});
 
 	it('normalizeOpts trims and drops empty keys', () => {

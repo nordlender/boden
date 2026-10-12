@@ -1,0 +1,44 @@
+---
+// A unit's notes as a dropdown under its row in UnitRow.astro. Collapsed it
+// reads "Notes (3) · <latest note>" so the newest entry is always visible;
+// open, it shows every note in the shared MessageTable (unit notes are
+// messages — see src/db/schema.ts) plus a box for adding one, posted to
+// /api/messages/add with this unit's id. Notes can't be edited; only admins
+// can delete them, and they're never pinned.
+import MessageTable from '../messages/MessageTable.astro';
+import TextMorphButton from '../ui/TextMorphButton.astro';
+import type { MessageRow } from '../../lib/messages';
+import { formatDateTimeDisplay } from '../../lib/dates';
+import { inputClass } from './unitTable';
+
+interface Props {
+	unitId: number;
+	// Newest first (listUnitNotes).
+	notes: MessageRow[];
+	redirectTo: string;
+}
+
+const { unitId, notes, redirectTo } = Astro.props;
+const latest = notes[0];
+---
+<details class="group/notes">
+	<summary class="flex cursor-pointer list-none items-baseline gap-2 text-sm text-text-muted hover:text-text [&::-webkit-details-marker]:hidden">
+		<span class="shrink-0 transition-transform group-open/notes:rotate-90" aria-hidden="true">▸</span>
+		<span class="shrink-0 font-medium">Notes ({notes.length})</span>
+		{latest && (
+			<span class="min-w-0 truncate group-open/notes:hidden">
+				· <span class="text-text">{latest.content}</span>
+				<span class="text-xs"> — {latest.authorName}, {formatDateTimeDisplay(latest.createdAt)}</span>
+			</span>
+		)}
+	</summary>
+	<div class="mt-2 flex flex-col gap-2">
+		<MessageTable messages={notes} title={null} isAdmin pinnable={false} emptyText="No notes yet." redirectTo={redirectTo} />
+		<form method="post" action="/api/messages/add" class="flex items-center gap-2">
+			<input type="hidden" name="unitId" value={unitId} />
+			<input type="hidden" name="redirectTo" value={redirectTo} />
+			<input class={inputClass} type="text" name="content" required placeholder="Add a note, e.g. Inspected, no damage" aria-label={`New note for unit #${unitId}`} />
+			<TextMorphButton type="submit" action="add" size="sm">Add</TextMorphButton>
+		</form>
+	</div>
+</details>

@@ -29,7 +29,7 @@ const modalId = 'add-message-modal';
 					</p>
 				)
 			}
-			<MessageTable messages={messages} currentUserId={Astro.locals.user?.id ?? null} isAdmin redirectTo={redirectTo}>
+			<MessageTable messages={messages} isAdmin redirectTo={redirectTo}>
 				<TextMorphButton
 					slot="actions"
 					action="message"

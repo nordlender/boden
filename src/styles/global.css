@@ -66,8 +66,8 @@
 	--ui-availability-0: color-mix(in oklch, var(--color-red-500) 50%, transparent);
 	--ui-availability-1: color-mix(in oklch, var(--color-orange-500) 50%, transparent);
 	--ui-availability-2: color-mix(in oklch, var(--color-amber-500) 45%, transparent);
-	--ui-availability-3: color-mix(in oklch, var(--color-lime-500) 30%, transparent);
-	--ui-availability-4: color-mix(in oklch, var(--color-green-500) 12%, transparent);
+	--ui-availability-3: color-mix(in oklch, var(--color-lime-500) 35%, transparent);
+	--ui-availability-4: color-mix(in oklch, var(--color-green-500) 30%, transparent);
 
 	--ui-info: var(--color-blue-600);
 	--ui-info-subtle: var(--color-blue-50);
@@ -198,8 +198,8 @@
 	--ui-availability-0: color-mix(in oklch, var(--color-red-600) 40%, transparent);
 	--ui-availability-1: color-mix(in oklch, var(--color-orange-600) 40%, transparent);
 	--ui-availability-2: color-mix(in oklch, var(--color-yellow-600) 35%, transparent);
-	--ui-availability-3: color-mix(in oklch, var(--color-lime-600) 25%, transparent);
-	--ui-availability-4: color-mix(in oklch, var(--color-green-600) 10%, transparent);
+	--ui-availability-3: color-mix(in oklch, var(--color-lime-600) 33%, transparent);
+	--ui-availability-4: color-mix(in oklch, var(--color-green-600) 30%, transparent);
 
 	--ui-info: var(--color-blue-500);
 	--ui-info-subtle: var(--color-blue-950);

@@ -10,7 +10,11 @@ set -euo pipefail
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root_dir"
 
-main_root="$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')"
+# awk reads to the end rather than `exit`ing on the first match: exiting
+# early closes the pipe while git is still writing, git dies of SIGPIPE, and
+# pipefail aborts the whole script (exit 141) whenever there are enough
+# worktrees for the output not to fit in one write.
+main_root="$(git worktree list --porcelain | awk '/^worktree / && !found {print $2; found = 1}')"
 
 if [[ -z "$main_root" ]]; then
   echo "Could not determine the main checkout path via 'git worktree list'." >&2
@@ -29,6 +33,9 @@ fi
 
 echo "Running pending migrations..."
 mkdir -p "$root_dir/data"
+# Moves aside a db from before the last migration squash, which migrate
+# can't upgrade in place (see the script's header).
+node scripts/check-db-baseline.mjs
 npx drizzle-kit migrate
 
 echo "Seeding example catalog (items and their units)..."

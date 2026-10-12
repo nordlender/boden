@@ -6,12 +6,9 @@ export const prerender = false;
 // Editing happens per item on /admin/items/[id]/units, which each row links to.
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Badge from '../../components/ui/Badge.astro';
-import { listAllUnits, UNIT_STATUS_LABELS } from '../../lib/units';
-import type { UnitStatus } from '../../db/schema';
-import type { BadgeTone } from '../../lib/badge-styles';
+import { listAllUnits, UNIT_STATUS_LABELS, UNIT_STATUS_TONES } from '../../lib/units';
 
 const rows = await listAllUnits();
-const STATUS_TONES: Record<UnitStatus, BadgeTone> = { active: 'success', out_of_service: 'warning', retired: 'neutral' };
 const cellClass = 'px-3 py-2 align-top';
 ---
 
@@ -42,20 +39,20 @@ const cellClass = 'px-3 py-2 align-top';
 						</tr>
 					</thead>
 					<tbody>
-						{rows.map(({ unit, itemName, itemArchived }) => (
+						{rows.map((unit) => (
 							<tr class:list={['border-b border-border last:border-b-0', unit.status === 'retired' && 'opacity-70']}>
 								<td class:list={[cellClass, 'font-mono text-xs text-text-muted']}>{unit.id}</td>
 								<td class={cellClass}>
-									<a href={`/admin/items/${unit.itemId}/units`} class="text-text underline hover:text-text-muted">{itemName}</a>
-									{itemArchived && <span class="text-xs text-text-muted"> (archived)</span>}
+									<a href={`/admin/items/${unit.itemId}/units`} class="text-text underline hover:text-text-muted">{unit.itemName}</a>
+									{unit.itemArchived && <span class="text-xs text-text-muted"> (archived)</span>}
 								</td>
 								<td class:list={[cellClass, 'text-text']}>{unit.marking ?? '—'}</td>
 								<td class:list={[cellClass, 'text-text']}>{[unit.brand, unit.model].filter(Boolean).join(' ') || '—'}</td>
 								<td class:list={[cellClass, 'font-mono text-xs text-text']}>{unit.serialNumber ?? '—'}</td>
 								<td class:list={[cellClass, 'whitespace-nowrap text-text-muted']}>{unit.manufacturedAt ?? '—'}</td>
 								<td class:list={[cellClass, 'whitespace-nowrap text-text-muted']}>{unit.purchasedAt ?? '—'}</td>
-								<td class={cellClass}><Badge tone={STATUS_TONES[unit.status]}>{UNIT_STATUS_LABELS[unit.status]}</Badge></td>
-								<td class:list={[cellClass, 'text-text-muted']}>{unit.notes.length || '—'}</td>
+								<td class={cellClass}><Badge tone={UNIT_STATUS_TONES[unit.status]}>{UNIT_STATUS_LABELS[unit.status]}</Badge></td>
+								<td class:list={[cellClass, 'text-text-muted']}>{unit.noteCount || '—'}</td>
 								<td class={cellClass}>
 									{Object.keys(unit.opts).length > 0 ? (
 										<span class="flex flex-wrap gap-1">

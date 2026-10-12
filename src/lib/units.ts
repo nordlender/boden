@@ -4,6 +4,8 @@
 import { asc, eq, getTableName, inArray, sql, type Column } from 'drizzle-orm';
 import { db } from '../db/client';
 import { items, units, users, UNIT_STATUSES, type UnitNote, type UnitStatus } from '../db/schema';
+import type { BadgeTone } from './badge-styles';
+import { isIsoDate, todayIsoInOslo } from './dates';
 
 // Always "table"."column". Drizzle renders a column inside a select list
 // unqualified ("id"), which inside the correlated subquery below would bind
@@ -41,6 +43,17 @@ export const UNIT_STATUS_LABELS: Record<UnitStatus, string> = {
 	retired: 'Retired',
 };
 
+export const UNIT_STATUS_TONES: Record<UnitStatus, BadgeTone> = {
+	active: 'success',
+	out_of_service: 'warning',
+	retired: 'neutral',
+};
+
+/** Active first, then out of service, then retired (UNIT_STATUSES order), by id within each. */
+export function compareUnitsByStatus(a: { id: number; status: UnitStatus }, b: { id: number; status: UnitStatus }): number {
+	return UNIT_STATUSES.indexOf(a.status) - UNIT_STATUSES.indexOf(b.status) || a.id - b.id;
+}
+
 // Free-text fields an admin can set on a unit. Empty strings are stored as
 // NULL so "not filled in" has one representation.
 export interface UnitFields {
@@ -53,18 +66,22 @@ export interface UnitFields {
 	opts?: Record<string, string>;
 }
 
-const TEXT_FIELDS = ['brand', 'model', 'marking', 'serialNumber', 'manufacturedAt', 'purchasedAt'] as const;
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+export const UNIT_TEXT_FIELDS = ['brand', 'model', 'marking', 'serialNumber', 'manufacturedAt', 'purchasedAt'] as const;
+
+// A real calendar date (rejects 2026-02-31), and not in the future: every
+// date on a unit records something that already happened.
+function assertPastDate(value: string, label: string): void {
+	if (!isIsoDate(value)) throw new Error(`${label} must be a real date (YYYY-MM-DD)`);
+	if (value > todayIsoInOslo()) throw new Error(`${label} can't be in the future`);
+}
 
 function normalizeFields(fields: UnitFields): UnitFields {
 	const out: UnitFields = {};
-	for (const key of TEXT_FIELDS) {
+	for (const key of UNIT_TEXT_FIELDS) {
 		if (key in fields) out[key] = fields[key]?.trim() || null;
 	}
-	for (const key of ['manufacturedAt', 'purchasedAt'] as const) {
-		const value = out[key];
-		if (value && !ISO_DATE.test(value)) throw new Error(`${key} must be YYYY-MM-DD`);
-	}
+	if (out.manufacturedAt) assertPastDate(out.manufacturedAt, 'Manufactured date');
+	if (out.purchasedAt) assertPastDate(out.purchasedAt, 'Purchased date');
 	if (fields.opts) out.opts = normalizeOpts(fields.opts);
 	return out;
 }
@@ -79,20 +96,23 @@ export function normalizeOpts(opts: Record<string, string>): Record<string, stri
 	return out;
 }
 
-/** Parses the admin form's opts textarea: one `key = value` (or `key: value`) per line. */
-export function parseOptsText(text: string): Record<string, string> {
+/**
+ * Builds opts from the admin form's paired name/value fields (index i of
+ * `keys` goes with index i of `values`). A row left completely blank is
+ * skipped; a value without a name, or the same name twice, is an error
+ * rather than silently dropped.
+ */
+export function parseOptsFields(keys: string[], values: string[]): Record<string, string> {
 	const opts: Record<string, string> = {};
-	for (const line of text.split('\n')) {
-		const match = line.match(/^([^=:]+)[=:](.*)$/);
-		if (match) opts[match[1]] = match[2];
-	}
-	return normalizeOpts(opts);
-}
-
-export function formatOptsText(opts: Record<string, string>): string {
-	return Object.entries(opts)
-		.map(([key, value]) => `${key} = ${value}`)
-		.join('\n');
+	keys.forEach((rawKey, i) => {
+		const key = rawKey.trim();
+		const value = (values[i] ?? '').trim();
+		if (!key && !value) return;
+		if (!key) throw new Error(`Extra field "${value}" needs a name`);
+		if (key in opts) throw new Error(`Extra field "${key}" is listed twice`);
+		opts[key] = value;
+	});
+	return opts;
 }
 
 export type Unit = typeof units.$inferSelect;
@@ -120,10 +140,27 @@ export async function listUnitsForItem(itemId: number): Promise<Unit[]> {
 	return db.select().from(units).where(eq(units.itemId, itemId)).orderBy(asc(units.id)).all();
 }
 
-/** Every unit of every item, by id — the flat /admin/units listing. */
+/**
+ * Every unit of every item, by id — the flat /admin/units listing. Only the
+ * notes' count is read (json_array_length), not the whole lifetime log.
+ */
 export async function listAllUnits() {
 	return db
-		.select({ unit: units, itemName: items.name, itemArchived: items.archived })
+		.select({
+			id: units.id,
+			itemId: units.itemId,
+			brand: units.brand,
+			model: units.model,
+			marking: units.marking,
+			serialNumber: units.serialNumber,
+			manufacturedAt: units.manufacturedAt,
+			purchasedAt: units.purchasedAt,
+			status: units.status,
+			opts: units.opts,
+			noteCount: sql<number>`json_array_length(${units.notes})`,
+			itemName: items.name,
+			itemArchived: items.archived,
+		})
 		.from(units)
 		.innerJoin(items, eq(units.itemId, items.id))
 		.orderBy(asc(units.id))
@@ -149,19 +186,16 @@ export async function createUnits(itemId: number, count: number, fields: UnitFie
 	return rows.map((row) => row.id);
 }
 
-export async function updateUnit(unitId: number, fields: UnitFields): Promise<void> {
+/** Returns false if the unit doesn't exist. */
+export async function updateUnit(unitId: number, fields: UnitFields): Promise<boolean> {
 	const values = normalizeFields(fields);
-	if (Object.keys(values).length === 0) return;
-	await db.update(units).set(values).where(eq(units.id, unitId));
-}
-
-function todayIso(): string {
-	return new Date().toISOString().slice(0, 10);
+	if (Object.keys(values).length === 0) return !!(await getUnit(unitId));
+	return db.update(units).set(values).where(eq(units.id, unitId)).run().changes > 0;
 }
 
 function noteEntry(text: string, date: string | undefined, authorId: string | null | undefined): UnitNote {
-	const day = date?.trim() || todayIso();
-	if (!ISO_DATE.test(day)) throw new Error('date must be YYYY-MM-DD');
+	const day = date?.trim() || todayIsoInOslo();
+	assertPastDate(day, 'Note date');
 	return { date: day, text, authorId: authorId ?? null };
 }
 
@@ -171,34 +205,47 @@ function appendNoteSql(entry: UnitNote) {
 	return sql`json_insert(${units.notes}, '$[#]', json(${JSON.stringify(entry)}))`;
 }
 
-/** Appends one entry to a unit's lifetime log. `date` defaults to today and may be backdated. */
-export async function addUnitNote(unitId: number, note: { text: string; date?: string; authorId?: string | null }): Promise<void> {
+/**
+ * Appends one entry to a unit's lifetime log. `date` defaults to today
+ * (Oslo) and may be backdated, never future. Returns false if the unit
+ * doesn't exist.
+ */
+export async function addUnitNote(unitId: number, note: { text: string; date?: string; authorId?: string | null }): Promise<boolean> {
 	const text = note.text.trim();
 	if (!text) throw new Error('note text is required');
-	await db
-		.update(units)
-		.set({ notes: appendNoteSql(noteEntry(text, note.date, note.authorId)) })
-		.where(eq(units.id, unitId));
+	return (
+		db
+			.update(units)
+			.set({ notes: appendNoteSql(noteEntry(text, note.date, note.authorId)) })
+			.where(eq(units.id, unitId))
+			.run().changes > 0
+	);
 }
 
 /**
  * Changes a unit's status (e.g. takes it out of service) and logs the
  * change, with the optional reason, in the same statement — so the
  * lifetime log explains every status change. The item's stock follows
- * immediately, since it's derived from active units.
+ * immediately, since it's derived from active units. Re-submitting the
+ * current status with a reason still logs the reason. Returns false if the
+ * unit doesn't exist.
  */
 export async function setUnitStatus(
 	unitId: number,
 	status: UnitStatus,
 	note: { text?: string; date?: string; authorId?: string | null } = {},
-): Promise<void> {
+): Promise<boolean> {
 	const current = await getUnit(unitId);
-	if (!current) throw new Error(`unit ${unitId} not found`);
-	if (current.status === status) return;
+	if (!current) return false;
 	const reason = note.text?.trim();
+	if (current.status === status) {
+		if (reason) await addUnitNote(unitId, { text: reason, date: note.date, authorId: note.authorId });
+		return true;
+	}
 	const text = `Status: ${UNIT_STATUS_LABELS[current.status]} → ${UNIT_STATUS_LABELS[status]}${reason ? ` — ${reason}` : ''}`;
 	await db
 		.update(units)
 		.set({ status, notes: appendNoteSql(noteEntry(text, note.date, note.authorId)) })
 		.where(eq(units.id, unitId));
+	return true;
 }

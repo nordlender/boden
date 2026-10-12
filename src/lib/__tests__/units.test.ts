@@ -5,7 +5,7 @@ import { orderItems, orders, units, users } from '../../db/schema';
 import { insertItems } from '../../db/testDb';
 import { getOverbookedOrders, getStockCounts } from '../availability';
 import { createItem } from '../wizard';
-import { addUnitNote, createUnits, getUnit, listAllUnits, listUnitsForItem, normalizeOpts, parseOptsText, setUnitStatus, updateUnit } from '../units';
+import { addUnitNote, createUnits, getUnit, listAllUnits, listUnitsForItem, normalizeOpts, parseOptsFields, setUnitStatus, updateUnit } from '../units';
 
 // Fixture: item 1 with 3 blank active units (ids 1..3).
 vi.mock('../../db/client', async () => {
@@ -85,8 +85,8 @@ describe('getOverbookedOrders', () => {
 
 describe('unit fields', () => {
 	it('stores opts as a key/value object, e.g. a cut rope length', async () => {
-		await updateUnit(3, { marking: 'OSI-07', opts: { ' length ': ' 58 m ', '': 'dropped' } });
-		expect(await getUnit(3)).toMatchObject({ marking: 'OSI-07', opts: { length: '58 m' } });
+		await updateUnit(3, { marking: 'Red and white tape', opts: { ' length ': ' 58 m ', '': 'dropped' } });
+		expect(await getUnit(3)).toMatchObject({ marking: 'Red and white tape', opts: { length: '58 m' } });
 	});
 
 	it('appends notes without overwriting earlier ones', async () => {
@@ -96,10 +96,39 @@ describe('unit fields', () => {
 		expect(notes.map((n) => n.text)).toEqual(['Inspected, OK', 'Washed']);
 	});
 
-	it('rejects malformed dates and empty notes', async () => {
-		await expect(updateUnit(3, { manufacturedAt: '2026/01/01' })).rejects.toThrow();
+	it('rejects malformed, impossible and future dates, and empty notes', async () => {
+		await expect(updateUnit(3, { manufacturedAt: '2026/01/01' })).rejects.toThrow(/real date/);
+		await expect(updateUnit(3, { purchasedAt: '2026-02-31' })).rejects.toThrow(/real date/);
+		await expect(updateUnit(3, { purchasedAt: '2999-01-01' })).rejects.toThrow(/future/);
 		await expect(addUnitNote(3, { text: '   ' })).rejects.toThrow();
-		await expect(addUnitNote(3, { text: 'x', date: 'yesterday' })).rejects.toThrow();
+		await expect(addUnitNote(3, { text: 'x', date: 'yesterday' })).rejects.toThrow(/real date/);
+		await expect(addUnitNote(3, { text: 'x', date: '2999-01-01' })).rejects.toThrow(/future/);
+	});
+
+	it("defaults a note's date to today in Oslo, not UTC", async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			vi.setSystemTime(new Date('2026-10-12T23:30:00Z')); // 01:30 on the 13th in Oslo
+			await addUnitNote(3, { text: 'Late-night check' });
+		} finally {
+			vi.useRealTimers();
+		}
+		expect((await getUnit(3))?.notes.at(-1)).toMatchObject({ date: '2026-10-13', text: 'Late-night check' });
+	});
+
+	it('logs the reason even when the status is unchanged', async () => {
+		await setUnitStatus(3, 'active', { text: 'Re-inspected, still fine', date: '2026-10-01' });
+		expect((await getUnit(3))?.notes.at(-1)).toMatchObject({ date: '2026-10-01', text: 'Re-inspected, still fine' });
+		const before = (await getUnit(3))?.notes.length;
+		await setUnitStatus(3, 'active');
+		expect((await getUnit(3))?.notes.length).toBe(before);
+	});
+
+	it('reports a missing unit instead of silently doing nothing', async () => {
+		expect(await updateUnit(9999, { brand: 'X' })).toBe(false);
+		expect(await addUnitNote(9999, { text: 'x' })).toBe(false);
+		expect(await setUnitStatus(9999, 'retired')).toBe(false);
+		expect(await updateUnit(3, { brand: 'DMM' })).toBe(true);
 	});
 
 	it('the db itself rejects an unknown status or non-object opts', () => {
@@ -120,17 +149,25 @@ describe('unit fields', () => {
 
 	it('listAllUnits lists every unit across items, by id, with its item name', async () => {
 		const rows = await listAllUnits();
-		const ids = rows.map((row) => row.unit.id);
+		const ids = rows.map((row) => row.id);
 		expect(ids).toEqual([...ids].sort((a, b) => a - b));
 		expect(ids).toHaveLength((await db.select().from(units).all()).length);
 		expect(new Set(rows.map((row) => row.itemName))).toEqual(new Set(['Dragon Cam #2', 'Ice Axe', 'Rope', 'Harness']));
+		const unit3 = rows.find((row) => row.id === 3);
+		expect(unit3?.noteCount).toBe((await getUnit(3))?.notes.length);
 	});
 
 	it('normalizeOpts trims and drops empty keys', () => {
 		expect(normalizeOpts({ ' a ': ' 1 ', '  ': 'x' })).toEqual({ a: '1' });
 	});
 
-	it('parseOptsText reads key = value / key: value lines', () => {
-		expect(parseOptsText('length = 58 m\ncolour: red\n\nnonsense line\n = no key')).toEqual({ length: '58 m', colour: 'red' });
+	it('parseOptsFields pairs names with values and skips fully blank rows', () => {
+		expect(parseOptsFields([' Length ', '', 'Colour'], [' 58 m ', '', 'red'])).toEqual({ Length: '58 m', Colour: 'red' });
+		expect(parseOptsFields([], [])).toEqual({});
+	});
+
+	it('parseOptsFields rejects a value without a name, or the same name twice', () => {
+		expect(() => parseOptsFields(['', 'x'], ['58 m', '1'])).toThrow(/needs a name/);
+		expect(() => parseOptsFields(['Length', ' Length'], ['58 m', '60 m'])).toThrow(/twice/);
 	});
 });

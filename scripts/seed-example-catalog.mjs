@@ -58,7 +58,8 @@ const products = [
         // is still in use, just shorter than its item says.
         specialUnits: [
           {
-            marking: 'ROPE-60-CUT',
+            marking: 'Black tape on both ends',
+            serialNumber: 'BOA-2021-0731',
             status: 'active',
             opts: { length: '58 m' },
             notes: [
@@ -89,7 +90,8 @@ const products = [
         // toward stock until it's set back to active.
         specialUnits: [
           {
-            marking: 'HARNESS-RED-OOS',
+            marking: 'White tape on belay loop',
+            serialNumber: 'JAY-2022-1187',
             status: 'out_of_service',
             notes: [{ date: '2026-09-20', text: 'Status: Active → Out of service — Belay loop fuzzed, sent for inspection.' }],
           },
@@ -280,7 +282,8 @@ const products = [
         unitCount: 0,
         specialUnits: [
           {
-            marking: 'CAM3-RETIRED',
+            marking: 'Blue tape',
+            serialNumber: 'DR2-3-20190412',
             status: 'retired',
             notes: [
               { date: '2024-05-02', text: 'Trigger wire frayed. Replaced by DMM under warranty.' },
@@ -477,9 +480,10 @@ const upsertItem = db.prepare(
 const getItemBySlug = db.prepare('SELECT id FROM items WHERE slug = ?');
 
 // Units have no natural unique key, so the seed identifies its own units by
-// (item, marking) — re-running only adds units that are missing, so it
-// never duplicates them or overwrites what an admin has edited since.
-const getUnitByMarking = db.prepare('SELECT id FROM units WHERE item_id = ? AND marking = ?');
+// (item, serial number) — every seeded unit has one. Re-running only adds
+// units that are missing, so it never duplicates them or overwrites what an
+// admin has edited since.
+const getUnitBySerial = db.prepare('SELECT id FROM units WHERE item_id = ? AND serial_number = ?');
 const insertUnit = db.prepare(
   `INSERT INTO units (item_id, brand, model, marking, serial_number, manufactured_at, purchased_at, status, notes, opts)
    VALUES (@itemId, @brand, @model, @marking, @serialNumber, @manufacturedAt, @purchasedAt, @status, @notes, @opts)`,
@@ -525,18 +529,20 @@ function upsertProductRow(p) {
   return getProductBySlug.get(p.slug).id;
 }
 
-// Every item gets `unitCount` active units (its stock) marked
-// <SLUG>-01, -02, …, with varied but deterministic purchase/manufacture
-// dates and serials, plus any hand-written `specialUnits` (out of service,
-// retired, cut ropes, …) on top.
+// A marking is just how a unit is physically marked so it can be told apart
+// on the shelf — not a name. Some units have none.
+const EXAMPLE_MARKINGS = ['Red and white tape', 'Blue tape', null, 'Yellow dot', 'Green tape', 'Engraved "OSI"', null, 'Orange tape'];
+
+// Every item gets `unitCount` active units (its stock) with varied but
+// deterministic markings, serials and purchase/manufacture dates, plus any
+// hand-written `specialUnits` (out of service, retired, cut ropes, …) on top.
 function seedUnits(itemId, item, unitDefaults = {}) {
-  const prefix = item.slug.toUpperCase();
   const numbered = Array.from({ length: item.unitCount }, (_, i) => {
     const n = i + 1;
     const year = 2021 + ((itemId + n) % 5);
     const month = String(1 + ((itemId * 3 + n) % 12)).padStart(2, '0');
     return {
-      marking: `${prefix}-${String(n).padStart(2, '0')}`,
+      marking: EXAMPLE_MARKINGS[(itemId + i) % EXAMPLE_MARKINGS.length],
       serialNumber: `${String(itemId).padStart(3, '0')}${String(year).slice(2)}${String(1000 + n * 37)}`,
       manufacturedAt: `${year - 1}-${month}-01`,
       purchasedAt: `${year}-${month}-15`,
@@ -545,13 +551,13 @@ function seedUnits(itemId, item, unitDefaults = {}) {
   });
 
   for (const unit of [...numbered, ...(item.specialUnits ?? [])]) {
-    if (getUnitByMarking.get(itemId, unit.marking)) continue;
+    if (getUnitBySerial.get(itemId, unit.serialNumber)) continue;
     insertUnit.run({
       itemId,
       brand: unit.brand ?? unitDefaults.brand ?? null,
       model: unit.model ?? unitDefaults.model ?? null,
-      marking: unit.marking,
-      serialNumber: unit.serialNumber ?? null,
+      marking: unit.marking ?? null,
+      serialNumber: unit.serialNumber,
       manufacturedAt: unit.manufacturedAt ?? null,
       purchasedAt: unit.purchasedAt ?? null,
       status: unit.status ?? 'active',

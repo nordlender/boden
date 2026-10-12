@@ -219,11 +219,14 @@ export function getOverbookedOrders(
 	options: { executor?: QueryExecutor; today?: string } = {},
 ): { orderId: number; orderCode: string; status: string; fromDate: string; toDate: string }[] {
 	const { executor = db, today = todayIsoInOslo() } = options;
-	const daily = getDailyAvailability([itemId], today, days, { executor, today }).get(itemId) ?? [];
-	const shortDays = daily.flatMap((available, i) => (available < 0 ? [addDaysIso(today, i)] : []));
+	// Same as getDailyAvailability, but keeping the claims to find which
+	// orders cover the overbooked days — one claims query instead of two.
+	const stock = getStockCounts([itemId], executor).get(itemId) ?? 0;
+	const claims = getClaims([itemId], today, addDaysIso(today, days - 1), { executor, today });
+	const occupied = occupiedByDay(claims, today, days).get(itemId) ?? [];
+	const shortDays = occupied.flatMap((n, i) => (stock - n < 0 ? [addDaysIso(today, i)] : []));
 	if (shortDays.length === 0) return [];
 
-	const claims = getClaims([itemId], today, addDaysIso(today, days - 1), { executor, today });
 	const orderIds = [...new Set(claims.filter((c) => shortDays.some((d) => c.start <= d && d <= c.end)).map((c) => c.orderId))];
 	if (orderIds.length === 0) return [];
 	return executor

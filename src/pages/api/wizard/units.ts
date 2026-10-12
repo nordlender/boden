@@ -8,25 +8,28 @@ import type { APIRoute } from 'astro';
 import {
 	addUnitNote,
 	createUnits,
-	getUnit,
 	isUnitStatus,
-	parseOptsText,
+	parseOptsFields,
 	setUnitStatus,
+	UNIT_TEXT_FIELDS,
 	updateUnit,
 	type UnitFields,
 } from '../../../lib/units';
 import { isPositiveInteger, requireAdmin, safeRedirectTarget } from '../../../lib/http';
 
-const FIELD_NAMES = ['brand', 'model', 'marking', 'serialNumber', 'manufacturedAt', 'purchasedAt'] as const;
-
 function readFields(form: FormData): UnitFields {
 	const fields: UnitFields = {};
-	for (const name of FIELD_NAMES) {
+	for (const name of UNIT_TEXT_FIELDS) {
 		const value = form.get(name);
 		if (typeof value === 'string') fields[name] = value;
 	}
-	const opts = form.get('opts');
-	if (typeof opts === 'string') fields.opts = parseOptsText(opts);
+	// Opts arrive as paired optKey/optValue inputs (OptsFields.astro). The
+	// hidden `opts` marker says the form had an opts section at all, so an
+	// update that removes every row clears opts instead of leaving them.
+	if (form.has('opts')) {
+		const strings = (name: string) => form.getAll(name).map((value) => value.toString());
+		fields.opts = parseOptsFields(strings('optKey'), strings('optValue'));
+	}
 	return fields;
 }
 
@@ -50,20 +53,20 @@ export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 			await createUnits(itemId, count, readFields(form));
 		} else {
 			const unitId = Number(form.get('unitId'));
-			if (!isPositiveInteger(unitId) || !(await getUnit(unitId))) {
-				return new Response('Unit not found', { status: 404 });
-			}
+			if (!isPositiveInteger(unitId)) return new Response('Unit not found', { status: 404 });
+			let found: boolean;
 			if (action === 'update') {
-				await updateUnit(unitId, readFields(form));
+				found = await updateUnit(unitId, readFields(form));
 			} else if (action === 'status') {
 				const status = form.get('status');
 				if (!isUnitStatus(status)) return new Response('Unknown status', { status: 400 });
-				await setUnitStatus(unitId, status, { text, date, authorId });
+				found = await setUnitStatus(unitId, status, { text, date, authorId });
 			} else if (action === 'note') {
-				await addUnitNote(unitId, { text, date, authorId });
+				found = await addUnitNote(unitId, { text, date, authorId });
 			} else {
 				return new Response('Unknown action', { status: 400 });
 			}
+			if (!found) return new Response('Unit not found', { status: 404 });
 		}
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Could not save unit';

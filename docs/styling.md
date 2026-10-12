@@ -30,8 +30,8 @@ to dark mode.
 | Body text | `text`, `text-muted`, `text-inverted` | `text-text`, `text-text-muted` |
 | Disabled state | `disabled-bg`, `disabled-text` | `bg-disabled-bg`, `text-disabled-text` |
 | Modal/overlay backdrop | `overlay` | `bg-overlay` |
-| Brand/primary action | `accent`, `accent-hover`, `accent-subtle`, `accent-text`, `focus-ring` | `bg-accent`, `text-accent-text` |
-| "This is selected" (wizard rows, calendar days) | `selected`, `selected-subtle`, `selected-border`, `selected-text` | `bg-selected`, `border-selected-border` |
+| Brand/primary action | `accent`, `accent-hover`, `accent-subtle`, `accent-text` | `bg-accent`, `text-accent-text` |
+| "This is selected" (wizard rows, calendar days) | `selected`, `selected-subtle`, `selected-text` | `bg-selected`, `text-selected-text` |
 | Success / in-stock | `success`, `success-subtle`, `success-border`, `success-text` | `bg-success-subtle`, `text-success-text` |
 | Availability scale (AvailabilityCalendar): units available that day, 0 … 4+ (semi-transparent; text on top stays `text-text`) | `availability-0` … `availability-4` | `bg-availability-2` |
 | Informational | `info`, `info-subtle`, `info-border`, `info-text` | `bg-info-subtle`, `text-info-text` |

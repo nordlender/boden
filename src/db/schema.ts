@@ -115,11 +115,9 @@ export const items = sqliteTable('items', {
   // from this field.
   name: text('name').notNull(),
   imageUrl: text('image_url'),
-  // Total owned. "In stock right now" is never stored — it's always
-  // computed as stockCount minus quantities on currently active/scheduled/
-  // requested rentals (see docs/schema-legacy-fixes.md's original `available`
-  // derivation, carried forward unchanged): a stored second number can only
-  // drift out of sync.
+  // Total owned. Availability is never stored — it's derived per day from
+  // the orders occupying the item on that day (src/lib/availability.ts): a
+  // stored second number can only drift out of sync.
   stockCount: integer('stock_count').notNull().default(1),
   // Soft delete: items referenced by orderItems can't be hard-deleted.
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),

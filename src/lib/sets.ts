@@ -130,6 +130,17 @@ export async function resolveEntriesToItemQuantities(
 	return Array.from(totals, ([itemId, quantity]) => ({ itemId, quantity }));
 }
 
+/**
+ * How many whole sets fit, given how many of each component are available:
+ * the scarcest component (available / quantity per set) decides, never below
+ * zero. A set with no components fits zero. Shared by computeSetAvailability
+ * and availability.ts's per-day setDailyAvailability.
+ */
+export function setsThatFit(components: { available: number; quantity: number }[]): number {
+	if (components.length === 0) return 0;
+	return Math.max(0, Math.min(...components.map((c) => Math.floor(c.available / c.quantity))));
+}
+
 // Max number of the set orderable right now: the smallest ratio of any
 // component's current stock to how many of it the set needs — one
 // insufficient component caps the whole set, same idea as items'
@@ -139,16 +150,12 @@ export function computeSetAvailability(
 	children: { itemId: number; quantity: number; stockCount: number }[],
 	reservedByItem: Map<number, number>,
 ): { stockCount: number; inStock: number } {
-	if (children.length === 0) return { stockCount: 0, inStock: 0 };
-
-	let stockCount = Infinity;
-	let inStock = Infinity;
-	for (const child of children) {
-		const reserved = reservedByItem.get(child.itemId) ?? 0;
-		stockCount = Math.min(stockCount, Math.floor(child.stockCount / child.quantity));
-		inStock = Math.min(inStock, Math.floor((child.stockCount - reserved) / child.quantity));
-	}
-	return { stockCount, inStock: Math.max(inStock, 0) };
+	return {
+		stockCount: setsThatFit(children.map((child) => ({ available: child.stockCount, quantity: child.quantity }))),
+		inStock: setsThatFit(
+			children.map((child) => ({ available: child.stockCount - (reservedByItem.get(child.itemId) ?? 0), quantity: child.quantity })),
+		),
+	};
 }
 
 // ---------------------------------------------------------------------------

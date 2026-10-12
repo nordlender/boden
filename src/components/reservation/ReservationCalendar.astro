@@ -228,6 +228,8 @@ const todayIso = todayIsoInOslo();
 		// selection — cap how far the second click can land. Reset once a
 		// full range lands (or the selection clears) so a later fresh pick
 		// isn't left capped from a stale prior computation.
+		// Inclusive range: a 1-day cap means from===to, hence `- 1`. addDaysIso
+		// is plain UTC day arithmetic (see src/lib/dates.ts), not Oslo-anchored.
 		if (maxRangeDays && from && !to) {
 			calendar.max = addDaysIso(from, maxRangeDays - 1);
 		} else if (!from) {

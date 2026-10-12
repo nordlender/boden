@@ -1,2 +1,0 @@
-DROP INDEX `pickup_days_single_user_date_unique`;--> statement-breakpoint
-CREATE UNIQUE INDEX `pickup_days_single_user_date_time_unique` ON `pickup_days` (`user_id`,`date`,`start_time`,`end_time`) WHERE "pickup_days"."kind" = 'single';

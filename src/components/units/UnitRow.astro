@@ -10,7 +10,6 @@
 // `marking` is a plain description of how the unit is physically marked
 // ("red and white tape"), shown as an ordinary column — not as the unit's
 // title. A unit has no name; it's identified by its #id.
-import Badge from '../ui/Badge.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
 import DetailsToggle from '../wizard/DetailsToggle.astro';
 import OptsFields from './OptsFields.astro';
@@ -42,15 +41,17 @@ const opts = Object.entries(unit.opts);
 			<p class="truncate text-sm text-text">{brandModel || <span class="text-text-muted">—</span>}</p>
 			{unit.serialNumber && <p class="truncate font-mono text-xs text-text-muted">S/N {unit.serialNumber}</p>}
 			{unit.marking && <p class="truncate text-xs text-text-muted sm:hidden">{unit.marking}</p>}
-			{opts.length > 0 && (
-				<p class="mt-1 flex flex-wrap gap-1">
-					{opts.map(([key, value]) => <Badge tone="info">{key}: {value}</Badge>)}
-				</p>
-			)}
 		</div>
 		<span class:list={[DESKTOP_ONLY_CLASS, 'truncate text-sm text-text']}>{unit.marking ?? <span class="text-text-muted">—</span>}</span>
 		<span class:list={[DESKTOP_ONLY_CLASS, 'text-sm tabular-nums text-text-muted']}>{unit.manufacturedAt ?? '—'}</span>
 		<span class:list={[DESKTOP_ONLY_CLASS, 'text-sm tabular-nums text-text-muted']}>{unit.purchasedAt ?? '—'}</span>
+		{/* Just the count; the fields are listed (and added) in the details panel. The tooltip names them. */}
+		<span
+			class:list={[DESKTOP_ONLY_CLASS, 'text-right text-sm tabular-nums', opts.length > 0 ? 'text-text' : 'text-text-muted']}
+			title={opts.length > 0 ? opts.map(([key, value]) => `${key}: ${value}`).join('\n') : 'No extra fields'}
+		>
+			{opts.length || '—'}
+		</span>
 		<UnitStatusControl unit={unit} redirectTo={redirectTo} />
 		<div class="flex items-center justify-end gap-1">
 			<NewUnitNoteButton unitId={unit.id} redirectTo={redirectTo} />
@@ -62,7 +63,7 @@ const opts = Object.entries(unit.opts);
 
 	<div class="hidden border-t border-border bg-bg-subtle/60 px-4 py-4" data-details-panel>
 		<p class="mb-3 text-xs text-text-muted sm:hidden">
-			Made {unit.manufacturedAt ?? '—'} · Bought {unit.purchasedAt ?? '—'}
+			Made {unit.manufacturedAt ?? '—'} · Bought {unit.purchasedAt ?? '—'} · {opts.length} extra field{opts.length === 1 ? '' : 's'}
 		</p>
 		<div class="flex flex-col gap-4">
 			<form method="post" action="/api/wizard/units" class="flex flex-col gap-3">

@@ -2,11 +2,13 @@
 // up structurally — same idea as wizard/grid.ts) and by the unit forms
 // (field list and input styling).
 //
-// Columns: id | unit (brand/model, serial, opts) | marking | made | bought | status | actions.
+// Columns: id | unit (brand/model, serial) | marking | made | bought | extra | status | actions.
+// Extra is the count of the unit's extra fields (opts); the fields
+// themselves are viewed and edited in the details panel.
 // Actions holds the new-note button and the details toggle. Below `sm` only
-// id | unit | status | actions remain; marking moves under the unit cell and
+// id | unit | status | actions remain; marking moves under the unit cell, and
 // the dates into the details panel.
-const UNIT_GRID = '3rem minmax(0,1fr) 10rem 6.5rem 6.5rem 9rem 4.5rem';
+const UNIT_GRID = '3rem minmax(0,1fr) 10rem 6.5rem 6.5rem 3.5rem 9rem 4.5rem';
 const UNIT_GRID_MOBILE = '3rem minmax(0,1fr) 9rem 4.5rem';
 
 export const UNIT_GRID_STYLE = `--grid-cols: ${UNIT_GRID_MOBILE}; --grid-cols-sm: ${UNIT_GRID}`;

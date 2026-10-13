@@ -57,15 +57,29 @@ const tint = '--notes-bg: color-mix(in oklab, var(--color-bg-subtle) 60%, var(--
 </div>
 
 <script>
-	for (const list of document.querySelectorAll<HTMLElement>('[data-unit-note-list]')) {
+	const lists = [...document.querySelectorAll<HTMLElement>('[data-unit-note-list]')];
+
+	// Ends the box exactly at the last visible note. offsetTop/offsetHeight
+	// (layout positions) rather than on-screen rects, so a list that's already
+	// scrolled measures the same.
+	function fitToVisibleNotes(list: HTMLElement) {
 		const visible = Number(list.dataset.unitNoteList);
 		const lastVisible = list.querySelectorAll('li')[visible - 1];
+		if (!lastVisible) return;
+		// + the list's bottom padding, so the last visible note isn't flush against the edge.
+		const bottomPadding = parseFloat(getComputedStyle(list).paddingBottom);
+		list.style.maxHeight = `${lastVisible.offsetTop - list.offsetTop + lastVisible.offsetHeight + bottomPadding}px`;
+	}
+
+	// Notes wrap, so their heights change with the width (window resize,
+	// tablet rotation) and once web fonts arrive — re-measure on both.
+	const fitAll = () => lists.forEach(fitToVisibleNotes);
+	fitAll();
+	window.addEventListener('resize', fitAll);
+	document.fonts?.ready.then(fitAll);
+
+	for (const list of lists) {
 		const fade = list.parentElement?.querySelector<HTMLElement>('[data-unit-note-fade]');
-		if (lastVisible) {
-			// + the list's bottom padding, so the last visible note isn't flush against the edge.
-			const bottomPadding = parseFloat(getComputedStyle(list).paddingBottom);
-			list.style.maxHeight = `${lastVisible.getBoundingClientRect().bottom - list.getBoundingClientRect().top + bottomPadding}px`;
-		}
 		list.addEventListener('scroll', () => {
 			const atEnd = list.scrollTop + list.clientHeight >= list.scrollHeight - 1;
 			fade?.classList.toggle('hidden', atEnd);

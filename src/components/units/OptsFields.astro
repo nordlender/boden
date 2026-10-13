@@ -41,6 +41,8 @@ const entries = Object.entries(opts);
 </div>
 
 <script>
+	import { wireMorphActions } from '../../lib/morph-actions';
+
 	document.addEventListener('click', (event) => {
 		const target = event.target as Element;
 		const remove = target.closest('[data-opts-remove]');
@@ -55,6 +57,9 @@ const entries = Object.entries(opts);
 		const list = root?.querySelector('[data-opts-list]');
 		if (!template || !list) return;
 		list.append(template.content.cloneNode(true));
-		list.querySelector<HTMLInputElement>('[data-opts-row]:last-child input')?.focus();
+		const row = list.querySelector<HTMLElement>('[data-opts-row]:last-child');
+		// The page-load wiring never saw this cloned row's delete button.
+		if (row) wireMorphActions(row);
+		row?.querySelector('input')?.focus();
 	});
 </script>

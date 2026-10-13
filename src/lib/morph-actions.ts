@@ -15,12 +15,22 @@ function setState(el: Element, state: 'default' | 'hover') {
 	if (icon) icon.icon = icons[state];
 }
 
-export function wireMorphActions(): void {
-	document.querySelectorAll<HTMLElement>('.morph-action:not([data-morph-wired])').forEach((el) => {
-		el.dataset.morphWired = 'true';
-		el.addEventListener('pointerenter', () => setState(el, 'hover'));
-		el.addEventListener('pointerleave', () => setState(el, 'default'));
-		el.addEventListener('focus', () => setState(el, 'hover'));
-		el.addEventListener('blur', () => setState(el, 'default'));
-	});
+/** Wires one `.morph-action` element (a no-op if it's already wired). */
+export function wireMorphAction(el: HTMLElement): void {
+	if (el.dataset.morphWired) return;
+	el.dataset.morphWired = 'true';
+	el.addEventListener('pointerenter', () => setState(el, 'hover'));
+	el.addEventListener('pointerleave', () => setState(el, 'default'));
+	el.addEventListener('focus', () => setState(el, 'hover'));
+	el.addEventListener('blur', () => setState(el, 'default'));
+}
+
+/**
+ * Wires every `.morph-action` under `root` (default: the whole page). Call
+ * it again with the new element after adding buttons at runtime — e.g. a
+ * row cloned from a <template> (OptsFields.astro) — since the page-load
+ * call only sees what was in the document then.
+ */
+export function wireMorphActions(root: ParentNode = document): void {
+	root.querySelectorAll<HTMLElement>('.morph-action').forEach(wireMorphAction);
 }

@@ -43,11 +43,11 @@ const opts = Object.entries(unit.opts);
 			{unit.marking && <p class="truncate text-xs text-text-muted sm:hidden">{unit.marking}</p>}
 		</div>
 		<span class:list={[DESKTOP_ONLY_CLASS, 'truncate text-sm text-text']}>{unit.marking ?? <span class="text-text-muted">—</span>}</span>
-		<span class:list={[DESKTOP_ONLY_CLASS, 'text-sm tabular-nums text-text-muted']}>{unit.manufacturedAt ?? '—'}</span>
-		<span class:list={[DESKTOP_ONLY_CLASS, 'text-sm tabular-nums text-text-muted']}>{unit.purchasedAt ?? '—'}</span>
+		<span class:list={[DESKTOP_ONLY_CLASS, 'whitespace-nowrap text-sm tabular-nums text-text-muted']}>{unit.manufacturedAt ?? '—'}</span>
+		<span class:list={[DESKTOP_ONLY_CLASS, 'whitespace-nowrap text-sm tabular-nums text-text-muted']}>{unit.purchasedAt ?? '—'}</span>
 		{/* Just the count; the fields are listed (and added) in the details panel. The tooltip names them. */}
 		<span
-			class:list={[DESKTOP_ONLY_CLASS, 'text-right text-sm tabular-nums', opts.length > 0 ? 'text-text' : 'text-text-muted']}
+			class:list={[DESKTOP_ONLY_CLASS, 'text-sm tabular-nums', opts.length > 0 ? 'text-text' : 'text-text-muted']}
 			title={opts.length > 0 ? opts.map(([key, value]) => `${key}: ${value}`).join('\n') : 'No extra fields'}
 		>
 			{opts.length || '—'}

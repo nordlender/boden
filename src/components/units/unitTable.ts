@@ -8,7 +8,11 @@
 // Actions holds the new-note button and the details toggle. Below `sm` only
 // id | unit | status | actions remain; marking moves under the unit cell, and
 // the dates into the details panel.
-const UNIT_GRID = '3rem minmax(0,1fr) 10rem 6.5rem 6.5rem 3.5rem 9rem 4.5rem';
+// Every column is left-aligned with the same gap (gap-3), so the visible
+// space between two columns is that gap plus whatever the left one leaves
+// empty — fixed widths are kept close to their content (dates: ~5rem for
+// "2026-09-20"; extra: its "EXTRA" header) so that slack stays similar.
+const UNIT_GRID = '3rem minmax(0,1fr) 10rem 5.5rem 5.5rem 3rem 9rem 4.5rem';
 const UNIT_GRID_MOBILE = '3rem minmax(0,1fr) 9rem 4.5rem';
 
 export const UNIT_GRID_STYLE = `--grid-cols: ${UNIT_GRID_MOBILE}; --grid-cols-sm: ${UNIT_GRID}`;

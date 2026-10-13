@@ -28,7 +28,13 @@ const { notes, currentUserId, isAdmin, redirectTo } = Astro.props;
 const scrollable = notes.length > VISIBLE_NOTES;
 // The same tint as the details panel (bg-bg-subtle/60 over the table's
 // surface), as one solid colour so the fade can blend into it exactly.
-const tint = '--notes-bg: color-mix(in oklab, var(--color-bg-subtle) 60%, var(--color-surface))';
+// A hovered note mixes a little of the text colour into that tint: the text
+// colour is near-black in light mode and near-white in dark mode, so the
+// same value darkens the row in light mode and brightens it in dark mode.
+const tint = [
+	'--notes-bg: color-mix(in oklab, var(--color-bg-subtle) 60%, var(--color-surface))',
+	'--notes-hover-bg: color-mix(in oklab, var(--notes-bg), var(--color-text) 6%)',
+].join('; ');
 ---
 <div class="relative border-t border-border bg-(--notes-bg)" style={tint}>
 	<ul
@@ -36,7 +42,7 @@ const tint = '--notes-bg: color-mix(in oklab, var(--color-bg-subtle) 60%, var(--
 		data-unit-note-list={scrollable ? VISIBLE_NOTES : undefined}
 	>
 		{notes.map((note) => (
-			<li class="flex items-baseline gap-2 px-3 py-0.5 text-sm">
+			<li class="flex items-baseline gap-2 px-3 py-0.5 text-sm transition-colors hover:bg-(--notes-hover-bg)">
 				<span class="shrink-0 text-xs tabular-nums text-text-muted" title={`${note.authorName}, ${formatDateTimeDisplay(note.createdAt)}`}>
 					{shortAuthorName(note.authorName)} {formatDateDdMmYy(note.createdAt)}
 				</span>

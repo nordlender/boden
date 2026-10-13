@@ -12,4 +12,4 @@ export const prerender = false;
 // read from the request — one-off inspection of the response shape, not a
 // generic passthrough.
 export const GET: APIRoute = ({ locals }) =>
-	callBlocAsSelf(locals, (ownUserId) => `/api/profile/getpage?userId=${ownUserId}`);
+  callBlocAsSelf(locals, (ownUserId) => `/api/profile/getpage?userId=${ownUserId}`);

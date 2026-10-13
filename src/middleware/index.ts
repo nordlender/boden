@@ -20,10 +20,15 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   // which shouldn't load for every middleware run — or at all while
   // prerendering.
   let blocAccess: Promise<BlocAccess> | undefined;
+  // Fail soft: callers treat "no usable bloc token" as fee status Unknown, so
+  // an unexpected throw (bad cookie, failed import) must not become a 500.
   ctx.locals.blocAccess = () =>
-    (blocAccess ??= import('../lib/blocSession').then(({ resolveBlocAccess }) =>
-      resolveBlocAccess(ctx.request, ctx.cookies),
-    ));
+    (blocAccess ??= import('../lib/blocSession')
+      .then(({ resolveBlocAccess }) => resolveBlocAccess(ctx.request, ctx.cookies))
+      .catch((err): BlocAccess => {
+        console.error('[bloc] could not resolve bloc access:', err);
+        return { userId: null, accessToken: null, error: 'RefreshUnavailable' };
+      }));
 
   const user = await validateSession(ctx.request);
   ctx.locals.user = user;

@@ -15,8 +15,8 @@ import { BLOC_OAUTH_TOKEN_URL } from './bloc';
 // document, nothing in its OpenAPI spec). So every branch here is driven by
 // what the sign-in token response actually contained:
 // - expires_in present + refresh_token present -> refreshed ahead of expiry
-// - expires_in present, no refresh_token      -> marked expired (with the
-//   same skew) so the UI prompts a fresh sign-in
+// - expires_in present, no refresh_token      -> used until it expires, then
+//   marked expired so the UI prompts a fresh sign-in
 // - no expires_in                              -> treated as valid (nothing
 //   to schedule against); a 401 then fails soft in the caller as before.
 //
@@ -105,10 +105,12 @@ export function getRefreshDecision(token: BlocTokenFields, now: number = nowSeco
   if (token.blocTokenError) return 'failed';
   if (typeof token.accessToken !== 'string' || !token.accessToken) return 'none';
   if (typeof token.expiresAt !== 'number') return 'valid';
-  if (now < token.expiresAt - REFRESH_SKEW_SECONDS) return 'valid';
-  // Same skew without a refresh token, so a token about to die prompts a
-  // sign-in instead of failing mid-request.
-  return token.refreshToken ? 'refresh' : 'expired';
+  // With a refresh token, renew ahead of expiry (skew). Without one there's
+  // nothing to renew, so use the token until it really expires rather than
+  // forcing a sign-in up to a minute early; toBlocAccess() already refuses it
+  // at expiresAt.
+  if (!token.refreshToken) return now < token.expiresAt ? 'valid' : 'expired';
+  return now < token.expiresAt - REFRESH_SKEW_SECONDS ? 'valid' : 'refresh';
 }
 
 // Shape of Auth.js's `account` (the token endpoint response, with
@@ -193,7 +195,10 @@ export async function requestBlocTokenRefresh(
   });
   const data = (await res.json().catch(() => null)) as (OAuthTokenResponse & { error?: string }) | null;
   const oauthError = typeof data?.error === 'string' ? data.error : undefined;
-  if ((res.status === 400 || res.status === 401) && (oauthError === 'invalid_grant' || oauthError === 'invalid_token')) {
+  // Besides the standard invalid_grant/invalid_token, a 403 also means bloc
+  // refuses this token (revoked) — don't retry that forever.
+  const refused = oauthError === 'invalid_grant' || oauthError === 'invalid_token';
+  if (res.status === 403 || ((res.status === 400 || res.status === 401) && refused)) {
     throw new BlocRefreshRejectedError(res.status, oauthError);
   }
   if (!res.ok || typeof data?.access_token !== 'string' || !data.access_token) {

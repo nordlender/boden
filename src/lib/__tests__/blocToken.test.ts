@@ -41,9 +41,10 @@ describe('getRefreshDecision', () => {
     expect(getRefreshDecision({ ...t, expiresAt: NOW - 10 }, NOW)).toBe('refresh');
   });
 
-  it('without a refresh token, is expired inside the same skew margin', () => {
+  it('without a refresh token, is used until it really expires (no early skew)', () => {
     expect(getRefreshDecision({ accessToken: 'a', expiresAt: NOW + REFRESH_SKEW_SECONDS + 1 }, NOW)).toBe('valid');
-    expect(getRefreshDecision({ accessToken: 'a', expiresAt: NOW + 10 }, NOW)).toBe('expired');
+    expect(getRefreshDecision({ accessToken: 'a', expiresAt: NOW + 10 }, NOW)).toBe('valid');
+    expect(getRefreshDecision({ accessToken: 'a', expiresAt: NOW }, NOW)).toBe('expired');
     expect(getRefreshDecision({ accessToken: 'a', expiresAt: NOW - 1 }, NOW)).toBe('expired');
   });
 
@@ -125,6 +126,13 @@ describe('ensureFreshBlocToken', () => {
       const res = await refreshBlocToken(t, creds(failJson(status, body)), NOW);
       expect(res).toEqual({ token: t, outcome: 'transient' });
     }
+  });
+
+  it('treats a 403 as a permanent refusal of the refresh token', async () => {
+    clearBlocRefreshCache();
+    const t = { sub: '12', accessToken: 'a1', refreshToken: 'r1', expiresAt: NOW - 5 };
+    const res = await refreshBlocToken(t, creds(failJson(403, null)), NOW);
+    expect(res).toEqual({ token: { sub: '12', blocTokenError: 'RefreshTokenError' }, outcome: 'invalidated' });
   });
 
   it('logs a transient failure once, however many callers share it', async () => {

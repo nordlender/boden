@@ -8,10 +8,12 @@ import { json } from './http';
  *
  * HARD RULE — only wrap bloc endpoints that are scoped to the CALLER'S OWN
  * token/account (no other-user identifier param). This helper does not and
- * cannot enforce that — it forwards whatever path you give it. The deleted
- * src/pages/api/debug/getpage.ts is the cautionary example: it wrapped
- * Profile/GetPage, which accepts an arbitrary userId, so any signed-in
- * caller could pull ANOTHER member's PII just by knowing/guessing their id.
+ * cannot enforce that — it forwards whatever path you give it. Profile/GetPage
+ * is the cautionary example: it accepts an arbitrary userId, so wrapping it
+ * verbatim would let any signed-in caller pull ANOTHER member's PII just by
+ * knowing/guessing their id. src/pages/api/debug/getpage.ts stays safe only
+ * by passing the caller's own id (via the builder form below), never one
+ * read from the request.
  * Check a new bloc endpoint's params for exactly that shape before adding
  * a route here, and skip it if found.
  */
@@ -27,7 +29,8 @@ export async function callBlocAsSelf(
 
   if (access.accessToken === null) {
     const reason = access.error === 'NoSession' ? 'Not logged in' : 'No usable bloc access token';
-    return json({ error: `${reason} (${access.error}).` }, 401);
+    // bloc being unreachable isn't an auth failure — don't send callers off to re-authenticate.
+    return json({ error: `${reason} (${access.error}).` }, access.error === 'RefreshUnavailable' ? 503 : 401);
   }
 
   let path: string;

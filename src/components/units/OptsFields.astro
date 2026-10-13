@@ -4,6 +4,7 @@
 // optKey/optValue inputs (read by /api/wizard/units via parseOptsFields),
 // plus a hidden `opts` marker so removing every row clears opts on save.
 // "Add field" clones the <template> row; the trash button removes a row.
+import AppIcon from '../icons/AppIcon.astro';
 import IconButton from '../ui/IconButton.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
 import { inputClass, labelClass } from './unitTable';
@@ -31,7 +32,8 @@ const entries = Object.entries(opts);
 		<div class="flex items-center gap-2" data-opts-row>
 			<input class:list={[inputClass, 'w-36 flex-none sm:w-44']} type="text" name="optKey" placeholder="Name, e.g. Length" aria-label="Extra field name" />
 			<input class={inputClass} type="text" name="optValue" placeholder="Value, e.g. 58 m" aria-label="Extra field value" />
-			<IconButton icon="trash" label="Remove field" size="sm" data-opts-remove />
+			{/* `inline`: an icon's first use inside a <template> would otherwise hide that icon page-wide (see AppIcon.astro). */}
+			<IconButton label="Remove field" size="sm" data-opts-remove><AppIcon name="trash" size={16} inline /></IconButton>
 		</div>
 	</template>
 	<TextMorphButton action="add" size="sm" class="mt-2" data-opts-add>Add field</TextMorphButton>

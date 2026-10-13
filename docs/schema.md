@@ -523,7 +523,7 @@ rope that was cut).
   ("Status: Active → Out of service — reason"). Notes follow exactly the
   hub-message rules: dated by when they were posted, never edited, deletable
   by an admin or their own author. On the units page each unit shows its
-  two newest notes as compact one-line entries ("John A. 20/09/26 <note>",
+  three newest notes as compact one-line entries ("John A. 20/09/26 <note>",
   scrolling for more), a new-note popover, a status popover on its status
   pill and a details panel for its fields.
 - **Separate from reports**: unit notes hold admin-written history only.

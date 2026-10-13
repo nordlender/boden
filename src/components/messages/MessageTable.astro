@@ -1,14 +1,10 @@
 ---
-// Standardized message list — the "Messages" board on both the moderator
-// and admin hubs (so the two can't drift into two different box layouts, see
-// issue #151), and each unit's notes on /admin/items/[id]/units (unit notes
-// are messages too, with the same rules — see src/db/schema.ts). `isAdmin`
-// and `currentUserId` are forwarded to each row so it can decide its own
-// pin/delete affordances (admins may pin/delete any message; moderators may
-// delete only their own — see issue #225 and MessageTableRow.astro).
-//
-// `title: null` drops the heading row (unit notes have no heading of their
-// own); `pinnable: false` hides pinning (unit notes are a log, not a board).
+// Standardized "Messages" board — used identically by both the moderator
+// hub and the admin hub, so the two can't drift into two different box
+// layouts (see issue #151). `isAdmin` and `currentUserId` are forwarded to
+// each row so it can decide its own pin/delete affordances (admins may
+// pin/delete any message; moderators may delete only their own — see issue
+// #225 and MessageTableRow.astro).
 import MessageTableRow from './MessageTableRow.astro';
 import type { MessageRow } from '../../lib/messages';
 
@@ -17,22 +13,16 @@ interface Props {
 	currentUserId?: string | null;
 	isAdmin?: boolean;
 	redirectTo?: string;
-	title?: string | null;
-	pinnable?: boolean;
 }
 
-const { messages, currentUserId = null, isAdmin = false, redirectTo, title = 'Messages', pinnable = true } = Astro.props;
+const { messages, currentUserId = null, isAdmin = false, redirectTo } = Astro.props;
 ---
 
 <div class="flex flex-col gap-3">
-	{
-		title !== null && (
-			<div class="flex items-center justify-between gap-3">
-				<h2 class="text-lg font-semibold text-text">{title}</h2>
-				<slot name="actions" />
-			</div>
-		)
-	}
+	<div class="flex items-center justify-between gap-3">
+		<h2 class="text-lg font-semibold text-text">Messages</h2>
+		<slot name="actions" />
+	</div>
 
 	<div class="rounded-lg border border-border bg-surface">
 		{
@@ -41,13 +31,7 @@ const { messages, currentUserId = null, isAdmin = false, redirectTo, title = 'Me
 			) : (
 				<ul class="divide-y divide-border">
 					{messages.map((message) => (
-						<MessageTableRow
-							message={message}
-							currentUserId={currentUserId}
-							isAdmin={isAdmin}
-							pinnable={pinnable}
-							redirectTo={redirectTo}
-						/>
+						<MessageTableRow message={message} currentUserId={currentUserId} isAdmin={isAdmin} redirectTo={redirectTo} />
 					))}
 				</ul>
 			)

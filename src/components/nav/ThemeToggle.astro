@@ -36,17 +36,28 @@ import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 	}
 
 	// Hint at the click action with tabler's "sun-moon" icon while
-	// hovered or focused, then morph back to the current theme's icon.
+	// hovered or keyboard-focused, then morph back to the current theme's icon.
+	// Only :focus-visible counts as focus: a mouse click also focuses the
+	// button, which would otherwise pin the hint icon until blur.
 	// Tracked as one combined state rather than two independent on/off
 	// pairs, since hover and focus can overlap (e.g. tabbing to the
 	// button while the mouse already rests over it) and either one
 	// ending shouldn't clear the hint while the other still holds.
 	let hovered = false;
-	let focused = false;
+
+	// Read live rather than cached: :focus-visible can change without a new
+	// focus event. Guarded since older Safari throws on the selector.
+	function focusVisible() {
+		try {
+			return !!button?.matches(':focus-visible');
+		} catch {
+			return false;
+		}
+	}
 
 	function syncIcon() {
 		if (!icon) return;
-		icon.icon = hovered || focused ? themeToggle.hover : themeToggle[resolvedTheme()];
+		icon.icon = hovered || focusVisible() ? themeToggle.hover : themeToggle[resolvedTheme()];
 	}
 
 	button?.addEventListener('click', () => {
@@ -64,7 +75,7 @@ import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 		// hover/focus — syncIcon is the source of truth for that, so this
 		// avoids fighting it if hover/focus is still active when the
 		// click lands.
-		if (icon && !hovered && !focused) icon.icon = themeToggle[next];
+		if (icon && !hovered && !focusVisible()) icon.icon = themeToggle[next];
 	});
 
 	button?.addEventListener('mouseenter', () => {
@@ -76,11 +87,9 @@ import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 		syncIcon();
 	});
 	button?.addEventListener('focus', () => {
-		focused = true;
 		syncIcon();
 	});
 	button?.addEventListener('blur', () => {
-		focused = false;
 		syncIcon();
 	});
 </script>

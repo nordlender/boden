@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	addDaysIso,
 	daysInclusive,
+	formatDateDdMmYy,
 	formatDateDisplay,
 	formatDateTimeDisplay,
 	isIsoDate,
@@ -49,5 +50,10 @@ describe('display formatting', () => {
 	it('formats date-times in Europe/Oslo regardless of host timezone', () => {
 		expect(norm(formatDateTimeDisplay(new Date('2026-07-01T10:30:00Z')))).toBe('1. juli 2026, 12:30');
 		expect(norm(formatDateTimeDisplay(new Date('2026-01-01T10:30:00Z')))).toBe('1. jan. 2026, 11:30');
+	});
+	it('formats dd/mm/yy as the date reads in Oslo', () => {
+		expect(formatDateDdMmYy(new Date('2026-09-20T10:00:00Z'))).toBe('20/09/26');
+		// 23:30 UTC on the 12th is already the 13th in Oslo.
+		expect(formatDateDdMmYy(new Date('2026-10-12T23:30:00Z'))).toBe('13/10/26');
 	});
 });

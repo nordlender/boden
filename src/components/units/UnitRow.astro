@@ -3,7 +3,7 @@
 // wizard/ItemRow.astro. Three separate menus per unit:
 // - status: hover the status pill for a pencil → popover (UnitStatusControl)
 // - notes: the message-plus button → new-note popover (NewUnitNoteButton);
-//   the latest notes are listed under the row (UnitNotes)
+//   the latest notes are listed under the row (UnitNoteList)
 // - details: the shared DetailsToggle → panel with the unit's editable
 //   fields and extra fields (finds [data-details-row]/[data-details-panel])
 //
@@ -14,7 +14,7 @@ import Badge from '../ui/Badge.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
 import DetailsToggle from '../wizard/DetailsToggle.astro';
 import OptsFields from './OptsFields.astro';
-import UnitNotes from './UnitNotes.astro';
+import UnitNoteList from './UnitNoteList.astro';
 import NewUnitNoteButton from './NewUnitNoteButton.astro';
 import UnitStatusControl from './UnitStatusControl.astro';
 import type { Unit } from '../../lib/units';
@@ -58,12 +58,7 @@ const opts = Object.entries(unit.opts);
 		</div>
 	</div>
 
-	{/* Indented to line up with the unit column: px-3 + the 3rem id column + gap-3. */}
-	{notes.length > 0 && (
-		<div class="pb-3 pl-[4.5rem] pr-3">
-			<UnitNotes notes={notes} currentUserId={currentUserId} isAdmin={isAdmin} redirectTo={redirectTo} />
-		</div>
-	)}
+	{notes.length > 0 && <UnitNoteList notes={notes} currentUserId={currentUserId} isAdmin={isAdmin} redirectTo={redirectTo} />}
 
 	<div class="hidden border-t border-border bg-bg-subtle/60 px-4 py-4" data-details-panel>
 		<p class="mb-3 text-xs text-text-muted sm:hidden">

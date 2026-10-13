@@ -10,7 +10,7 @@
 // just a new message (see issue #225).
 import MorphButton from '../ui/MorphButton.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
-import type { MessageRow } from '../../lib/messages';
+import { canDeleteMessage, type MessageRow } from '../../lib/messages';
 import { formatDateTimeDisplay } from '../../lib/dates';
 
 interface Props {
@@ -24,7 +24,7 @@ interface Props {
 const { message, currentUserId = null, isAdmin = false, pinnable = true, redirectTo } = Astro.props;
 
 const canPin = isAdmin && pinnable;
-const canDelete = isAdmin || (currentUserId !== null && message.authorId === currentUserId);
+const canDelete = canDeleteMessage(message, currentUserId, isAdmin);
 ---
 
 <li class="px-4 py-3">

@@ -50,6 +50,26 @@ export async function listUnitNotes(unitIds: number[]): Promise<Map<number, Mess
 	return byUnit;
 }
 
+/**
+ * Who may delete a message (shown in the UI; enforced again in
+ * src/pages/api/messages/delete.ts): an admin may delete any message, anyone
+ * else only their own (see issue #225).
+ */
+export function canDeleteMessage(message: Pick<MessageRow, 'authorId'>, currentUserId: string | null, isAdmin: boolean): boolean {
+	return isAdmin || (currentUserId !== null && message.authorId === currentUserId);
+}
+
+/**
+ * First name plus the initial of the next name, for compact author labels:
+ * "John Appleseed" → "John A.", "Ernest Jebediah Zuckman Hansen" →
+ * "Ernest J.". A single name is returned as is.
+ */
+export function shortAuthorName(name: string): string {
+	const [first, second] = name.trim().split(/\s+/);
+	if (!first) return '';
+	return second ? `${first} ${second[0].toUpperCase()}.` : first;
+}
+
 // Used by withMessageIdAction (src/lib/messages-http.ts) to load the target
 // message before running an id-based action against it.
 export async function getMessageById(id: number): Promise<MessageRow | undefined> {

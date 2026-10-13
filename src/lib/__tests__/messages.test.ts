@@ -14,7 +14,7 @@ vi.mock('../../db/client', async () => {
 	return { db };
 });
 
-const { listMessages, createMessage, deleteMessage, pinMessage, unpinMessage, getMessageById } = await import(
+const { listMessages, createMessage, deleteMessage, pinMessage, unpinMessage, getMessageById, canDeleteMessage, shortAuthorName } = await import(
 	'../messages'
 );
 
@@ -74,5 +74,27 @@ describe('messages', () => {
 		const [message] = await listMessages();
 		expect((await getMessageById(message.id))?.content).toBe('Findable');
 		expect(await getMessageById(message.id + 1)).toBeUndefined();
+	});
+});
+
+describe('shortAuthorName', () => {
+	it('keeps the first name and the initial of the next one', () => {
+		expect(shortAuthorName('John Appleseed')).toBe('John A.');
+		expect(shortAuthorName('Ernest Jebediah Zuckman Hansen')).toBe('Ernest J.');
+		expect(shortAuthorName('  ada   lovelace ')).toBe('ada L.');
+	});
+
+	it('returns a single name as is', () => {
+		expect(shortAuthorName('Cher')).toBe('Cher');
+		expect(shortAuthorName('   ')).toBe('');
+	});
+});
+
+describe('canDeleteMessage', () => {
+	it('lets an admin delete any message, anyone else only their own', () => {
+		expect(canDeleteMessage({ authorId: 'mod-1' }, 'admin-1', true)).toBe(true);
+		expect(canDeleteMessage({ authorId: 'mod-1' }, 'mod-1', false)).toBe(true);
+		expect(canDeleteMessage({ authorId: 'mod-1' }, 'mod-2', false)).toBe(false);
+		expect(canDeleteMessage({ authorId: null }, null, false)).toBe(false);
 	});
 });

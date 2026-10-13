@@ -1,0 +1,77 @@
+---
+// Compact list of a unit's notes, used under each row in UnitRow.astro —
+// one line per note: "John A. 20/09/26  <note>  [trash]". Notes are messages
+// (see src/db/schema.ts) with the same rules as the hub board: never edited,
+// deletable by an admin or the note's own author (canDeleteMessage).
+//
+// The box spans the whole row, separated from it by a line and tinted like
+// the row's "Edit details" panel. The two newest notes are visible; with
+// three or more the list scrolls and a fade over the second note shows
+// there's more (hidden once scrolled to the end). The script sizes the box
+// to end exactly at the second note; `max-h-16` is the no-JS fallback.
+//
+// (UnitNotes.astro is the earlier, roomier variant — "Standard message
+// notes", the shared MessageTable — kept for switching back.)
+import AppIcon from '../icons/AppIcon.astro';
+import { canDeleteMessage, shortAuthorName, type MessageRow } from '../../lib/messages';
+import { formatDateDdMmYy, formatDateTimeDisplay } from '../../lib/dates';
+
+interface Props {
+	// Newest first (listUnitNotes).
+	notes: MessageRow[];
+	currentUserId: string | null;
+	isAdmin: boolean;
+	redirectTo: string;
+}
+
+const VISIBLE_NOTES = 2;
+const { notes, currentUserId, isAdmin, redirectTo } = Astro.props;
+const scrollable = notes.length > VISIBLE_NOTES;
+// The same tint as the details panel (bg-bg-subtle/60 over the table's
+// surface), as one solid colour so the fade can blend into it exactly.
+const tint = '--notes-bg: color-mix(in oklab, var(--color-bg-subtle) 60%, var(--color-surface))';
+---
+<div class="relative border-t border-border bg-(--notes-bg)" style={tint}>
+	<ul
+		class:list={['flex flex-col py-1', scrollable && 'max-h-16 overflow-y-auto']}
+		data-unit-note-list={scrollable ? VISIBLE_NOTES : undefined}
+	>
+		{notes.map((note) => (
+			<li class="flex items-baseline gap-2 px-3 py-0.5 text-sm">
+				<span class="shrink-0 text-xs tabular-nums text-text-muted" title={`${note.authorName}, ${formatDateTimeDisplay(note.createdAt)}`}>
+					{shortAuthorName(note.authorName)} {formatDateDdMmYy(note.createdAt)}
+				</span>
+				<span class="min-w-0 flex-1 whitespace-pre-wrap text-text">{note.content}</span>
+				{canDeleteMessage(note, currentUserId, isAdmin) && (
+					<form method="post" action="/api/messages/delete" class="shrink-0 self-center">
+						<input type="hidden" name="id" value={note.id} />
+						<input type="hidden" name="redirectTo" value={redirectTo} />
+						<button type="submit" aria-label="Delete note" class="grid place-items-center rounded p-0.5 text-text-muted hover:bg-bg-subtle hover:text-error-text">
+							<AppIcon name="trash" size={12} />
+						</button>
+					</form>
+				)}
+			</li>
+		))}
+	</ul>
+	{scrollable && (
+		<div class="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-linear-to-t from-(--notes-bg) to-transparent" data-unit-note-fade></div>
+	)}
+</div>
+
+<script>
+	for (const list of document.querySelectorAll<HTMLElement>('[data-unit-note-list]')) {
+		const visible = Number(list.dataset.unitNoteList);
+		const lastVisible = list.querySelectorAll('li')[visible - 1];
+		const fade = list.parentElement?.querySelector<HTMLElement>('[data-unit-note-fade]');
+		if (lastVisible) {
+			// + the list's bottom padding, so the second note isn't flush against the edge.
+			const bottomPadding = parseFloat(getComputedStyle(list).paddingBottom);
+			list.style.maxHeight = `${lastVisible.getBoundingClientRect().bottom - list.getBoundingClientRect().top + bottomPadding}px`;
+		}
+		list.addEventListener('scroll', () => {
+			const atEnd = list.scrollTop + list.clientHeight >= list.scrollHeight - 1;
+			fade?.classList.toggle('hidden', atEnd);
+		});
+	}
+</script>

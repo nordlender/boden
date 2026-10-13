@@ -155,7 +155,7 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 			)}
 		</p>
 
-		<input type="hidden" name="variantAttributeKey" value={existingAttributeKeys.find((key) => key.isVariant)?.name ?? ''} data-variant-input />
+		<input type="hidden" name="variantAttributeKey" value={existingAttributeKeys.find((key) => key.isVariant)?.name ?? ''} autocomplete="off" data-variant-input />
 
 		{existingAttributeKeys.length > 0 && (
 			<div class="flex flex-wrap gap-2">

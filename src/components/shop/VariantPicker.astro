@@ -124,7 +124,7 @@ function optionLabel(variant: Variant): string {
 								data-stock={variant.inStock}
 								data-attributes={variant.kind === 'item' ? JSON.stringify(variant.attributes) : '[]'}
 								data-component-display={variant.kind === 'set' ? JSON.stringify(variant.componentDisplay) : '[]'}
-								class={`rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-pressed:border-selected-border aria-pressed:bg-selected-subtle aria-pressed:font-medium aria-pressed:text-selected-text ${variant.inStock > 0 ? 'border-border-interactive text-text' : 'border-border-interactive text-disabled-text line-through'}`}
+								class={`rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-pressed:border-selected-border aria-pressed:bg-selected-subtle aria-pressed:font-medium aria-pressed:hover:bg-selected-subtle aria-pressed:text-selected-text ${variant.inStock > 0 ? 'border-border-interactive text-text' : 'border-border-interactive text-disabled-text line-through'}`}
 							>
 								{variant.kind === 'set' ? `Set — ${label}` : label}
 								{variant.inStock <= 0 && <span class="sr-only"> (out of stock)</span>}

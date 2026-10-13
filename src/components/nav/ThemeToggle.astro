@@ -36,7 +36,9 @@ import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 	}
 
 	// Hint at the click action with tabler's "sun-moon" icon while
-	// hovered or focused, then morph back to the current theme's icon.
+	// hovered or keyboard-focused, then morph back to the current theme's icon.
+	// Only :focus-visible counts as focus: a mouse click also focuses the
+	// button, which would otherwise pin the hint icon until blur.
 	// Tracked as one combined state rather than two independent on/off
 	// pairs, since hover and focus can overlap (e.g. tabbing to the
 	// button while the mouse already rests over it) and either one
@@ -76,7 +78,7 @@ import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 		syncIcon();
 	});
 	button?.addEventListener('focus', () => {
-		focused = true;
+		focused = button.matches(':focus-visible');
 		syncIcon();
 	});
 	button?.addEventListener('blur', () => {

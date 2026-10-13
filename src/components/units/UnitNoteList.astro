@@ -1,19 +1,20 @@
 ---
 // Compact list of a unit's notes, used under each row in UnitRow.astro —
-// one line per note: "John A. 20/09/26  <note>", a small delete button at
-// the far right. Notes are messages
-// (see src/db/schema.ts) with the same rules as the hub board: never edited,
-// deletable by an admin or the note's own author (canDeleteMessage).
+// one line per note: "John A. 20/09/26  <note>", with a bare 20px delete
+// icon at the far right (MorphInlineButton, so it never makes the line
+// taller). Notes are messages (see src/db/schema.ts) with the same rules as
+// the hub board: never edited, deletable by an admin or the note's own
+// author (canDeleteMessage).
 //
 // The box spans the whole row, separated from it by a line and tinted like
 // the row's "Edit details" panel. The three newest notes are visible; with
 // more, the list scrolls and a fade over the third note shows there's more
 // (hidden once scrolled to the end). The script sizes the box to end
-// exactly at the third note; `max-h-28` is the no-JS fallback.
+// exactly at the third note; `max-h-20` is the no-JS fallback.
 //
 // (UnitNotes.astro is the earlier, roomier variant — "Standard message
 // notes", the shared MessageTable — kept for switching back.)
-import MorphButton from '../ui/MorphButton.astro';
+import MorphInlineButton from '../ui/MorphInlineButton.astro';
 import { canDeleteMessage, shortAuthorName, type MessageRow } from '../../lib/messages';
 import { formatDateDdMmYy, formatDateTimeDisplay } from '../../lib/dates';
 
@@ -34,7 +35,7 @@ const tint = '--notes-bg: color-mix(in oklab, var(--color-bg-subtle) 60%, var(--
 ---
 <div class="relative border-t border-border bg-(--notes-bg)" style={tint}>
 	<ul
-		class:list={['flex flex-col py-1', scrollable && 'max-h-28 overflow-y-auto']}
+		class:list={['flex flex-col py-1', scrollable && 'max-h-20 overflow-y-auto']}
 		data-unit-note-list={scrollable ? VISIBLE_NOTES : undefined}
 	>
 		{notes.map((note) => (
@@ -44,10 +45,10 @@ const tint = '--notes-bg: color-mix(in oklab, var(--color-bg-subtle) 60%, var(--
 				</span>
 				<span class="min-w-0 flex-1 whitespace-pre-wrap text-text">{note.content}</span>
 				{canDeleteMessage(note, currentUserId, isAdmin) && (
-					<form method="post" action="/api/messages/delete" class="ml-auto shrink-0 self-center">
+					<form method="post" action="/api/messages/delete" class="ml-auto flex shrink-0 self-center">
 						<input type="hidden" name="id" value={note.id} />
 						<input type="hidden" name="redirectTo" value={redirectTo} />
-						<MorphButton action="delete" size="sm" type="submit" label="Delete note" />
+						<MorphInlineButton action="delete" tone="danger" type="submit" label="Delete note" />
 					</form>
 				)}
 			</li>

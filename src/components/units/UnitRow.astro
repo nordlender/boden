@@ -1,10 +1,11 @@
 ---
 // One unit in the /admin/items/[id]/units table — modelled on
-// wizard/ItemRow.astro: a grid row, plus a details panel toggled by the
-// shared DetailsToggle (which finds [data-details-row]/[data-details-panel]).
-// The unit's notes (its lifetime log) are always shown under the row, not
-// hidden in the panel; the panel holds the actions: add note, change status,
-// edit details.
+// wizard/ItemRow.astro. Three separate menus per unit:
+// - status: hover the status pill for a pencil → popover (UnitStatusControl)
+// - notes: the message-plus button → new-note popover (NewUnitNoteButton);
+//   the latest notes are listed under the row (UnitNoteList)
+// - details: the shared DetailsToggle → panel with the unit's editable
+//   fields and extra fields (finds [data-details-row]/[data-details-panel])
 //
 // `marking` is a plain description of how the unit is physically marked
 // ("red and white tape"), shown as an ordinary column — not as the unit's
@@ -13,21 +14,26 @@ import Badge from '../ui/Badge.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
 import DetailsToggle from '../wizard/DetailsToggle.astro';
 import OptsFields from './OptsFields.astro';
-import { UNIT_STATUSES } from '../../db/schema';
-import { UNIT_STATUS_LABELS, UNIT_STATUS_TONES, type Unit } from '../../lib/units';
+import UnitNoteList from './UnitNoteList.astro';
+import NewUnitNoteButton from './NewUnitNoteButton.astro';
+import UnitStatusControl from './UnitStatusControl.astro';
+import type { Unit } from '../../lib/units';
+import type { MessageRow } from '../../lib/messages';
 import { DESKTOP_ONLY_CLASS, UNIT_FORM_FIELDS, UNIT_GRID_CLASS, UNIT_GRID_STYLE, inputClass, labelClass } from './unitTable';
 
 interface Props {
 	unit: Unit;
-	authorNames: Map<string, string>;
+	// Newest first (listUnitNotes).
+	notes: MessageRow[];
+	currentUserId: string | null;
+	isAdmin: boolean;
 	today: string;
 	redirectTo: string;
 }
 
-const { unit, authorNames, today, redirectTo } = Astro.props;
+const { unit, notes, currentUserId, isAdmin, today, redirectTo } = Astro.props;
 const brandModel = [unit.brand, unit.model].filter(Boolean).join(' ');
 const opts = Object.entries(unit.opts);
-const notesNewestFirst = [...unit.notes].reverse();
 ---
 <div class:list={['border-b border-border last:border-b-0', unit.status === 'retired' && 'text-text-muted']} data-details-row>
 	<div class:list={[UNIT_GRID_CLASS, 'py-2 hover:bg-bg-subtle']} style={UNIT_GRID_STYLE}>
@@ -45,61 +51,21 @@ const notesNewestFirst = [...unit.notes].reverse();
 		<span class:list={[DESKTOP_ONLY_CLASS, 'truncate text-sm text-text']}>{unit.marking ?? <span class="text-text-muted">—</span>}</span>
 		<span class:list={[DESKTOP_ONLY_CLASS, 'text-sm tabular-nums text-text-muted']}>{unit.manufacturedAt ?? '—'}</span>
 		<span class:list={[DESKTOP_ONLY_CLASS, 'text-sm tabular-nums text-text-muted']}>{unit.purchasedAt ?? '—'}</span>
-		<span><Badge tone={UNIT_STATUS_TONES[unit.status]}>{UNIT_STATUS_LABELS[unit.status]}</Badge></span>
-		<DetailsToggle label={`Show actions for unit #${unit.id}`} />
+		<UnitStatusControl unit={unit} redirectTo={redirectTo} />
+		<div class="flex items-center justify-end gap-1">
+			<NewUnitNoteButton unitId={unit.id} redirectTo={redirectTo} />
+			<DetailsToggle label={`Edit details of unit #${unit.id}`} />
+		</div>
 	</div>
 
-	{notesNewestFirst.length > 0 && (
-		<ol class="flex flex-col gap-0.5 pb-2 pl-[4.5rem] pr-3 text-sm">
-			{notesNewestFirst.map((note) => (
-				<li class="flex gap-3">
-					<span class="shrink-0 font-mono text-xs leading-5 text-text-muted">{note.date}</span>
-					<span class="min-w-0 text-text">
-						{note.text}
-						{note.authorId && <span class="text-xs text-text-muted"> — {authorNames.get(note.authorId) ?? note.authorId}</span>}
-					</span>
-				</li>
-			))}
-		</ol>
-	)}
+	{notes.length > 0 && <UnitNoteList notes={notes} currentUserId={currentUserId} isAdmin={isAdmin} redirectTo={redirectTo} />}
 
 	<div class="hidden border-t border-border bg-bg-subtle/60 px-4 py-4" data-details-panel>
 		<p class="mb-3 text-xs text-text-muted sm:hidden">
 			Made {unit.manufacturedAt ?? '—'} · Bought {unit.purchasedAt ?? '—'}
 		</p>
-		<div class="grid gap-4 md:grid-cols-2">
-			<form method="post" action="/api/wizard/units" class="flex flex-col gap-2">
-				<input type="hidden" name="action" value="note" />
-				<input type="hidden" name="unitId" value={unit.id} />
-				<input type="hidden" name="redirectTo" value={redirectTo} />
-				<p class="text-xs font-medium uppercase tracking-wide text-text-muted">Add note</p>
-				<div class="grid grid-cols-[9.5rem_1fr] gap-2">
-					<input class={inputClass} type="date" name="date" value={today} max={today} aria-label="Note date" />
-					<input class={inputClass} type="text" name="text" required placeholder="e.g. Inspected, no damage" aria-label="Note" />
-				</div>
-				<TextMorphButton type="submit" action="add" size="sm" class="self-start">Add note</TextMorphButton>
-			</form>
-
-			<form method="post" action="/api/wizard/units" class="flex flex-col gap-2">
-				<input type="hidden" name="action" value="status" />
-				<input type="hidden" name="unitId" value={unit.id} />
-				<input type="hidden" name="redirectTo" value={redirectTo} />
-				<p class="text-xs font-medium uppercase tracking-wide text-text-muted">Change status</p>
-				<div class="grid grid-cols-[9.5rem_1fr] gap-2">
-					<select class={inputClass} name="status" aria-label="Status">
-						{UNIT_STATUSES.map((status) => (
-							<option value={status} selected={status === unit.status}>{UNIT_STATUS_LABELS[status]}</option>
-						))}
-					</select>
-					<input class={inputClass} type="text" name="text" placeholder="Reason (logged as a note)" aria-label="Reason" />
-				</div>
-				<div class="flex items-center gap-2">
-					<input class:list={[inputClass, 'w-[9.5rem]']} type="date" name="date" value={today} max={today} aria-label="Date of the change" />
-					<TextMorphButton type="submit" action="save" size="sm">Save status</TextMorphButton>
-				</div>
-			</form>
-
-			<form method="post" action="/api/wizard/units" class="flex flex-col gap-3 md:col-span-2">
+		<div class="flex flex-col gap-4">
+			<form method="post" action="/api/wizard/units" class="flex flex-col gap-3">
 				<input type="hidden" name="action" value="update" />
 				<input type="hidden" name="unitId" value={unit.id} />
 				<input type="hidden" name="redirectTo" value={redirectTo} />

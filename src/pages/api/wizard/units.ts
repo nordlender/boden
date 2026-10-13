@@ -1,12 +1,11 @@
 // Also gated by src/middleware/prefixes.ts's ROUTE_RULES — see items.ts.
 // Every unit write from /admin/items/[id]/units, dispatched on the form's
 // `action`: create (a batch of units sharing fields), update (fields +
-// opts), status (with an optional reason, logged as a note) and note
-// (append to the lifetime log).
+// opts) and status (with an optional reason, posted as a unit note). Plain
+// notes are messages, posted through /api/messages/add with a unitId.
 
 import type { APIRoute } from 'astro';
 import {
-	addUnitNote,
 	createUnits,
 	isUnitStatus,
 	parseOptsFields,
@@ -39,9 +38,6 @@ export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 
 	const form = await request.formData();
 	const action = form.get('action');
-	const authorId = locals.user?.id ?? null;
-	const text = form.get('text')?.toString() ?? '';
-	const date = form.get('date')?.toString() || undefined;
 
 	try {
 		if (action === 'create') {
@@ -60,9 +56,9 @@ export const POST: APIRoute = async ({ request, redirect, locals, url }) => {
 			} else if (action === 'status') {
 				const status = form.get('status');
 				if (!isUnitStatus(status)) return new Response('Unknown status', { status: 400 });
-				found = await setUnitStatus(unitId, status, { text, date, authorId });
-			} else if (action === 'note') {
-				found = await addUnitNote(unitId, { text, date, authorId });
+				// requireAdmin above guarantees locals.user is set.
+				const author = { id: locals.user!.id, name: locals.user!.name ?? locals.user!.email };
+				found = await setUnitStatus(unitId, status, author, form.get('reason')?.toString());
 			} else {
 				return new Response('Unknown action', { status: 400 });
 			}

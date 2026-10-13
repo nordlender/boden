@@ -3,8 +3,11 @@
 // e.g. "Length" / "58 m" on a rope that was cut. Submits paired
 // optKey/optValue inputs (read by /api/wizard/units via parseOptsFields),
 // plus a hidden `opts` marker so removing every row clears opts on save.
-// "Add field" clones the <template> row; the trash button removes a row.
-import IconButton from '../ui/IconButton.astro';
+// "Add field" clones the <template> row; the delete button removes a row.
+// MorphButton (morphicons), not an astro-icon icon: astro-icon draws each
+// icon in full only on its first use per page, and a first use inside a
+// <template> would leave every other copy of that icon on the page blank.
+import MorphButton from '../ui/MorphButton.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
 import { inputClass, labelClass } from './unitTable';
 
@@ -23,7 +26,7 @@ const entries = Object.entries(opts);
 			<div class="flex items-center gap-2" data-opts-row>
 				<input class:list={[inputClass, 'w-36 flex-none sm:w-44']} type="text" name="optKey" value={key} placeholder="Name, e.g. Length" aria-label="Extra field name" />
 				<input class={inputClass} type="text" name="optValue" value={value} placeholder="Value, e.g. 58 m" aria-label="Extra field value" />
-				<IconButton icon="trash" label={`Remove ${key}`} size="sm" data-opts-remove />
+				<MorphButton action="delete" label={`Remove ${key}`} size="sm" data-opts-remove />
 			</div>
 		))}
 	</div>
@@ -31,13 +34,15 @@ const entries = Object.entries(opts);
 		<div class="flex items-center gap-2" data-opts-row>
 			<input class:list={[inputClass, 'w-36 flex-none sm:w-44']} type="text" name="optKey" placeholder="Name, e.g. Length" aria-label="Extra field name" />
 			<input class={inputClass} type="text" name="optValue" placeholder="Value, e.g. 58 m" aria-label="Extra field value" />
-			<IconButton icon="trash" label="Remove field" size="sm" data-opts-remove />
+			<MorphButton action="delete" label="Remove field" size="sm" data-opts-remove />
 		</div>
 	</template>
 	<TextMorphButton action="add" size="sm" class="mt-2" data-opts-add>Add field</TextMorphButton>
 </div>
 
 <script>
+	import { wireMorphActions } from '../../lib/morph-actions';
+
 	document.addEventListener('click', (event) => {
 		const target = event.target as Element;
 		const remove = target.closest('[data-opts-remove]');
@@ -52,6 +57,9 @@ const entries = Object.entries(opts);
 		const list = root?.querySelector('[data-opts-list]');
 		if (!template || !list) return;
 		list.append(template.content.cloneNode(true));
-		list.querySelector<HTMLInputElement>('[data-opts-row]:last-child input')?.focus();
+		const row = list.querySelector<HTMLElement>('[data-opts-row]:last-child');
+		// The page-load wiring never saw this cloned row's delete button.
+		if (row) wireMorphActions(row);
+		row?.querySelector('input')?.focus();
 	});
 </script>

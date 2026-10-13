@@ -3,9 +3,9 @@ export const prerender = false;
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin).
 // The physical units behind one item (src/db/schema.ts's `units`), as a
-// table modelled on /admin/items: add a batch, and per unit (via its details
-// toggle) add notes, change status and edit details/extra fields. Every
-// write goes to /api/wizard/units.
+// table modelled on /admin/items: add a batch; per unit, its latest notes
+// (messages, posted via /api/messages/add), a status popover and a details
+// panel for its fields (both via /api/wizard/units) — see UnitRow.astro.
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
 import BackLink from '../../../../components/moderator/BackLink.astro';
 import Callout from '../../../../components/ui/Callout.astro';
@@ -17,9 +17,11 @@ import UnitRow from '../../../../components/units/UnitRow.astro';
 import OptsFields from '../../../../components/units/OptsFields.astro';
 import { UNIT_FORM_FIELDS, inputClass, labelClass } from '../../../../components/units/unitTable';
 import type { UnitStatus } from '../../../../db/schema';
-import { compareUnitsByStatus, getNoteAuthorNames, getUnitsPageItem, listUnitsForItem } from '../../../../lib/units';
+import { compareUnitsByStatus, getUnitsPageItem, listUnitsForItem } from '../../../../lib/units';
+import { listUnitNotes } from '../../../../lib/messages';
 import { getOverbookedOrders } from '../../../../lib/availability';
 import { todayIsoInOslo } from '../../../../lib/dates';
+import { hasRole } from '../../../../lib/auth';
 
 // How far ahead to look for orders a lowered stock can no longer cover.
 const OVERBOOK_HORIZON_DAYS = 180;
@@ -31,10 +33,13 @@ if (!item) return Astro.redirect('/admin/items');
 
 const today = todayIsoInOslo();
 const unitRows = (await listUnitsForItem(itemId)).sort(compareUnitsByStatus);
-const authorNames = await getNoteAuthorNames(unitRows);
+const notesByUnit = await listUnitNotes(unitRows.map((unit) => unit.id));
 const overbooked = getOverbookedOrders(itemId, OVERBOOK_HORIZON_DAYS, { today });
 const count = (status: UnitStatus) => unitRows.filter((unit) => unit.status === status).length;
 const redirectTo = Astro.url.pathname;
+// Message rules for unit notes, same as the hub board (MessageTableRow.astro).
+const currentUserId = Astro.locals.user?.id ?? null;
+const isAdmin = hasRole(Astro.locals.user?.role, 'admin');
 ---
 
 <AdminLayout title={`Units · ${item.name}`}>
@@ -113,7 +118,7 @@ const redirectTo = Astro.url.pathname;
 				<p class="px-3 py-8 text-center text-sm text-text-muted">No units yet, so this item has no stock.</p>
 			) : (
 				<div class="overflow-hidden rounded-b-lg">
-					{unitRows.map((unit) => <UnitRow unit={unit} authorNames={authorNames} today={today} redirectTo={redirectTo} />)}
+					{unitRows.map((unit) => <UnitRow unit={unit} notes={notesByUnit.get(unit.id) ?? []} currentUserId={currentUserId} isAdmin={isAdmin} today={today} redirectTo={redirectTo} />)}
 				</div>
 			)}
 		</section>

@@ -500,10 +500,9 @@ tile can represent several variants at once.
 `items.stockCount` is gone. A new `units` table (see `src/db/schema.ts`) has
 one row per physical object of an item: `itemId`, `brand`, `model`,
 `marking`, `serialNumber`, `manufacturedAt`, `purchasedAt`, `status`
-(`active` / `out_of_service` / `retired`), `notes` (JSON array of
-`{ date, text, authorId }`, the unit's lifetime log, appended to and never
-rewritten) and `opts` (JSON object of optional key/value facts, normally
-empty, e.g. `{ "length": "58 m" }` for a rope that was cut).
+(`active` / `out_of_service` / `retired`) and `opts` (JSON object of
+optional key/value facts, normally empty, e.g. `{ "length": "58 m" }` for a
+rope that was cut).
 
 - **Stock is derived**: an item's stock is `count(units where status =
   'active')`, via `activeUnitCount` / `itemStockExtras` in
@@ -518,6 +517,15 @@ empty, e.g. `{ "length": "58 m" }` for a rope that was cut).
   already booked, the units page lists the affected orders
   (`getOverbookedOrders` in `src/lib/availability.ts`). The admin decides what
   to do; nothing is cancelled automatically.
-- **Separate from reports**: `notes` holds admin-written history only.
+- **Notes are messages**: a unit's lifetime log is `messages` rows with
+  `messages.unitId` set (`unitId` null = hub-board message), so it reuses
+  `src/lib/messages.ts` and `MessageTable.astro`. Status changes post a note
+  ("Status: Active → Out of service — reason"). Notes follow exactly the
+  hub-message rules: dated by when they were posted, never edited, deletable
+  by an admin or their own author. On the units page each unit shows its
+  three newest notes as compact one-line entries ("John A. 20/09/26 <note>",
+  scrolling for more), a new-note popover, a status popover on its status
+  pill and a details panel for its fields.
+- **Separate from reports**: unit notes hold admin-written history only.
   Member/moderator damage reports will be their own table later, assignable
   to a unit.

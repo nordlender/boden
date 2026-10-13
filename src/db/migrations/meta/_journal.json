@@ -8,6 +8,13 @@
       "when": 1791817223899,
       "tag": "20261012150023_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791838528563,
+      "tag": "20261012205528_unit_notes_as_messages",
+      "breakpoints": true
     }
   ]
 }

@@ -26,9 +26,9 @@ interface Props {
 	popovertargetaction?: 'show' | 'hide' | 'toggle';
 }
 
-// 14px icon in the 20px box: the icon's own 24-unit viewBox carries ~2px of
-// built-in padding, so this reads as a full-size icon on a 20px line.
-const ICON_PIXEL_SIZE = 14;
+// 16px icon in the 20px box — the same icon size as MorphButton's `sm`, just
+// without its padding and border.
+const ICON_PIXEL_SIZE = 16;
 
 const toneClasses = {
 	neutral: 'hover:text-text focus-visible:text-text',

@@ -21,6 +21,36 @@ describe('products', () => {
 		testDb = createTestDb();
 	});
 
+	describe('variant attribute keys', () => {
+		const flags = (productId: number) =>
+			Object.fromEntries(
+				testDb
+					.select()
+					.from(schema.productAttributeKeys)
+					.where(eq(schema.productAttributeKeys.productId, productId))
+					.all()
+					.map((k) => [k.name, k.isVariant]),
+			);
+
+		it('flags the named key on create and leaves the others unflagged', async () => {
+			const id = await createProduct({ title: 'Cams', links: [], attributeKeys: ['Size', 'Weight'], variantAttributeKeys: ['Size'] });
+			expect(flags(id)).toEqual({ Size: true, Weight: false });
+		});
+
+		it('moves the flag on update, and leaves it alone when the input omits it', async () => {
+			const id = await createProduct({ title: 'Cams', links: [], attributeKeys: ['Size', 'Weight'], variantAttributeKeys: ['Size'] });
+
+			await updateProduct(id, { title: 'Cams', links: [], attributeKeys: [] });
+			expect(flags(id)).toEqual({ Size: true, Weight: false });
+
+			await updateProduct(id, { title: 'Cams', links: [], attributeKeys: ['Color'], variantAttributeKeys: ['Color'] });
+			expect(flags(id)).toEqual({ Size: false, Weight: false, Color: true });
+
+			await updateProduct(id, { title: 'Cams', links: [], attributeKeys: [], variantAttributeKeys: [] });
+			expect(flags(id)).toEqual({ Size: false, Weight: false, Color: false });
+		});
+	});
+
 	describe('createProduct', () => {
 		it('creates the product with a slug derived from the title', async () => {
 			const id = await createProduct({

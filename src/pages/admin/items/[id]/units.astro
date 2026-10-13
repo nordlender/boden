@@ -6,14 +6,14 @@ export const prerender = false;
 // table modelled on /admin/items: add a batch; per unit, its latest notes
 // (messages, posted via /api/messages/add), a status popover and a details
 // panel for its fields (both via /api/wizard/units) — see UnitRow.astro.
+// Retired units are listed in a separate table below the units in use.
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
 import BackLink from '../../../../components/moderator/BackLink.astro';
 import Callout from '../../../../components/ui/Callout.astro';
 import ExpandBox from '../../../../components/ui/ExpandBox.astro';
 import TextMorphButton from '../../../../components/ui/TextMorphButton.astro';
 import AppIcon from '../../../../components/icons/AppIcon.astro';
-import UnitTableHeader from '../../../../components/units/UnitTableHeader.astro';
-import UnitRow from '../../../../components/units/UnitRow.astro';
+import UnitTable from '../../../../components/units/UnitTable.astro';
 import OptsFields from '../../../../components/units/OptsFields.astro';
 import { UNIT_FORM_FIELDS, inputClass, labelClass } from '../../../../components/units/unitTable';
 import type { UnitStatus } from '../../../../db/schema';
@@ -40,6 +40,10 @@ const redirectTo = Astro.url.pathname;
 // Message rules for unit notes, same as the hub board (MessageTableRow.astro).
 const currentUserId = Astro.locals.user?.id ?? null;
 const isAdmin = hasRole(Astro.locals.user?.role, 'admin');
+// Retired units get their own table below the units in use.
+const unitsInUse = unitRows.filter((unit) => unit.status !== 'retired');
+const retiredUnits = unitRows.filter((unit) => unit.status === 'retired');
+const tableProps = { notesByUnit, currentUserId, isAdmin, today, redirectTo };
 ---
 
 <AdminLayout title={`Units · ${item.name}`}>
@@ -111,16 +115,14 @@ const isAdmin = hasRole(Astro.locals.user?.role, 'admin');
 			</ExpandBox>
 		</div>
 
-		<section class="rounded-lg border border-border bg-surface">
-			<h2 class="border-b border-border px-3 py-2 text-sm font-semibold text-text">Units</h2>
-			<UnitTableHeader />
-			{unitRows.length === 0 ? (
-				<p class="px-3 py-8 text-center text-sm text-text-muted">No units yet, so this item has no stock.</p>
-			) : (
-				<div class="overflow-hidden rounded-b-lg">
-					{unitRows.map((unit) => <UnitRow unit={unit} notes={notesByUnit.get(unit.id) ?? []} currentUserId={currentUserId} isAdmin={isAdmin} today={today} redirectTo={redirectTo} />)}
-				</div>
-			)}
-		</section>
+		<UnitTable title="Units" units={unitsInUse} emptyText="No units in use, so this item has no stock." {...tableProps} />
+		{retiredUnits.length > 0 && <UnitTable title="Retired units" units={retiredUnits} emptyText="" {...tableProps} />}
 	</div>
 </AdminLayout>
+
+<script>
+	// Unit forms submit in place and show validation errors inline.
+	import { wireUnitForms } from '../../../../lib/unit-forms';
+
+	wireUnitForms();
+</script>

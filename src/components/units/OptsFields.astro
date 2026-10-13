@@ -3,7 +3,8 @@
 // e.g. "Length" / "58 m" on a rope that was cut. Submits paired
 // optKey/optValue inputs (read by /api/wizard/units via parseOptsFields),
 // plus a hidden `opts` marker so removing every row clears opts on save.
-// "Add field" clones the <template> row; the delete button removes a row.
+// "Add field" clones the <template> row, the delete button removes a row,
+// and resetting the form restores the original rows (src/lib/opts-fields.ts).
 // MorphButton (morphicons), not an astro-icon icon: astro-icon draws each
 // icon in full only on its first use per page, and a first use inside a
 // <template> would leave every other copy of that icon on the page blank.
@@ -41,25 +42,7 @@ const entries = Object.entries(opts);
 </div>
 
 <script>
-	import { wireMorphActions } from '../../lib/morph-actions';
+	import { initOptsFields } from '../../lib/opts-fields';
 
-	document.addEventListener('click', (event) => {
-		const target = event.target as Element;
-		const remove = target.closest('[data-opts-remove]');
-		if (remove) {
-			remove.closest('[data-opts-row]')?.remove();
-			return;
-		}
-		const add = target.closest('[data-opts-add]');
-		if (!add) return;
-		const root = add.closest('[data-opts-fields]');
-		const template = root?.querySelector<HTMLTemplateElement>('[data-opts-template]');
-		const list = root?.querySelector('[data-opts-list]');
-		if (!template || !list) return;
-		list.append(template.content.cloneNode(true));
-		const row = list.querySelector<HTMLElement>('[data-opts-row]:last-child');
-		// The page-load wiring never saw this cloned row's delete button.
-		if (row) wireMorphActions(row);
-		row?.querySelector('input')?.focus();
-	});
+	document.querySelectorAll<HTMLElement>('[data-opts-fields]').forEach(initOptsFields);
 </script>

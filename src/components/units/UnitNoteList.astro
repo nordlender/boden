@@ -48,7 +48,7 @@ const tint = [
 				</span>
 				<span class="min-w-0 flex-1 whitespace-pre-wrap text-text">{note.content}</span>
 				{canDeleteMessage(note, currentUserId, isAdmin) && (
-					<form method="post" action="/api/messages/delete" class="ml-auto flex shrink-0 self-center">
+					<form method="post" action="/api/messages/delete" class="ml-auto flex shrink-0 self-start">
 						<input type="hidden" name="id" value={note.id} />
 						<input type="hidden" name="redirectTo" value={redirectTo} />
 						<MorphInlineButton action="delete" tone="danger" type="submit" label="Delete note" />

@@ -34,7 +34,7 @@ const { unit, notes, currentUserId, isAdmin, today, redirectTo } = Astro.props;
 const brandModel = [unit.brand, unit.model].filter(Boolean).join(' ');
 const opts = Object.entries(unit.opts);
 ---
-<div class:list={['border-b border-border last:border-b-0', unit.status === 'retired' && 'text-text-muted']} data-details-row>
+<div class="border-b border-border last:border-b-0" data-details-row>
 	<div class:list={[UNIT_GRID_CLASS, 'py-2 hover:bg-bg-subtle']} style={UNIT_GRID_STYLE}>
 		<span class="font-mono text-xs text-text-muted">#{unit.id}</span>
 		<div class="min-w-0">

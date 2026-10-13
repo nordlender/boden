@@ -20,8 +20,8 @@ export interface RouteRule {
 // Ordered; first match wins, so put more specific prefixes before broader
 // ones. Many /api entries are redundant with the inline checks in those
 // endpoints (defense in depth: a future route that forgets its inline check
-// isn't left unprotected). Moderators may add messages; deleting and
-// pin/unpin are admin-only (messages include unit notes, a safety record).
+// isn't left unprotected). Moderators may add/delete messages (#225);
+// pin/unpin stay admin-only.
 export const ROUTE_RULES: RouteRule[] = [
   { prefix: '/admin', minRole: 'admin' },
   { prefix: '/api/wizard', minRole: 'admin' },
@@ -30,10 +30,10 @@ export const ROUTE_RULES: RouteRule[] = [
   { prefix: '/api/admin/images', minRole: 'admin' },
   { prefix: '/api/messages/pin', minRole: 'admin' },
   { prefix: '/api/messages/unpin', minRole: 'admin' },
-  { prefix: '/api/messages/delete', minRole: 'admin' },
   { prefix: '/moderator', minRole: 'moderator' },
   { prefix: '/api/moderator', minRole: 'moderator' },
   { prefix: '/api/messages/add', minRole: 'moderator' },
+  { prefix: '/api/messages/delete', minRole: 'moderator' },
   { prefix: '/checkout', minRole: 'member' },
   { prefix: '/orders', minRole: 'member' },
   { prefix: '/reservation', minRole: 'member' },

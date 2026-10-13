@@ -1,11 +1,11 @@
 import type { APIRoute } from 'astro';
 import { createMessage } from '../../../lib/messages';
 import { getUnit } from '../../../lib/units';
-import { isPositiveInteger, redirectWithError, requireAdmin, requireModerator, safeRedirectTarget } from '../../../lib/http';
+import { isPositiveInteger, redirectWithError, requireModerator, safeRedirectTarget } from '../../../lib/http';
 
 // Posts a hub-board message, or — when the form has a `unitId` — a note on
-// that unit (see the `messages` table comment in src/db/schema.ts). Unit
-// notes are admin-only, like everything else about units.
+// that unit (see the `messages` table comment in src/db/schema.ts). Same
+// rules for both: any moderator may post.
 export const POST: APIRoute = async ({ request, locals, redirect, url }) => {
 	// Defense-in-depth: /api/messages/add is also in
 	// src/middleware/prefixes.ts's ROUTE_RULES, but this inline check
@@ -20,8 +20,6 @@ export const POST: APIRoute = async ({ request, locals, redirect, url }) => {
 
 	let unitId: number | null = null;
 	if (form.has('unitId')) {
-		const notAdmin = requireAdmin(locals);
-		if (notAdmin) return notAdmin;
 		unitId = Number(form.get('unitId'));
 		if (!isPositiveInteger(unitId) || !(await getUnit(unitId))) return new Response('Unit not found', { status: 404 });
 	}

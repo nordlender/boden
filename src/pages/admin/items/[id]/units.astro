@@ -3,9 +3,9 @@ export const prerender = false;
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin).
 // The physical units behind one item (src/db/schema.ts's `units`), as a
-// table modelled on /admin/items: add a batch; per unit, a notes dropdown
-// (notes are messages, posted via /api/messages/add) and, via its details
-// toggle, change status and edit details/extra fields (/api/wizard/units).
+// table modelled on /admin/items: add a batch; per unit, its latest notes
+// (messages, posted via /api/messages/add), a status popover and a details
+// panel for its fields (both via /api/wizard/units) — see UnitRow.astro.
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
 import BackLink from '../../../../components/moderator/BackLink.astro';
 import Callout from '../../../../components/ui/Callout.astro';
@@ -21,6 +21,7 @@ import { compareUnitsByStatus, getUnitsPageItem, listUnitsForItem } from '../../
 import { listUnitNotes } from '../../../../lib/messages';
 import { getOverbookedOrders } from '../../../../lib/availability';
 import { todayIsoInOslo } from '../../../../lib/dates';
+import { hasRole } from '../../../../lib/auth';
 
 // How far ahead to look for orders a lowered stock can no longer cover.
 const OVERBOOK_HORIZON_DAYS = 180;
@@ -36,6 +37,9 @@ const notesByUnit = await listUnitNotes(unitRows.map((unit) => unit.id));
 const overbooked = getOverbookedOrders(itemId, OVERBOOK_HORIZON_DAYS, { today });
 const count = (status: UnitStatus) => unitRows.filter((unit) => unit.status === status).length;
 const redirectTo = Astro.url.pathname;
+// Message rules for unit notes, same as the hub board (MessageTableRow.astro).
+const currentUserId = Astro.locals.user?.id ?? null;
+const isAdmin = hasRole(Astro.locals.user?.role, 'admin');
 ---
 
 <AdminLayout title={`Units · ${item.name}`}>
@@ -114,7 +118,7 @@ const redirectTo = Astro.url.pathname;
 				<p class="px-3 py-8 text-center text-sm text-text-muted">No units yet, so this item has no stock.</p>
 			) : (
 				<div class="overflow-hidden rounded-b-lg">
-					{unitRows.map((unit) => <UnitRow unit={unit} notes={notesByUnit.get(unit.id) ?? []} today={today} redirectTo={redirectTo} />)}
+					{unitRows.map((unit) => <UnitRow unit={unit} notes={notesByUnit.get(unit.id) ?? []} currentUserId={currentUserId} isAdmin={isAdmin} today={today} redirectTo={redirectTo} />)}
 				</div>
 			)}
 		</section>

@@ -1,8 +1,13 @@
 ---
-// One message in MessageTable.astro's list. Read-only for everyone but
-// admins, who get delete (enforced again server-side in
-// src/pages/api/messages/delete.ts) and, where the list is `pinnable`,
-// pin/unpin. There is no editing — a correction is just a new message.
+// One message in MessageTable.astro's list — a hub-board post or a unit
+// note, same rules for both. Read-only unless the viewer may act on this
+// particular row: `isAdmin` shows a pin/unpin hint (pinning stays
+// admin-only — see issue #225 — and only where the list is `pinnable`) and
+// a delete control for every row; otherwise a delete control still shows,
+// but only on the row the viewer authored themselves (`currentUserId ===
+// message.authorId`), enforced again server-side in
+// src/pages/api/messages/delete.ts. There is no editing — a correction is
+// just a new message (see issue #225).
 import MorphButton from '../ui/MorphButton.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
 import type { MessageRow } from '../../lib/messages';
@@ -10,15 +15,16 @@ import { formatDateTimeDisplay } from '../../lib/dates';
 
 interface Props {
 	message: MessageRow;
+	currentUserId?: string | null;
 	isAdmin?: boolean;
 	pinnable?: boolean;
 	redirectTo?: string;
 }
 
-const { message, isAdmin = false, pinnable = true, redirectTo } = Astro.props;
+const { message, currentUserId = null, isAdmin = false, pinnable = true, redirectTo } = Astro.props;
 
 const canPin = isAdmin && pinnable;
-const canDelete = isAdmin;
+const canDelete = isAdmin || (currentUserId !== null && message.authorId === currentUserId);
 ---
 
 <li class="px-4 py-3">

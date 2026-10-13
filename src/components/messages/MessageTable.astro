@@ -2,25 +2,26 @@
 // Standardized message list — the "Messages" board on both the moderator
 // and admin hubs (so the two can't drift into two different box layouts, see
 // issue #151), and each unit's notes on /admin/items/[id]/units (unit notes
-// are messages too — see src/db/schema.ts). `isAdmin` is forwarded to each
-// row: only admins may pin or delete (MessageTableRow.astro).
+// are messages too, with the same rules — see src/db/schema.ts). `isAdmin`
+// and `currentUserId` are forwarded to each row so it can decide its own
+// pin/delete affordances (admins may pin/delete any message; moderators may
+// delete only their own — see issue #225 and MessageTableRow.astro).
 //
-// `title: null` drops the heading row (unit notes sit inside their own
-// dropdown); `pinnable: false` hides pinning (unit notes are a log, not a
-// board).
+// `title: null` drops the heading row (unit notes have no heading of their
+// own); `pinnable: false` hides pinning (unit notes are a log, not a board).
 import MessageTableRow from './MessageTableRow.astro';
 import type { MessageRow } from '../../lib/messages';
 
 interface Props {
 	messages: MessageRow[];
+	currentUserId?: string | null;
 	isAdmin?: boolean;
 	redirectTo?: string;
 	title?: string | null;
-	emptyText?: string;
 	pinnable?: boolean;
 }
 
-const { messages, isAdmin = false, redirectTo, title = 'Messages', emptyText = 'No messages right now.', pinnable = true } = Astro.props;
+const { messages, currentUserId = null, isAdmin = false, redirectTo, title = 'Messages', pinnable = true } = Astro.props;
 ---
 
 <div class="flex flex-col gap-3">
@@ -36,11 +37,17 @@ const { messages, isAdmin = false, redirectTo, title = 'Messages', emptyText = '
 	<div class="rounded-lg border border-border bg-surface">
 		{
 			messages.length === 0 ? (
-				<p class="p-4 text-sm text-text-muted">{emptyText}</p>
+				<p class="p-4 text-sm text-text-muted">No messages right now.</p>
 			) : (
 				<ul class="divide-y divide-border">
 					{messages.map((message) => (
-						<MessageTableRow message={message} isAdmin={isAdmin} pinnable={pinnable} redirectTo={redirectTo} />
+						<MessageTableRow
+							message={message}
+							currentUserId={currentUserId}
+							isAdmin={isAdmin}
+							pinnable={pinnable}
+							redirectTo={redirectTo}
+						/>
 					))}
 				</ul>
 			)

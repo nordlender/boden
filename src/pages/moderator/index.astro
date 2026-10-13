@@ -2,8 +2,9 @@
 // Moderator hub — landing page for the /moderator/* section. Gated by
 // src/middleware/prefixes.ts (ROUTE_RULES via /moderator). The message
 // board is the same shared MessageTable the admin hub renders (see issue
-// #151) — moderators can post their own messages here too; deleting and
-// pinning are admin-only, enforced again server-side in
+// #151) — moderators can now post their own messages here too, and delete
+// only the ones they authored (see issue #225); admin-authored messages,
+// and pinning, stay admin-only, enforced again server-side in
 // src/pages/api/messages/{add,delete,pin,unpin}.ts. The requests list
 // reuses the same query/shape as requests.astro via getPendingRequestRows
 // so the two never drift apart.
@@ -41,7 +42,7 @@ const modalId = 'add-message-modal';
 				</p>
 			)
 		}
-		<MessageTable messages={messages} redirectTo={redirectTo}>
+		<MessageTable messages={messages} currentUserId={Astro.locals.user?.id ?? null} redirectTo={redirectTo}>
 			<TextMorphButton
 				slot="actions"
 				action="message"

@@ -1,44 +1,50 @@
 ---
-// A unit's notes as a dropdown under its row in UnitRow.astro. Collapsed it
-// reads "Notes (3) · <latest note>" so the newest entry is always visible;
-// open, it shows every note in the shared MessageTable (unit notes are
-// messages — see src/db/schema.ts) plus a box for adding one, posted to
-// /api/messages/add with this unit's id. Notes can't be edited; only admins
-// can delete them, and they're never pinned.
+// A unit's notes (only rendered when it has any) under its row in
+// UnitRow.astro, rendered by the shared
+// MessageTable (unit notes are messages — see src/db/schema.ts), so they look
+// and behave like hub messages: author name and time, delete by an admin or
+// the note's own author, never edited, never pinned.
+//
+// At most three notes are visible; with more, the list scrolls and a
+// gradient over the third note shows there's more below (hidden once
+// scrolled to the end). The script sizes the box to end exactly at the
+// third note; `max-h-52` is the no-JS fallback. New notes are written via
+// NewUnitNoteButton.astro.
 import MessageTable from '../messages/MessageTable.astro';
-import TextMorphButton from '../ui/TextMorphButton.astro';
 import type { MessageRow } from '../../lib/messages';
-import { formatDateTimeDisplay } from '../../lib/dates';
-import { inputClass } from './unitTable';
 
 interface Props {
-	unitId: number;
 	// Newest first (listUnitNotes).
 	notes: MessageRow[];
+	currentUserId: string | null;
+	isAdmin: boolean;
 	redirectTo: string;
 }
 
-const { unitId, notes, redirectTo } = Astro.props;
-const latest = notes[0];
+const VISIBLE_NOTES = 3;
+const { notes, currentUserId, isAdmin, redirectTo } = Astro.props;
+const scrollable = notes.length > VISIBLE_NOTES;
 ---
-<details class="group/notes">
-	<summary class="flex cursor-pointer list-none items-baseline gap-2 text-sm text-text-muted hover:text-text [&::-webkit-details-marker]:hidden">
-		<span class="shrink-0 transition-transform group-open/notes:rotate-90" aria-hidden="true">▸</span>
-		<span class="shrink-0 font-medium">Notes ({notes.length})</span>
-		{latest && (
-			<span class="min-w-0 truncate group-open/notes:hidden">
-				· <span class="text-text">{latest.content}</span>
-				<span class="text-xs"> — {latest.authorName}, {formatDateTimeDisplay(latest.createdAt)}</span>
-			</span>
-		)}
-	</summary>
-	<div class="mt-2 flex flex-col gap-2">
-		<MessageTable messages={notes} title={null} isAdmin pinnable={false} emptyText="No notes yet." redirectTo={redirectTo} />
-		<form method="post" action="/api/messages/add" class="flex items-center gap-2">
-			<input type="hidden" name="unitId" value={unitId} />
-			<input type="hidden" name="redirectTo" value={redirectTo} />
-			<input class={inputClass} type="text" name="content" required placeholder="Add a note, e.g. Inspected, no damage" aria-label={`New note for unit #${unitId}`} />
-			<TextMorphButton type="submit" action="add" size="sm">Add</TextMorphButton>
-		</form>
+<div class="relative">
+	<div class:list={[scrollable && 'max-h-52 overflow-y-auto']} data-unit-notes-scroll={scrollable ? VISIBLE_NOTES : undefined}>
+		<MessageTable messages={notes} title={null} pinnable={false} currentUserId={currentUserId} isAdmin={isAdmin} redirectTo={redirectTo} />
 	</div>
-</details>
+	{scrollable && (
+		<div class="pointer-events-none absolute inset-x-px bottom-px h-12 rounded-b-lg bg-linear-to-t from-surface to-transparent" data-unit-notes-fade></div>
+	)}
+</div>
+
+<script>
+	for (const scroller of document.querySelectorAll<HTMLElement>('[data-unit-notes-scroll]')) {
+		const visible = Number(scroller.dataset.unitNotesScroll);
+		const lastVisible = scroller.querySelectorAll('li')[visible - 1];
+		const fade = scroller.parentElement?.querySelector<HTMLElement>('[data-unit-notes-fade]');
+		if (lastVisible) {
+			scroller.style.maxHeight = `${lastVisible.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top}px`;
+		}
+		scroller.addEventListener('scroll', () => {
+			const atEnd = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
+			fade?.classList.toggle('hidden', atEnd);
+		});
+	}
+</script>

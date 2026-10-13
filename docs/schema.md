@@ -520,10 +520,11 @@ rope that was cut).
 - **Notes are messages**: a unit's lifetime log is `messages` rows with
   `messages.unitId` set (`unitId` null = hub-board message), so it reuses
   `src/lib/messages.ts` and `MessageTable.astro`. Status changes post a note
-  ("Status: Active → Out of service — reason"). Notes are dated by when they
-  were posted, can't be edited, and only admins can delete messages (hub
-  posts included). On the units page they sit in a dropdown under each unit
-  showing the latest note.
+  ("Status: Active → Out of service — reason"). Notes follow exactly the
+  hub-message rules: dated by when they were posted, never edited, deletable
+  by an admin or their own author. On the units page each unit shows its
+  latest three notes (scrolling for more), a new-note popover, a status
+  popover on its status pill and a details panel for its fields.
 - **Separate from reports**: unit notes hold admin-written history only.
   Member/moderator damage reports will be their own table later, assignable
   to a unit.

@@ -44,7 +44,7 @@ const classes = [baseClasses, iconOnlySizeClasses[size], variantClasses[variant]
 ---
 {
 	href ? (
-		<a href={href} aria-label={label} class={classes} data-morph-action={action} aria-disabled={disabled || undefined} {...rest}>
+		<a href={disabled ? undefined : href} aria-label={label} class={classes} data-morph-action={action} aria-disabled={disabled || undefined} {...rest}>
 			<MorphIcon icon={icons.default} size={iconOnlyPixelSize[size]} class="morph-action-icon" />
 		</a>
 	) : (

@@ -27,7 +27,7 @@ import { BLOC_OAUTH_TOKEN_URL } from './bloc';
 // Refresh this long before the reported expiry, so a token that's valid when
 // checked doesn't expire mid-request (clock skew, slow bloc calls).
 export const REFRESH_SKEW_SECONDS = 60;
-const REFRESH_TIMEOUT_MS = 5000;
+const REFRESH_TIMEOUT_MS = 3000;
 
 // How long a settled refresh is reused for the refresh token it spent:
 // - success: long. Requests can still carry the old cookie after a rotation
@@ -81,6 +81,11 @@ export type BlocAccess =
 // Errors a fresh sign-in fixes (show the "Sign in again" prompt for these).
 export const isReauthError = (error: BlocAccessError | null): boolean =>
   error === 'RefreshTokenError' || error === 'AccessTokenExpired' || error === 'NoBlocToken';
+
+// Subset of the above where a bloc sign-in really expired (as opposed to a
+// session that never had a token) — for wording only.
+export const isExpiredError = (error: BlocAccessError | null): boolean =>
+  error === 'RefreshTokenError' || error === 'AccessTokenExpired';
 
 export type RefreshDecision =
   // Usable as-is (including: expiry unknown).
@@ -152,9 +157,12 @@ function basicAuth(clientId: string, clientSecret: string): string {
   return `Basic ${btoa(`${enc(clientId)}:${enc(clientSecret)}`)}`;
 }
 
-// The token endpoint definitively refused the refresh token (RFC 6749 §5.2:
-// 400/401, e.g. invalid_grant). Permanent — only a fresh sign-in helps.
-// Anything else thrown by requestBlocTokenRefresh is transient.
+// The token endpoint definitively refused the refresh token itself (RFC 6749
+// §5.2 invalid_grant, or invalid_token). Permanent — only a fresh sign-in
+// helps. Anything else thrown by requestBlocTokenRefresh is transient,
+// including other 400/401s (invalid_client from a rotated client secret,
+// unsupported_grant_type, a proxy's bare 401): those say nothing about the
+// refresh token, so it must not be thrown away over them.
 export class BlocRefreshRejectedError extends Error {
   constructor(
     readonly status: number,
@@ -166,8 +174,8 @@ export class BlocRefreshRejectedError extends Error {
 }
 
 // One refresh_token grant against bloc's OAuth/Token. Throws
-// BlocRefreshRejectedError on a 400/401, any other error on a transient
-// failure. Never logs token values.
+// BlocRefreshRejectedError when the refresh token was refused, any other
+// error on a transient failure. Never logs token values.
 export async function requestBlocTokenRefresh(
   refreshToken: string,
   { clientId, clientSecret, fetchImpl = fetch }: BlocClientCredentials,
@@ -184,11 +192,13 @@ export async function requestBlocTokenRefresh(
     signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
   });
   const data = (await res.json().catch(() => null)) as (OAuthTokenResponse & { error?: string }) | null;
-  if (res.status === 400 || res.status === 401) {
-    throw new BlocRefreshRejectedError(res.status, typeof data?.error === 'string' ? data.error : undefined);
+  const oauthError = typeof data?.error === 'string' ? data.error : undefined;
+  if ((res.status === 400 || res.status === 401) && (oauthError === 'invalid_grant' || oauthError === 'invalid_token')) {
+    throw new BlocRefreshRejectedError(res.status, oauthError);
   }
   if (!res.ok || typeof data?.access_token !== 'string' || !data.access_token) {
-    throw new Error(`bloc token refresh failed (transient): ${res.status}${data ? '' : ' unparseable body'}`);
+    const detail = oauthError ? ` ${oauthError}` : data ? '' : ' unparseable body';
+    throw new Error(`bloc token refresh failed (transient): ${res.status}${detail}`);
   }
   return tokenFieldsFromResponse(data, now);
 }
@@ -234,7 +244,15 @@ function cachedRefresh(refreshToken: string, creds: BlocClientCredentials, now: 
       entry.expiresAtMs = Date.now() + SUCCESS_TTL_MS;
     },
     (err) => {
-      entry.expiresAtMs = Date.now() + (err instanceof BlocRefreshRejectedError ? REJECTED_TTL_MS : TRANSIENT_TTL_MS);
+      // Logged here, once per real failure — not per caller awaiting the
+      // cached (rejected) promise.
+      if (err instanceof BlocRefreshRejectedError) {
+        console.warn(`[bloc] ${err.message}; bloc calls disabled until next sign-in`);
+        entry.expiresAtMs = Date.now() + REJECTED_TTL_MS;
+      } else {
+        console.warn('[bloc] access token refresh failed, will retry:', err instanceof Error ? err.message : err);
+        entry.expiresAtMs = Date.now() + TRANSIENT_TTL_MS;
+      }
     },
   );
   refreshCache.set(refreshToken, entry);
@@ -290,10 +308,8 @@ export async function refreshBlocToken<T extends BlocTokenFields>(
       outcome = 'refreshed';
     } catch (err) {
       if (err instanceof BlocRefreshRejectedError) {
-        console.warn(`[bloc] ${err.message}; bloc calls disabled until next sign-in`);
         return { token: withoutBlocTokens(current, 'RefreshTokenError'), outcome: 'invalidated' };
       }
-      console.warn('[bloc] access token refresh failed, will retry:', err instanceof Error ? err.message : err);
       // Keep whatever we had (incl. an earlier hop's refresh) — never
       // discard tokens over a transient failure.
       return { token: current, outcome: outcome === 'refreshed' ? 'refreshed' : 'transient' };

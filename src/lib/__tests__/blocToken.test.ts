@@ -100,7 +100,7 @@ describe('ensureFreshBlocToken', () => {
   it('on an OAuth rejection (400/401) drops the tokens, sets an error flag, and never retries', async () => {
     for (const [status, body] of [
       [400, { error: 'invalid_grant' }],
-      [401, { error: 'invalid_client' }],
+      [401, { error: 'invalid_token' }],
     ] as const) {
       clearBlocRefreshCache();
       const f = failJson(status, body);
@@ -112,6 +112,30 @@ describe('ensureFreshBlocToken', () => {
       expect(await ensureFreshBlocToken(res.token, creds(f), NOW + 100)).toBe(res.token);
       expect(f).toHaveBeenCalledTimes(1);
     }
+  });
+
+  it('treats 400/401 that do not reject the refresh token itself as transient', async () => {
+    const t = { sub: '12', accessToken: 'a1', refreshToken: 'r1', expiresAt: NOW - 5 };
+    for (const [status, body] of [
+      [401, { error: 'invalid_client' }],
+      [400, { error: 'unsupported_grant_type' }],
+      [401, null],
+    ] as const) {
+      clearBlocRefreshCache();
+      const res = await refreshBlocToken(t, creds(failJson(status, body)), NOW);
+      expect(res).toEqual({ token: t, outcome: 'transient' });
+    }
+  });
+
+  it('logs a transient failure once, however many callers share it', async () => {
+    const t = { sub: '12', accessToken: 'a1', refreshToken: 'r1', expiresAt: NOW - 5 };
+    const warn = vi.spyOn(console, 'warn');
+    warn.mockClear();
+    clearBlocRefreshCache();
+    const f = failJson(503, null);
+    await Promise.all([refreshBlocToken(t, creds(f), NOW), refreshBlocToken(t, creds(f), NOW), refreshBlocToken(t, creds(f), NOW)]);
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 
   it('treats timeouts, network errors, 5xx and unusable 200s as transient: tokens kept, retried later', async () => {

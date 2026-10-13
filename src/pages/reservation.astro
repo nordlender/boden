@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Callout from '../components/ui/Callout.astro';
 import ReservationForm from '../components/reservation/ReservationForm.astro';
 import { getCartLines } from '../lib/cart';
 import { getUpcomingAvailablePickupDates } from '../lib/pickupDays';
@@ -7,7 +8,7 @@ import { getMaxRentalDays } from '../lib/rental-policy';
 import { todayIsoInOslo } from '../lib/dates';
 import { getSession } from 'auth-astro/server';
 import { fetchOwnMemberFeeStatus } from '../lib/blocFeeStatus';
-import { isReauthError } from '../lib/blocToken';
+import { isExpiredError, isReauthError } from '../lib/blocToken';
 
 // Gated by src/middleware/index.ts (MEMBER_ROUTES) — reached only when logged in.
 const cartLines = await getCartLines(Astro.cookies);
@@ -25,8 +26,11 @@ const blocAccess = await Astro.locals.blocAccess();
 const [session, feeStatus] = await Promise.all([getSession(Astro.request), fetchOwnMemberFeeStatus(blocAccess)]);
 // No usable bloc token: fee/membership show as Unknown, so say why — a
 // fresh sign-in restores it, unless bloc is just temporarily unreachable.
-const blocSignInExpired = isReauthError(blocAccess.error);
-const blocUnavailable = blocAccess.error === 'RefreshUnavailable';
+const blocWarning = isReauthError(blocAccess.error)
+	? { message: isExpiredError(blocAccess.error) ? "Your bloc sign-in has expired, so we couldn't check your membership and fee status (shown as Unknown below)." : "We couldn't check your membership and fee status (shown as Unknown below).", signIn: true }
+	: blocAccess.error === 'RefreshUnavailable'
+		? { message: "We couldn't reach bloc to check your membership and fee status (shown as Unknown below). Reload the page in a moment to try again.", signIn: false }
+		: null;
 const reLoginHref = `/auth/login?next=${encodeURIComponent('/reservation')}`;
 
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
@@ -55,19 +59,16 @@ const errorMessage =
 		{errorMessage && <p class="mb-6 rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">{errorMessage}</p>}
 
 		{
-			blocSignInExpired && (
-				<p class="mb-6 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-warning-text">
-					Your bloc sign-in has expired, so we couldn't check your membership and fee status (shown as Unknown below).{' '}
-					<a href={reLoginHref} class="font-medium underline">Sign in again</a> to refresh it.
-				</p>
-			)
-		}
-
-		{
-			blocUnavailable && (
-				<p class="mb-6 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-warning-text">
-					We couldn't reach bloc to check your membership and fee status (shown as Unknown below). Reload the page in a moment to try again.
-				</p>
+			blocWarning && (
+				<Callout variant="warning" class="mb-6">
+					{blocWarning.message}
+					{blocWarning.signIn && (
+						<>
+							{' '}
+							<a href={reLoginHref} class="font-medium underline">Sign in again</a> to refresh it.
+						</>
+					)}
+				</Callout>
 			)
 		}
 

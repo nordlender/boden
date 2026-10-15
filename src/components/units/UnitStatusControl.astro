@@ -1,8 +1,12 @@
 ---
-// A unit's status pill. Hovering (or focusing) it reveals a pencil that opens
-// an ActionPopover for changing the status, with an optional reason that's
-// posted as a unit note alongside the change (setUnitStatus in
-// src/lib/units.ts). Like notes, the change is dated by when it's made.
+// A unit's status pill, with a pencil that opens an ActionPopover for
+// changing the status, with an optional reason that's posted as a unit note
+// alongside the change (setUnitStatus in src/lib/units.ts). Like notes, the
+// change is dated by when it's made.
+//
+// The pencil appears on hover or keyboard focus, and is always shown on
+// devices without hover (phones, tablets) — otherwise it would be invisible
+// there, and it's the only way to change a unit's status.
 import ActionPopover from '../ui/ActionPopover.astro';
 import AppIcon from '../icons/AppIcon.astro';
 import Badge from '../ui/Badge.astro';
@@ -26,7 +30,7 @@ const popoverId = `unit-${unit.id}-status`;
 				type="button"
 				popovertarget={popoverId}
 				aria-label={`Change status of unit #${unit.id}`}
-				class="rounded p-1 text-text-muted opacity-0 hover:bg-bg-subtle hover:text-text focus-visible:opacity-100 group-hover/status:opacity-100"
+				class="rounded p-1 text-text-muted opacity-0 hover:bg-bg-subtle hover:text-text focus-visible:opacity-100 group-hover/status:opacity-100 [@media(hover:none)]:opacity-100"
 			>
 				<AppIcon name="edit" size={14} />
 			</button>

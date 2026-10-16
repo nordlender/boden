@@ -83,7 +83,7 @@ color-token migration).
 
 - `src/components/wizard/ItemRow.astro`, `ProductTag.astro`,
   `SubCategoryTag.astro`, `WizardHeader.astro`, `AddItemPanel.astro`,
-  `ButtonStrip.astro`, `Dropdown.astro` — each pass a hand-typed numeric
+  `ButtonStrip.astro`, `ui/Dropdown.astro` — each pass a hand-typed numeric
   `size` (13–18px) to `AppIcon`/`MorphIcon` rather than a token.
 - `src/components/orders/OrdersLayoutToggle.astro`,
   `src/components/reservation/ReservationItemRow.astro` — hand-rolled

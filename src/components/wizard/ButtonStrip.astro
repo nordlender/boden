@@ -1,6 +1,6 @@
 ---
-// The Set dropdown's items are no longer simple buttons (see Dropdown.astro)
-// — "Set product" needs real form controls, and everything here targets the
+// The Set dropdown's panel is slotted into ui/Dropdown.astro rather than
+// passed as `items` — "Set product" needs real form controls, and everything here targets the
 // panel's selection form by id (`form={formId}`) rather than nesting, since
 // form elements can't nest and ItemRow.astro's per-attribute edit forms
 // already live inside the row list.
@@ -10,11 +10,10 @@
 // | Set | ---- | (trash)
 // Delete is icon-only and asks for confirmation via a popover. Adding items
 // is done from AddItemPanel above, not from this strip.
-import MorphIcon from 'morphicons/astro';
-import { dropdownChevron } from '../../lib/icon-nodes';
 import AppIcon from '../icons/AppIcon.astro';
 import Button from '../ui/Button.astro';
 import Callout from '../ui/Callout.astro';
+import Dropdown from '../ui/Dropdown.astro';
 import Popover from '../ui/Popover.astro';
 import ActionPopover from '../ui/ActionPopover.astro';
 import MorphButton from '../ui/MorphButton.astro';
@@ -34,42 +33,36 @@ const archiveHintId = `archive-hint-${formId}`;
 const confirmId = `archive-confirm-${formId}`;
 ---
 <div class="flex items-center gap-2 border-b border-border bg-bg-subtle px-3 py-2">
-	<details class="set-dropdown relative inline-block">
-		<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
-			<span>Set</span>
-			<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
-		</summary>
-		{/* Width tracks the viewport (never wider than the screen minus the
-		    page gutter); height is left to the content — ImageMenu's explorer
-		    box caps and scrolls itself as folders expand. */}
-		<div class="absolute left-0 z-10 mt-1 w-[min(26rem,calc(100vw-2rem))] rounded-md border border-border bg-surface p-3 shadow-lg">
-			<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
-			<section class="border-b border-border pb-3">
-				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
-					<AppIcon name="image" size={13} /> Set image
-				</p>
-				<ImageMenu formId={formId} />
-			</section>
+	{/* Width tracks the viewport (never wider than the screen minus the
+	    page gutter); height is left to the content — ImageMenu's explorer
+	    box caps and scrolls itself as folders expand. */}
+	<Dropdown triggerLabel="Set" panelClass="w-[min(26rem,calc(100vw-2rem))] p-3">
+		<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
+		<section class="border-b border-border pb-3">
+			<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
+				<AppIcon name="image" size={13} /> Set image
+			</p>
+			<ImageMenu formId={formId} />
+		</section>
 
-			<section class="py-3">
-				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
-					<AppIcon name="product" size={13} /> Set product
-				</p>
-				<div class="flex items-center gap-2">
-					<select name="productId" form={formId} class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm">
-						<option value="" disabled selected>Choose a product…</option>
-						{products.map((p) => (
-							<option value={p.id}>{p.title}</option>
-						))}
-					</select>
-					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/set-product" class="shrink-0">
-						Apply
-					</Button>
-				</div>
-				<p class="mt-1 text-xs text-text-muted">Also how you reassign an already-assigned item to a <em>different</em> product — clears its old attribute values and stubs in the new product's fields. Re-applying the item's current product leaves its values untouched.</p>
-			</section>
-		</div>
-	</details>
+		<section class="py-3">
+			<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
+				<AppIcon name="product" size={13} /> Set product
+			</p>
+			<div class="flex items-center gap-2">
+				<select name="productId" form={formId} class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm">
+					<option value="" disabled selected>Choose a product…</option>
+					{products.map((p) => (
+						<option value={p.id}>{p.title}</option>
+					))}
+				</select>
+				<Button type="submit" size="sm" form={formId} formaction="/api/wizard/set-product" class="shrink-0">
+					Apply
+				</Button>
+			</div>
+			<p class="mt-1 text-xs text-text-muted">Also how you reassign an already-assigned item to a <em>different</em> product — clears its old attribute values and stubs in the new product's fields. Re-applying the item's current product leaves its values untouched.</p>
+		</section>
+	</Dropdown>
 
 	<div class="flex-1"></div>
 
@@ -102,23 +95,7 @@ const confirmId = `archive-confirm-${formId}`;
 </Popover>
 
 <script>
-	// Same chevron-morph pattern as Dropdown.astro, duplicated rather than
-	// reused because this trigger's menu content isn't a simple item list.
-	import type { MorphIconElement } from 'morphicons/element';
-	import { dropdownChevron } from '../../lib/icon-nodes';
 	import { variantClasses } from '../../lib/button-styles';
-
-	document.addEventListener(
-		'toggle',
-		(event) => {
-			const details = event.target;
-			if (!(details instanceof HTMLDetailsElement) || !details.classList.contains('set-dropdown')) return;
-			const chevron = details.querySelector<MorphIconElement>('.dropdown-chevron');
-			if (!chevron) return;
-			chevron.icon = details.open ? dropdownChevron.open : dropdownChevron.closed;
-		},
-		true,
-	);
 
 	function countSelected(formId: string) {
 		return document.querySelectorAll(`input.select-checkbox-input[form="${formId}"]:checked`).length;

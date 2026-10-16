@@ -1,0 +1,100 @@
+---
+// Generic dropdown primitive, built on <details>/<summary> so it needs no
+// client-side JS beyond animating its own chevron. Two panel modes:
+//   - `items`: a simple action list (buttons, or links when `href` is set;
+//     `data` becomes `data-*` attributes so callers can delegate clicks).
+//   - default slot: free-form panel content (forms, selects, ...). Pair with
+//     `panelClass` to size/pad the panel.
+// Two trigger modes: `button` (bordered, label + chevron) and `icon` (a
+// fixed square icon-only box, no chevron — see lib/icon-sizes.ts).
+// Extra attributes (class, data-*, ...) land on the <details>.
+import AppIcon from '../icons/AppIcon.astro';
+import MorphIcon from 'morphicons/astro';
+import type { IconName } from '../../lib/icons';
+import { dropdownChevron } from '../../lib/icon-nodes';
+import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
+
+interface MenuItem {
+	label: string;
+	icon?: IconName;
+	href?: string;
+	data?: Record<string, string>;
+}
+
+interface Props {
+	trigger?: 'button' | 'icon';
+	triggerLabel?: string;
+	triggerIcon?: IconName;
+	/** Required for the icon-only trigger, which has no visible text. */
+	ariaLabel?: string;
+	items?: MenuItem[];
+	align?: 'left' | 'right';
+	/** Size/padding of the panel; defaults suit an `items` list. */
+	panelClass?: string;
+	class?: string;
+	[attr: string]: unknown;
+}
+
+const {
+	trigger = 'button',
+	triggerLabel,
+	triggerIcon,
+	ariaLabel,
+	items = [],
+	align = 'left',
+	panelClass = 'min-w-[10rem] py-1',
+	class: className,
+	...rest
+} = Astro.props;
+
+const itemClasses = 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-text hover:bg-bg-subtle';
+---
+<details class:list={['relative inline-block', className]} {...rest}>
+	{trigger === 'icon' ? (
+		<summary class:list={['grid cursor-pointer list-none place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text [&::-webkit-details-marker]:hidden', triggerBoxClasses.sm]} aria-label={ariaLabel}>
+			{triggerIcon && <AppIcon name={triggerIcon} size={triggerIconPixelSize.sm} />}
+		</summary>
+	) : (
+		<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden" aria-label={ariaLabel}>
+			{triggerIcon && <AppIcon name={triggerIcon} size={16} />}
+			{triggerLabel && <span>{triggerLabel}</span>}
+			<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
+		</summary>
+	)}
+	<div class:list={['absolute z-10 mt-1 rounded-md border border-border bg-surface shadow-lg', align === 'right' ? 'right-0' : 'left-0', panelClass]}>
+		{items.map((item) => {
+			const data = Object.fromEntries(Object.entries(item.data ?? {}).map(([key, value]) => [`data-${key}`, value]));
+			const content = (
+				<>
+					{item.icon && <AppIcon name={item.icon} size={16} class="text-text-muted" />}
+					<span>{item.label}</span>
+				</>
+			);
+			return item.href
+				? <a href={item.href} class={itemClasses} {...data}>{content}</a>
+				: <button type="button" class={itemClasses} {...data}>{content}</button>;
+		})}
+		<slot />
+	</div>
+</details>
+
+<script>
+	// Delegated (this script runs once per page, not once per Dropdown
+	// instance) so it covers every <details> this component renders.
+	// `toggle` doesn't bubble, so the listener has to sit on the capture
+	// phase to see it at all.
+	import type { MorphIconElement } from 'morphicons/element';
+	import { dropdownChevron } from '../../lib/icon-nodes';
+
+	document.addEventListener(
+		'toggle',
+		(event) => {
+			const details = event.target;
+			if (!(details instanceof HTMLDetailsElement)) return;
+			const chevron = details.querySelector<MorphIconElement>('.dropdown-chevron');
+			if (!chevron) return;
+			chevron.icon = details.open ? dropdownChevron.open : dropdownChevron.closed;
+		},
+		true,
+	);
+</script>

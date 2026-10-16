@@ -1,0 +1,48 @@
+---
+// A unit's optional extra fields (`units.opts`) as editable name/value rows,
+// e.g. "Length" / "58 m" on a rope that was cut. Submits paired
+// optKey/optValue inputs (read by /api/wizard/units via parseOptsFields),
+// plus a hidden `opts` marker so removing every row clears opts on save.
+// "Add field" clones the <template> row, the delete button removes a row,
+// and resetting the form restores the original rows (src/lib/opts-fields.ts).
+// MorphButton (morphicons), not an astro-icon icon: astro-icon draws each
+// icon in full only on its first use per page, and a first use inside a
+// <template> would leave every other copy of that icon on the page blank.
+import MorphButton from '../ui/MorphButton.astro';
+import TextMorphButton from '../ui/TextMorphButton.astro';
+import { inputClass, labelClass } from './unitTable';
+
+interface Props {
+	opts?: Record<string, string>;
+}
+
+const { opts = {} } = Astro.props;
+const entries = Object.entries(opts);
+---
+<div class="opts-fields" data-opts-fields>
+	<input type="hidden" name="opts" value="1" />
+	<span class={labelClass}>Extra fields</span>
+	<div class="flex flex-col gap-2" data-opts-list>
+		{entries.map(([key, value]) => (
+			<div class="flex items-center gap-2" data-opts-row>
+				<input class:list={[inputClass, 'w-36 flex-none sm:w-44']} type="text" name="optKey" value={key} placeholder="Name, e.g. Length" aria-label="Extra field name" />
+				<input class={inputClass} type="text" name="optValue" value={value} placeholder="Value, e.g. 58 m" aria-label="Extra field value" />
+				<MorphButton action="delete" label={`Remove ${key}`} size="sm" data-opts-remove />
+			</div>
+		))}
+	</div>
+	<template data-opts-template>
+		<div class="flex items-center gap-2" data-opts-row>
+			<input class:list={[inputClass, 'w-36 flex-none sm:w-44']} type="text" name="optKey" placeholder="Name, e.g. Length" aria-label="Extra field name" />
+			<input class={inputClass} type="text" name="optValue" placeholder="Value, e.g. 58 m" aria-label="Extra field value" />
+			<MorphButton action="delete" label="Remove field" size="sm" data-opts-remove />
+		</div>
+	</template>
+	<TextMorphButton action="add" size="sm" class="mt-2" data-opts-add>Add field</TextMorphButton>
+</div>
+
+<script>
+	import { initOptsFields } from '../../lib/opts-fields';
+
+	document.querySelectorAll<HTMLElement>('[data-opts-fields]').forEach(initOptsFields);
+</script>

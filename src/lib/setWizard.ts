@@ -7,6 +7,7 @@ import { db } from '../db/client';
 import { sets, setItems } from '../db/schema';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { getHandedOut } from './availability';
+import { itemStockExtras } from './units';
 import { computeSetAvailability, getSetComponentDisplayBulk, type SetComponentDisplay } from './sets';
 
 export interface WizardSet {
@@ -64,7 +65,7 @@ export async function getWizardSets(): Promise<{ unassigned: WizardSet[]; assign
 		orderBy: (t, { asc }) => asc(t.id),
 		with: {
 			product: true,
-			setItems: { with: { item: { with: { product: true } } } },
+			setItems: { with: { item: { extras: itemStockExtras, with: { product: true } } } },
 		},
 	});
 

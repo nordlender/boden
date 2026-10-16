@@ -1,0 +1,72 @@
+---
+export const prerender = false;
+
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin).
+// Flat, read-only listing of every unit (src/db/schema.ts's `units`) by id.
+// Editing happens per item on /admin/items/[id]/units, which each row links to.
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Badge from '../../components/ui/Badge.astro';
+import { listAllUnits, UNIT_STATUS_LABELS, UNIT_STATUS_TONES } from '../../lib/units';
+
+const rows = await listAllUnits();
+const cellClass = 'px-3 py-2 align-top';
+---
+
+<AdminLayout title="Units">
+	<div class="mx-auto flex max-w-6xl flex-col gap-6 p-4 sm:p-8">
+		<div>
+			<h1 class="text-xl font-semibold text-text">Units</h1>
+			<p class="mt-1 text-sm text-text-muted">Every physical unit, by id. Open a unit's item to edit it, change its status or add notes.</p>
+		</div>
+
+		{rows.length === 0 ? (
+			<p class="text-sm italic text-text-muted">No units yet.</p>
+		) : (
+			<div class="overflow-x-auto rounded-lg border border-border bg-surface">
+				<table class="w-full text-left text-sm">
+					<thead class="border-b border-border bg-bg-subtle text-xs font-medium uppercase tracking-wide text-text-muted">
+						<tr>
+							<th class={cellClass}>#</th>
+							<th class={cellClass}>Item</th>
+							<th class={cellClass}>Marking</th>
+							<th class={cellClass}>Brand / model</th>
+							<th class={cellClass}>Serial</th>
+							<th class={cellClass}>Made</th>
+							<th class={cellClass}>Bought</th>
+							<th class={cellClass}>Status</th>
+							<th class={cellClass}>Notes</th>
+							<th class={cellClass}>Extra</th>
+						</tr>
+					</thead>
+					<tbody>
+						{rows.map((unit) => (
+							<tr class:list={['border-b border-border last:border-b-0', unit.status === 'retired' && 'opacity-70']}>
+								<td class:list={[cellClass, 'font-mono text-xs text-text-muted']}>{unit.id}</td>
+								<td class={cellClass}>
+									<a href={`/admin/items/${unit.itemId}/units`} class="text-text underline hover:text-text-muted">{unit.itemName}</a>
+									{unit.itemArchived && <span class="text-xs text-text-muted"> (archived)</span>}
+								</td>
+								<td class:list={[cellClass, 'text-text']}>{unit.marking ?? '—'}</td>
+								<td class:list={[cellClass, 'text-text']}>{[unit.brand, unit.model].filter(Boolean).join(' ') || '—'}</td>
+								<td class:list={[cellClass, 'font-mono text-xs text-text']}>{unit.serialNumber ?? '—'}</td>
+								<td class:list={[cellClass, 'whitespace-nowrap text-text-muted']}>{unit.manufacturedAt ?? '—'}</td>
+								<td class:list={[cellClass, 'whitespace-nowrap text-text-muted']}>{unit.purchasedAt ?? '—'}</td>
+								<td class={cellClass}><Badge tone={UNIT_STATUS_TONES[unit.status]}>{UNIT_STATUS_LABELS[unit.status]}</Badge></td>
+								<td class:list={[cellClass, 'text-text-muted']}>{unit.noteCount || '—'}</td>
+								<td class={cellClass}>
+									{Object.keys(unit.opts).length > 0 ? (
+										<span class="flex flex-wrap gap-1">
+											{Object.entries(unit.opts).map(([key, value]) => <Badge tone="info">{key}: {value}</Badge>)}
+										</span>
+									) : (
+										<span class="text-text-muted">—</span>
+									)}
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		)}
+	</div>
+</AdminLayout>

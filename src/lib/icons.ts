@@ -32,6 +32,8 @@ export const icons = {
 	// {edit_icon} — sits next to an attribute's value in the details box;
 	// clicking it reveals the inline edit form for that field.
 	edit: 'tabler:pencil',
+	// /admin/items/[id]/units: opens the new-note popover on a unit.
+	messagePlus: 'tabler:message-plus',
 	// Not one of the doc's named placeholders — added for the main-section
 	// search bar, which the doc calls for but doesn't assign an icon to.
 	search: 'tabler:search',

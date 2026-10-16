@@ -1,0 +1,54 @@
+---
+// A unit's status pill, with a pencil that opens an ActionPopover for
+// changing the status, with an optional reason that's posted as a unit note
+// alongside the change (setUnitStatus in src/lib/units.ts). Like notes, the
+// change is dated by when it's made.
+//
+// The pencil appears on hover or keyboard focus, and is always shown on
+// devices without hover (phones, tablets) — otherwise it would be invisible
+// there, and it's the only way to change a unit's status.
+import ActionPopover from '../ui/ActionPopover.astro';
+import AppIcon from '../icons/AppIcon.astro';
+import Badge from '../ui/Badge.astro';
+import { UNIT_STATUSES } from '../../db/schema';
+import { UNIT_STATUS_LABELS, UNIT_STATUS_TONES, type Unit } from '../../lib/units';
+import { inputClass, labelClass } from './unitTable';
+
+interface Props {
+	unit: Pick<Unit, 'id' | 'status'>;
+	redirectTo: string;
+}
+
+const { unit, redirectTo } = Astro.props;
+const popoverId = `unit-${unit.id}-status`;
+---
+<div class="group/status flex items-center gap-1">
+	<Badge tone={UNIT_STATUS_TONES[unit.status]}>{UNIT_STATUS_LABELS[unit.status]}</Badge>
+	<ActionPopover id={popoverId} title={`Status of unit #${unit.id}`} confirmLabel="Save status" confirmVariant="primary" formAction="/api/wizard/units" side="left">
+		<Fragment slot="trigger">
+			<button
+				type="button"
+				popovertarget={popoverId}
+				aria-label={`Change status of unit #${unit.id}`}
+				class="rounded p-1 text-text-muted opacity-0 hover:bg-bg-subtle hover:text-text focus-visible:opacity-100 group-hover/status:opacity-100 [@media(hover:none)]:opacity-100"
+			>
+				<AppIcon name="edit" size={14} />
+			</button>
+		</Fragment>
+		<input type="hidden" name="action" value="status" />
+		<input type="hidden" name="unitId" value={unit.id} />
+		<input type="hidden" name="redirectTo" value={redirectTo} />
+		<div>
+			<label class={labelClass} for={`${popoverId}-select`}>Status</label>
+			<select id={`${popoverId}-select`} class={inputClass} name="status">
+				{UNIT_STATUSES.map((status) => (
+					<option value={status} selected={status === unit.status}>{UNIT_STATUS_LABELS[status]}</option>
+				))}
+			</select>
+		</div>
+		<div>
+			<label class={labelClass} for={`${popoverId}-reason`}>Reason (optional, posted as a note)</label>
+			<textarea id={`${popoverId}-reason`} class={inputClass} name="reason" rows="3" placeholder="e.g. Sling worn, sent for inspection"></textarea>
+		</div>
+	</ActionPopover>
+</div>

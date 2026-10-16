@@ -1,12 +1,21 @@
 ---
-// Generic dropdown primitive, built on <details>/<summary> so it needs no
-// client-side JS beyond animating its own chevron. Two panel modes:
+// General-purpose dropdown built on <details>/<summary>: native open/close
+// and keyboard toggling come for free, and the delegated script below adds
+// the rest of what a dropdown should do (close on outside click / Escape,
+// so only one is open at a time).
+//
+// Trigger — either:
+//   - `slot="trigger"`: anything. The <summary> only gets the marker reset
+//     plus `triggerClass`, so the slot fully owns the trigger's look.
+//   - a preset, when nothing is slotted: `trigger="button"` (bordered,
+//     label + morphing chevron) or `trigger="icon"` (square icon-only box,
+//     see lib/icon-sizes.ts).
+// Content — either:
+//   - the default slot: anything (forms, link lists, ...).
 //   - `items`: a simple action list (buttons, or links when `href` is set;
 //     `data` becomes `data-*` attributes so callers can delegate clicks).
-//   - default slot: free-form panel content (forms, selects, ...). Pair with
-//     `panelClass` to size/pad the panel.
-// Two trigger modes: `button` (bordered, label + chevron) and `icon` (a
-// fixed square icon-only box, no chevron — see lib/icon-sizes.ts).
+// The panel gets the surface chrome (border, background, shadow) unless
+// `chrome={false}`; `panelClass` sets its offset, size and padding.
 // Extra attributes (class, data-*, ...) land on the <details>.
 import AppIcon from '../icons/AppIcon.astro';
 import MorphIcon from 'morphicons/astro';
@@ -25,12 +34,15 @@ interface Props {
 	trigger?: 'button' | 'icon';
 	triggerLabel?: string;
 	triggerIcon?: IconName;
-	/** Required for the icon-only trigger, which has no visible text. */
+	/** Required whenever the trigger has no visible text. */
 	ariaLabel?: string;
+	/** Classes for the <summary>; mainly for a slotted trigger. */
+	triggerClass?: string;
 	items?: MenuItem[];
 	align?: 'left' | 'right';
-	/** Size/padding of the panel; defaults suit an `items` list. */
+	/** Offset, size and padding of the panel; defaults suit an `items` list. */
 	panelClass?: string;
+	chrome?: boolean;
 	class?: string;
 	[attr: string]: unknown;
 }
@@ -40,28 +52,42 @@ const {
 	triggerLabel,
 	triggerIcon,
 	ariaLabel,
+	triggerClass,
 	items = [],
 	align = 'left',
-	panelClass = 'min-w-[10rem] py-1',
+	panelClass = 'mt-1 min-w-[10rem] py-1',
+	chrome = true,
 	class: className,
 	...rest
 } = Astro.props;
 
+const hasTriggerSlot = Astro.slots.has('trigger');
+const summaryReset = 'cursor-pointer list-none [&::-webkit-details-marker]:hidden';
+const presetClasses = trigger === 'icon'
+	? ['grid place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]
+	: 'flex items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle';
 const itemClasses = 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-text hover:bg-bg-subtle';
 ---
-<details class:list={['relative inline-block', className]} {...rest}>
-	{trigger === 'icon' ? (
-		<summary class:list={['grid cursor-pointer list-none place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text [&::-webkit-details-marker]:hidden', triggerBoxClasses.sm]} aria-label={ariaLabel}>
-			{triggerIcon && <AppIcon name={triggerIcon} size={triggerIconPixelSize.sm} />}
-		</summary>
-	) : (
-		<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden" aria-label={ariaLabel}>
-			{triggerIcon && <AppIcon name={triggerIcon} size={16} />}
-			{triggerLabel && <span>{triggerLabel}</span>}
-			<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
-		</summary>
-	)}
-	<div class:list={['absolute z-10 mt-1 rounded-md border border-border bg-surface shadow-lg', align === 'right' ? 'right-0' : 'left-0', panelClass]}>
+<details data-dropdown class:list={['relative inline-block', className]} {...rest}>
+	<summary class:list={[summaryReset, !hasTriggerSlot && presetClasses, triggerClass]} aria-label={ariaLabel}>
+		{hasTriggerSlot ? (
+			<slot name="trigger" />
+		) : trigger === 'icon' ? (
+			triggerIcon && <AppIcon name={triggerIcon} size={triggerIconPixelSize.sm} />
+		) : (
+			<>
+				{triggerIcon && <AppIcon name={triggerIcon} size={16} />}
+				{triggerLabel && <span>{triggerLabel}</span>}
+				<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
+			</>
+		)}
+	</summary>
+	<div class:list={[
+		'absolute z-10',
+		align === 'right' ? 'right-0' : 'left-0',
+		chrome && 'rounded-md border border-border bg-surface shadow-lg',
+		panelClass,
+	]}>
 		{items.map((item) => {
 			const data = Object.fromEntries(Object.entries(item.data ?? {}).map(([key, value]) => [`data-${key}`, value]));
 			const content = (
@@ -80,21 +106,43 @@ const itemClasses = 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-s
 
 <script>
 	// Delegated (this script runs once per page, not once per Dropdown
-	// instance) so it covers every <details> this component renders.
-	// `toggle` doesn't bubble, so the listener has to sit on the capture
-	// phase to see it at all.
+	// instance) so it covers every <details data-dropdown> on the page.
 	import type { MorphIconElement } from 'morphicons/element';
 	import { dropdownChevron } from '../../lib/icon-nodes';
 
+	const openDropdowns = () => document.querySelectorAll<HTMLDetailsElement>('details[data-dropdown][open]');
+
+	// `toggle` doesn't bubble, so the listener has to sit on the capture
+	// phase to see it at all.
 	document.addEventListener(
 		'toggle',
 		(event) => {
 			const details = event.target;
-			if (!(details instanceof HTMLDetailsElement)) return;
-			const chevron = details.querySelector<MorphIconElement>('.dropdown-chevron');
+			if (!(details instanceof HTMLDetailsElement) || !details.hasAttribute('data-dropdown')) return;
+			const chevron = details.querySelector<MorphIconElement>(':scope > summary .dropdown-chevron');
 			if (!chevron) return;
 			chevron.icon = details.open ? dropdownChevron.open : dropdownChevron.closed;
 		},
 		true,
 	);
+
+	// Outside click closes — which also means opening one dropdown closes
+	// any other, since that click lands outside them.
+	document.addEventListener('click', (event) => {
+		const target = event.target as Node;
+		openDropdowns().forEach((details) => {
+			if (!details.contains(target)) details.removeAttribute('open');
+		});
+	});
+
+	// Escape closes the innermost open dropdown containing focus (or all of
+	// them if focus is elsewhere) and hands focus back to its trigger.
+	document.addEventListener('keydown', (event) => {
+		if (event.key !== 'Escape') return;
+		const active = document.activeElement;
+		const focused = active?.closest<HTMLDetailsElement>('details[data-dropdown][open]');
+		const targets = focused ? [focused] : [...openDropdowns()];
+		targets.forEach((details) => details.removeAttribute('open'));
+		focused?.querySelector<HTMLElement>(':scope > summary')?.focus();
+	});
 </script>

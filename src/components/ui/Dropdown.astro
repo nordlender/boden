@@ -5,11 +5,11 @@
 // so only one is open at a time).
 //
 // Trigger — either:
-//   - `slot="trigger"`: anything. The <summary> only gets the marker reset
-//     plus `triggerClass`, so the slot fully owns the trigger's look.
-//   - a preset, when nothing is slotted: `trigger="button"` (bordered,
-//     label + morphing chevron) or `trigger="icon"` (square icon-only box,
-//     see lib/icon-sizes.ts).
+//   - `slot="trigger"`: any shape (icon circle, icon-only box, ...). The
+//     <summary> only gets the marker reset plus `triggerClass`, so the slot
+//     fully owns the trigger's look.
+//   - the default, when nothing is slotted: a bordered button with an
+//     optional `triggerIcon`/`triggerLabel` and a morphing chevron.
 // Content — either:
 //   - the default slot: anything (forms, link lists, ...).
 //   - `items`: a simple action list (buttons, or links when `href` is set;
@@ -21,7 +21,6 @@ import AppIcon from '../icons/AppIcon.astro';
 import MorphIcon from 'morphicons/astro';
 import type { IconName } from '../../lib/icons';
 import { dropdownChevron } from '../../lib/icon-nodes';
-import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 
 interface MenuItem {
 	label: string;
@@ -31,7 +30,6 @@ interface MenuItem {
 }
 
 interface Props {
-	trigger?: 'button' | 'icon';
 	triggerLabel?: string;
 	triggerIcon?: IconName;
 	/** Required whenever the trigger has no visible text. */
@@ -48,7 +46,6 @@ interface Props {
 }
 
 const {
-	trigger = 'button',
 	triggerLabel,
 	triggerIcon,
 	ariaLabel,
@@ -63,17 +60,13 @@ const {
 
 const hasTriggerSlot = Astro.slots.has('trigger');
 const summaryReset = 'cursor-pointer list-none [&::-webkit-details-marker]:hidden';
-const presetClasses = trigger === 'icon'
-	? ['grid place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]
-	: 'flex items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle';
+const defaultTriggerClasses = 'flex items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle';
 const itemClasses = 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-text hover:bg-bg-subtle';
 ---
 <details data-dropdown class:list={['relative inline-block', className]} {...rest}>
-	<summary class:list={[summaryReset, !hasTriggerSlot && presetClasses, triggerClass]} aria-label={ariaLabel}>
+	<summary class:list={[summaryReset, !hasTriggerSlot && defaultTriggerClasses, triggerClass]} aria-label={ariaLabel}>
 		{hasTriggerSlot ? (
 			<slot name="trigger" />
-		) : trigger === 'icon' ? (
-			triggerIcon && <AppIcon name={triggerIcon} size={triggerIconPixelSize.sm} />
 		) : (
 			<>
 				{triggerIcon && <AppIcon name={triggerIcon} size={16} />}

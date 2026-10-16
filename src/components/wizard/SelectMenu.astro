@@ -6,7 +6,9 @@
 // panel's form (see ItemPanel.astro) — toggling `.checked` and dispatching
 // a `change` event so SelectIcon's own listener keeps each icon in sync,
 // rather than duplicating that logic here.
+import AppIcon from '../icons/AppIcon.astro';
 import Dropdown from '../ui/Dropdown.astro';
+import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 
 interface Props {
 	formId: string;
@@ -20,7 +22,17 @@ const options = [
 	{ label: 'Invert', icon: 'selectInvert' as const, data: { 'select-action': 'invert' } },
 ];
 ---
-<Dropdown trigger="icon" triggerIcon="selectMenu" ariaLabel="Select items" panelClass="mt-1 min-w-[8rem] py-1" data-form-id={formId} items={options} />
+<Dropdown
+	ariaLabel="Select items"
+	triggerClass={`grid place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text ${triggerBoxClasses.sm}`}
+	panelClass="mt-1 min-w-[8rem] py-1"
+	data-form-id={formId}
+	items={options}
+>
+	<Fragment slot="trigger">
+		<AppIcon name="selectMenu" size={triggerIconPixelSize.sm} />
+	</Fragment>
+</Dropdown>
 
 <script>
 	document.addEventListener('click', (event) => {

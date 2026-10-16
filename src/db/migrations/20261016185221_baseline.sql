@@ -37,9 +37,12 @@ CREATE TABLE `messages` (
 	`author_name` text NOT NULL,
 	`author_id` text,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
-	`pinned_at` integer
+	`pinned_at` integer,
+	`unit_id` integer,
+	FOREIGN KEY (`unit_id`) REFERENCES `units`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE INDEX `messages_unit_id_idx` ON `messages` (`unit_id`);--> statement-breakpoint
 CREATE TABLE `order_items` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`order_id` integer NOT NULL,
@@ -206,12 +209,10 @@ CREATE TABLE `units` (
 	`manufactured_at` text,
 	`purchased_at` text,
 	`status` text DEFAULT 'active' NOT NULL,
-	`notes` text DEFAULT '[]' NOT NULL,
 	`opts` text DEFAULT '{}' NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`item_id`) REFERENCES `items`(`id`) ON UPDATE no action ON DELETE no action,
 	CONSTRAINT "units_status_valid" CHECK("units"."status" IN ('active', 'out_of_service', 'retired')),
-	CONSTRAINT "units_notes_is_array" CHECK(json_valid("units"."notes") AND json_type("units"."notes") = 'array'),
 	CONSTRAINT "units_opts_is_object" CHECK(json_valid("units"."opts") AND json_type("units"."opts") = 'object')
 );
 --> statement-breakpoint

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "b6dc2c35-f619-4d20-9b56-4446be3e6b7b",
+  "id": "e8c9e30b-3d65-409a-bc0e-8278c59fa551",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "categories": {
@@ -274,10 +274,39 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "unit_id": {
+          "name": "unit_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
+      "indexes": {
+        "messages_unit_id_idx": {
+          "name": "messages_unit_id_idx",
+          "columns": [
+            "unit_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "messages_unit_id_units_id_fk": {
+          "name": "messages_unit_id_units_id_fk",
+          "tableFrom": "messages",
+          "tableTo": "units",
+          "columnsFrom": [
+            "unit_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -1456,14 +1485,6 @@
           "autoincrement": false,
           "default": "'active'"
         },
-        "notes": {
-          "name": "notes",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'[]'"
-        },
         "opts": {
           "name": "opts",
           "type": "text",
@@ -1519,10 +1540,6 @@
         "units_status_valid": {
           "name": "units_status_valid",
           "value": "\"units\".\"status\" IN ('active', 'out_of_service', 'retired')"
-        },
-        "units_notes_is_array": {
-          "name": "units_notes_is_array",
-          "value": "json_valid(\"units\".\"notes\") AND json_type(\"units\".\"notes\") = 'array'"
         },
         "units_opts_is_object": {
           "name": "units_opts_is_object",

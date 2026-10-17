@@ -38,13 +38,12 @@ const { links, showCart = false } = Astro.props;
 				<Dropdown
 					align="right"
 					ariaLabel="Open menu"
-					triggerClass={`flex items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle ${triggerBoxClasses.md}`}
 					panelClass="mt-2 w-48 p-4"
 					class="nav-menu group md:hidden"
 				>
-					<Fragment slot="trigger">
+					<span slot="trigger" class:list={['flex items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle', triggerBoxClasses.md]}>
 						<MorphIcon icon={navMenu.closed} size={triggerIconPixelSize.md} class="nav-menu-icon" />
-					</Fragment>
+					</span>
 					<NavLinks links={links} />
 					<div class="mt-3 border-t border-border pt-3">
 						<UserMenuLinks />

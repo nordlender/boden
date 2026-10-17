@@ -4,11 +4,13 @@
 // the rest of what a dropdown should do (close on outside click / Escape,
 // so only one is open at a time).
 //
-// Trigger — either:
-//   - `slot="trigger"`: any shape (icon circle, icon-only box, ...). The
-//     <summary> only gets the marker reset plus `triggerClass`, so the slot
-//     fully owns the trigger's look.
-//   - the default, when nothing is slotted: a bordered button with an
+// Trigger — the element that gives the trigger its shape (bounding box,
+// border, background, hover). The <summary> itself is an unstyled wrapper
+// around it, so it's always exactly one element either way:
+//   - `slot="trigger"`: any shape, e.g. a circle with an icon inside. Use a
+//     <span>/<div>, not a <button> — the <summary> is already the
+//     interactive element, and interactive content can't nest inside it.
+//   - the default, when nothing is slotted: a rounded rectangle with an
 //     optional `triggerIcon`/`triggerLabel` and a morphing chevron.
 // Content — either:
 //   - the default slot: anything (forms, link lists, ...).
@@ -34,8 +36,6 @@ interface Props {
 	triggerIcon?: IconName;
 	/** Required whenever the trigger has no visible text. */
 	ariaLabel?: string;
-	/** Classes for the <summary>; mainly for a slotted trigger. */
-	triggerClass?: string;
 	items?: MenuItem[];
 	align?: 'left' | 'right';
 	/** Offset, size and padding of the panel; defaults suit an `items` list. */
@@ -49,7 +49,6 @@ const {
 	triggerLabel,
 	triggerIcon,
 	ariaLabel,
-	triggerClass,
 	items = [],
 	align = 'left',
 	panelClass = 'mt-1 min-w-[10rem] py-1',
@@ -59,20 +58,22 @@ const {
 } = Astro.props;
 
 const hasTriggerSlot = Astro.slots.has('trigger');
-const summaryReset = 'cursor-pointer list-none [&::-webkit-details-marker]:hidden';
+// `w-fit` so the summary (and its focus outline) hugs the trigger element
+// rather than stretching to the <details>' width.
+const summaryReset = 'block w-fit cursor-pointer list-none rounded [&::-webkit-details-marker]:hidden';
 const defaultTriggerClasses = 'flex items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle';
 const itemClasses = 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-text hover:bg-bg-subtle';
 ---
 <details data-dropdown class:list={['relative inline-block', className]} {...rest}>
-	<summary class:list={[summaryReset, !hasTriggerSlot && defaultTriggerClasses, triggerClass]} aria-label={ariaLabel}>
+	<summary class={summaryReset} aria-label={ariaLabel}>
 		{hasTriggerSlot ? (
 			<slot name="trigger" />
 		) : (
-			<>
+			<span class={defaultTriggerClasses}>
 				{triggerIcon && <AppIcon name={triggerIcon} size={16} />}
 				{triggerLabel && <span>{triggerLabel}</span>}
 				<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
-			</>
+			</span>
 		)}
 	</summary>
 	<div class:list={[

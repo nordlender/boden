@@ -24,14 +24,13 @@ const options = [
 ---
 <Dropdown
 	ariaLabel="Select items"
-	triggerClass={`grid place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text ${triggerBoxClasses.sm}`}
 	panelClass="mt-1 min-w-[8rem] py-1"
 	data-form-id={formId}
 	items={options}
 >
-	<Fragment slot="trigger">
+	<span slot="trigger" class:list={['grid place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]}>
 		<AppIcon name="selectMenu" size={triggerIconPixelSize.sm} />
-	</Fragment>
+	</span>
 </Dropdown>
 
 <script>

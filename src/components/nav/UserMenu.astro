@@ -8,12 +8,11 @@ import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 <Dropdown
 	align="right"
 	ariaLabel="Account"
-	triggerClass={`flex items-center justify-center rounded-full border border-border-strong text-text-muted hover:bg-bg-subtle ${triggerBoxClasses.md}`}
 	panelClass="mt-2 w-48 p-2"
 	class="group"
 >
-	<Fragment slot="trigger">
+	<span slot="trigger" class:list={['flex items-center justify-center rounded-full border border-border-strong text-text-muted hover:bg-bg-subtle', triggerBoxClasses.md]}>
 		<AppIcon name="user" size={triggerIconPixelSize.md} />
-	</Fragment>
+	</span>
 	<UserMenuLinks />
 </Dropdown>

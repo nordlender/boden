@@ -7,6 +7,7 @@
 // a `change` event so SelectIcon's own listener keeps each icon in sync,
 // rather than duplicating that logic here.
 import AppIcon from '../icons/AppIcon.astro';
+import Dropdown from '../ui/Dropdown.astro';
 import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 
 interface Props {
@@ -16,31 +17,27 @@ interface Props {
 const { formId } = Astro.props;
 
 const options = [
-	{ label: 'None', icon: 'selectNone' as const, action: 'none' as const },
-	{ label: 'All', icon: 'selectAll' as const, action: 'all' as const },
-	{ label: 'Invert', icon: 'selectInvert' as const, action: 'invert' as const },
+	{ label: 'None', icon: 'selectNone' as const, data: { 'select-action': 'none' } },
+	{ label: 'All', icon: 'selectAll' as const, data: { 'select-action': 'all' } },
+	{ label: 'Invert', icon: 'selectInvert' as const, data: { 'select-action': 'invert' } },
 ];
 ---
-<details class="relative">
-	<summary class:list={['grid cursor-pointer list-none place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text [&::-webkit-details-marker]:hidden', triggerBoxClasses.sm]} aria-label="Select items">
+<Dropdown
+	ariaLabel="Select items"
+	panelClass="mt-1 min-w-[8rem] py-1"
+	data-form-id={formId}
+	items={options}
+>
+	<span slot="trigger" class:list={['grid place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]}>
 		<AppIcon name="selectMenu" size={triggerIconPixelSize.sm} />
-	</summary>
-	<div class="select-menu absolute left-0 z-10 mt-1 min-w-[8rem] rounded-md border border-border bg-surface py-1 shadow-lg" data-form-id={formId}>
-		{options.map((option) => (
-			<button type="button" class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-text hover:bg-bg-subtle" data-select-action={option.action}>
-				<AppIcon name={option.icon} size={16} class="text-text-muted" />
-				<span>{option.label}</span>
-			</button>
-		))}
-	</div>
-</details>
+	</span>
+</Dropdown>
 
 <script>
 	document.addEventListener('click', (event) => {
 		const button = (event.target as Element).closest<HTMLButtonElement>('[data-select-action]');
 		if (!button) return;
-		const menu = button.closest<HTMLElement>('.select-menu');
-		const formId = menu?.dataset.formId;
+		const formId = button.closest<HTMLElement>('[data-form-id]')?.dataset.formId;
 		if (!formId) return;
 
 		const action = button.dataset.selectAction;

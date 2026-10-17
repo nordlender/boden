@@ -5,11 +5,10 @@
 // right next to actual *sets* (the noun) would be confusing. Worth applying
 // the same rename to ButtonStrip itself at some point, but that's an
 // /admin/items change, out of scope for this PR.
-import MorphIcon from 'morphicons/astro';
-import { dropdownChevron } from '../../../lib/icon-nodes';
 import AppIcon from '../../icons/AppIcon.astro';
 import Button from '../../ui/Button.astro';
 import Callout from '../../ui/Callout.astro';
+import Dropdown from '../../ui/Dropdown.astro';
 import Popover from '../../ui/Popover.astro';
 import TextMorphButton from '../../ui/TextMorphButton.astro';
 import type { SetPanelVariant } from './grid';
@@ -54,45 +53,39 @@ const assignWarningId = `assign-warning-${variant}`;
 			</Popover>
 		</>
 	)}
-	<details class="assign-dropdown relative inline-block">
-		<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
-			<span>Assign</span>
-			<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
-		</summary>
-		<div class="absolute left-0 z-10 mt-1 w-80 rounded-md border border-border bg-surface p-3 shadow-lg">
-			<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
-			<input type="hidden" name="panel" value={variant} form={formId} />
-			<section class="border-b border-border pb-3">
-				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
-					<AppIcon name="image" size={13} /> Set image
-				</p>
-				<div class="flex items-center gap-2">
-					<input type="text" name="imageUrl" form={formId} placeholder="https://…" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm" />
-					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/sets-image" class="shrink-0">
-						Apply
-					</Button>
-				</div>
-			</section>
+	<Dropdown triggerLabel="Assign" panelClass="mt-1 w-80 p-3">
+		<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
+		<input type="hidden" name="panel" value={variant} form={formId} />
+		<section class="border-b border-border pb-3">
+			<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
+				<AppIcon name="image" size={13} /> Set image
+			</p>
+			<div class="flex items-center gap-2">
+				<input type="text" name="imageUrl" form={formId} placeholder="https://…" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm" />
+				<Button type="submit" size="sm" form={formId} formaction="/api/wizard/sets-image" class="shrink-0">
+					Apply
+				</Button>
+			</div>
+		</section>
 
-			<section class="py-3">
-				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
-					<AppIcon name="product" size={13} /> Set product
-				</p>
-				<div class="flex items-center gap-2">
-					<select name="productId" form={formId} class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm">
-						<option value="" disabled selected>Choose a product…</option>
-						{products.map((p) => (
-							<option value={p.id}>{p.title}</option>
-						))}
-					</select>
-					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/sets-product" class="shrink-0">
-						Apply
-					</Button>
-				</div>
-				<p class="mt-1 text-xs text-text-muted">Also how you reassign an already-assigned set to a <em>different</em> product. Unlike items, there's no attribute template to fan out — the set's own <code>label</code> and components are untouched.</p>
-			</section>
-		</div>
-	</details>
+		<section class="py-3">
+			<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
+				<AppIcon name="product" size={13} /> Set product
+			</p>
+			<div class="flex items-center gap-2">
+				<select name="productId" form={formId} class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm">
+					<option value="" disabled selected>Choose a product…</option>
+					{products.map((p) => (
+						<option value={p.id}>{p.title}</option>
+					))}
+				</select>
+				<Button type="submit" size="sm" form={formId} formaction="/api/wizard/sets-product" class="shrink-0">
+					Apply
+				</Button>
+			</div>
+			<p class="mt-1 text-xs text-text-muted">Also how you reassign an already-assigned set to a <em>different</em> product. Unlike items, there's no attribute template to fan out — the set's own <code>label</code> and components are untouched.</p>
+		</section>
+	</Dropdown>
 	</div>
 
 	<div class="flex-1"></div>
@@ -108,24 +101,6 @@ const assignWarningId = `assign-warning-${variant}`;
 </div>
 
 <script>
-	// Same chevron-morph pattern as ../ButtonStrip.astro, duplicated for the
-	// same reason it duplicates it from Dropdown.astro: this trigger's menu
-	// content isn't a simple item list.
-	import type { MorphIconElement } from 'morphicons/element';
-	import { dropdownChevron } from '../../../lib/icon-nodes';
-
-	document.addEventListener(
-		'toggle',
-		(event) => {
-			const details = event.target;
-			if (!(details instanceof HTMLDetailsElement) || !details.classList.contains('assign-dropdown')) return;
-			const chevron = details.querySelector<MorphIconElement>('.dropdown-chevron');
-			if (!chevron) return;
-			chevron.icon = details.open ? dropdownChevron.open : dropdownChevron.closed;
-		},
-		true,
-	);
-
 	// Open the refusal warning (rendered only when the redirect from
 	// api/wizard/sets-product.ts carried one), then drop the one-shot query
 	// params so a reload doesn't show it again — same trick CartSidebar uses

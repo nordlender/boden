@@ -139,7 +139,7 @@ swap with an actual morph animation between the two icon shapes.
 
 Wired into the two components that actually flagged "dynamic":
 
-- **`Dropdown.astro`** — the trigger chevron is now `<MorphIcon>`. A single
+- **`ui/Dropdown.astro`** (moved from `wizard/`) — the trigger chevron is now `<MorphIcon>`. A single
   delegated `document.addEventListener('toggle', ..., true)` (capture phase,
   since `toggle` doesn't bubble) watches every `<details>` this component
   renders and morphs its chevron between `dropdownChevron.closed`/`.open` on

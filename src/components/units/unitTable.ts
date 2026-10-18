@@ -11,14 +11,14 @@
 // Every column is left-aligned with the same gap (gap-3), so the visible
 // space between two columns is that gap plus whatever the left one leaves
 // empty. The fixed columns are sized to their content so that slack stays
-// small and even: dates ~5rem ("2026-09-20"), extra its "EXTRA" header,
-// status the widest pill ("Out of service") plus its pencil, actions the
+// small and even: dates their "BOUGHT" header (dd/mm/yy is narrower), extra
+// its "EXTRA" header, status the widest pill ("Out of service") plus its pencil, actions the
 // new-note button (30px) + details toggle (32px) + gap. Everything left over
 // goes to the two text columns, unit getting the larger share.
 //
 // Header and rows are separate grids, so every non-flexible column must be
 // a fixed width (not `auto`) for them to line up.
-const UNIT_GRID = '3rem minmax(0,1.4fr) minmax(0,1fr) 5.5rem 5.5rem 3rem 8.5rem 4.25rem';
+const UNIT_GRID = '3rem minmax(0,1.4fr) minmax(0,1fr) 4rem 4rem 3rem 8.5rem 4.25rem';
 const UNIT_GRID_MOBILE = '3rem minmax(0,1fr) 8.5rem 4.25rem';
 
 export const UNIT_GRID_STYLE = `--grid-cols: ${UNIT_GRID_MOBILE}; --grid-cols-sm: ${UNIT_GRID}`;

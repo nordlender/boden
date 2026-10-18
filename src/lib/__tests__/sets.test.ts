@@ -16,12 +16,12 @@ import {
 // (`sets`) — see the comments alongside each insert below.
 vi.mock('../../db/client', async () => {
 	const schema = await import('../../db/schema');
-	const { createTestDb } = await import('../../db/testDb');
+	const { createTestDb, insertItems } = await import('../../db/testDb');
 	const db = createTestDb();
 
-	await db.insert(schema.items).values({ slug: 'item-1', name: 'Item 1', stockCount: 5 });
-	await db.insert(schema.items).values({ slug: 'item-2', name: 'Item 2', stockCount: 2 });
-	await db.insert(schema.items).values({ slug: 'item-3', name: 'Item 3', stockCount: 5 });
+	await insertItems(db, { slug: 'item-1', name: 'Item 1', stockCount: 5 });
+	await insertItems(db, { slug: 'item-2', name: 'Item 2', stockCount: 2 });
+	await insertItems(db, { slug: 'item-3', name: 'Item 3', stockCount: 5 });
 
 	await db.insert(schema.sets).values({ slug: 'set-1', name: 'Set 1' }); // id === 1
 	await db.insert(schema.setItems).values([
@@ -39,8 +39,8 @@ vi.mock('../../db/client', async () => {
 		.insert(schema.productAttributeKeys)
 		.values({ productId: widget.id, name: 'Color', sortOrder: 1 })
 		.returning();
-	await db.insert(schema.items).values({ productId: widget.id, slug: 'item-4', name: 'Item 4', stockCount: 5 }); // id === 4
-	await db.insert(schema.items).values({ productId: widget.id, slug: 'item-5', name: 'Item 5', stockCount: 5 }); // id === 5
+	await insertItems(db, { productId: widget.id, slug: 'item-4', name: 'Item 4', stockCount: 5 }); // id === 4
+	await insertItems(db, { productId: widget.id, slug: 'item-5', name: 'Item 5', stockCount: 5 }); // id === 5
 	await db.insert(schema.itemAttributeValues).values([
 		{ itemId: 4, attributeId: sizeKey.id, value: 'S' },
 		{ itemId: 4, attributeId: colorKey.id, value: '' },
@@ -51,11 +51,11 @@ vi.mock('../../db/client', async () => {
 	// "Gadget" product: one item (6), no siblings sharing its signature.
 	const [gadget] = await db.insert(schema.products).values({ slug: 'gadget', title: 'Gadget', status: 'published' }).returning();
 	const [typeKey] = await db.insert(schema.productAttributeKeys).values({ productId: gadget.id, name: 'Type', sortOrder: 0 }).returning();
-	await db.insert(schema.items).values({ productId: gadget.id, slug: 'item-6', name: 'Item 6', stockCount: 5 }); // id === 6
+	await insertItems(db, { productId: gadget.id, slug: 'item-6', name: 'Item 6', stockCount: 5 }); // id === 6
 	await db.insert(schema.itemAttributeValues).values({ itemId: 6, attributeId: typeKey.id, value: 'Standard' });
 
 	// Unassigned item (7) — no product, so no attribute keys/values at all.
-	await db.insert(schema.items).values({ slug: 'item-7', name: 'Item 7 (internal)', stockCount: 5 }); // id === 7
+	await insertItems(db, { slug: 'item-7', name: 'Item 7 (internal)', stockCount: 5 }); // id === 7
 
 	await db.insert(schema.sets).values({ slug: 'set-2', name: 'Set 2' }); // id === 3
 	await db.insert(schema.setItems).values([
@@ -70,7 +70,7 @@ vi.mock('../../db/client', async () => {
 	// Set 5 (id === 6) has one non-archived component (item 1) and one
 	// archived one (item 8) — for getValidSetIds's "a non-archived set can
 	// still be invalid if one of its own components is archived" case.
-	await db.insert(schema.items).values({ slug: 'item-8', name: 'Item 8', stockCount: 5, archived: true }); // id === 8
+	await insertItems(db, { slug: 'item-8', name: 'Item 8', stockCount: 5, archived: true }); // id === 8
 	await db.insert(schema.sets).values({ slug: 'set-5', name: 'Set 5' }); // id === 6
 	await db.insert(schema.setItems).values([
 		{ setId: 6, itemId: 1, quantity: 1 },

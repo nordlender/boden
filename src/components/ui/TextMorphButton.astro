@@ -42,26 +42,7 @@ const classes = [baseClasses, sizeClasses[size], variantClasses[variant], 'morph
 }
 
 <script>
-	import type { MorphIconElement } from 'morphicons/element';
-	import { actionIcons, type ActionIconKey } from '../../lib/icon-nodes';
+	import { wireMorphActions } from '../../lib/morph-actions';
 
-	function setState(el: Element, state: 'default' | 'hover') {
-		const key = el.getAttribute('data-morph-action') as ActionIconKey | null;
-		const icons = key && actionIcons[key];
-		if (!icons) return;
-		const icon = el.querySelector<MorphIconElement>('.morph-action-icon');
-		if (icon) icon.icon = icons[state];
-	}
-
-	// MorphButton and TextMorphButton both use the `.morph-action` class and
-	// this identical script — Astro doesn't dedupe scripts across different
-	// component files, so a page rendering both would otherwise run this
-	// wiring twice per element. The `data-morph-wired` guard keeps that safe.
-	document.querySelectorAll<HTMLElement>('.morph-action:not([data-morph-wired])').forEach((el) => {
-		el.dataset.morphWired = 'true';
-		el.addEventListener('pointerenter', () => setState(el, 'hover'));
-		el.addEventListener('pointerleave', () => setState(el, 'default'));
-		el.addEventListener('focus', () => setState(el, 'hover'));
-		el.addEventListener('blur', () => setState(el, 'default'));
-	});
+	wireMorphActions();
 </script>

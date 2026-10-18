@@ -8,7 +8,7 @@
 // editing — a correction is just a new message (see issue #225).
 import MorphButton from '../ui/MorphButton.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
-import type { MessageRow } from '../../lib/messages';
+import { canDeleteMessage, type MessageRow } from '../../lib/messages';
 import { formatDateTimeDisplay } from '../../lib/dates';
 
 interface Props {
@@ -21,7 +21,8 @@ interface Props {
 const { message, currentUserId = null, isAdmin = false, redirectTo } = Astro.props;
 
 const canPin = isAdmin;
-const canDelete = isAdmin || (currentUserId !== null && message.authorId === currentUserId);
+// Same rule as unit notes (UnitNoteList.astro) — see canDeleteMessage.
+const canDelete = canDeleteMessage(message, currentUserId, isAdmin);
 ---
 
 <li class="px-4 py-3">

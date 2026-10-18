@@ -34,7 +34,7 @@ const ITEM_PARTIAL_ID = 6;
 const ITEM_PARTIAL_FOLLOWING_ID = 7;
 
 vi.mock('../../db/client', async () => {
-	const { createTestDb } = await import('../../db/testDb');
+	const { createTestDb, insertItems } = await import('../../db/testDb');
 	const schema = await import('../../db/schema');
 
 	const db = createTestDb();
@@ -49,13 +49,13 @@ vi.mock('../../db/client', async () => {
 		.values({ slug: 'hidden-product', title: 'Hidden Product', categoryId: category.id, status: 'hidden' })
 		.returning();
 
-	await db.insert(schema.items).values({ productId: productPublished.id, slug: 'available', name: 'Available Item', stockCount: 5, archived: false });
-	await db.insert(schema.items).values({ productId: productPublished.id, slug: 'archived', name: 'Archived Item', stockCount: 5, archived: true });
-	await db.insert(schema.items).values({ productId: productHidden.id, slug: 'hidden-product-item', name: 'Hidden Product Item', stockCount: 5, archived: false });
-	await db.insert(schema.items).values({ productId: productPublished.id, slug: 'double-book', name: 'Double Book Item', stockCount: 1, archived: false });
-	await db.insert(schema.items).values({ productId: productPublished.id, slug: 'following', name: 'Following Item', stockCount: 1, archived: false });
-	await db.insert(schema.items).values({ productId: productPublished.id, slug: 'partial', name: 'Partial Item', stockCount: 3, archived: false });
-	await db.insert(schema.items).values({ productId: productPublished.id, slug: 'partial-following', name: 'Partial Following Item', stockCount: 3, archived: false });
+	await insertItems(db, { productId: productPublished.id, slug: 'available', name: 'Available Item', stockCount: 5, archived: false });
+	await insertItems(db, { productId: productPublished.id, slug: 'archived', name: 'Archived Item', stockCount: 5, archived: true });
+	await insertItems(db, { productId: productHidden.id, slug: 'hidden-product-item', name: 'Hidden Product Item', stockCount: 5, archived: false });
+	await insertItems(db, { productId: productPublished.id, slug: 'double-book', name: 'Double Book Item', stockCount: 1, archived: false });
+	await insertItems(db, { productId: productPublished.id, slug: 'following', name: 'Following Item', stockCount: 1, archived: false });
+	await insertItems(db, { productId: productPublished.id, slug: 'partial', name: 'Partial Item', stockCount: 3, archived: false });
+	await insertItems(db, { productId: productPublished.id, slug: 'partial-following', name: 'Partial Following Item', stockCount: 3, archived: false });
 
 	await db.insert(schema.users).values({ id: 'member-1', name: 'Member', email: 'member@example.com' });
 	await db.insert(schema.users).values({ id: 'moderator-1', name: 'Moderator', email: 'moderator@example.com' });

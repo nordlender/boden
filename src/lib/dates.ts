@@ -80,6 +80,19 @@ export function todayIsoInOslo(): string {
   return dateToIsoInOslo(new Date());
 }
 
+// dd/mm/yy for a bare YYYY-MM-DD date (e.g. a unit's manufacturedAt) — a
+// plain reformat, no timezone involved.
+export function formatIsoDateDdMmYy(value: string): string {
+  const [year, month, day] = value.split('-');
+  return `${day}/${month}/${year.slice(2)}`;
+}
+
+// dd/mm/yy for a real Date (e.g. a message's createdAt), as the date reads
+// in Oslo — the compact unit-notes list (UnitNoteList.astro).
+export function formatDateDdMmYy(date: Date): string {
+  return formatIsoDateDdMmYy(dateToIsoInOslo(date));
+}
+
 // dd/mm — used by the pickup-days tables (src/components/pickup-days/),
 // where rows are dense and the year is implied by "upcoming". Parsed as
 // UTC (not local midnight): unlike todayIsoInOslo() above, this formats an

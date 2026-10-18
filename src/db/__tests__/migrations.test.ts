@@ -5,6 +5,9 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { is } from 'drizzle-orm';
+import { getTableConfig, SQLiteTable } from 'drizzle-orm/sqlite-core';
+import * as schema from '../schema';
 
 // Smoke test: the baseline migration under src/db/migrations should apply
 // cleanly to a brand-new sqlite file and produce every table declared in
@@ -32,20 +35,13 @@ describe('db migrations', () => {
       .all()
       .map((row) => (row as { name: string }).name);
 
-    for (const expected of [
-      'users',
-      'categories',
-      'subcategories',
-      'products',
-      'product_links',
-      'product_attribute_keys',
-      'items',
-      'item_attribute_values',
-      'orders',
-      'order_items',
-    ]) {
-      expect(tables).toContain(expected);
-    }
+    // Derived from the schema's own table exports, so a new table can't be
+    // forgotten here.
+    const expected = (Object.values(schema) as unknown[])
+      .filter((value): value is SQLiteTable => is(value, SQLiteTable))
+      .map((table) => getTableConfig(table).name);
+    expect(expected).toContain('units');
+    expect(tables).toEqual(expect.arrayContaining(expected));
 
     sqlite.close();
   });

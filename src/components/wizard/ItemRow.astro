@@ -128,6 +128,12 @@ const {
 				) : (
 					<p class="mt-1 text-sm italic text-text-muted">No attributes yet — inherited from the assigned product.</p>
 				)}
+				<p class="mt-4 text-sm">
+					<a href={`/admin/items/${itemId}/units`} class="text-text underline hover:text-text-muted">
+						Manage units ({totalStock} active)
+					</a>
+					<span class="text-xs text-text-muted"> — the physical objects behind this item: service, retirement, history</span>
+				</p>
 				{availability && (
 					<>
 						{/* Scheduled availability (every claiming order counts), unlike the

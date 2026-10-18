@@ -26,7 +26,7 @@ export function variantKey(kind: 'item' | 'set', id: number): string {
 export async function getProductVariantCalendars(productId: number): Promise<{ start: string; calendars: VariantCalendar[] }> {
 	const start = todayIsoInOslo();
 	const [itemRows, setRows] = await Promise.all([
-		db.query.items.findMany({ where: (t, { and, eq }) => and(eq(t.productId, productId), eq(t.archived, false)), columns: { id: true, stockCount: true } }),
+		db.query.items.findMany({ where: (t, { and, eq }) => and(eq(t.productId, productId), eq(t.archived, false)), columns: { id: true } }),
 		db.query.sets.findMany({ where: (t, { and, eq }) => and(eq(t.productId, productId), eq(t.archived, false)), columns: { id: true } }),
 	]);
 
@@ -39,7 +39,7 @@ export async function getProductVariantCalendars(productId: number): Promise<{ s
 		...itemRows.map((item) => ({
 			key: variantKey('item', item.id),
 			daily: (daily.get(item.id) ?? []).map((n) => Math.max(0, n)),
-			total: item.stockCount,
+			total: stock.get(item.id) ?? 0,
 		})),
 		...setRows.map((set) => {
 			const components = componentsBySet.get(set.id) ?? [];

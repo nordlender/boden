@@ -58,6 +58,17 @@ jobs:
           mkdir -p data
           npx drizzle-kit migrate
 
+      # Disabled until v1. Until then every schema change is squashed into a
+      # fresh baseline migration (the database-and-drizzle-cleanup skill), so
+      # there is no migration history for this to guard. From v1 on,
+      # migrations are additive: remove `if: false` so a PR that carries a
+      # stale migration (snapshot history from before main's latest, or an
+      # older timestamp, which drizzle's migrator silently skips on existing
+      # databases) fails CI instead of merging.
+      - name: Check migrations
+        if: false
+        run: npx drizzle-kit check
+
       - name: Typecheck
         run: npm run --ignore-scripts typecheck
 

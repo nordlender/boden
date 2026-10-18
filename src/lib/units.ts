@@ -133,27 +133,17 @@ export async function listUnitsForItem(itemId: number): Promise<Unit[]> {
 	return db.select().from(units).where(eq(units.itemId, itemId)).orderBy(asc(units.id)).all();
 }
 
-/**
- * Every unit of every item, by id — the flat /admin/units listing, with how
- * many notes (unit messages) each has.
- */
-export async function listAllUnits() {
+/** The item a unit belongs to, as shown next to it on /admin/units. */
+export interface UnitItemRef {
+	id: number;
+	name: string;
+	archived: boolean;
+}
+
+/** Every unit of every item, by id — the /admin/units listing — with the item each belongs to. */
+export async function listAllUnits(): Promise<{ unit: Unit; item: UnitItemRef }[]> {
 	return db
-		.select({
-			id: units.id,
-			itemId: units.itemId,
-			brand: units.brand,
-			model: units.model,
-			marking: units.marking,
-			serialNumber: units.serialNumber,
-			manufacturedAt: units.manufacturedAt,
-			purchasedAt: units.purchasedAt,
-			status: units.status,
-			opts: units.opts,
-			noteCount: sql<number>`(select count(*) from ${messages} where ${qualified(messages.unitId)} = ${qualified(units.id)})`,
-			itemName: items.name,
-			itemArchived: items.archived,
-		})
+		.select({ unit: units, item: { id: items.id, name: items.name, archived: items.archived } })
 		.from(units)
 		.innerJoin(items, eq(units.itemId, items.id))
 		.orderBy(asc(units.id))

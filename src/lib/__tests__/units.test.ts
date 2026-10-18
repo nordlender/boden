@@ -143,15 +143,17 @@ describe('unit fields', () => {
 		);
 	});
 
-	it('listAllUnits lists every unit across items, by id, with its item name', async () => {
+	it('listAllUnits lists every unit across items, by id, with its item', async () => {
 		const rows = await listAllUnits();
-		const ids = rows.map((row) => row.id);
+		const ids = rows.map((row) => row.unit.id);
 		expect(ids).toEqual([...ids].sort((a, b) => a - b));
 		expect(ids).toHaveLength((await db.select().from(units).all()).length);
-		expect(new Set(rows.map((row) => row.itemName))).toEqual(new Set(['Dragon Cam #2', 'Ice Axe', 'Rope', 'Harness']));
-		const unit3 = rows.find((row) => row.id === 3);
-		expect(unit3?.noteCount).toBe((await notesOf(3)).length);
-		expect(unit3?.noteCount).toBeGreaterThan(0);
+		expect(new Set(rows.map((row) => row.item.name))).toEqual(new Set(['Dragon Cam #2', 'Ice Axe', 'Rope', 'Harness']));
+		// Full unit rows (what UnitRow renders), each paired with its own item.
+		const unit3 = rows.find((row) => row.unit.id === 3);
+		expect(unit3?.unit).toEqual(await getUnit(3));
+		expect(unit3?.item).toEqual({ id: 1, name: 'Dragon Cam #2', archived: false });
+		expect(rows.every((row) => row.item.id === row.unit.itemId)).toBe(true);
 	});
 
 	it('normalizeOpts trims and drops empty keys', () => {

@@ -2,71 +2,53 @@
 export const prerender = false;
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin).
-// Flat, read-only listing of every unit (src/db/schema.ts's `units`) by id.
-// Editing happens per item on /admin/items/[id]/units, which each row links to.
+// Every physical unit (src/db/schema.ts's `units`) of every item, by id, in
+// the same UnitTable/UnitRow tables as an item's own units page
+// (/admin/items/[id]/units) — notes, status and details all work here too —
+// with each row also showing and linking to its item. Retired units are
+// listed in a separate table below the units in use.
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import Badge from '../../components/ui/Badge.astro';
-import { listAllUnits, UNIT_STATUS_LABELS, UNIT_STATUS_TONES } from '../../lib/units';
+import UnitTable from '../../components/units/UnitTable.astro';
+import { listAllUnits, type UnitItemRef } from '../../lib/units';
+import { listUnitNotes } from '../../lib/messages';
+import { todayIsoInOslo } from '../../lib/dates';
+import { hasRole } from '../../lib/auth';
 
 const rows = await listAllUnits();
-const cellClass = 'px-3 py-2 align-top';
+const allUnits = rows.map((row) => row.unit);
+const itemsById = new Map<number, UnitItemRef>(rows.map((row) => [row.item.id, row.item]));
+const notesByUnit = await listUnitNotes(allUnits.map((unit) => unit.id));
+const unitsInUse = allUnits.filter((unit) => unit.status !== 'retired');
+const retiredUnits = allUnits.filter((unit) => unit.status === 'retired');
+
+const tableProps = {
+	notesByUnit,
+	itemsById,
+	// Message rules for unit notes, same as the hub board (MessageTableRow.astro).
+	currentUserId: Astro.locals.user?.id ?? null,
+	isAdmin: hasRole(Astro.locals.user?.role, 'admin'),
+	today: todayIsoInOslo(),
+	redirectTo: Astro.url.pathname,
+};
 ---
 
 <AdminLayout title="Units">
-	<div class="mx-auto flex max-w-6xl flex-col gap-6 p-4 sm:p-8">
+	<div class="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-8">
 		<div>
 			<h1 class="text-xl font-semibold text-text">Units</h1>
-			<p class="mt-1 text-sm text-text-muted">Every physical unit, by id. Open a unit's item to edit it, change its status or add notes.</p>
+			<p class="mt-1 text-sm text-text-muted">
+				Every physical unit of every item, by id. Add units from an item's own units page, linked from each unit.
+			</p>
 		</div>
 
-		{rows.length === 0 ? (
-			<p class="text-sm italic text-text-muted">No units yet.</p>
-		) : (
-			<div class="overflow-x-auto rounded-lg border border-border bg-surface">
-				<table class="w-full text-left text-sm">
-					<thead class="border-b border-border bg-bg-subtle text-xs font-medium uppercase tracking-wide text-text-muted">
-						<tr>
-							<th class={cellClass}>#</th>
-							<th class={cellClass}>Item</th>
-							<th class={cellClass}>Marking</th>
-							<th class={cellClass}>Brand / model</th>
-							<th class={cellClass}>Serial</th>
-							<th class={cellClass}>Made</th>
-							<th class={cellClass}>Bought</th>
-							<th class={cellClass}>Status</th>
-							<th class={cellClass}>Notes</th>
-							<th class={cellClass}>Extra</th>
-						</tr>
-					</thead>
-					<tbody>
-						{rows.map((unit) => (
-							<tr class:list={['border-b border-border last:border-b-0', unit.status === 'retired' && 'opacity-70']}>
-								<td class:list={[cellClass, 'font-mono text-xs text-text-muted']}>{unit.id}</td>
-								<td class={cellClass}>
-									<a href={`/admin/items/${unit.itemId}/units`} class="text-text underline hover:text-text-muted">{unit.itemName}</a>
-									{unit.itemArchived && <span class="text-xs text-text-muted"> (archived)</span>}
-								</td>
-								<td class:list={[cellClass, 'text-text']}>{unit.marking ?? '—'}</td>
-								<td class:list={[cellClass, 'text-text']}>{[unit.brand, unit.model].filter(Boolean).join(' ') || '—'}</td>
-								<td class:list={[cellClass, 'font-mono text-xs text-text']}>{unit.serialNumber ?? '—'}</td>
-								<td class:list={[cellClass, 'whitespace-nowrap text-text-muted']}>{unit.manufacturedAt ?? '—'}</td>
-								<td class:list={[cellClass, 'whitespace-nowrap text-text-muted']}>{unit.purchasedAt ?? '—'}</td>
-								<td class={cellClass}><Badge tone={UNIT_STATUS_TONES[unit.status]}>{UNIT_STATUS_LABELS[unit.status]}</Badge></td>
-								<td class:list={[cellClass, 'text-text-muted']}>{unit.noteCount || '—'}</td>
-								<td class={cellClass}>
-									{Object.keys(unit.opts).length > 0 ? (
-										<span class="flex flex-wrap gap-1">
-											{Object.entries(unit.opts).map(([key, value]) => <Badge tone="info">{key}: {value}</Badge>)}
-										</span>
-									) : (
-										<span class="text-text-muted">—</span>
-									)}
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
-		)}
+		<UnitTable title="Units" units={unitsInUse} emptyText="No units in use yet." {...tableProps} />
+		{retiredUnits.length > 0 && <UnitTable title="Retired units" units={retiredUnits} emptyText="" {...tableProps} />}
 	</div>
 </AdminLayout>
+
+<script>
+	// Unit forms submit in place and show validation errors inline.
+	import { wireUnitForms } from '../../lib/unit-forms';
+
+	wireUnitForms();
+</script>

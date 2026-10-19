@@ -37,7 +37,7 @@ erDiagram
     items ||--o{ item_attribute_values : has
     product_attribute_keys ||--o{ item_attribute_values : "value for"
     sets ||--o{ set_items : contains
-    items ||--o{ set_items : "component of"
+    set_items }o--|| items : "links to"
     items ||--o{ units : "physical copies"
     units ||--o{ messages : "notes (unitId)"
     items ||--o{ order_items : "rented as"

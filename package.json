@@ -18,6 +18,8 @@
     "test:watch": "vitest",
     "typecheck": "astro check",
     "lint": "eslint .",
+    "docs:schema": "node scripts/sync-schema-doc.mjs",
+    "docs:schema:check": "node scripts/sync-schema-doc.mjs --check",
     "prepare": "husky"
   },
   "dependencies": {

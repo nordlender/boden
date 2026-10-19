@@ -43,3 +43,17 @@ npm run branches            # see what's merged first (optional)
 npm run worktrees:prune     # dry run — lists what would be removed
 npm run worktrees:prune -- --yes   # actually remove them
 ```
+
+## `dev-setup.sh` — `npm run dev-setup`
+
+Bootstraps a fresh worktree: copies `.env` from the main checkout, runs
+Drizzle migrations (creating `data/` if needed) and seeds the example catalog
+via `seed-example-catalog.mjs`. `check-db-baseline.mjs` runs first and moves a
+local db that predates the current migration baseline aside to
+`data/backups/stale-<timestamp>/` instead of letting the migration fail.
+
+## `sync-schema-doc.mjs` — `npm run docs:schema`
+
+Rewrites the schema block in `docs/schema.md` so it is a verbatim copy of
+`src/db/schema.ts`. Run it after any schema change. `npm run docs:schema:check`
+(`--check`) exits non-zero if the block is stale; CI runs it.

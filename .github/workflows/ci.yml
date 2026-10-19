@@ -64,6 +64,9 @@ jobs:
       - name: Lint
         run: npm run --ignore-scripts lint
 
+      - name: Schema doc in sync
+        run: npm run --ignore-scripts docs:schema:check
+
       - name: Test
         run: npm test
 

@@ -3,6 +3,7 @@ import { items, productAttributeKeys, itemAttributeValues, units } from '../db/s
 import { eq, and, inArray } from 'drizzle-orm';
 import { getRealAvailability } from './availability';
 import { itemStockExtras } from './units';
+import { assertProductAcceptsKind, type Tx } from './wizardVariants';
 
 export interface WizardAttribute {
 	key: string;
@@ -116,18 +117,7 @@ export async function createItem(input: { name: string; imageUrl?: string | null
 	});
 }
 
-export async function archiveItems(itemIds: number[]): Promise<void> {
-	if (itemIds.length === 0) return;
-	await db.update(items).set({ archived: true }).where(inArray(items.id, itemIds));
-}
-
-// Bulk "Set image" — assigns the same imageUrl to every selected item, same
-// shape as archiveItems above. Unlike setItemsProduct there's no attribute
-// fan-out to worry about, so this is a plain single-statement bulk update.
-export async function setItemsImage(itemIds: number[], imageUrl: string): Promise<void> {
-	if (itemIds.length === 0) return;
-	await db.update(items).set({ imageUrl }).where(inArray(items.id, itemIds));
-}
+// Archive and "Set image" are shared with sets — see wizardVariants.ts.
 
 // docs/schema.md Work item: "'Set product' reassignment must keep attribute
 // values consistent" — one transaction: drop the old product's values,
@@ -142,19 +132,11 @@ export async function setItemsImage(itemIds: number[], imageUrl: string): Promis
 export async function setItemsProduct(itemIds: number[], productId: number): Promise<void> {
 	if (itemIds.length === 0) return;
 
-	// A product's variants are assumed all items or all sets, never a mix —
-	// see src/components/shop/VariantPicker.astro's comment, which enforces
-	// that assumption on the customer-facing picker. Enforced here too,
-	// rather than only defended against on the read side, so the invalid
-	// state can't be created in the first place.
-	const existingSet = await db.query.sets.findFirst({
-		where: (t, { eq: eqCol, and: andCol }) => andCol(eqCol(t.productId, productId), eqCol(t.archived, false)),
-	});
-	if (existingSet) {
-		throw new Error('This product already has sets assigned — a product cannot mix item and set variants.');
-	}
-
 	db.transaction((tx) => {
+		// Enforced on the write side, not only defended against on the read
+		// side, so the invalid mixed state can't be created in the first place.
+		assertProductAcceptsKind(tx, productId, 'item');
+
 		const current = tx
 			.select({ id: items.id, productId: items.productId })
 			.from(items)
@@ -182,8 +164,6 @@ export async function setItemsProduct(itemIds: number[], productId: number): Pro
 		}
 	});
 }
-
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // Looks up the product's attribute key by name, creating it and fanning out
 // a blank value to every existing item of the product if it doesn't exist

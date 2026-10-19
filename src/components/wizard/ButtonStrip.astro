@@ -18,6 +18,7 @@ import Callout from '../ui/Callout.astro';
 import Popover from '../ui/Popover.astro';
 import ActionPopover from '../ui/ActionPopover.astro';
 import MorphButton from '../ui/MorphButton.astro';
+import AssignWarning from './AssignWarning.astro';
 import ImageMenu from './ImageMenu.astro';
 import type { PanelVariant } from './grid';
 
@@ -28,12 +29,16 @@ interface Props {
 	redirectTo: string;
 }
 
-const { formId, products, redirectTo } = Astro.props;
+const { variant, formId, products, redirectTo } = Astro.props;
 
 const archiveHintId = `archive-hint-${formId}`;
 const confirmId = `archive-confirm-${formId}`;
 ---
 <div class="flex items-center gap-2 border-b border-border bg-bg-subtle px-3 py-2">
+	<div class="relative inline-block">
+	<AssignWarning variant={variant} reason="product_has_sets">
+		Product is already assigned to sets
+	</AssignWarning>
 	<details class="set-dropdown relative inline-block">
 		<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
 			<span>Set</span>
@@ -44,6 +49,7 @@ const confirmId = `archive-confirm-${formId}`;
 		    box caps and scrolls itself as folders expand. */}
 		<div class="absolute left-0 z-10 mt-1 w-[min(26rem,calc(100vw-2rem))] rounded-md border border-border bg-surface p-3 shadow-lg">
 			<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
+			<input type="hidden" name="panel" value={variant} form={formId} />
 			<section class="border-b border-border pb-3">
 				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
 					<AppIcon name="image" size={13} /> Set image
@@ -62,7 +68,7 @@ const confirmId = `archive-confirm-${formId}`;
 							<option value={p.id}>{p.title}</option>
 						))}
 					</select>
-					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/set-product" class="shrink-0">
+					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/items/set-product" class="shrink-0">
 						Apply
 					</Button>
 				</div>
@@ -70,6 +76,7 @@ const confirmId = `archive-confirm-${formId}`;
 			</section>
 		</div>
 	</details>
+	</div>
 
 	<div class="flex-1"></div>
 

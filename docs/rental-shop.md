@@ -145,7 +145,7 @@ boden/
 │   │   ├── pickup-days/
 │   │   │   ├── add.ts                       # POST — admin only
 │   │   │   └── remove.ts                    # POST — admin only
-│   │   ├── wizard/                          # archive / attributes / attributes/bulk / items / set-product — admin only
+│   │   ├── wizard/                          # [kind]/{archive,set-image,set-product} / attributes / attributes/bulk / items — admin only
 │   │   └── debug/                           # bloc API exploration endpoints, see docs/bloc-api.md
 │   │
 │   ├── db/

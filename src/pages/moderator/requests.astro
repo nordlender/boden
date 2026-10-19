@@ -5,19 +5,9 @@
 // (ROUTE_RULES via /moderator).
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
-import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
 import { getPendingRequestRows } from '../../lib/moderatorOrders';
 
-const pendingRequests = await getPendingRequestRows();
-
-const rows: OrdersTableRow[] = pendingRequests.map((order) => ({
-	orderCode: order.orderCode,
-	status: order.status,
-	fromDate: order.fromDate,
-	toDate: order.toDate,
-	customerName: order.customerName,
-	items: order.items,
-}));
+const rows = await getPendingRequestRows();
 ---
 
 <ModeratorLayout title="Order requests — Moderator">

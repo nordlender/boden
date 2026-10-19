@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { createOrder, deleteOrder, generateOrderCode, rescheduleOrder } from '../orders';
+import { createOrder, deleteOrder, generateOrderCode, getMemberOrder, getMemberOrderRows, rescheduleOrder } from '../orders';
 import type { CartEntry } from '../cart';
 
 // rescheduleOrder calls isValidDateRange (src/lib/reservation.ts), which
@@ -362,6 +362,32 @@ describe('rescheduleOrder', () => {
 	it('rejects rescheduling an order owned by someone else, without revealing whether it exists', async () => {
 		const result = await rescheduleOrder({ orderCode: 'AAAAAA', userId: 'member-1', fromDate: '2026-12-01', toDate: '2026-12-02' });
 		expect(result).toEqual({ ok: false, error: 'not_found' });
+	});
+});
+
+describe('getMemberOrder', () => {
+	it("returns the member's own order with its items", async () => {
+		const result = await placeOrder([{ itemId: ITEM_B_ID, quantity: 2 }], '2026-09-01', '2026-09-02');
+		if (!result.ok) throw new Error('expected order to be created');
+
+		const order = await getMemberOrder(result.orderCode, 'member-1');
+		expect(order?.orderCode).toBe(result.orderCode);
+		expect(order?.orderItems.map((oi) => [oi.item.name, oi.requestedQuantity])).toEqual([['Item B', 2]]);
+	});
+
+	it("returns undefined for another member's order, same as a nonexistent one", async () => {
+		expect(await getMemberOrder('AAAAAA', 'member-1')).toBeUndefined();
+		expect(await getMemberOrder('NOPE1', 'member-1')).toBeUndefined();
+		expect(await getMemberOrder('', 'member-1')).toBeUndefined();
+	});
+});
+
+describe('getMemberOrderRows', () => {
+	it("lists only the member's own orders, named by the checkout contact snapshot", async () => {
+		const rows = await getMemberOrderRows('member-1');
+		expect(rows.length).toBeGreaterThan(0);
+		expect(rows.map((r) => r.orderCode)).not.toContain('AAAAAA');
+		expect(rows.every((r) => r.customerName === CONTACT.contactName)).toBe(true);
 	});
 });
 

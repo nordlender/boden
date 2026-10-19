@@ -5,6 +5,7 @@ import { isForeignKeyViolation } from './db-errors';
 import { getReservationAvailability } from './reservation';
 import { lineQuantity, occupiedQuantity } from './availability';
 import { RESERVING_STATUSES, type OrderStatus } from './orderStatus';
+import { toOrderRow, type OrderRow } from './orders';
 
 // Moderator-side order operations — kept separate from member-side
 // src/lib/orders.ts (createOrder/deleteOrder/
@@ -117,14 +118,19 @@ function toOrderDetail(order: RawOrderDetail): OrderDetail {
 	};
 }
 
-export interface PendingRequestRow {
+export interface PendingRequestRow extends OrderRow {
 	id: number;
-	orderCode: string;
-	status: string;
-	fromDate: string;
-	toDate: string;
-	customerName: string;
-	items: { itemName: string; requestedQuantity: number }[];
+}
+
+// Every member's orders, most recent first, optionally filtered by status —
+// the admin's all-orders list.
+export async function getAllOrderRows(status: OrderStatus | null = null): Promise<OrderRow[]> {
+	const allOrders = await db.query.orders.findMany({
+		where: status ? (t, { eq: eqCol }) => eqCol(t.status, status) : undefined,
+		orderBy: (t, { desc }) => [desc(t.createdAt)],
+		with: { user: true, orderItems: { with: { item: true } } },
+	});
+	return allOrders.map(toOrderRow);
 }
 
 // Shared by src/pages/moderator/requests.astro (the full queue) and
@@ -140,21 +146,7 @@ export async function getPendingRequestRows(): Promise<PendingRequestRow[]> {
 		with: { user: true, orderItems: { with: { item: true } } },
 	});
 
-	return pendingOrders.map((order) => ({
-		id: order.id,
-		orderCode: order.orderCode,
-		status: order.status,
-		fromDate: order.fromDate,
-		toDate: order.toDate,
-		// users.name is nullable (set from the external OAuth provider) — fall
-		// back to the checkout-time contact name snapshot rather than showing
-		// a blank customer.
-		customerName: order.user?.name || order.contactName,
-		items: order.orderItems.map((oi) => ({
-			itemName: oi.item.name,
-			requestedQuantity: oi.requestedQuantity,
-		})),
-	}));
+	return pendingOrders.map((order) => ({ id: order.id, ...toOrderRow(order) }));
 }
 
 export async function getOrderDetail(orderId: number): Promise<OrderDetail | null> {

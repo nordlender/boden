@@ -57,3 +57,24 @@ local db that predates the current migration baseline aside to
 Rewrites the schema block in `docs/schema.md` so it is a verbatim copy of
 `src/db/schema.ts`. Run it after any schema change. `npm run docs:schema:check`
 (`--check`) exits non-zero if the block is stale; CI runs it.
+
+## `check-doc-refs.mjs` — `npm run docs:check`
+
+Fails if a doc links to or names a file that doesn't exist (markdown links,
+backticked `src/…`/`docs/…`/`scripts/…` paths) or mentions an `npm run`
+script that isn't in `package.json`. Fenced code blocks and `*` patterns are
+skipped. CI runs it.
+
+## `check-db-drift.mjs` — `npm run db:check`
+
+Runs `drizzle-kit generate` against a scratch copy of `src/db/migrations` and
+fails, printing the SQL, if `src/db/schema.ts` has changes no committed
+migration contains. Nothing in the repo is modified. Not in CI yet: it
+currently fails because the squashed baseline and `0016_add_attribute_key_is_variant`
+disagree about `product_attribute_keys.is_variant` (see PR #362).
+
+## `seed-example-catalog.mjs` — `npm run db:seed`
+
+Seeds the example catalog (categories, products, items, units, sets) into the
+local db. CI runs it after migrating, as a smoke test that the seed still
+matches the schema.

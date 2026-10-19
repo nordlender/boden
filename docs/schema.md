@@ -10,9 +10,8 @@ was designed around an admin wizard that generated items as systematic
 permutations of product option values (Size × Color, etc.), driven by an
 Options → Attributes → Specifications → Display-options flow. That wizard no
 longer exists — see `docs/wizard.md` for the wizard that replaced it,
-which was already partly built (`src/components/wizard/`,
-`src/pages/wizard-test.astro`) by the time this schema was designed against
-it.
+which was already partly built (`src/components/wizard/`) by the time this
+schema was designed against it.
 
 Terminology (product/item) is unchanged from `AGENTS.md` — a product is a
 category-level listing; an item is one specific thing that gets rented.

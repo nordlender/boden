@@ -58,6 +58,9 @@ jobs:
           mkdir -p data
           npx drizzle-kit migrate
 
+      - name: Seed script runs against the migrated schema
+        run: npm run --ignore-scripts db:seed
+
       - name: Typecheck
         run: npm run --ignore-scripts typecheck
 
@@ -66,6 +69,9 @@ jobs:
 
       - name: Schema doc in sync
         run: npm run --ignore-scripts docs:schema:check
+
+      - name: Doc references resolve
+        run: npm run --ignore-scripts docs:check
 
       - name: Test
         run: npm test

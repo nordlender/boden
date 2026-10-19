@@ -9,9 +9,8 @@ import MorphIcon from 'morphicons/astro';
 import { dropdownChevron } from '../../../lib/icon-nodes';
 import AppIcon from '../../icons/AppIcon.astro';
 import Button from '../../ui/Button.astro';
-import Callout from '../../ui/Callout.astro';
-import Popover from '../../ui/Popover.astro';
 import TextMorphButton from '../../ui/TextMorphButton.astro';
+import AssignWarning from '../AssignWarning.astro';
 import type { SetPanelVariant } from './grid';
 
 interface Props {
@@ -22,38 +21,12 @@ interface Props {
 }
 
 const { variant, formId, products, redirectTo } = Astro.props;
-
-// Set by api/wizard/sets-product.ts when an "Assign → Set product" attempt
-// is refused: `assignError` is the reason, `assignPanel` the toolbar variant
-// it came from (both toolbars share one page, so only the matching one
-// shows the warning).
-const assignError = Astro.url.searchParams.get('assignError');
-const showAssignWarning = assignError === 'product_has_items' && Astro.url.searchParams.get('assignPanel') === variant;
-const assignWarningId = `assign-warning-${variant}`;
 ---
 <div class="flex items-center gap-2 border-b border-border bg-bg-subtle px-3 py-2">
 	<div class="relative inline-block">
-	{showAssignWarning && (
-		<>
-			{/* Invisible stand-in for the popover's trigger: Popover.astro positions
-				itself off a `[popovertarget]` element, and a <summary> can't be one.
-				It sits outside the <details> (whose closed content doesn't render, and
-				whose first child must be the <summary>) and covers the Assign button
-				exactly, so the warning appears right under it. */}
-			<button
-				type="button"
-				popovertarget={assignWarningId}
-				tabindex="-1"
-				aria-hidden="true"
-				class="pointer-events-none absolute inset-0 opacity-0"
-			></button>
-			<Popover id={assignWarningId} side="bottom" labelledBy={`${assignWarningId}-title`} chrome={false}>
-				<Callout variant="warning" title="Can't assign this product" titleId={`${assignWarningId}-title`} class="shadow-lg">
-					Set is empty, or product is already assigned to other items
-				</Callout>
-			</Popover>
-		</>
-	)}
+	<AssignWarning variant={variant} reason="product_has_items">
+		Set is empty, or product is already assigned to other items
+	</AssignWarning>
 	<details class="assign-dropdown relative inline-block">
 		<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
 			<span>Assign</span>
@@ -68,7 +41,7 @@ const assignWarningId = `assign-warning-${variant}`;
 				</p>
 				<div class="flex items-center gap-2">
 					<input type="text" name="imageUrl" form={formId} placeholder="https://…" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm" />
-					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/sets-image" class="shrink-0">
+					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/sets/set-image" class="shrink-0">
 						Apply
 					</Button>
 				</div>
@@ -85,7 +58,7 @@ const assignWarningId = `assign-warning-${variant}`;
 							<option value={p.id}>{p.title}</option>
 						))}
 					</select>
-					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/sets-product" class="shrink-0">
+					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/sets/set-product" class="shrink-0">
 						Apply
 					</Button>
 				</div>
@@ -102,7 +75,7 @@ const assignWarningId = `assign-warning-${variant}`;
 			Add set
 		</TextMorphButton>
 	)}
-	<TextMorphButton variant="danger-filled" action="delete" type="submit" form={formId} formaction="/api/wizard/sets-archive">
+	<TextMorphButton variant="danger-filled" action="delete" type="submit" form={formId} formaction="/api/wizard/sets/archive">
 		Delete <span class="selected-count" data-form-id={formId}>0</span> set(s)
 	</TextMorphButton>
 </div>
@@ -125,20 +98,6 @@ const assignWarningId = `assign-warning-${variant}`;
 		},
 		true,
 	);
-
-	// Open the refusal warning (rendered only when the redirect from
-	// api/wizard/sets-product.ts carried one), then drop the one-shot query
-	// params so a reload doesn't show it again — same trick CartSidebar uses
-	// for `cartOpen`.
-	const warning = document.querySelector<HTMLElement>('[id^="assign-warning-"]');
-	if (warning) {
-		warning.parentElement?.scrollIntoView({ block: 'center' });
-		warning.showPopover();
-		const url = new URL(location.href);
-		url.searchParams.delete('assignError');
-		url.searchParams.delete('assignPanel');
-		history.replaceState({}, '', url);
-	}
 
 	// Selection count — identical logic to ../ButtonStrip.astro's, scoped to
 	// this panel's own formId so the two wizards' counts never cross-talk.

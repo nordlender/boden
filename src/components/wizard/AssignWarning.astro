@@ -1,0 +1,61 @@
+---
+// Refusal warning for a toolbar's "Set product" action, shared by
+// ButtonStrip.astro (items) and sets/SetToolbar.astro. Rendered only when
+// api/wizard/[kind]/set-product.ts redirected back with `assignError` =
+// `reason` (a ProductKindConflictError reason) and `assignPanel` = `variant`
+// (both toolbars on a page share the URL, so only the matching one shows it).
+//
+// Place it just before the toolbar's <details> dropdown, inside a shared
+// `relative inline-block` wrapper: the invisible button below covers the
+// dropdown's trigger so the popover appears right under it. The slot is the
+// warning text.
+import Callout from '../ui/Callout.astro';
+import Popover from '../ui/Popover.astro';
+import type { ProductKindConflictError } from '../../lib/wizardVariants';
+
+interface Props {
+	variant: string;
+	reason: ProductKindConflictError['reason'];
+}
+
+const { variant, reason } = Astro.props;
+
+const show = Astro.url.searchParams.get('assignError') === reason && Astro.url.searchParams.get('assignPanel') === variant;
+const id = `assign-warning-${variant}`;
+---
+{show && (
+	<>
+		{/* Invisible stand-in for the popover's trigger: Popover.astro positions
+			itself off a `[popovertarget]` element, and a <summary> can't be one.
+			It sits outside the <details> (whose closed content doesn't render, and
+			whose first child must be the <summary>) and covers the trigger
+			exactly. */}
+		<button
+			type="button"
+			popovertarget={id}
+			tabindex="-1"
+			aria-hidden="true"
+			class="pointer-events-none absolute inset-0 opacity-0"
+		></button>
+		<Popover id={id} side="bottom" labelledBy={`${id}-title`} chrome={false}>
+			<Callout variant="warning" title="Can't assign this product" titleId={`${id}-title`} class="shadow-lg">
+				<slot />
+			</Callout>
+		</Popover>
+	</>
+)}
+
+<script>
+	// Open the refusal warning (rendered only when the redirect carried one),
+	// then drop the one-shot query params so a reload doesn't show it again —
+	// same trick CartSidebar uses for `cartOpen`.
+	const warning = document.querySelector<HTMLElement>('[id^="assign-warning-"]');
+	if (warning) {
+		warning.parentElement?.scrollIntoView({ block: 'center' });
+		warning.showPopover();
+		const url = new URL(location.href);
+		url.searchParams.delete('assignError');
+		url.searchParams.delete('assignPanel');
+		history.replaceState({}, '', url);
+	}
+</script>

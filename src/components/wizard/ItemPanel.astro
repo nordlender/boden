@@ -45,7 +45,7 @@ const formId = `wizard-${variant}-form`;
 		overflow-hidden to clip row backgrounds to the bottom corners.
 	-->
 	<h2 class="border-b border-border px-3 py-2 text-sm font-semibold text-text">{title}</h2>
-	<form id={formId} method="post" action="/api/wizard/archive"></form>
+	<form id={formId} method="post" action="/api/wizard/items/archive"></form>
 	<ButtonStrip variant={variant} formId={formId} products={products} redirectTo={redirectTo} />
 	<TableHeader variant={variant} formId={formId} />
 	{items.length === 0 ? (

@@ -36,7 +36,7 @@ const formId = `set-wizard-${variant}-form`;
 ---
 <section class="rounded-lg border border-border bg-surface">
 	<h2 class="border-b border-border px-3 py-2 text-sm font-semibold text-text">{title}</h2>
-	<form id={formId} method="post" action="/api/wizard/sets-archive"></form>
+	<form id={formId} method="post" action="/api/wizard/sets/archive"></form>
 	<SetToolbar variant={variant} formId={formId} products={products} redirectTo={redirectTo} />
 	<SetTableHeader variant={variant} formId={formId} />
 	{sets.length === 0 ? (

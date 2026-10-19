@@ -248,6 +248,63 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   }
 }
 
+// Row shape rendered by OrdersTable.astro — shared by the member, admin and
+// moderator order lists.
+export interface OrderRow {
+  orderCode: string;
+  status: string;
+  fromDate: string;
+  toDate: string;
+  customerName: string;
+  items: { itemName: string; requestedQuantity: number }[];
+}
+
+type OrderRowSource = {
+  orderCode: string;
+  status: string;
+  fromDate: string;
+  toDate: string;
+  contactName: string;
+  user?: { name: string | null } | null;
+  orderItems: { requestedQuantity: number; item: { name: string } }[];
+};
+
+export function toOrderRow(order: OrderRowSource): OrderRow {
+  return {
+    orderCode: order.orderCode,
+    status: order.status,
+    fromDate: order.fromDate,
+    toDate: order.toDate,
+    // users.name is nullable (set from the external OAuth provider) — fall
+    // back to the checkout-time contact name snapshot. Callers that don't
+    // load `user` (a member's own list) always get the snapshot.
+    customerName: order.user?.name || order.contactName,
+    items: order.orderItems.map((oi) => ({
+      itemName: oi.item.name,
+      requestedQuantity: oi.requestedQuantity,
+    })),
+  };
+}
+
+export async function getMemberOrderRows(userId: string): Promise<OrderRow[]> {
+  const memberOrders = await db.query.orders.findMany({
+    where: (t, { eq: eqCol }) => eqCol(t.userId, userId),
+    orderBy: (t, { desc }) => [desc(t.createdAt)],
+    with: { orderItems: { with: { item: true } } },
+  });
+  return memberOrders.map(toOrderRow);
+}
+
+// Ownership is part of the WHERE clause, so another member's order code
+// resolves to undefined exactly like a nonexistent one — callers can't leak it.
+export async function getMemberOrder(orderCode: string, userId: string) {
+  if (!orderCode || !userId) return undefined;
+  return db.query.orders.findFirst({
+    where: (t, { eq: eqCol }) => and(eqCol(t.orderCode, orderCode), eqCol(t.userId, userId)),
+    with: { orderItems: { with: { item: true } } },
+  });
+}
+
 export type DeleteOrderInput = { orderCode: string; userId: string };
 
 export type DeleteOrderResult =

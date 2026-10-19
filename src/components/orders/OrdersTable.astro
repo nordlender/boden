@@ -1,23 +1,10 @@
 ---
 import OrdersTableRow from './OrdersTableRow.astro';
 import OrdersTableRowDetailed from './OrdersTableRowDetailed.astro';
-
-interface OrderRowItem {
-	itemName: string;
-	requestedQuantity: number;
-}
-
-export interface OrdersTableRow {
-	orderCode: string;
-	status: string;
-	fromDate: string;
-	toDate: string;
-	customerName: string;
-	items: OrderRowItem[];
-}
+import type { OrderRow } from '../../lib/orders';
 
 interface Props {
-	orders: OrdersTableRow[];
+	orders: OrderRow[];
 	viewHref: (orderCode: string) => string;
 	emptyMessage?: string;
 }
@@ -32,7 +19,7 @@ const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 		) : (
 			<>
 				<div class="flex flex-col gap-2" data-orders-layout="compact">
-					{orders.map((order: OrdersTableRow) => (
+					{orders.map((order: OrderRow) => (
 						<OrdersTableRow
 							orderCode={order.orderCode}
 							status={order.status}
@@ -44,7 +31,7 @@ const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 					))}
 				</div>
 				<div class="flex flex-col gap-2" data-orders-layout="detailed" hidden>
-					{orders.map((order: OrdersTableRow) => (
+					{orders.map((order: OrderRow) => (
 						<OrdersTableRowDetailed
 							orderCode={order.orderCode}
 							status={order.status}

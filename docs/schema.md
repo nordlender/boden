@@ -126,6 +126,10 @@ export const productAttributeKeys = sqliteTable('product_attribute_keys', {
   productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
+  // Admin-chosen variant key(s): picked as buttons on the product page and
+  // omitted from the displayed attribute list. A flag per key so more than
+  // one can be supported later; the admin form currently allows one.
+  isVariant: integer('is_variant', { mode: 'boolean' }).notNull().default(false),
 }, (table) => [
   uniqueIndex('product_attribute_keys_product_name_unique').on(table.productId, table.name),
   index('product_attribute_keys_product_id_idx').on(table.productId),

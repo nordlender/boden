@@ -37,21 +37,20 @@ import type { SetComponentDisplay } from '../../lib/sets';
 import Button from '../ui/Button.astro';
 import AppIcon from '../icons/AppIcon.astro';
 import { formatAttributes } from '../../lib/attributes';
+import { variantKey } from '../../lib/availabilityCalendar';
 
 interface Props {
 	items: ShopItem[];
 	sets: ShopSet[];
 	productSlug: string;
 	thumbnailImageUrl: string | null;
-	attributeKeyOrder: string[];
 	variantKeys: string[];
 }
 
-const { items, sets, productSlug, thumbnailImageUrl, attributeKeyOrder, variantKeys } = Astro.props;
+const { items, sets, productSlug, thumbnailImageUrl, variantKeys } = Astro.props;
 
 const variantKeySet = new Set(variantKeys);
 const hasVariantKeys = variantKeys.length > 0;
-const displayedKeyCount = attributeKeyOrder.filter((key) => !variantKeySet.has(key)).length;
 
 type Variant =
 	| { kind: 'item'; id: number; imageUrl: string | null; inStock: number; attributes: { key: string; value: string }[]; variantValues: { key: string; value: string }[] }
@@ -122,8 +121,6 @@ function optionLabel(variant: Variant): string {
 								data-id={variant.id}
 								data-image={variant.imageUrl ?? thumbnailImageUrl ?? ''}
 								data-stock={variant.inStock}
-								data-attributes={variant.kind === 'item' ? JSON.stringify(variant.attributes) : '[]'}
-								data-component-display={variant.kind === 'set' ? JSON.stringify(variant.componentDisplay) : '[]'}
 								class={`rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-pressed:border-selected-border aria-pressed:bg-selected-subtle aria-pressed:font-medium aria-pressed:hover:bg-selected-subtle aria-pressed:text-selected-text ${variant.inStock > 0 ? 'border-border-interactive text-text' : 'border-border-interactive text-disabled-text line-through'}`}
 							>
 								{variant.kind === 'set' ? `Set — ${label}` : label}
@@ -136,63 +133,72 @@ function optionLabel(variant: Variant): string {
 		)
 	}
 
-	{variantKind === 'item' && displayedKeyCount > 0 && (
-		<dl data-item-attributes class="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-sm">
-			{(initialVariant?.kind === 'item' ? initialVariant.attributes : []).map((attribute) => (
-				<div class="contents">
-					<dt class="text-text-muted">{attribute.key}</dt>
-					<dd class="text-text">{attribute.value}</dd>
-				</div>
-			))}
-		</dl>
-	)}
-
-	<div data-set-includes hidden={variantKind !== 'set'} class="border-t border-border pt-4 text-sm">
-		<p class="mb-2 font-medium text-text">Attributes</p>
-		<div data-set-includes-content class="flex flex-col gap-3">
-			{(initialVariant?.kind === 'set' ? initialVariant.componentDisplay : []).map((group) =>
-				group.kind === 'table' ? (
-					<table class="w-full border-collapse text-xs">
-						<thead>
-							<tr class="border-b border-border text-left text-text-muted">
-								<th class="py-1 pr-3 font-medium">Component</th>
-								{group.keys.map((key) => (
-									<th class="py-1 pr-3 font-medium">{key}</th>
-								))}
-							</tr>
-						</thead>
-						<tbody>
-							{group.rows.map((row) => (
-								<tr class="border-b border-border last:border-0">
-									<td class="py-1 pr-3 text-text">
-										{row.productTitle}
-										{row.quantity > 1 && ` (×${row.quantity})`}
-									</td>
-									{row.values.map((value) => (
-										<td class="py-1 pr-3 text-text-muted">{value ?? '—'}</td>
-									))}
-								</tr>
-							))}
-						</tbody>
-					</table>
-				) : (
-					<p class="text-text-muted">
-						{group.quantity > 1 ? `${group.quantity}× ` : ''}
-						<span class="text-text">{group.productTitle}</span>
-						{group.attributes.length > 0 && ` — ${group.attributes.map((a) => `${a.key}: ${a.value}`).join(', ')}`}
-					</p>
-				),
+	{/*
+		Every variant's details (attribute list or set contents, plus stock
+		message) are rendered here up front, one panel each; the script below
+		only toggles `hidden` to show the selected one, so this markup is the
+		single source of truth for how a variant's details look.
+	*/}
+	{variants.map((variant) => (
+		<div data-variant-panel={variantKey(variant.kind, variant.id)} hidden={variant !== initialVariant} class="flex flex-col gap-4">
+			{variant.kind === 'item' && variant.attributes.length > 0 && (
+				<dl class="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-sm">
+					{variant.attributes.map((attribute) => (
+						<div class="contents">
+							<dt class="text-text-muted">{attribute.key}</dt>
+							<dd class="text-text">{attribute.value}</dd>
+						</div>
+					))}
+				</dl>
 			)}
-		</div>
-	</div>
 
-	{/* TODO: Style later, warning? — is "out of stock" an error or a warning state? */}
-	<p
-		data-stock-message
-		class={`text-sm font-medium ${(initialVariant?.inStock ?? 0) > 0 ? 'text-success-text' : 'text-error-text'}`}
-	>
-		{(initialVariant?.inStock ?? 0) > 0 ? `${initialVariant?.inStock} in stock` : 'Out of stock'}
-	</p>
+			{variant.kind === 'set' && (
+				<div class="border-t border-border pt-4 text-sm">
+					<p class="mb-2 font-medium text-text">Attributes</p>
+					<div class="flex flex-col gap-3">
+						{variant.componentDisplay.map((group) =>
+							group.kind === 'table' ? (
+								<table class="w-full border-collapse text-xs">
+									<thead>
+										<tr class="border-b border-border text-left text-text-muted">
+											<th class="py-1 pr-3 font-medium">Component</th>
+											{group.keys.map((key) => (
+												<th class="py-1 pr-3 font-medium">{key}</th>
+											))}
+										</tr>
+									</thead>
+									<tbody>
+										{group.rows.map((row) => (
+											<tr class="border-b border-border last:border-0">
+												<td class="py-1 pr-3 text-text">
+													{row.productTitle}
+													{row.quantity > 1 && ` (×${row.quantity})`}
+												</td>
+												{row.values.map((value) => (
+													<td class="py-1 pr-3 text-text-muted">{value ?? '—'}</td>
+												))}
+											</tr>
+										))}
+									</tbody>
+								</table>
+							) : (
+								<p class="text-text-muted">
+									{group.quantity > 1 ? `${group.quantity}× ` : ''}
+									<span class="text-text">{group.productTitle}</span>
+									{group.attributes.length > 0 && ` — ${group.attributes.map((a) => `${a.key}: ${a.value}`).join(', ')}`}
+								</p>
+							),
+						)}
+					</div>
+				</div>
+			)}
+
+			{/* TODO: Style later, warning? — is "out of stock" an error or a warning state? */}
+			<p class={`text-sm font-medium ${variant.inStock > 0 ? 'text-success-text' : 'text-error-text'}`}>
+				{variant.inStock > 0 ? `${variant.inStock} in stock` : 'Out of stock'}
+			</p>
+		</div>
+	))}
 
 	<div class="flex items-center gap-3">
 		{/* Stepper's height (h-11) and count text (text-base) are pinned to
@@ -230,41 +236,20 @@ function optionLabel(variant: Variant): string {
 </form>
 
 <script>
-	// Keeps the image, stock message, quantity cap, attribute list, and
-	// "Includes" breakdown in sync with whichever variant is selected —
-	// including a `?item=<id>`/`?set=<id>` preselect from an ItemCard link.
-	interface SetComponentTableRow {
-		productTitle: string;
-		quantity: number;
-		values: (string | null)[];
-	}
-	interface SetComponentTable {
-		kind: 'table';
-		keys: string[];
-		rows: SetComponentTableRow[];
-	}
-	interface SetComponentLine {
-		kind: 'line';
-		productTitle: string;
-		quantity: number;
-		attributes: { key: string; value: string }[];
-	}
-	type SetComponentDisplay = SetComponentTable | SetComponentLine;
-
+	// Keeps the image, quantity cap, form inputs, and which variant's details
+	// panel is shown in sync with whichever variant is selected — including a
+	// `?item=<id>`/`?set=<id>` preselect from an ItemCard link.
 	const options = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-variant-option]'));
+	const panels = Array.from(document.querySelectorAll<HTMLElement>('[data-variant-panel]'));
 	const image = document.querySelector<HTMLImageElement>('[data-product-image]');
 	const imagePlaceholder = document.querySelector<HTMLElement>('[data-product-image-placeholder]');
-	const stockMessage = document.querySelector<HTMLElement>('[data-stock-message]');
 	const quantityInput = document.querySelector<HTMLInputElement>('[data-quantity-input]');
 	const quantityDisplay = document.querySelector<HTMLElement>('[data-quantity-display]');
 	const quantityIncrement = document.querySelector<HTMLButtonElement>('[data-quantity-increment]');
 	const quantityDecrement = document.querySelector<HTMLButtonElement>('[data-quantity-decrement]');
 	const submitButton = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
-	const attributesList = document.querySelector<HTMLElement>('[data-item-attributes]');
 	const itemIdInput = document.querySelector<HTMLInputElement>('[data-variant-item-id]');
 	const setIdInput = document.querySelector<HTMLInputElement>('[data-variant-set-id]');
-	const setIncludes = document.querySelector<HTMLElement>('[data-set-includes]');
-	const setIncludesContent = document.querySelector<HTMLElement>('[data-set-includes-content]');
 
 	function setQuantity(value: number) {
 		if (!quantityInput) return;
@@ -278,111 +263,6 @@ function optionLabel(variant: Variant): string {
 
 	quantityIncrement?.addEventListener('click', () => setQuantity(Number(quantityInput?.value ?? '1') + 1));
 	quantityDecrement?.addEventListener('click', () => setQuantity(Number(quantityInput?.value ?? '1') - 1));
-
-	function renderAttributes(json: string | undefined) {
-		if (!attributesList || !json) return;
-		let attributes: { key: string; value: string }[];
-		try {
-			attributes = JSON.parse(json);
-		} catch {
-			return;
-		}
-
-		attributesList.replaceChildren();
-		for (const { key, value } of attributes) {
-			const wrapper = document.createElement('div');
-			wrapper.className = 'contents';
-
-			const dt = document.createElement('dt');
-			dt.className = 'text-text-muted';
-			dt.textContent = key;
-
-			const dd = document.createElement('dd');
-			dd.className = 'text-text';
-			dd.textContent = value;
-
-			wrapper.append(dt, dd);
-			attributesList.appendChild(wrapper);
-		}
-	}
-
-	function renderComponentTable(group: SetComponentTable): HTMLTableElement {
-		const table = document.createElement('table');
-		table.className = 'w-full border-collapse text-xs';
-
-		const thead = document.createElement('thead');
-		const headRow = document.createElement('tr');
-		headRow.className = 'border-b border-border text-left text-text-muted';
-		const componentHeader = document.createElement('th');
-		componentHeader.className = 'py-1 pr-3 font-medium';
-		componentHeader.textContent = 'Component';
-		headRow.appendChild(componentHeader);
-		for (const key of group.keys) {
-			const th = document.createElement('th');
-			th.className = 'py-1 pr-3 font-medium';
-			th.textContent = key;
-			headRow.appendChild(th);
-		}
-		thead.appendChild(headRow);
-		table.appendChild(thead);
-
-		const tbody = document.createElement('tbody');
-		for (const row of group.rows) {
-			const tr = document.createElement('tr');
-			tr.className = 'border-b border-border last:border-0';
-
-			const nameCell = document.createElement('td');
-			nameCell.className = 'py-1 pr-3 text-text';
-			nameCell.textContent = row.quantity > 1 ? `${row.productTitle} (×${row.quantity})` : row.productTitle;
-			tr.appendChild(nameCell);
-
-			for (const value of row.values) {
-				const td = document.createElement('td');
-				td.className = 'py-1 pr-3 text-text-muted';
-				td.textContent = value ?? '—';
-				tr.appendChild(td);
-			}
-			tbody.appendChild(tr);
-		}
-		table.appendChild(tbody);
-
-		return table;
-	}
-
-	function renderComponentLine(group: SetComponentLine): HTMLParagraphElement {
-		const p = document.createElement('p');
-		p.className = 'text-text-muted';
-
-		const prefix = group.quantity > 1 ? `${group.quantity}× ` : '';
-		const nameSpan = document.createElement('span');
-		nameSpan.className = 'text-text';
-		nameSpan.textContent = group.productTitle;
-
-		const attributeText =
-			group.attributes.length > 0 ? ` — ${group.attributes.map((a) => `${a.key}: ${a.value}`).join(', ')}` : '';
-
-		p.append(prefix, nameSpan, attributeText);
-		return p;
-	}
-
-	function renderSetIncludes(kind: string | undefined, json: string | undefined) {
-		if (!setIncludes || !setIncludesContent) return;
-		const isSet = kind === 'set';
-		setIncludes.hidden = !isSet;
-		if (!isSet) return;
-
-		let groups: SetComponentDisplay[];
-		try {
-			groups = json ? JSON.parse(json) : [];
-		} catch {
-			groups = [];
-		}
-
-		setIncludesContent.replaceChildren();
-		for (const group of groups) {
-			setIncludesContent.appendChild(group.kind === 'table' ? renderComponentTable(group) : renderComponentLine(group));
-		}
-	}
 
 	function applyOption(option: HTMLButtonElement) {
 		for (const other of options) other.setAttribute('aria-pressed', String(other === option));
@@ -404,12 +284,6 @@ function optionLabel(variant: Variant): string {
 			}
 		}
 
-		if (stockMessage) {
-			stockMessage.textContent = stock > 0 ? `${stock} in stock` : 'Out of stock';
-			// TODO: Style later, warning? — is "out of stock" an error or a warning state?
-			stockMessage.className = `text-sm font-medium ${stock > 0 ? 'text-success-text' : 'text-error-text'}`;
-		}
-
 		if (quantityInput) {
 			quantityInput.dataset.max = String(Math.max(stock, 1));
 			setQuantity(Number(quantityInput.value));
@@ -425,12 +299,12 @@ function optionLabel(variant: Variant): string {
 			setIdInput.value = kind === 'set' ? id : '';
 		}
 
-		renderAttributes(option.dataset.attributes);
-		renderSetIncludes(kind, option.dataset.componentDisplay);
+		const key = `${kind}-${id}`;
+		for (const panel of panels) panel.hidden = panel.dataset.variantPanel !== key;
 
 		// Shows this variant's availability calendar (ProductAvailability.astro).
 		const variantScope = document.querySelector<HTMLElement>('[data-selected-variant]');
-		if (variantScope && kind && id) variantScope.dataset.selectedVariant = `${kind}-${id}`;
+		if (variantScope && kind && id) variantScope.dataset.selectedVariant = key;
 	}
 
 	if (options.length > 0) {

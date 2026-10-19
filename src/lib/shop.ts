@@ -79,13 +79,9 @@ export interface ShopProduct {
 	categoryName: string | null;
 	subcategoryName: string | null;
 	links: ShopProductLink[];
-	// Ordered attribute key names from the product's template — used to sort
-	// each item's/set's flat attribute values consistently and to know
-	// whether a per-variant attribute list should render at all.
-	attributeKeyOrder: string[];
-	// Subset of attributeKeyOrder the admin flagged as the variant(s) — the
-	// product page renders these as picker buttons and omits them from the
-	// attribute list.
+	// Attribute key names from the product's template that the admin flagged
+	// as the variant(s) — the product page renders these as picker buttons
+	// and omits them from the attribute list.
 	variantKeys: string[];
 	items: ShopItem[];
 	sets: ShopSet[];
@@ -359,7 +355,6 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 		categoryName: product.category?.name ?? null,
 		subcategoryName: product.subcategory?.name ?? null,
 		links: product.links,
-		attributeKeyOrder: product.attributeKeys.map((key) => key.name),
 		variantKeys: product.attributeKeys.filter((key) => key.isVariant).map((key) => key.name),
 		items,
 		sets,

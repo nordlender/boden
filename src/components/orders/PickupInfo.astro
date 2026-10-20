@@ -1,20 +1,31 @@
 ---
 import { formatPickupWindow, type PickupWindowDisplay } from '../../lib/pickupWindowFormat';
 
+// Time + place for one leg of an order (pick-up today; return too once
+// #343 lands). Takes plain window rows so the caller decides which ones:
+// every window on the date for now, or the single moderator-confirmed one
+// (orders.pickupDayId / returnDayId) later — see getOrderPickupWindows.
 interface Props {
 	windows: PickupWindowDisplay[];
+	heading?: string;
+	// Shown when `windows` is empty; omit to render nothing at all.
+	emptyText?: string;
 }
 
-const { windows } = Astro.props;
+const { windows, heading = 'Pick-up time & place', emptyText } = Astro.props;
 ---
 
 {
-	windows.length > 0 && (
+	(windows.length > 0 || emptyText) && (
 		<div class="text-sm text-text-muted">
-			<p class="font-medium text-text">Pick-up time &amp; place</p>
-			<ul class="mt-1 list-inside list-disc">
-				{windows.map((window) => <li>{formatPickupWindow(window)}</li>)}
-			</ul>
+			<p class="font-medium text-text">{heading}</p>
+			{windows.length > 0 ? (
+				<ul class="mt-1 list-inside list-disc">
+					{windows.map((window) => <li>{formatPickupWindow(window)}</li>)}
+				</ul>
+			) : (
+				<p class="mt-1">{emptyText}</p>
+			)}
 		</div>
 	)
 }

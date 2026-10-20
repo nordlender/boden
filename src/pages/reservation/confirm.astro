@@ -5,7 +5,8 @@ import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
 import ItemQtyLine from '../../components/ui/ItemQtyLine.astro';
 import { getCartLines, type CartLine } from '../../lib/cart';
 import { isValidDateRange } from '../../lib/reservation';
-import { listPickupDaysOn } from '../../lib/pickupDays';
+import { getPickupWindowsForDate } from '../../lib/pickupDays';
+import { formatPickupWindow } from '../../lib/pickupWindowFormat';
 import { formatDateDisplay } from '../../lib/dates';
 import { formatAttributes } from '../../lib/attributes';
 
@@ -35,7 +36,7 @@ if (form.get('disclaimerAccepted') !== 'on') {
 const text = (name: string) => form.get(name)?.toString().trim() ?? '';
 const contact = { name: text('name'), email: text('email'), mobile: text('mobile') };
 const note = text('note');
-const pickupWindows = await listPickupDaysOn(fromDate);
+const pickupWindows = await getPickupWindowsForDate(fromDate);
 
 // ItemQtyLine only renders "name × qty", so the variant (item attributes, or a
 // set's label) is folded into the name.
@@ -71,12 +72,7 @@ const hiddenFields: Record<string, string> = {
 						<span class="text-text-muted">· time to be announced</span>
 					) : (
 						<ul>
-							{pickupWindows.map((w) => (
-								<li>
-									{w.startTime}–{w.endTime}
-									{w.where && <span class="text-text-muted"> · {w.where}</span>}
-								</li>
-							))}
+							{pickupWindows.map((w) => <li>{formatPickupWindow(w)}</li>)}
 						</ul>
 					)
 				}

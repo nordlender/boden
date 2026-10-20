@@ -17,6 +17,7 @@ const {
 	listRecurringRules,
 	createRecurringRule,
 	deleteRecurringRule,
+	findOverlappingWindows,
 } = await import('../pickupDays');
 
 const MODERATOR_A = 'moderator-a';
@@ -178,5 +179,79 @@ describe('single and recurring days union for the reservation calendar', () => {
 			endDate: '2026-09-07',
 		});
 		expect(await getUpcomingAvailablePickupDates('2026-01-01')).toEqual(['2026-09-07']);
+	});
+});
+
+describe('findOverlappingWindows', () => {
+	const DATE = '2026-09-10';
+
+	async function offer(windows: [string, string][], date = DATE, moderator = MODERATOR_A) {
+		await createSingleDays(
+			moderator,
+			windows.map(([startTime, endTime]) => ({ date, startTime, endTime, where: null })),
+		);
+	}
+
+	const summary = (rows: { startTime: string; endTime: string; overlapMinutes: number }[]) =>
+		rows.map((r) => `${r.startTime}-${r.endTime}:${r.overlapMinutes}`);
+
+	it('returns windows on the date that overlap a range, with the overlap in minutes', async () => {
+		await offer([['18:00', '20:00']]);
+		const rows = findOverlappingWindows(DATE, [{ from: '17:00', to: '19:00' }]);
+		expect(summary(rows)).toEqual(['18:00-20:00:60']);
+		expect(rows[0]).toMatchObject({ date: DATE, userId: MODERATOR_A, kind: 'single' });
+	});
+
+	it('ignores windows that only touch a range at either edge', async () => {
+		await offer([['16:00', '18:00'], ['20:00', '22:00']]);
+		expect(findOverlappingWindows(DATE, [{ from: '18:00', to: '20:00' }])).toEqual([]);
+	});
+
+	it('counts a window inside a range, and a range inside a window', async () => {
+		await offer([['12:00', '13:00'], ['15:00', '21:00']]);
+		const rows = findOverlappingWindows(DATE, [{ from: '11:00', to: '14:00' }, { from: '18:00', to: '19:00' }]);
+		expect(summary(rows)).toEqual(['12:00-13:00:60', '15:00-21:00:60']);
+	});
+
+	it('ignores windows on other dates', async () => {
+		await offer([['18:00', '20:00']], '2026-09-11');
+		expect(findOverlappingWindows(DATE, [{ from: '18:00', to: '20:00' }])).toEqual([]);
+	});
+
+	it('sorts the best match (largest overlap) first', async () => {
+		await offer([['10:00', '11:00'], ['14:00', '18:00'], ['19:00', '20:00']]);
+		const rows = findOverlappingWindows(DATE, [{ from: '10:30', to: '20:00' }]);
+		expect(summary(rows)).toEqual(['14:00-18:00:240', '19:00-20:00:60', '10:00-11:00:30']);
+	});
+
+	it('breaks ties by earliest start', async () => {
+		await offer([['18:00', '19:00'], ['12:00', '13:00']]);
+		const rows = findOverlappingWindows(DATE, [{ from: '08:00', to: '22:00' }]);
+		expect(summary(rows)).toEqual(['12:00-13:00:60', '18:00-19:00:60']);
+	});
+
+	it('sums the overlap of several ranges with one window', async () => {
+		await offer([['12:00', '20:00']]);
+		const rows = findOverlappingWindows(DATE, [{ from: '12:00', to: '13:00' }, { from: '18:00', to: '19:30' }]);
+		expect(summary(rows)).toEqual(['12:00-20:00:150']);
+	});
+
+	it('merges overlapping ranges first, so their shared part is not counted twice', async () => {
+		await offer([['12:00', '20:00']]);
+		const rows = findOverlappingWindows(DATE, [{ from: '12:00', to: '15:00' }, { from: '14:00', to: '16:00' }]);
+		expect(summary(rows)).toEqual(['12:00-20:00:240']);
+	});
+
+	it('includes recurring windows and several moderators\' windows', async () => {
+		await offer([['18:00', '20:00']], DATE, MODERATOR_B);
+		await createRecurringRule({ createdByUserId: ADMIN, weekday: 4, startTime: '17:00', endTime: '19:00', startDate: DATE, endDate: DATE });
+		const rows = findOverlappingWindows(DATE, [{ from: '18:00', to: '19:00' }]);
+		expect(rows.map((r) => r.kind).sort()).toEqual(['recurring', 'single']);
+	});
+
+	it('returns nothing for no ranges or only invalid ranges', async () => {
+		await offer([['18:00', '20:00']]);
+		expect(findOverlappingWindows(DATE, [])).toEqual([]);
+		expect(findOverlappingWindows(DATE, [{ from: '19:00', to: '18:00' }, { from: 'x', to: '19:00' }])).toEqual([]);
 	});
 });

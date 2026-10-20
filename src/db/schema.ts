@@ -350,10 +350,21 @@ export const orders = sqliteTable('orders', {
   // plain boolean) so there's a record of *when*, same pattern as acceptedAt
   // above. Nullable only for orders created before the disclaimer existed.
   disclaimerAcceptedAt: integer('disclaimer_accepted_at', { mode: 'timestamp' }),
+  // The pick-up window (on fromDate) and return window (on toDate) a
+  // moderator confirmed for this order, chosen from the windows that overlap
+  // the member's requested time ranges (`orderTimeRanges` below, matched by
+  // findOverlappingWindows in src/lib/pickupDays.ts). Null until the order is
+  // accepted: the member only gives time ranges at request time, never a
+  // window. No onDelete: deleting a pick-up day that an order is assigned to
+  // is to be blocked by the app (#369), not cascaded or nulled here.
+  pickupDayId: integer('pickup_day_id').references(() => pickupDays.id),
+  returnDayId: integer('return_day_id').references(() => pickupDays.id),
   // TODO: dueAt (rental due date) — not yet confirmed, see docs/schema-legacy-fixes.md #9
 }, (table) => [
   index('orders_user_id_idx').on(table.userId),
   index('orders_status_idx').on(table.status),
+  index('orders_pickup_day_id_idx').on(table.pickupDayId),
+  index('orders_return_day_id_idx').on(table.returnDayId),
   index('orders_date_range_idx').on(table.fromDate, table.toDate),
   check('order_date_range_valid', sql`${table.toDate} >= ${table.fromDate}`),
 ]);
@@ -371,6 +382,35 @@ export const orderItems = sqliteTable('order_items', {
   index('order_items_order_id_idx').on(table.orderId),
   check('requested_quantity_positive', sql`${table.requestedQuantity} > 0`),
   check('retrieved_quantity_non_negative', sql`${table.retrievedQuantity} IS NULL OR ${table.retrievedQuantity} >= 0`),
+]);
+
+export const ORDER_TIME_RANGE_KINDS = ['pickup', 'return'] as const;
+export type OrderTimeRangeKind = (typeof ORDER_TIME_RANGE_KINDS)[number];
+
+// The times a member says they can pick up (kind 'pickup', on the order's
+// fromDate) or return (kind 'return', on its toDate) — one or more ranges per
+// kind, e.g. 12:00-14:00 and 16:00-20:00. The date isn't stored: it's implied
+// by the order's dates. A child table rather than columns on `orders` so a
+// range could later get its own date (#366). Ranges are validated and merged
+// (overlapping or touching ranges become one, at most 5 per kind) before
+// they're written — see src/lib/orderTimeRanges.ts. A moderator then assigns
+// an overlapping pick-up window at accept time (orders.pickupDayId /
+// returnDayId).
+export const orderTimeRanges = sqliteTable('order_time_ranges', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  kind: text('kind', { enum: ORDER_TIME_RANGE_KINDS }).notNull(),
+  // HH:MM, 24h. from < to: a range never runs past midnight. Zero-padded
+  // HH:MM strings compare correctly as plain strings, which the CHECK relies on.
+  from: text('from_time').notNull(),
+  to: text('to_time').notNull(),
+}, (table) => [
+  // Covers the orderId FK too (leftmost column).
+  index('order_time_ranges_order_id_kind_idx').on(table.orderId, table.kind),
+  // Drizzle's text enum is TypeScript-only; this makes SQLite enforce it too.
+  check('order_time_ranges_kind_valid', sql`${table.kind} IN ('pickup', 'return')`),
+  check('order_time_ranges_time_format', sql`${table.from} GLOB '[0-2][0-9]:[0-5][0-9]' AND ${table.to} GLOB '[0-2][0-9]:[0-5][0-9]'`),
+  check('order_time_ranges_from_before_to', sql`${table.from} < ${table.to}`),
 ]);
 
 // A recurring rule an admin sets up (see /admin/pickup-days): "every
@@ -601,6 +641,26 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
     references: [users.id],
   }),
   orderItems: many(orderItems),
+  timeRanges: many(orderTimeRanges),
+  // Two FKs from orders to pickup_days, so each needs a relationName to pair
+  // it with its `many` side in pickupDaysRelations.
+  pickupDay: one(pickupDays, {
+    fields: [orders.pickupDayId],
+    references: [pickupDays.id],
+    relationName: 'orderPickupDay',
+  }),
+  returnDay: one(pickupDays, {
+    fields: [orders.returnDayId],
+    references: [pickupDays.id],
+    relationName: 'orderReturnDay',
+  }),
+}));
+
+export const orderTimeRangesRelations = relations(orderTimeRanges, ({ one }) => ({
+  order: one(orders, {
+    fields: [orderTimeRanges.orderId],
+    references: [orders.id],
+  }),
 }));
 
 export const orderItemsRelations = relations(orderItems, ({ one }) => ({
@@ -622,7 +682,7 @@ export const pickupRecurringRulesRelations = relations(pickupRecurringRules, ({ 
   generatedDays: many(pickupDays),
 }));
 
-export const pickupDaysRelations = relations(pickupDays, ({ one }) => ({
+export const pickupDaysRelations = relations(pickupDays, ({ one, many }) => ({
   user: one(users, {
     fields: [pickupDays.userId],
     references: [users.id],
@@ -631,4 +691,7 @@ export const pickupDaysRelations = relations(pickupDays, ({ one }) => ({
     fields: [pickupDays.recurringRuleId],
     references: [pickupRecurringRules.id],
   }),
+  // Orders assigned this window as their pick-up / return window.
+  pickupOrders: many(orders, { relationName: 'orderPickupDay' }),
+  returnOrders: many(orders, { relationName: 'orderReturnDay' }),
 }));

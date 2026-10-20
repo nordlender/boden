@@ -231,9 +231,17 @@ export const orders = sqliteTable('orders', {
   returnedAt: integer('returned_at', { mode: 'timestamp' }),
   rejectedAt: integer('rejected_at', { mode: 'timestamp' }),
   rejectedReason: text('rejected_reason'),
+  // The pick-up window (on fromDate) and return window (on toDate) a
+  // moderator confirmed, from the windows overlapping the member's time
+  // ranges (orderTimeRanges below). Null until accepted. No onDelete:
+  // deleting an assigned window is blocked by the app (#369).
+  pickupDayId: integer('pickup_day_id').references(() => pickupDays.id),
+  returnDayId: integer('return_day_id').references(() => pickupDays.id),
 }, (table) => [
   index('orders_user_id_idx').on(table.userId),
   index('orders_status_idx').on(table.status),
+  index('orders_pickup_day_id_idx').on(table.pickupDayId),
+  index('orders_return_day_id_idx').on(table.returnDayId),
   index('orders_date_range_idx').on(table.fromDate, table.toDate),
   check('order_date_range_valid', sql`${table.toDate} >= ${table.fromDate}`),
 ]);
@@ -249,6 +257,23 @@ export const orderItems = sqliteTable('order_items', {
   index('order_items_order_id_idx').on(table.orderId),
   check('requested_quantity_positive', sql`${table.requestedQuantity} > 0`),
   check('retrieved_quantity_non_negative', sql`${table.retrievedQuantity} IS NULL OR ${table.retrievedQuantity} >= 0`),
+]);
+
+// A member's requested pick-up ('pickup', on orders.fromDate) and return
+// ('return', on orders.toDate) times: one or more HH:MM ranges per kind. The
+// date is implied by the order. Merged (overlapping/touching ranges become
+// one) and capped at 5 per kind before writing — src/lib/orderTimeRanges.ts.
+export const orderTimeRanges = sqliteTable('order_time_ranges', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  kind: text('kind', { enum: ['pickup', 'return'] }).notNull(),
+  from: text('from_time').notNull(), // HH:MM, 24h
+  to: text('to_time').notNull(), // HH:MM, 24h
+}, (table) => [
+  index('order_time_ranges_order_id_kind_idx').on(table.orderId, table.kind),
+  check('order_time_ranges_kind_valid', sql`${table.kind} IN ('pickup', 'return')`),
+  check('order_time_ranges_time_format', sql`${table.from} GLOB '[0-2][0-9]:[0-5][0-9]' AND ${table.to} GLOB '[0-2][0-9]:[0-5][0-9]'`),
+  check('order_time_ranges_from_before_to', sql`${table.from} < ${table.to}`), // never past midnight
 ]);
 
 // A recurring rule an admin sets up (/admin/pickup-days): "every Monday,
@@ -344,9 +369,14 @@ don't resurrect this.
 - `productAttributeKeysRelations`: one `product`, many `itemAttributeValues`
 - `itemsRelations`: one `product`, many `itemAttributeValues`, many `orderItems`
 - `itemAttributeValuesRelations`: one `item`, one `attribute` (→ `productAttributeKeys`)
-- `usersRelations`, `ordersRelations`, `orderItemsRelations`: unchanged from v2
+- `usersRelations`, `orderItemsRelations`: unchanged from v2
+- `ordersRelations`: one `user`, many `orderItems`, many `timeRanges` (→ `orderTimeRanges`),
+  one `pickupDay` and one `returnDay` (→ `pickupDays`, nullable; relationNames
+  `orderPickupDay` / `orderReturnDay`, since both FKs point at the same table)
+- `orderTimeRangesRelations`: one `order`
 - `pickupRecurringRulesRelations`: one `createdBy` (→ `users`), many `generatedDays` (→ `pickupDays`)
-- `pickupDaysRelations`: one `user`, one `recurringRule` (→ `pickupRecurringRules`, nullable)
+- `pickupDaysRelations`: one `user`, one `recurringRule` (→ `pickupRecurringRules`, nullable),
+  many `pickupOrders` / `returnOrders` (→ `orders` assigned this window)
 
 ## Resolved
 
@@ -533,3 +563,32 @@ rope that was cut).
 - **Separate from reports**: unit notes hold admin-written history only.
   Member/moderator damage reports will be their own table later, assignable
   to a unit.
+
+## Schema addition: order time ranges and assigned windows — #367
+A member no longer picks one pick-up window or one free time. They give one
+or more **time ranges** for pick-up (on `fromDate`) and for return (on
+`toDate`), stored in `order_time_ranges` (see the schema block above). A
+moderator then assigns a real window to the order when accepting it
+(`orders.pickupDayId` / `returnDayId`, #343).
+
+- **Ranges** are HH:MM 24h with `from < to` (no ranges past midnight; a DB
+  CHECK enforces it too). `normalizeTimeRanges` in `src/lib/timeRanges.ts`
+  (db-free) validates them, merges overlapping or touching ranges
+  (12:00-14:00 + 14:00-16:00 → 12:00-16:00) and allows at most 5 per kind
+  after merging. It returns an error result instead of throwing.
+  `setOrderTimeRanges` / `getOrderTimeRanges` in `src/lib/orderTimeRanges.ts`
+  write (replacing one kind's ranges) and read them, inside a transaction
+  if given one.
+- **A child table, not columns on `orders`**, so a range could later get its
+  own date (#366). It replaces PR #342's single `pickupRequestedTime` /
+  `returnRequestedTime` columns.
+- **Matching windows**: `findOverlappingWindows(date, ranges)` in
+  `src/lib/pickupDays.ts` returns the `pickup_days` rows on `date` that
+  overlap any range, each with its overlap in minutes, best match first.
+  Overlap means `max(start) < min(end)`, so a window that only touches a
+  range (16:00-18:00 vs 18:00-20:00) doesn't match. Used by `/reservation`
+  presets (#368), the review page and `acceptOrder` (#343).
+- **Assigned windows** (`orders.pickupDayId` / `returnDayId`) stay null until
+  the order is accepted. There's no `onDelete`: deleting a window an order is
+  assigned to fails on the FK, and #369 makes the app block it with a proper
+  message.

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "e8c9e30b-3d65-409a-bc0e-8278c59fa551",
+  "id": "3c81fb7a-6af3-4fe0-b184-11ee19ffb3c2",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "categories": {
@@ -409,6 +409,87 @@
         }
       }
     },
+    "order_time_ranges": {
+      "name": "order_time_ranges",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "from_time": {
+          "name": "from_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "to_time": {
+          "name": "to_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "order_time_ranges_order_id_kind_idx": {
+          "name": "order_time_ranges_order_id_kind_idx",
+          "columns": [
+            "order_id",
+            "kind"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "order_time_ranges_order_id_orders_id_fk": {
+          "name": "order_time_ranges_order_id_orders_id_fk",
+          "tableFrom": "order_time_ranges",
+          "tableTo": "orders",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "order_time_ranges_kind_valid": {
+          "name": "order_time_ranges_kind_valid",
+          "value": "\"order_time_ranges\".\"kind\" IN ('pickup', 'return')"
+        },
+        "order_time_ranges_time_format": {
+          "name": "order_time_ranges_time_format",
+          "value": "\"order_time_ranges\".\"from_time\" GLOB '[0-2][0-9]:[0-5][0-9]' AND \"order_time_ranges\".\"to_time\" GLOB '[0-2][0-9]:[0-5][0-9]'"
+        },
+        "order_time_ranges_from_before_to": {
+          "name": "order_time_ranges_from_before_to",
+          "value": "\"order_time_ranges\".\"from_time\" < \"order_time_ranges\".\"to_time\""
+        }
+      }
+    },
     "orders": {
       "name": "orders",
       "columns": {
@@ -562,6 +643,20 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "pickup_day_id": {
+          "name": "pickup_day_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "return_day_id": {
+          "name": "return_day_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -583,6 +678,20 @@
           "name": "orders_status_idx",
           "columns": [
             "status"
+          ],
+          "isUnique": false
+        },
+        "orders_pickup_day_id_idx": {
+          "name": "orders_pickup_day_id_idx",
+          "columns": [
+            "pickup_day_id"
+          ],
+          "isUnique": false
+        },
+        "orders_return_day_id_idx": {
+          "name": "orders_return_day_id_idx",
+          "columns": [
+            "return_day_id"
           ],
           "isUnique": false
         },
@@ -628,6 +737,32 @@
           "tableTo": "users",
           "columnsFrom": [
             "returned_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "orders_pickup_day_id_pickup_days_id_fk": {
+          "name": "orders_pickup_day_id_pickup_days_id_fk",
+          "tableFrom": "orders",
+          "tableTo": "pickup_days",
+          "columnsFrom": [
+            "pickup_day_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "orders_return_day_id_pickup_days_id_fk": {
+          "name": "orders_return_day_id_pickup_days_id_fk",
+          "tableFrom": "orders",
+          "tableTo": "pickup_days",
+          "columnsFrom": [
+            "return_day_id"
           ],
           "columnsTo": [
             "id"
@@ -914,6 +1049,14 @@
           "notNull": true,
           "autoincrement": false,
           "default": 0
+        },
+        "is_variant": {
+          "name": "is_variant",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
         }
       },
       "indexes": {

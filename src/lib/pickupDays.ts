@@ -2,15 +2,14 @@ import { and, asc, eq, gte } from 'drizzle-orm';
 import { db } from '../db/client';
 import { addDaysIso, isIsoDate } from './dates';
 import { pickupDays, pickupRecurringRules } from '../db/schema';
+import type { QueryExecutor } from './availability';
+import { isValidTimeString, mergeTimeRanges, overlapMinutes, type TimeRange } from './timeRanges';
 
-const TIME_FORMAT = /^([01]\d|2[0-3]):[0-5]\d$/;
+// Lives in timeRanges.ts (db-free) now; re-exported for existing callers.
+export { isValidTimeString };
 
 export function isValidDateString(value: string): boolean {
 	return isIsoDate(value);
-}
-
-export function isValidTimeString(value: string): boolean {
-	return TIME_FORMAT.test(value);
 }
 
 // Sunday-first, matching JS Date#getDay() — pickupRecurringRules.weekday and
@@ -70,6 +69,36 @@ export async function listUpcomingPickupDays(fromDate: string): Promise<PickupDa
 export async function listPickupDaysOn(date: string): Promise<PickupDayRow[]> {
 	const rows = await db.select().from(pickupDays).where(eq(pickupDays.date, date)).orderBy(asc(pickupDays.startTime));
 	return rows;
+}
+
+export type OverlappingWindow = PickupDayRow & {
+	/** Minutes of this window covered by the given ranges, always > 0. */
+	overlapMinutes: number;
+};
+
+// The pick-up windows on `date` that overlap any of `ranges` (a member's
+// requested pick-up or return times, see src/lib/orderTimeRanges.ts), each
+// with how many of its minutes the ranges cover, best match first (most
+// minutes, then earliest start, then lowest id). Overlap means max(start) <
+// min(end): a window that only touches a range (16:00-18:00 vs 18:00-20:00)
+// doesn't count. Ranges are merged first, so overlapping input ranges aren't
+// counted twice; invalid ranges are ignored. Synchronous with an optional
+// executor so acceptOrder can re-check inside its transaction (#343).
+export function findOverlappingWindows(
+	date: string,
+	ranges: readonly TimeRange[],
+	executor: QueryExecutor = db,
+): OverlappingWindow[] {
+	const merged = mergeTimeRanges(ranges.filter((r) => isValidTimeString(r.from) && isValidTimeString(r.to) && r.from < r.to));
+	if (merged.length === 0) return [];
+	const windows = executor.select().from(pickupDays).where(eq(pickupDays.date, date)).all();
+	return windows
+		.map((window) => ({
+			...window,
+			overlapMinutes: merged.reduce((sum, range) => sum + overlapMinutes(range, { from: window.startTime, to: window.endTime }), 0),
+		}))
+		.filter((window) => window.overlapMinutes > 0)
+		.sort((a, b) => b.overlapMinutes - a.overlapMinutes || a.startTime.localeCompare(b.startTime) || a.id - b.id);
 }
 
 export interface NewSingleDay {

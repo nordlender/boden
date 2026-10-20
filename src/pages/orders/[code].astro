@@ -44,7 +44,7 @@ const pickupWindows = await getPickupWindowsForDate(order.fromDate);
 			/>
 			<SubmittedContactDetails contactName={order.contactName} />
 			<div class="flex flex-wrap gap-2 border-t border-border pt-4">
-				<ChangeOrderLink orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} />
+				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} />
 				<DeleteOrderButton orderCode={order.orderCode} status={order.status} />
 			</div>
 		</div>

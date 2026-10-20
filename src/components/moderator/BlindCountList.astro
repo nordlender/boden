@@ -53,11 +53,13 @@ const { title, description, action, mismatch = false, lines, submitLabel = 'Comp
 							<Fragment slot="action">
 								<input
 									type="number"
+									inputmode="numeric"
+									aria-label={`Counted quantity for ${line.itemName}`}
 									name={`qty_${line.orderItemId}`}
 									min="0"
 									value={line.enteredValue ?? undefined}
 									required
-									class="w-20 rounded border border-border-strong px-2 py-1 text-sm text-text"
+									class="w-20 rounded border border-border-interactive px-2 py-1 text-sm text-text"
 								/>
 							</Fragment>
 						</ItemLine>

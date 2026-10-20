@@ -6,7 +6,8 @@
 import { db } from '../db/client';
 import { sets, setItems } from '../db/schema';
 import { eq, and, inArray, sql } from 'drizzle-orm';
-import { reservedQuantitiesByItem } from './stock';
+import { getHandedOut } from './availability';
+import { itemStockExtras } from './units';
 import { computeSetAvailability, getSetComponentDisplayBulk, type SetComponentDisplay } from './sets';
 
 export interface WizardSet {
@@ -16,6 +17,8 @@ export interface WizardSet {
 	imageUrl: string | null;
 	productId: number | null;
 	productTitle?: string;
+	// Real availability: whole sets that could be assembled from what's on
+	// the shelf right now — see src/lib/availability.ts.
 	inStock: number;
 	totalStock: number;
 	components: WizardSetComponent[];
@@ -62,18 +65,19 @@ export async function getWizardSets(): Promise<{ unassigned: WizardSet[]; assign
 		orderBy: (t, { asc }) => asc(t.id),
 		with: {
 			product: true,
-			setItems: { with: { item: { with: { product: true } } } },
+			setItems: { with: { item: { extras: itemStockExtras, with: { product: true } } } },
 		},
 	});
 
 	const componentItemIds = rows.flatMap((row) => row.setItems.map((setItem) => setItem.itemId));
-	const reserved = await reservedQuantitiesByItem(componentItemIds);
+	// Real availability (on the shelf now) — see src/lib/availability.ts.
+	const handedOut = getHandedOut(componentItemIds);
 	const includesBySet = await getSetComponentDisplayBulk(rows.map((row) => row.id));
 
 	const wizardSets: WizardSet[] = rows.map((row) => {
 		const { stockCount, inStock } = computeSetAvailability(
 			row.setItems.map((setItem) => ({ itemId: setItem.itemId, quantity: setItem.quantity, stockCount: setItem.item.stockCount })),
-			reserved,
+			handedOut,
 		);
 		return {
 			id: row.id,

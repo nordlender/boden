@@ -3,6 +3,7 @@ import { db } from '../db/client';
 import { orderItems, orders } from '../db/schema';
 import { isForeignKeyViolation } from './db-errors';
 import { getReservationAvailability } from './reservation';
+import { lineQuantity, occupiedQuantity } from './availability';
 import { RESERVING_STATUSES, type OrderStatus } from './orderStatus';
 
 // Moderator-side order operations — kept separate from member-side
@@ -75,7 +76,7 @@ type RawOrderDetail = NonNullable<Awaited<ReturnType<typeof queryOrderDetailById
 function toOrderDetail(order: RawOrderDetail): OrderDetail {
 	const availabilities = getReservationAvailability(
 		{ from: order.fromDate, to: order.toDate },
-		order.orderItems.map((oi) => ({ itemId: oi.itemId, quantity: oi.requestedQuantity })),
+		order.orderItems.map((oi) => ({ itemId: oi.itemId, quantity: lineQuantity(oi) })),
 		order.id,
 	);
 	const availableByItemId = new Map(availabilities.map((a) => [a.itemId, a.available]));
@@ -133,8 +134,9 @@ export interface PendingRequestRow {
 export async function getPendingRequestRows(): Promise<PendingRequestRow[]> {
 	const pendingOrders = await db.query.orders.findMany({
 		where: (t, { eq: eqCol }) => eqCol(t.status, 'requested'),
-		// Soonest pick-up first — that's what needs reviewing soonest.
-		orderBy: (t, { asc: ascCol }) => [ascCol(t.fromDate)],
+		// Earliest submitted first (first come, first served); id breaks
+		// ties since createdAt only has one-second resolution.
+		orderBy: (t, { asc: ascCol }) => [ascCol(t.createdAt), ascCol(t.id)],
 		with: { user: true, orderItems: { with: { item: true } } },
 	});
 
@@ -364,7 +366,7 @@ export async function getFollowingRentalWorries(orderId: number): Promise<Follow
 				orderCode: orders.orderCode,
 				fromDate: orders.fromDate,
 				toDate: orders.toDate,
-				quantity: orderItems.requestedQuantity,
+				quantity: occupiedQuantity,
 			})
 			.from(orderItems)
 			.innerJoin(orders, eq(orderItems.orderId, orders.id))

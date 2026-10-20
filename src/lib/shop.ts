@@ -7,7 +7,8 @@
 // attributeKeys, join items -> attributeValues -> attribute), but is scoped
 // to what a shopper should see rather than the admin wizard's full set.
 import { db } from '../db/client';
-import { reservedQuantitiesByItem } from './stock';
+import { getOccupiedToday } from './availability';
+import { itemStockExtras } from './units';
 import { computeSetAvailability, getSetChildrenDetailedBulk, getSetComponentDisplayBulk, type SetChildDetail, type SetComponentDisplay } from './sets';
 
 export interface ShopAttribute {
@@ -22,6 +23,8 @@ export interface ShopItem {
 	// only as a last-resort alt-text fallback.
 	name: string;
 	imageUrl: string | null;
+	// Units available today (src/lib/availability.ts) — not just stockCount
+	// minus every open order regardless of its dates.
 	inStock: number;
 	stockCount: number;
 	productId: number;
@@ -49,6 +52,8 @@ export interface ShopSet {
 	name: string;
 	label: string | null;
 	imageUrl: string | null;
+	// Units available today (src/lib/availability.ts) — not just stockCount
+	// minus every open order regardless of its dates.
 	inStock: number;
 	stockCount: number;
 	productId: number;
@@ -78,6 +83,10 @@ export interface ShopProduct {
 	// each item's/set's flat attribute values consistently and to know
 	// whether a per-variant attribute list should render at all.
 	attributeKeyOrder: string[];
+	// Subset of attributeKeyOrder the admin flagged as the variant(s) — the
+	// product page renders these as picker buttons and omits them from the
+	// attribute list.
+	variantKeys: string[];
 	items: ShopItem[];
 	sets: ShopSet[];
 }
@@ -161,6 +170,7 @@ export async function getShopItems(): Promise<ShopItem[]> {
 	const rows = await db.query.items.findMany({
 		where: (t, { eq }) => eq(t.archived, false),
 		orderBy: (t, { asc }) => asc(t.id),
+		extras: itemStockExtras,
 		with: {
 			product: {
 				with: { category: true, subcategory: true },
@@ -173,7 +183,7 @@ export async function getShopItems(): Promise<ShopItem[]> {
 		(row): row is typeof row & { product: NonNullable<typeof row.product> } =>
 			row.product?.status === 'published',
 	);
-	const reserved = await reservedQuantitiesByItem(published.map((row) => row.id));
+	const reserved = getOccupiedToday(published.map((row) => row.id));
 
 	return published.map((row) => toShopItem(row, row.product, reserved));
 }
@@ -201,7 +211,7 @@ export async function getShopSets(): Promise<ShopSet[]> {
 		getSetComponentDisplayBulk(setIds),
 	]);
 	const allChildItemIds = [...new Set([...childrenBySet.values()].flat().map((child) => child.itemId))];
-	const reserved = await reservedQuantitiesByItem(allChildItemIds);
+	const reserved = getOccupiedToday(allChildItemIds);
 
 	return published.map((row) =>
 		toShopSet(row, row.product, childrenBySet.get(row.id) ?? [], componentDisplayBySet.get(row.id) ?? [], reserved),
@@ -314,6 +324,7 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 			links: true,
 			attributeKeys: { orderBy: (t, { asc }) => asc(t.sortOrder) },
 			items: {
+				extras: itemStockExtras,
 				with: { attributeValues: { with: { attribute: true } } },
 			},
 			sets: true,
@@ -323,19 +334,20 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 	if (!product || product.status !== 'published') return null;
 
 	const visibleItems = product.items.filter((item) => !item.archived);
-	const reserved = await reservedQuantitiesByItem(visibleItems.map((item) => item.id));
-	const items: ShopItem[] = visibleItems.map((item) => toShopItem(item, product, reserved));
-
 	const visibleSets = product.sets.filter((set) => !set.archived);
 	const setIds = visibleSets.map((set) => set.id);
 	const [childrenBySet, componentDisplayBySet] = await Promise.all([
 		getSetChildrenDetailedBulk(setIds),
 		getSetComponentDisplayBulk(setIds),
 	]);
-	const allChildItemIds = [...new Set([...childrenBySet.values()].flat().map((child) => child.itemId))];
-	const reservedForSets = await reservedQuantitiesByItem(allChildItemIds);
+	const allChildItemIds = [...childrenBySet.values()].flat().map((child) => child.itemId);
+	// One claims query covers both the product's own items and its sets'
+	// components (getOccupiedToday dedupes the ids).
+	const reserved = getOccupiedToday([...visibleItems.map((item) => item.id), ...allChildItemIds]);
+
+	const items: ShopItem[] = visibleItems.map((item) => toShopItem(item, product, reserved));
 	const sets: ShopSet[] = visibleSets.map((set) =>
-		toShopSet(set, product, childrenBySet.get(set.id) ?? [], componentDisplayBySet.get(set.id) ?? [], reservedForSets),
+		toShopSet(set, product, childrenBySet.get(set.id) ?? [], componentDisplayBySet.get(set.id) ?? [], reserved),
 	);
 
 	return {
@@ -348,6 +360,7 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 		subcategoryName: product.subcategory?.name ?? null,
 		links: product.links,
 		attributeKeyOrder: product.attributeKeys.map((key) => key.name),
+		variantKeys: product.attributeKeys.filter((key) => key.isVariant).map((key) => key.name),
 		items,
 		sets,
 	};

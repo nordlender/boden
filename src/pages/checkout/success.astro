@@ -20,7 +20,7 @@ const order = orderCode
   : undefined;
 
 if (!order) {
-  return Astro.redirect('/cart');
+  return Astro.redirect('/orders');
 }
 
 const pickupWindows = await getPickupWindowsForDate(order.fromDate);

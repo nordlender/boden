@@ -24,7 +24,7 @@ const classes = [baseClasses, sizeClasses[size], variantClasses[variant], classN
 ---
 {
 	href ? (
-		<a href={href} class={classes} aria-disabled={disabled || undefined} {...rest}>
+		<a href={disabled ? undefined : href} class={classes} aria-disabled={disabled || undefined} {...rest}>
 			<slot />
 			<AppIcon name={icon} size={textIconPixelSize[size]} />
 		</a>

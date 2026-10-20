@@ -1,7 +1,8 @@
 import { db } from '../db/client';
-import { items, productAttributeKeys, itemAttributeValues } from '../db/schema';
+import { items, productAttributeKeys, itemAttributeValues, units } from '../db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
-import { reservedQuantitiesByItem } from './stock';
+import { getRealAvailability } from './availability';
+import { itemStockExtras } from './units';
 
 export interface WizardAttribute {
 	key: string;
@@ -12,6 +13,8 @@ export interface WizardItem {
 	id: number;
 	name: string;
 	imageUrl: string | null;
+	// Real availability: units on the shelf right now (stockCount minus what's
+	// handed out on active orders) — see src/lib/availability.ts.
 	inStock: number;
 	totalStock: number;
 	productId: number | null;
@@ -49,6 +52,7 @@ export async function getWizardItems(): Promise<{ unassigned: WizardItem[]; assi
 	const rows = await db.query.items.findMany({
 		where: (t, { eq }) => eq(t.archived, false),
 		orderBy: (t, { asc }) => asc(t.id),
+		extras: itemStockExtras,
 		with: {
 			product: {
 				with: {
@@ -62,13 +66,15 @@ export async function getWizardItems(): Promise<{ unassigned: WizardItem[]; assi
 		},
 	});
 
-	const reserved = await reservedQuantitiesByItem(rows.map((row) => row.id));
+	// Real availability: what's physically on the shelf now, for admins to
+	// check against what they see (src/lib/availability.ts).
+	const onShelf = getRealAvailability(rows.map((row) => row.id));
 
 	const wizardItems: WizardItem[] = rows.map((row) => ({
 		id: row.id,
 		name: row.name,
 		imageUrl: row.imageUrl,
-		inStock: row.stockCount - (reserved.get(row.id) ?? 0),
+		inStock: onShelf.get(row.id) ?? row.stockCount,
 		totalStock: row.stockCount,
 		productId: row.productId,
 		productTitle: row.product?.title,
@@ -91,18 +97,23 @@ export async function listProductOptions(): Promise<{ id: number; title: string 
 	});
 }
 
-export async function createItem(input: { name: string; imageUrl?: string | null; stockCount?: number }): Promise<number> {
+// Creates the item with `unitCount` blank placeholder units (default 1, the
+// old stockCount default) — the admin fills in brand/serial/etc. per unit
+// afterwards on /admin/items/[id]/units.
+export async function createItem(input: { name: string; imageUrl?: string | null; unitCount?: number }): Promise<number> {
 	const slug = await uniqueItemSlug(input.name);
-	const [created] = await db
-		.insert(items)
-		.values({
-			name: input.name,
-			slug,
-			imageUrl: input.imageUrl?.trim() || null,
-			stockCount: input.stockCount ?? 1,
-		})
-		.returning({ id: items.id });
-	return created.id;
+	const unitCount = input.unitCount ?? 1;
+	return db.transaction((tx) => {
+		const created = tx
+			.insert(items)
+			.values({ name: input.name, slug, imageUrl: input.imageUrl?.trim() || null })
+			.returning({ id: items.id })
+			.get();
+		if (unitCount > 0) {
+			tx.insert(units).values(Array.from({ length: unitCount }, () => ({ itemId: created.id }))).run();
+		}
+		return created.id;
+	});
 }
 
 export async function archiveItems(itemIds: number[]): Promise<void> {

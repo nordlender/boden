@@ -156,6 +156,17 @@ const addIcon = {
 	hover: [['path', { d: 'M5 12l5 5l10-10' }]] satisfies IconNode,
 };
 
+// tabler's "copy-plus" (the installed @iconify-json/tabler has no
+// "duplicate" icon) -> check on hover, same hover cue as `add`. Used where
+// a button clones the row it sits on rather than adding a blank one.
+const duplicateIcon = {
+	default: [
+		['path', { d: 'M7 9.667A2.667 2.667 0 0 1 9.667 7h8.666A2.667 2.667 0 0 1 21 9.667v8.666A2.667 2.667 0 0 1 18.333 21H9.667A2.667 2.667 0 0 1 7 18.333z' }],
+		['path', { d: 'M4.012 16.737A2 2 0 0 1 3 15V5c0-1.1.9-2 2-2h10c.75 0 1.158.385 1.5 1M11 14h6m-3-3v6' }],
+	] satisfies IconNode,
+	hover: [['path', { d: 'M5 12l5 5l10-10' }]] satisfies IconNode,
+};
+
 // message-plus -> plus: the admin hub's "New message" trigger.
 const messageIcon = {
 	default: [
@@ -208,6 +219,7 @@ export const actionIcons = {
 	view: viewIcon,
 	save: saveIcon,
 	add: addIcon,
+	duplicate: duplicateIcon,
 	message: messageIcon,
 	pin: pinIcon,
 	unpin: unpinIcon,

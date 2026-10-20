@@ -89,6 +89,13 @@ export const productAttributeKeys = sqliteTable('product_attribute_keys', {
   productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
+  // Admin-chosen: this key is what a shopper picks between on the product
+  // page (rendered as buttons), and is left out of the displayed attribute
+  // list since the picked button already shows it. A flag per key rather
+  // than one product-level column so more than one variant key can be
+  // supported later without a schema change; the UI currently only lets
+  // the admin choose one.
+  isVariant: integer('is_variant', { mode: 'boolean' }).notNull().default(false),
 }, (table) => [
   uniqueIndex('product_attribute_keys_product_name_unique').on(table.productId, table.name),
   index('product_attribute_keys_product_id_idx').on(table.productId),
@@ -115,12 +122,11 @@ export const items = sqliteTable('items', {
   // from this field.
   name: text('name').notNull(),
   imageUrl: text('image_url'),
-  // Total owned. "In stock right now" is never stored — it's always
-  // computed as stockCount minus quantities on currently active/scheduled/
-  // requested rentals (see docs/schema-legacy-fixes.md's original `available`
-  // derivation, carried forward unchanged): a stored second number can only
-  // drift out of sync.
-  stockCount: integer('stock_count').notNull().default(1),
+  // No stock column: how many of an item exist is the number of its
+  // `units` with status 'active' (src/lib/units.ts's activeUnitCount), and
+  // availability is derived per day from the orders occupying the item on
+  // that day (src/lib/availability.ts). A stored count could only drift out
+  // of sync with the units table.
   // Soft delete: items referenced by orderItems can't be hard-deleted.
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -152,6 +158,54 @@ export const itemAttributeValues = sqliteTable('item_attribute_values', {
   uniqueIndex('item_attribute_values_item_attribute_unique').on(table.itemId, table.attributeId),
   index('item_attribute_values_item_id_idx').on(table.itemId),
   index('item_attribute_values_attribute_id_idx').on(table.attributeId),
+]);
+
+// ---------------------------------------------------------------------------
+// Units — one physical object of an item (e.g. one specific Dragon Cam #2,
+// bought and manufactured at its own time), tracked individually because
+// this is safety equipment: service, retirement and its lifetime history
+// belong to the physical object, not to the item as a whole. Admin-only —
+// rentals never see units: orderItems keep referencing items, and a
+// moderator hands out "a Dragon Cam #2", not a particular unit (see #276).
+//
+// An item's stock is derived from these rows: count(status = 'active').
+// Taking a unit out of service or retiring it shrinks availability with no
+// other bookkeeping. Units are never hard-deleted — a retired unit stays as
+// the record of what happened to it.
+//
+// A unit's lifetime log (inspections, damage, status changes) is ordinary
+// `messages` rows with messages.unitId set — see that table.
+// ---------------------------------------------------------------------------
+
+export const UNIT_STATUSES = ['active', 'out_of_service', 'retired'] as const;
+export type UnitStatus = (typeof UNIT_STATUSES)[number];
+
+export const units = sqliteTable('units', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  // No onDelete: an item can't be hard-deleted out from under its units
+  // (items are soft-deleted via `archived` anyway).
+  itemId: integer('item_id').notNull().references(() => items.id),
+  brand: text('brand'),
+  model: text('model'),
+  // Physical marking on the unit itself (engraving, tape, tag number) — how
+  // an admin holding it in their hand finds its row.
+  marking: text('marking'),
+  serialNumber: text('serial_number'),
+  manufacturedAt: text('manufactured_at'), // YYYY-MM-DD
+  purchasedAt: text('purchased_at'), // YYYY-MM-DD
+  status: text('status', { enum: UNIT_STATUSES }).notNull().default('active'),
+  // Optional per-unit key/value facts that only some units have (e.g. a
+  // rope cut down to `{ "length": "58 m" }`). Normally empty.
+  opts: text('opts', { mode: 'json' }).$type<Record<string, string>>().notNull().default(sql`'{}'`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  // Covers the itemId FK too (leftmost column), and is exactly the shape of
+  // the stock-count subquery: where item_id = ? and status = 'active'.
+  index('units_item_id_status_idx').on(table.itemId, table.status),
+  index('units_serial_number_idx').on(table.serialNumber),
+  // Drizzle's text enum is TypeScript-only; this makes SQLite enforce it too.
+  check('units_status_valid', sql`${table.status} IN ('active', 'out_of_service', 'retired')`),
+  check('units_opts_is_object', sql`json_valid(${table.opts}) AND json_type(${table.opts}) = 'object'`),
 ]);
 
 // ---------------------------------------------------------------------------
@@ -409,13 +463,20 @@ export const pickupDays = sqliteTable('pickup_days', {
 // of the posting user's display name at write time, same reasoning as
 // orders.contactName — there's no local users table to join against (see
 // src/lib/auth.ts), only bloc user ids. authorId is that bloc user id
-// (locals.user.id), kept alongside the display-name snapshot specifically so
-// "is this my message" can be checked reliably even if two users share a
-// display name (see issue #225) — it's nullable because rows written before
-// that column existed have no id to backfill. pinnedAt: null means not
+// (locals.user.id), kept alongside the display-name snapshot so who wrote a
+// message is recorded reliably even if two users share a display name (see
+// issue #225) — it's nullable because rows written before that column
+// existed have no id to backfill. pinnedAt: null means not
 // pinned; a timestamp both flags a message as pinned and orders the pinned
 // group (most recently pinned first) without a separate boolean + sort
 // column.
+//
+// unitId: null is a hub-board message; set, the message is a note in that
+// unit's lifetime log (admin-only, shown on /admin/items/[id]/units, never
+// on the hub board). One table rather than a separate unit_notes table so
+// both share the same code and components (src/lib/messages.ts,
+// MessageTable.astro). Messages can't be edited, and only admins can delete
+// them — that matters most for unit notes, which are a safety record.
 export const messages = sqliteTable('messages', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   content: text('content').notNull(),
@@ -423,7 +484,11 @@ export const messages = sqliteTable('messages', {
   authorId: text('author_id'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   pinnedAt: integer('pinned_at', { mode: 'timestamp' }),
-});
+  // No onDelete: units are never hard-deleted (see `units`).
+  unitId: integer('unit_id').references(() => units.id),
+}, (table) => [
+  index('messages_unit_id_idx').on(table.unitId),
+]);
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
   subcategories: many(subcategories),
@@ -478,6 +543,22 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   attributeValues: many(itemAttributeValues),
   orderItems: many(orderItems),
   setItems: many(setItems),
+  units: many(units),
+}));
+
+export const unitsRelations = relations(units, ({ one, many }) => ({
+  item: one(items, {
+    fields: [units.itemId],
+    references: [items.id],
+  }),
+  notes: many(messages),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  unit: one(units, {
+    fields: [messages.unitId],
+    references: [units.id],
+  }),
 }));
 
 export const itemAttributeValuesRelations = relations(itemAttributeValues, ({ one }) => ({

@@ -120,7 +120,7 @@ boden/
 │   ├── pages/
 │   │   ├── index.astro                      # Catalogue — static, home page
 │   │   ├── products/
-│   │   │   └── [slug].astro                 # Product detail: variant select, image, attributes, links — static
+│   │   │   └── [slug].astro                 # Product detail: variant buttons, image, attributes, links — static
 │   │   ├── cart.astro                       # Cart review — SSR
 │   │   ├── reservation.astro                # Pick-up/return dates, availability, remove unavailable items — SSR
 │   │   ├── checkout/
@@ -159,7 +159,7 @@ boden/
 │   │   ├── orders.ts                        # createOrder — §6
 │   │   ├── reservation.ts                   # Date-range validation + availability queries
 │   │   ├── shop.ts                          # Customer-facing catalogue/product queries
-│   │   ├── stock.ts                         # reservedQuantitiesByItem — "in stock now" derivation
+│   │   ├── availability.ts                  # Per-day (scheduled) and on-shelf (real) availability, derived from orders
 │   │   ├── pickupDays.ts, wizard.ts, http.ts, upsertUser.ts, icons.ts, ...
 │   │
 │   ├── middleware/
@@ -286,8 +286,8 @@ export const items = sqliteTable('items', {
   name: text('name').notNull(),        // internal/admin-only label — never shown to customers
   imageUrl: text('image_url'),
   stockCount: integer('stock_count').notNull().default(1),
-  // "In stock right now" is never stored — always computed as stockCount
-  // minus quantities on currently requested/active orders (src/lib/stock.ts).
+  // Availability is never stored — it's derived per day from the orders
+  // occupying the item on that day (src/lib/availability.ts).
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false), // soft delete
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
@@ -391,7 +391,7 @@ npx drizzle-kit migrate
 
 ## 5. Cart (cookie-based, no database)
 
-The cart cookie stores only `{ itemId, quantity }[]` — no database row is created until checkout. `src/lib/cart.ts` joins that against `items`/`products` on read to build a display shape (`CartItem`: product title/slug, image, attribute values, `stockCount` vs. `inStock` — the latter accounting for other requested/active orders via `src/lib/stock.ts`). Entries pointing at an item that no longer exists, is archived, or whose product is unpublished are silently dropped when reading the cart for display.
+The cart cookie stores only `{ itemId, quantity }[]` — no database row is created until checkout. `src/lib/cart.ts` joins that against `items`/`products` on read to build a display shape (`CartItem`: product title/slug, image, attribute values, `stockCount` vs. `inStock` — the latter being what's available today, via `getOccupiedToday` in `src/lib/availability.ts`). Entries pointing at an item that no longer exists, is archived, or whose product is unpublished are silently dropped when reading the cart for display.
 
 ```ts
 // src/lib/cart.ts (core shape)
@@ -409,11 +409,12 @@ export async function getCartItems(cookies): Promise<CartItem[]> { /* joins agai
 
 ## 6. Reservation & checkout (implemented)
 
-Placing an order is a three-step flow, not a single "place order" action:
+Placing an order is a four-step flow, not a single "place order" action:
 
-1. **`/cart`** — review cart lines, adjust quantity, remove. Links to `/reservation`.
+1. **Cart sidebar** — review cart lines, adjust quantity (0 removes). Its primary action links to `/reservation`; there is no separate `/cart` page.
 2. **`/reservation`** — pick a pick-up (`fromDate`) and return (`toDate`) date. A live `POST /api/reservation/availability` preview flags any cart line that's unavailable for the chosen range; submit stays blocked while any item is unavailable, and the member either changes dates or removes the unavailable items from the cart (`POST /api/cart/remove`) — there are no split orders; one checkout is always one order. The form also displays (read-only, from the bloc session) name/email/mobile and the `hasUnpaidFees`/`userIsMember` flags.
-3. **`POST /api/orders/create`** — re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently). Generates an `NNAAX`-format `orderCode` (last letter always flags the creating member's role — A/B/I/M for admin/board member/instructor(moderator)/member), then redirects to `/checkout/success?order=<orderCode>`.
+3. **`/reservation/confirm`** — the form's submit POSTs here (not to the API). Read-only overview of the order: pick-up/return dates, the pick-up window(s) for the pick-up date, the items (an `OrdersTableRow` preview), contact details and note. Carries the form values forward as hidden fields; its "Confirm order" button posts to `/api/orders/create`. "Back" returns to `/reservation`.
+4. **`POST /api/orders/create`** — re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently). Generates an `NNAAX`-format `orderCode` (last letter always flags the creating member's role — A/B/I/M for admin/board member/instructor(moderator)/member), then redirects to `/checkout/success?order=<orderCode>`.
 
 ```ts
 // src/lib/orders.ts (signatures)
@@ -526,7 +527,6 @@ export const ROUTE_RULES: RouteRule[] = [
   { prefix: '/api/moderator', minRole: 'moderator' },
   { prefix: '/api/messages/add', minRole: 'moderator' },
   { prefix: '/api/messages/delete', minRole: 'moderator' },
-  { prefix: '/cart', minRole: 'member' },
   { prefix: '/checkout', minRole: 'member' },
   { prefix: '/orders', minRole: 'member' },
   { prefix: '/reservation', minRole: 'member' },
@@ -629,7 +629,8 @@ import { getShopProductBySlug } from '../../lib/shop';
 const product = await getShopProductBySlug(Astro.params.slug!);
 if (!product) return new Response(null, { status: 404 }); // serves 404.astro
 ---
-<!-- variant <select> (one option per item, disabled when inStock <= 0),
+<!-- variant buttons (one per item, labelled by the admin-flagged variant
+     attribute key(s); dimmed when inStock <= 0),
      image + ImagePlaceholder fallback, attribute list, quantity input
      capped at inStock, "Add to cart" POSTing to /api/cart/add.
      A client-side <script> keeps image/stock/attributes/quantity-cap in

@@ -44,7 +44,7 @@ const SET_X_ID = 1;
 const SET_Y_ID = 2; // contains only item D, which is archived
 
 vi.mock('../../db/client', async () => {
-	const { createTestDb } = await import('../../db/testDb');
+	const { createTestDb, insertItems } = await import('../../db/testDb');
 	const schema = await import('../../db/schema');
 
 	const db = createTestDb();
@@ -56,9 +56,9 @@ vi.mock('../../db/client', async () => {
 		.returning();
 	// Item A: 1 in stock, so a single existing reservation fully books it.
 	// Item B and item C: 5 in stock each, never reserved by anyone.
-	await db.insert(schema.items).values({ productId: product.id, slug: 'item-a', name: 'Item A', stockCount: 1 });
-	await db.insert(schema.items).values({ productId: product.id, slug: 'item-b', name: 'Item B', stockCount: 5 });
-	await db.insert(schema.items).values({ productId: product.id, slug: 'item-c', name: 'Item C', stockCount: 5 });
+	await insertItems(db, { productId: product.id, slug: 'item-a', name: 'Item A', stockCount: 1 });
+	await insertItems(db, { productId: product.id, slug: 'item-b', name: 'Item B', stockCount: 5 });
+	await insertItems(db, { productId: product.id, slug: 'item-c', name: 'Item C', stockCount: 5 });
 	// vi.mock factories are hoisted above top-level const declarations, so
 	// these use literal ids (1/2/3) rather than the ITEM_*_ID/SET_X_ID
 	// constants declared above — same reason the item inserts below do too.
@@ -69,7 +69,7 @@ vi.mock('../../db/client', async () => {
 	]);
 	// Item D (archived) and Set Y (containing it) — for the "a set with an
 	// archived component is dropped whole, not partially resolved" case.
-	await db.insert(schema.items).values({ productId: product.id, slug: 'item-d', name: 'Item D', stockCount: 5, archived: true });
+	await insertItems(db, { productId: product.id, slug: 'item-d', name: 'Item D', stockCount: 5, archived: true });
 	await db.insert(schema.sets).values({ productId: product.id, slug: 'set-y', name: 'Set Y' });
 	await db.insert(schema.setItems).values({ setId: 2, itemId: 4, quantity: 1 });
 	await db.insert(schema.users).values({ id: 'member-1', name: 'Member', email: 'member@example.com' });
@@ -109,6 +109,12 @@ async function markOrderActive(orderId: number) {
 	const { db } = await import('../../db/client');
 	const schema = await import('../../db/schema');
 	await db.update(schema.orders).set({ status: 'active' }).where(eq(schema.orders.id, orderId));
+}
+
+async function markOrderAccepted(orderId: number) {
+	const { db } = await import('../../db/client');
+	const schema = await import('../../db/schema');
+	await db.update(schema.orders).set({ acceptedAt: new Date() }).where(eq(schema.orders.id, orderId));
 }
 
 describe('createOrder', () => {
@@ -257,6 +263,17 @@ describe('deleteOrder', () => {
 		expect(result).toEqual({ ok: false, error: 'not_found' });
 	});
 
+	it('allows deleting an accepted (scheduled) order', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-20', '2026-05-21');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		await markOrderAccepted(created.orderId);
+
+		expect(await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({ ok: true });
+		expect(await findOrderByCode(created.orderCode)).toBeUndefined();
+	});
+
 	it('rejects deleting an order that has moved past "requested"', async () => {
 		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-10', '2026-05-11');
 		expect(created.ok).toBe(true);
@@ -328,6 +345,18 @@ describe('rescheduleOrder', () => {
 
 		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-10', toDate: '2026-11-11' });
 		expect(result).toEqual({ ok: false, error: 'not_modifiable', status: 'active' });
+	});
+
+	it('rejects rescheduling an order a moderator has accepted (scheduled)', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-11-15', '2026-11-16');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		await markOrderAccepted(created.orderId);
+
+		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-20', toDate: '2026-11-21' });
+		expect(result).toEqual({ ok: false, error: 'not_modifiable', status: 'scheduled' });
+		expect((await findOrderByCode(created.orderCode))?.fromDate).toBe('2026-11-15');
 	});
 
 	it('rejects rescheduling an order owned by someone else, without revealing whether it exists', async () => {

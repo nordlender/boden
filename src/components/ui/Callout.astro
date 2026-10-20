@@ -39,7 +39,7 @@ const iconClasses: Record<Variant, string> = {
 ---
 
 <div
-	class:list={['flex gap-3 rounded-md border p-4 text-sm', boxClasses[variant], className]}
+	class:list={['flex gap-3 rounded-lg border px-5 py-4 text-sm', boxClasses[variant], className]}
 	role={variant === 'error' ? 'alert' : 'status'}
 >
 	<svg
@@ -55,7 +55,7 @@ const iconClasses: Record<Variant, string> = {
 	</svg>
 	<div class="min-w-0">
 		{title && (
-			<p id={titleId} class="mb-1 font-medium">
+			<p id={titleId} class="mb-1.5 font-medium">
 				{title}
 			</p>
 		)}

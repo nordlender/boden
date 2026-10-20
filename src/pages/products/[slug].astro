@@ -6,6 +6,8 @@
 // "/items/..." would be the wrong noun here. See this PR's description.
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ImagePlaceholder from '../../components/shop/ImagePlaceholder.astro';
+import Page from '../../components/ui/Page.astro';
+import { eyebrowClasses, pageTitleClasses } from '../../lib/layout-styles';
 import VariantPicker from '../../components/shop/VariantPicker.astro';
 import ProductAvailability from '../../components/availability/ProductAvailability.astro';
 import AvailabilityCalendarSkeleton from '../../components/availability/AvailabilityCalendarSkeleton.astro';
@@ -32,8 +34,9 @@ const initialVariantKey = product.items[0] ? variantKey('item', product.items[0]
 ---
 
 <BaseLayout title={product.title}>
-	<div class="mx-auto grid max-w-4xl gap-8 px-4 py-12 sm:grid-cols-2">
-		<div class="aspect-square overflow-hidden rounded-lg bg-bg-subtle">
+	<Page width="wide">
+	<div class="grid gap-section sm:grid-cols-2">
+		<div class="aspect-square overflow-hidden rounded-xl bg-bg-subtle">
 			<!--
 				Both the image and its placeholder are always in the DOM (rather
 				than picking one at render time) so the variant-select script can
@@ -57,13 +60,13 @@ const initialVariantKey = product.items[0] ? variantKey('item', product.items[0]
 			</div>
 		</div>
 
-		<div class="flex flex-col gap-4" data-selected-variant={initialVariantKey}>
-			<div>
-				{product.subcategoryName && <p class="text-xs uppercase tracking-wide text-text-muted">{product.subcategoryName}</p>}
-				<h1 class="text-2xl font-semibold tracking-tight text-text">{product.title}</h1>
+		<div class="flex flex-col gap-6" data-selected-variant={initialVariantKey}>
+			<div class="flex flex-col gap-snug">
+				{product.subcategoryName && <p class={eyebrowClasses}>{product.subcategoryName}</p>}
+				<h1 class={pageTitleClasses}>{product.title}</h1>
 			</div>
 
-			{product.description && <p class="text-sm text-text-muted">{product.description}</p>}
+			{product.description && <p class="text-base leading-relaxed text-text-muted">{product.description}</p>}
 
 			{
 				product.items.length === 0 && product.sets.length === 0 ? (
@@ -90,7 +93,7 @@ const initialVariantKey = product.items[0] ? variantKey('item', product.items[0]
 
 			{
 				product.links.length > 0 && (
-					<ul class="flex flex-col gap-1 border-t border-border pt-4 text-sm">
+					<ul class="flex flex-col gap-2 border-t border-border pt-6 text-sm">
 						{product.links.map((link) => (
 							<li>
 								<a href={link.url} target="_blank" rel="noopener noreferrer" class="text-text-muted underline hover:text-text">
@@ -103,4 +106,5 @@ const initialVariantKey = product.items[0] ? variantKey('item', product.items[0]
 			}
 		</div>
 	</div>
+	</Page>
 </BaseLayout>

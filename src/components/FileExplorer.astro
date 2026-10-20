@@ -25,8 +25,8 @@ const { dir, filter } = getFileRoot(root);
 const tree = buildFileTree(dir, filter);
 ---
 <div class="file-explorer text-sm" data-file-explorer={root}>
-	{label && <p class="mb-1.5 font-medium text-text">{label}</p>}
+	{label && <p class="mb-2 font-medium text-text">{label}</p>}
 	<ul class="file-explorer-tree" data-root={root} data-path="" data-empty-message={emptyMessage}>
-		{tree.length > 0 ? tree.map((node) => <FileExplorerNode node={node} root={root} />) : <li class="py-1 text-text-muted">{emptyMessage}</li>}
+		{tree.length > 0 ? tree.map((node) => <FileExplorerNode node={node} root={root} />) : <li class="py-1.5 text-text-muted">{emptyMessage}</li>}
 	</ul>
 </div>

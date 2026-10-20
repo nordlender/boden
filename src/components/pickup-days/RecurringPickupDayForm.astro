@@ -9,12 +9,14 @@
 // src/lib/pickupDays.ts's createRecurringRule/datesForWeekday.
 import Button from '../ui/Button.astro';
 import { WEEKDAY_NAMES } from '../../lib/pickupDays';
+import { cardClasses } from '../../lib/layout-styles';
+import { inputClasses } from '../../lib/form-styles';
 
-const fieldClasses = 'rounded border border-border-interactive bg-surface px-2 py-1.5 text-sm text-text';
-const labelClasses = 'mb-1 block text-xs text-text-muted';
+const fieldClasses = inputClasses;
+const labelClasses = 'mb-snug block text-xs font-medium text-text-muted';
 ---
 
-<form data-recurring-pickup-day-form class="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-3 text-sm">
+<form data-recurring-pickup-day-form class:list={[cardClasses, 'flex flex-wrap items-end gap-stack p-card text-sm']}>
 	<div>
 		<label class={labelClasses} for="recurring-weekday">Every</label>
 		<select id="recurring-weekday" name="weekday" required class={fieldClasses}>

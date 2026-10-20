@@ -22,7 +22,7 @@ const { node, root } = Astro.props;
 	node.type === 'directory' ? (
 		<li>
 			<details class="group">
-				<summary class="flex cursor-pointer list-none items-center gap-1.5 rounded py-1 text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
+				<summary class="flex cursor-pointer list-none items-center gap-2 rounded-md py-1.5 text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
 					<MorphIcon icon={folderToggle.closed} size={16} class="folder-icon shrink-0 text-text-muted" />
 					<span class="truncate">{node.name}</span>
 				</summary>
@@ -40,7 +40,7 @@ const { node, root } = Astro.props;
 					// to render this instead of "Empty" without paying for the read.
 					<ul class="folder-children ml-[7.83px] border-l border-border pl-3" data-root={root} data-path={node.path} data-loaded="false"></ul>
 				) : (
-					<p class="ml-[7.83px] border-l border-border py-1 pl-3 text-text-muted">Empty</p>
+					<p class="ml-[7.83px] border-l border-border py-1.5 pl-3 text-text-muted">Empty</p>
 				)}
 			</details>
 		</li>
@@ -48,7 +48,7 @@ const { node, root } = Astro.props;
 		<li>
 			<button
 				type="button"
-				class="flex w-full min-w-0 items-center gap-1.5 rounded py-1 text-left text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:bg-selected-subtle aria-pressed:text-text"
+				class="flex w-full min-w-0 items-center gap-2 rounded-md py-1.5 text-left text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:bg-selected-subtle aria-pressed:text-text"
 				data-file-path={node.path}
 				data-file-url={fileUrl(root, node.path)}
 				aria-pressed="false"

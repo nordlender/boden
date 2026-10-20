@@ -5,6 +5,7 @@
 // /admin/units renders the same two tables for every item's units, passing
 // `itemsById` so each row also shows (and links to) its item.
 import UnitTableHeader from './UnitTableHeader.astro';
+import { cardClasses, cardHeaderClasses } from '../../lib/layout-styles';
 import UnitRow from './UnitRow.astro';
 import type { Unit, UnitItemRef } from '../../lib/units';
 import type { MessageRow } from '../../lib/messages';
@@ -24,13 +25,13 @@ interface Props {
 
 const { title, units, emptyText, notesByUnit, itemsById, currentUserId, isAdmin, today, redirectTo } = Astro.props;
 ---
-<section class="rounded-lg border border-border bg-surface">
-	<h2 class="border-b border-border px-3 py-2 text-sm font-semibold text-text">{title}</h2>
+<section class={cardClasses}>
+	<h2 class={cardHeaderClasses}>{title}</h2>
 	<UnitTableHeader />
 	{units.length === 0 ? (
-		<p class="px-3 py-8 text-center text-sm text-text-muted">{emptyText}</p>
+		<p class="px-card py-12 text-center text-sm text-text-muted">{emptyText}</p>
 	) : (
-		<div class="overflow-hidden rounded-b-lg">
+		<div class="overflow-hidden rounded-b-xl">
 			{units.map((unit) => (
 				<UnitRow
 					unit={unit}

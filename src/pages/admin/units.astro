@@ -8,6 +8,7 @@ export const prerender = false;
 // with each row also showing and linking to its item. Retired units are
 // listed in a separate table below the units in use.
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import Page from '../../components/ui/Page.astro';
 import UnitTable from '../../components/units/UnitTable.astro';
 import { listAllUnits, type UnitItemRef } from '../../lib/units';
 import { listUnitNotes } from '../../lib/messages';
@@ -33,17 +34,15 @@ const tableProps = {
 ---
 
 <AdminLayout title="Units">
-	<div class="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-8">
-		<div>
-			<h1 class="text-xl font-semibold text-text">Units</h1>
-			<p class="mt-1 text-sm text-text-muted">
-				Every physical unit of every item, by id. Add units from an item's own units page, linked from each unit.
-			</p>
-		</div>
+	<Page
+		width="wide"
+		title="Units"
+		description="Every physical unit of every item, by id. Add units from an item's own units page, linked from each unit."
+	>
 
 		<UnitTable title="Units" units={unitsInUse} emptyText="No units in use yet." {...tableProps} />
 		{retiredUnits.length > 0 && <UnitTable title="Retired units" units={retiredUnits} emptyText="" {...tableProps} />}
-	</div>
+	</Page>
 </AdminLayout>
 
 <script>

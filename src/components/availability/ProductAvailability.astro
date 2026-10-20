@@ -27,7 +27,7 @@ const visibilityCss = calendars
 ---
 {
 	calendars.length > 0 && (
-		<section class="flex flex-col gap-2 border-t border-border pt-4" aria-labelledby="availability-heading">
+		<section class="flex flex-col gap-3 border-t border-border pt-6" aria-labelledby="availability-heading">
 			<h2 id="availability-heading" class="text-sm font-medium text-text">Availability</h2>
 			<style is:inline set:html={`[data-availability-variant]{display:none}${visibilityCss}`} />
 			{calendars.map((calendar) => (

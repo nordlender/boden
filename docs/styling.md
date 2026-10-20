@@ -6,6 +6,10 @@ mode in issue #68) instead of raw Tailwind palette classes (`gray-500`,
 these tokens, not hardcoded Tailwind colors** — hardcoded colors don't react
 to dark mode.
 
+This doc covers colors. Spacing tokens (`p-card`, `gap-section`, ...) and the
+layout primitives built on them (`ui/Page.astro`, `ui/Card.astro`) live in
+`docs/spacing.md`; control and icon sizes in `docs/sizing.md`.
+
 ## Where it's defined
 
 `src/styles/global.css` defines two layers:

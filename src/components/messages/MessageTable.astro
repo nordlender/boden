@@ -6,6 +6,7 @@
 // pin/delete any message; moderators may delete only their own — see issue
 // #225 and MessageTableRow.astro).
 import MessageTableRow from './MessageTableRow.astro';
+import { cardClasses } from '../../lib/layout-styles';
 import type { MessageRow } from '../../lib/messages';
 
 interface Props {
@@ -18,16 +19,16 @@ interface Props {
 const { messages, currentUserId = null, isAdmin = false, redirectTo } = Astro.props;
 ---
 
-<div class="flex flex-col gap-3">
-	<div class="flex items-center justify-between gap-3">
-		<h2 class="text-lg font-semibold text-text">Messages</h2>
+<div class="flex flex-col gap-stack">
+	<div class="flex items-center justify-between gap-stack">
+		<h2 class="text-xl font-semibold tracking-tight text-text">Messages</h2>
 		<slot name="actions" />
 	</div>
 
-	<div class="rounded-lg border border-border bg-surface">
+	<div class={cardClasses}>
 		{
 			messages.length === 0 ? (
-				<p class="p-4 text-sm text-text-muted">No messages right now.</p>
+				<p class="p-card text-sm text-text-muted">No messages right now.</p>
 			) : (
 				<ul class="divide-y divide-border">
 					{messages.map((message) => (

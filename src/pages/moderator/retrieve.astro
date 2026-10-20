@@ -1,5 +1,9 @@
 ---
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
+import Page from '../../components/ui/Page.astro';
+import Callout from '../../components/ui/Callout.astro';
+import { cardClasses } from '../../lib/layout-styles';
+import { fieldClasses, formClasses, inputClasses, labelClasses } from '../../lib/form-styles';
 import Button from '../../components/ui/Button.astro';
 
 // Allows an optional leading "#" (e.g. "#AB12CD") on top of the
@@ -15,21 +19,19 @@ const error = Astro.url.searchParams.get('error');
 ---
 
 <ModeratorLayout title="Retrieve order — Boden Moderator">
-	<div class="mx-auto flex max-w-md flex-col gap-4 p-6">
-		<h1 class="text-xl font-semibold text-text">Retrieve order</h1>
-		<p class="text-sm text-text-muted">Ask the member to read out their order code, then enter it below.</p>
+	<Page width="narrow" title="Retrieve order" description="Ask the member to read out their order code, then enter it below.">
 
 		{
 			error === 'not_found' && (
-				<p class="rounded-md border border-error-border bg-error-subtle px-3 py-2 text-sm text-error-text">
-					No order found with that code — check it and try again.
-				</p>
+				<Callout variant="error">
+					<p>No order found with that code — check it and try again.</p>
+				</Callout>
 			)
 		}
 
-		<form method="post" action="/api/moderator/retrieve" class="flex flex-col gap-3 rounded-lg border border-border bg-surface p-6">
-			<label class="flex flex-col gap-1">
-				<span class="text-sm font-medium text-text">Order code</span>
+		<form method="post" action="/api/moderator/retrieve" class:list={[cardClasses, 'p-card', formClasses]}>
+			<label class={fieldClasses}>
+				<span class={labelClasses}>Order code</span>
 				<input
 					type="text"
 					name="code"
@@ -37,7 +39,7 @@ const error = Astro.url.searchParams.get('error');
 					maxlength={CODE_INPUT_MAX_LENGTH}
 					autocomplete="off"
 					autocapitalize="characters"
-					class="rounded-md border border-border bg-bg px-3 py-2 text-sm text-text uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-accent"
+					class:list={[inputClasses, 'uppercase tracking-wide']}
 					placeholder="e.g. #AB12CD"
 				/>
 			</label>
@@ -45,5 +47,5 @@ const error = Astro.url.searchParams.get('error');
 				Look up order
 			</Button>
 		</form>
-	</div>
+	</Page>
 </ModeratorLayout>

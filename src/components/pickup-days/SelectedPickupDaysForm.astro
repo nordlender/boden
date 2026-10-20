@@ -14,30 +14,32 @@
 import PickupDayBubble from './PickupDayBubble.astro';
 import MorphButton from '../ui/MorphButton.astro';
 import Button from '../ui/Button.astro';
+import { gridColumnsClasses, gridTableFrameClasses, gridTableHeaderClasses, gridTableRowClasses } from '../../lib/table-styles';
+import { inputSmClasses } from '../../lib/form-styles';
+import { sectionTitleClasses } from '../../lib/layout-styles';
 
 // Columns: bubble | date | weekday | start | end | where | buttons. Below `sm`
 // each row stacks into four lines instead — bubble, date, weekday; start and
 // end time; where; buttons — via explicit max-sm: placements below (DOM
 // order, and so focus order, is unchanged), and the header row is hidden in
 // favour of each input's own visible label.
-const GRID_STYLE = '--grid-cols: 1.25rem 1fr 1fr; --grid-cols-sm: 1.25rem 4.5rem 7rem 6rem 6rem 1fr 4.5rem';
-const GRID_CLASS = 'grid grid-cols-(--grid-cols) sm:grid-cols-(--grid-cols-sm)';
-const INPUT_CLASS = 'w-full rounded border border-border-interactive px-1.5 py-1 text-xs';
+const GRID_STYLE = '--grid-cols: 1.25rem 1fr 1fr; --grid-cols-sm: 1.25rem 4.5rem 7rem 7rem 7rem 1fr 4.75rem';
+const INPUT_CLASS = `w-full ${inputSmClasses}`;
 // Fixed width (= the sm column width) so a time input doesn't grow once a
 // value is typed in — a bare w-full lets the native picker's intrinsic width
 // stretch the cell.
-const TIME_INPUT_CLASS = 'w-24 rounded border border-border-interactive px-1.5 py-1 text-xs';
+const TIME_INPUT_CLASS = `w-28 ${inputSmClasses}`;
 // Visible only in the stacked mobile layout; the sm+ header row labels the
 // columns there, but the text stays available to screen readers.
-const LABEL_TEXT_CLASS = 'mb-0.5 block text-xs text-text-muted sm:sr-only';
+const LABEL_TEXT_CLASS = 'mb-1 block text-xs text-text-muted sm:sr-only';
 ---
 
-<div data-selected-pickup-days hidden class="flex flex-col gap-2">
-	<h2 class="text-sm font-semibold text-text">Selected days</h2>
+<div data-selected-pickup-days hidden class="flex flex-col gap-stack">
+	<h2 class={sectionTitleClasses}>Selected days</h2>
 
-	<div class="overflow-hidden rounded-lg border border-border">
+	<div class={gridTableFrameClasses}>
 		<div
-			class:list={[GRID_CLASS, 'items-center gap-3 border-b border-border bg-bg-subtle px-3 py-1.5 text-xs font-medium tracking-wide text-text-muted uppercase max-sm:hidden']}
+			class:list={[gridColumnsClasses, gridTableHeaderClasses, 'max-sm:hidden']}
 			style={GRID_STYLE}
 			aria-hidden="true"
 		>
@@ -61,7 +63,7 @@ const LABEL_TEXT_CLASS = 'mb-0.5 block text-xs text-text-muted sm:sr-only';
 </div>
 
 <template data-selected-pickup-day-row-template>
-	<div data-pickup-day-row class:list={[GRID_CLASS, 'items-center gap-x-3 gap-y-2 px-3 py-2 text-sm']} style={GRID_STYLE}>
+	<div data-pickup-day-row class:list={[gridColumnsClasses, gridTableRowClasses]} style={GRID_STYLE}>
 		<PickupDayBubble kind="mine" />
 		<span data-field="date-display" class="text-text"></span>
 		<span data-field="weekday-display" class="text-text-muted"></span>
@@ -84,7 +86,7 @@ const LABEL_TEXT_CLASS = 'mb-0.5 block text-xs text-text-muted sm:sr-only';
 				class:list={[INPUT_CLASS, 'block resize-none']}
 			></textarea>
 		</label>
-		<div class="flex items-center justify-end gap-1 max-sm:col-span-2 max-sm:col-start-2">
+		<div class="flex items-center justify-end gap-2 max-sm:col-span-2 max-sm:col-start-2">
 			<MorphButton action="duplicate" size="sm" label="Add another time for this day" data-add-another-time />
 			<MorphButton action="delete" variant="danger" size="sm" label="Remove this time" data-remove-selected-day />
 		</div>

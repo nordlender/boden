@@ -6,6 +6,7 @@
 // src/middleware/prefixes.ts (ROUTE_RULES via /moderator) — reached
 // only when logged in with role 'moderator' or 'admin'.
 import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
+import Page from '../../../components/ui/Page.astro';
 import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro';
 import Callout from '../../../components/ui/Callout.astro';
 import Button from '../../../components/ui/Button.astro';
@@ -43,7 +44,7 @@ const RETRIEVE_FORM_ID = 'retrieve-items-form';
 ---
 
 <ModeratorLayout title={`Order #${order.orderCode} — Moderator`}>
-	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
+	<Page width="narrow">
 		{
 			confirmed && (
 				<Callout variant="success">
@@ -94,5 +95,5 @@ const RETRIEVE_FORM_ID = 'retrieve-items-form';
 				}
 			</Fragment>
 		</OrderDetailCard>
-	</div>
+	</Page>
 </ModeratorLayout>

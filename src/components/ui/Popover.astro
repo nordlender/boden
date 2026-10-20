@@ -25,6 +25,8 @@
 //   (e.g. the div wrapping both the Accept and Reject buttons) — not on
 //   the trigger itself, since fill-parent's point is to span siblings the
 //   trigger doesn't contain.
+import { floatingPanelClasses } from '../../lib/layout-styles';
+
 interface Props {
 	id: string;
 	placement?: 'anchor' | 'fill-parent';
@@ -51,7 +53,7 @@ const { id, placement = 'anchor', side = 'top', labelledBy, chrome = true, class
 	aria-labelledby={labelledBy}
 	class:list={[
 		'fixed inset-auto m-0 max-w-sm text-text',
-		chrome && 'rounded-lg border border-border bg-surface p-4 shadow-lg',
+		chrome && floatingPanelClasses,
 		className,
 	]}
 >

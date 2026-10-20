@@ -1,5 +1,7 @@
 ---
 import AppIcon from '../icons/AppIcon.astro';
+import { pageTitleClasses } from '../../lib/layout-styles';
+import { inputClasses } from '../../lib/form-styles';
 
 interface Props {
 	title: string;
@@ -7,14 +9,14 @@ interface Props {
 
 const { title } = Astro.props;
 ---
-<div class="flex items-center justify-between gap-4">
-	<h1 class="text-xl font-semibold text-text">{title}</h1>
-	<div class="relative w-72">
-		<AppIcon name="search" size={16} class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
+<div class="flex flex-wrap items-center justify-between gap-stack">
+	<h1 class={pageTitleClasses}>{title}</h1>
+	<div class="relative w-full sm:w-80">
+		<AppIcon name="search" size={16} class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
 		<input
 			type="search"
 			placeholder="Search items..."
-			class="w-full rounded-md border border-border-interactive py-1.5 pl-8 pr-3 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none"
+			class:list={[inputClasses, 'w-full pl-9']}
 		/>
 	</div>
 </div>

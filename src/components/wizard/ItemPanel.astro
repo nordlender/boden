@@ -1,5 +1,6 @@
 ---
 import ButtonStrip from './ButtonStrip.astro';
+import { cardClasses, cardHeaderClasses } from '../../lib/layout-styles';
 import TableHeader from './TableHeader.astro';
 import ItemRow from './ItemRow.astro';
 import type { PanelVariant } from './grid';
@@ -35,7 +36,7 @@ const { variant, title, items, products, redirectTo } = Astro.props;
 // edit forms live inside the row list and forms can't nest.
 const formId = `wizard-${variant}-form`;
 ---
-<section class="rounded-lg border border-border bg-surface">
+<section class={cardClasses}>
 	<!--
 		No `overflow-hidden` here (previously used to clip children to the
 		rounded corners) — it also clipped ButtonStrip's "Set" <details>
@@ -44,14 +45,14 @@ const formId = `wizard-${variant}-form`;
 		still rounds its outline; only the items-list div below needs its own
 		overflow-hidden to clip row backgrounds to the bottom corners.
 	-->
-	<h2 class="border-b border-border px-3 py-2 text-sm font-semibold text-text">{title}</h2>
+	<h2 class={cardHeaderClasses}>{title}</h2>
 	<form id={formId} method="post" action="/api/wizard/archive"></form>
 	<ButtonStrip variant={variant} formId={formId} products={products} redirectTo={redirectTo} />
 	<TableHeader variant={variant} formId={formId} />
 	{items.length === 0 ? (
-		<p class="px-3 py-8 text-center text-sm text-text-muted">No items yet.</p>
+		<p class="px-card py-12 text-center text-sm text-text-muted">No items yet.</p>
 	) : (
-		<div class="overflow-hidden rounded-b-lg">
+		<div class="overflow-hidden rounded-b-xl">
 			{items.map((item) => <ItemRow variant={variant} formId={formId} {...item} />)}
 		</div>
 	)}

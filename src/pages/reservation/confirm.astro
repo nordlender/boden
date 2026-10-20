@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Button from '../../components/ui/Button.astro';
+import Page from '../../components/ui/Page.astro';
+import { cardClasses, eyebrowClasses } from '../../lib/layout-styles';
 import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
 import ItemQtyLine from '../../components/ui/ItemQtyLine.astro';
 import { getCartLines, type CartLine } from '../../lib/cart';
@@ -58,19 +60,16 @@ const hiddenFields: Record<string, string> = {
 ---
 
 <BaseLayout title="Confirm order">
-	<div class="mx-auto max-w-3xl px-4 py-8">
-		<h1 class="mb-2 text-2xl font-semibold tracking-tight text-text">Confirm your order</h1>
-		<p class="mb-6 text-sm text-text-muted">Check everything below, then confirm to submit your request.</p>
-
-		<dl class="mb-8 rounded-lg border border-border bg-surface p-4">
-			<dt class="text-xs font-semibold tracking-wide text-text-muted uppercase">Pick-up time</dt>
-			<dd class="mt-1 text-sm text-text">
+	<Page width="medium" title="Confirm your order" description="Check everything below, then confirm to submit your request.">
+		<dl class:list={[cardClasses, 'p-card']}>
+			<dt class={eyebrowClasses}>Pick-up time</dt>
+			<dd class="mt-2 text-sm text-text">
 				{formatDateDisplay(fromDate, { weekday: true })}
 				{
 					pickupWindows.length === 0 ? (
 						<span class="text-text-muted">· time to be announced</span>
 					) : (
-						<ul>
+						<ul class="mt-1 flex flex-col gap-1">
 							{pickupWindows.map((w) => (
 								<li>
 									{w.startTime}–{w.endTime}
@@ -83,26 +82,26 @@ const hiddenFields: Record<string, string> = {
 			</dd>
 		</dl>
 
-		<div class="mb-8">
+		<div>
 			<OrdersTableRow fromDate={fromDate} toDate={toDate} customerName={contact.name}>
-				<ul class="flex flex-col gap-1 pl-1 text-text-muted">
+				<ul class="flex flex-col gap-1.5 pl-1 text-text-muted">
 					{cartLines.map((line) => <ItemQtyLine name={lineLabel(line)} quantity={line.quantity} />)}
 				</ul>
 			</OrdersTableRow>
 		</div>
 
-		<section class="mb-8 text-sm text-text">
-			<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">Your details</h2>
+		<section class="text-sm text-text">
+			<h2 class:list={['mb-3', eyebrowClasses]}>Your details</h2>
 			<p>{contact.email}{contact.mobile && ` · ${contact.mobile}`}</p>
 			{note && <p class="mt-2 text-text-muted">Note: {note}</p>}
 		</section>
 
-		<form method="POST" action="/api/orders/create" class="flex items-center gap-4">
+		<form method="POST" action="/api/orders/create" class="flex items-center gap-controls">
 			{Object.entries(hiddenFields).map(([name, value]) => <input type="hidden" name={name} value={value} />)}
 			<Button href="/reservation" variant="secondary" size="lg" data-back-link>Back</Button>
 			<Button type="submit" variant="primary" size="lg">Confirm order</Button>
 		</form>
-	</div>
+	</Page>
 </BaseLayout>
 
 <script>

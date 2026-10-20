@@ -9,8 +9,8 @@ export type TriggerSize = 'sm' | 'md';
 // the box's height, per the icon-to-container ratio guidance in
 // docs/sizing.md.
 export const triggerBoxClasses: Record<TriggerSize, string> = {
-	sm: 'h-8 w-8', // 32px — dense inline controls (wizard table-row toggles)
-	md: 'h-9 w-9', // 36px — top-level nav triggers
+	sm: 'h-9 w-9', // 36px — dense inline controls (wizard table-row toggles)
+	md: 'h-10 w-10', // 40px — top-level nav triggers, matches IconButton `md`
 };
 
 export const triggerIconPixelSize: Record<TriggerSize, number> = {

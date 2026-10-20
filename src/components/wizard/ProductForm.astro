@@ -9,6 +9,9 @@
 // has real item values is a separate, larger piece of work — this form
 // deliberately doesn't attempt it.
 import AppIcon from '../icons/AppIcon.astro';
+import { cardClasses, sectionTitleClasses } from '../../lib/layout-styles';
+import { compactLabelClasses, inputClasses } from '../../lib/form-styles';
+import { chipBaseClasses } from '../../lib/button-styles';
 import TextMorphButton from '../ui/TextMorphButton.astro';
 import Button from '../ui/Button.astro';
 import type { CategoryOption, SubcategoryOption, ProductForEdit } from '../../lib/products';
@@ -28,39 +31,39 @@ const links = product?.links ?? [];
 const existingAttributeKeys = product?.attributeKeys ?? [];
 ---
 
-<form method="post" action={action} class="flex flex-col gap-6">
+<form method="post" action={action} class="flex flex-col gap-section">
 	<input type="hidden" name="redirectTo" value={redirectTo} />
 
-	<section class="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
-		<h2 class="text-sm font-medium text-text">Basics</h2>
+	<section class:list={[cardClasses, 'flex flex-col gap-stack p-card']}>
+		<h2 class={sectionTitleClasses}>Basics</h2>
 
 		<div>
-			<label class="mb-1 block text-xs text-text-muted" for="product-title">Title</label>
+			<label class={compactLabelClasses} for="product-title">Title</label>
 			<input
 				id="product-title"
 				name="title"
 				type="text"
 				required
 				value={product?.title}
-				class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm"
+				class:list={['w-full', inputClasses]}
 			/>
 		</div>
 
 		<div>
-			<label class="mb-1 block text-xs text-text-muted" for="product-description">Description</label>
+			<label class={compactLabelClasses} for="product-description">Description</label>
 			<textarea
 				id="product-description"
 				name="description"
 				rows="3"
-				class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm"
+				class:list={['w-full', inputClasses]}
 				set:text={product?.description ?? ''}
 			/>
 		</div>
 
-		<div class="grid grid-cols-2 gap-4">
+		<div class="grid grid-cols-2 gap-stack">
 			<div>
-				<label class="mb-1 block text-xs text-text-muted" for="product-category">Category</label>
-				<select id="product-category" name="categoryId" data-category-select class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm">
+				<label class={compactLabelClasses} for="product-category">Category</label>
+				<select id="product-category" name="categoryId" data-category-select class:list={['w-full', inputClasses]}>
 					<option value="">None</option>
 					{categories.map((category) => (
 						<option value={category.id} selected={category.id === product?.categoryId}>
@@ -70,8 +73,8 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 				</select>
 			</div>
 			<div>
-				<label class="mb-1 block text-xs text-text-muted" for="product-subcategory">Sub-category</label>
-				<select id="product-subcategory" name="subcategoryId" data-subcategory-select class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm">
+				<label class={compactLabelClasses} for="product-subcategory">Sub-category</label>
+				<select id="product-subcategory" name="subcategoryId" data-subcategory-select class:list={['w-full', inputClasses]}>
 					<option value="">None</option>
 					{subcategories.map((subcategory) => (
 						<option value={subcategory.id} data-category-id={subcategory.categoryId} selected={subcategory.id === product?.subcategoryId}>
@@ -82,41 +85,41 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 			</div>
 		</div>
 
-		<div class="grid grid-cols-2 gap-4">
+		<div class="grid grid-cols-2 gap-stack">
 			<div>
-				<label class="mb-1 block text-xs text-text-muted" for="product-status">Status</label>
-				<select id="product-status" name="status" class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm">
+				<label class={compactLabelClasses} for="product-status">Status</label>
+				<select id="product-status" name="status" class:list={['w-full', inputClasses]}>
 					<option value="hidden" selected={(product?.status ?? 'hidden') === 'hidden'}>Hidden</option>
 					<option value="published" selected={product?.status === 'published'}>Published</option>
 				</select>
 			</div>
 			<div>
-				<label class="mb-1 block text-xs text-text-muted" for="product-thumbnail">Thumbnail image URL</label>
+				<label class={compactLabelClasses} for="product-thumbnail">Thumbnail image URL</label>
 				<input
 					id="product-thumbnail"
 					name="thumbnailImageUrl"
 					type="text"
 					placeholder="https://…"
 					value={product?.thumbnailImageUrl ?? ''}
-					class="w-full rounded border border-border-interactive px-2 py-1.5 text-sm"
+					class:list={['w-full', inputClasses]}
 				/>
 			</div>
 		</div>
 	</section>
 
-	<section class="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+	<section class:list={[cardClasses, 'flex flex-col gap-stack p-card']}>
 		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-medium text-text">Links</h2>
+			<h2 class={sectionTitleClasses}>Links</h2>
 			<Button type="button" size="sm" data-add-row="links">Add link</Button>
 		</div>
 		<p class="text-xs text-text-muted">External links shown on the product page — manufacturer page, manual PDF, etc.</p>
 
-		<div data-row-list="links" class="flex flex-col gap-2">
+		<div data-row-list="links" class="flex flex-col gap-3">
 			{links.map((link) => (
 				<div class="flex items-center gap-2" data-row>
-					<input name="linkLabel[]" type="text" placeholder="Label" value={link.label} class="w-40 rounded border border-border-interactive px-2 py-1.5 text-sm" />
-					<input name="linkUrl[]" type="text" placeholder="https://…" value={link.url} class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
-					<button type="button" data-remove-row aria-label="Remove link" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
+					<input name="linkLabel[]" type="text" placeholder="Label" value={link.label} class:list={['w-40', inputClasses]} />
+					<input name="linkUrl[]" type="text" placeholder="https://…" value={link.url} class:list={['min-w-0 flex-1', inputClasses]} />
+					<button type="button" data-remove-row aria-label="Remove link" class="grid size-10 shrink-0 place-items-center rounded-md text-text-muted hover:bg-error-subtle hover:text-error-text">
 						<AppIcon name="trash" size={16} />
 					</button>
 				</div>
@@ -125,19 +128,19 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 
 		<template data-row-template="links">
 			<div class="flex items-center gap-2" data-row>
-				<input name="linkLabel[]" type="text" placeholder="Label" class="w-40 rounded border border-border-interactive px-2 py-1.5 text-sm" />
-				<input name="linkUrl[]" type="text" placeholder="https://…" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
-				<button type="button" data-remove-row aria-label="Remove link" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
+				<input name="linkLabel[]" type="text" placeholder="Label" class:list={['w-40', inputClasses]} />
+				<input name="linkUrl[]" type="text" placeholder="https://…" class:list={['min-w-0 flex-1', inputClasses]} />
+				<button type="button" data-remove-row aria-label="Remove link" class="grid size-10 shrink-0 place-items-center rounded-md text-text-muted hover:bg-error-subtle hover:text-error-text">
 					<AppIcon name="trash" size={16} />
 				</button>
 			</div>
 		</template>
 	</section>
 
-	<section class="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+	<section class:list={[cardClasses, 'flex flex-col gap-stack p-card']}>
 		<div class="flex items-center gap-2">
 			<AppIcon name="attribute" size={16} class="text-text-muted" />
-			<h2 class="text-sm font-medium text-text">Attributes</h2>
+			<h2 class={sectionTitleClasses}>Attributes</h2>
 		</div>
 		<p class="text-xs text-text-muted">
 		The field template every item under this product will have (e.g. "Weight", "Size", "Color") — each item fills in its own value per key. {mode === 'edit' && 'Existing keys can\'t be renamed or removed from here, only added to.'}
@@ -160,7 +163,7 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		{existingAttributeKeys.length > 0 && (
 			<div class="flex flex-wrap gap-2">
 				{existingAttributeKeys.map((key) => (
-					<button type="button" data-variant-toggle data-name={key.name} aria-pressed={key.isVariant ? 'true' : 'false'} class="rounded-full border px-3 py-1 text-xs transition-colors border-border-strong text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-accent aria-pressed:bg-transparent aria-pressed:font-medium aria-pressed:text-accent-text aria-pressed:hover:bg-accent-subtle">
+					<button type="button" data-variant-toggle data-name={key.name} aria-pressed={key.isVariant ? 'true' : 'false'} class:list={[chipBaseClasses, 'border-border-strong text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:border-accent aria-pressed:bg-transparent aria-pressed:text-accent-text aria-pressed:hover:bg-accent-subtle']}>
 						{key.name}
 					</button>
 				))}
@@ -172,11 +175,11 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 			<Button type="button" size="sm" data-add-row="attributes">Add key</Button>
 		</div>
 
-		<div data-row-list="attributes" class="flex flex-col gap-2">
+		<div data-row-list="attributes" class="flex flex-col gap-3">
 			{mode === 'create' && (
 				<div class="flex items-center gap-2" data-row>
-					<input name="attributeKey[]" type="text" placeholder="e.g. Size" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
-					<button type="button" data-remove-row aria-label="Remove attribute key" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
+					<input name="attributeKey[]" type="text" placeholder="e.g. Size" class:list={['min-w-0 flex-1', inputClasses]} />
+					<button type="button" data-remove-row aria-label="Remove attribute key" class="grid size-10 shrink-0 place-items-center rounded-md text-text-muted hover:bg-error-subtle hover:text-error-text">
 						<AppIcon name="trash" size={16} />
 					</button>
 				</div>
@@ -185,15 +188,15 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 
 		<template data-row-template="attributes">
 			<div class="flex items-center gap-2" data-row>
-				<input name="attributeKey[]" type="text" placeholder="e.g. Size" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1.5 text-sm" />
-				<button type="button" data-remove-row aria-label="Remove attribute key" class="shrink-0 rounded p-1.5 text-text-muted hover:bg-error-subtle hover:text-error-text">
+				<input name="attributeKey[]" type="text" placeholder="e.g. Size" class:list={['min-w-0 flex-1', inputClasses]} />
+				<button type="button" data-remove-row aria-label="Remove attribute key" class="grid size-10 shrink-0 place-items-center rounded-md text-text-muted hover:bg-error-subtle hover:text-error-text">
 					<AppIcon name="trash" size={16} />
 				</button>
 			</div>
 		</template>
 	</section>
 
-	<div class="flex justify-end gap-2">
+	<div class="flex justify-end gap-controls">
 		<TextMorphButton href={redirectTo} action="cancel" variant="danger" />
 		<TextMorphButton type="submit" action="save" variant="primary">{mode === 'create' ? 'Create product' : 'Save changes'}</TextMorphButton>
 	</div>

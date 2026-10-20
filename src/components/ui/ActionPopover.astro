@@ -71,12 +71,12 @@ const titleId = `${id}-title`;
 <Popover id={id} placement={placement} side={side} labelledBy={titleId} class={className}>
 	{
 		formAction ? (
-			<form method="post" action={formAction} class="flex flex-col gap-3">
+			<form method="post" action={formAction} class="flex flex-col gap-stack">
 				<p id={titleId} class="font-medium">
 					{title}
 				</p>
 				<slot />
-				<div class="flex justify-end gap-2">
+				<div class="flex justify-end gap-controls pt-1">
 					<Button type="button" variant="secondary" popovertarget={id} popovertargetaction="hide">
 						Cancel
 					</Button>
@@ -86,12 +86,12 @@ const titleId = `${id}-title`;
 				</div>
 			</form>
 		) : (
-			<div class="flex flex-col gap-3">
+			<div class="flex flex-col gap-stack">
 				<p id={titleId} class="font-medium">
 					{title}
 				</p>
 				<slot />
-				<div class="flex justify-end gap-2">
+				<div class="flex justify-end gap-controls pt-1">
 					<Button type="button" variant="secondary" popovertarget={id} popovertargetaction="hide">
 						Cancel
 					</Button>

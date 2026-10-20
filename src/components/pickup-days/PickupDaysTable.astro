@@ -14,6 +14,7 @@
 import { formatDateShort, formatWeekdayName } from '../../lib/dates';
 import PickupDayBubble from './PickupDayBubble.astro';
 import PickupDayDeleteButton from './PickupDayDeleteButton.astro';
+import { gridColumnsClasses, gridTableFrameClasses, gridTableHeaderClasses, gridTableRowClasses } from '../../lib/table-styles';
 import type { PickupDayBubbleKind } from './PickupDayBubble.astro';
 import type { PickupDayRow } from '../../lib/pickupDays';
 
@@ -33,7 +34,6 @@ const { rows, currentUserId, deletable = false, emptyMessage = 'No pickup days y
 // time and where underneath (explicit max-sm: placements below; DOM order,
 // and so focus order, is unchanged) — and the header row is hidden.
 const GRID_STYLE = '--grid-cols: 1.25rem auto 1fr auto; --grid-cols-sm: 1.25rem 4.5rem 7rem 7.5rem 1fr 5.5rem';
-const GRID_CLASS = 'grid grid-cols-(--grid-cols) sm:grid-cols-(--grid-cols-sm)';
 
 function bubbleKind(row: PickupDayRow): PickupDayBubbleKind {
 	if (row.kind === 'recurring') return 'recurring';
@@ -45,9 +45,9 @@ function bubbleKind(row: PickupDayRow): PickupDayBubbleKind {
 	rows.length === 0 ? (
 		<p class="text-sm text-text-muted">{emptyMessage}</p>
 	) : (
-		<div class="overflow-hidden rounded-lg border border-border">
+		<div class={gridTableFrameClasses}>
 			<div
-				class:list={[GRID_CLASS, 'items-center gap-3 border-b border-border bg-bg-subtle px-3 py-1.5 text-xs font-medium tracking-wide text-text-muted uppercase max-sm:hidden']}
+				class:list={[gridColumnsClasses, gridTableHeaderClasses, 'max-sm:hidden']}
 				style={GRID_STYLE}
 			>
 				<span />
@@ -59,7 +59,7 @@ function bubbleKind(row: PickupDayRow): PickupDayBubbleKind {
 			</div>
 			<div class="divide-y divide-border">
 				{rows.map((row) => (
-					<div data-pickup-day-row class:list={[GRID_CLASS, 'items-center gap-x-3 gap-y-1 px-3 py-2 text-sm']} style={GRID_STYLE}>
+					<div data-pickup-day-row class:list={[gridColumnsClasses, gridTableRowClasses]} style={GRID_STYLE}>
 						<PickupDayBubble kind={bubbleKind(row)} />
 						<span class="text-text">{formatDateShort(row.date)}</span>
 						<span class="text-text-muted">{formatWeekdayName(row.date)}</span>

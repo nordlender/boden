@@ -15,7 +15,7 @@ import PickupDayBubble from './PickupDayBubble.astro';
 import MorphButton from '../ui/MorphButton.astro';
 import Button from '../ui/Button.astro';
 import { gridColumnsClasses, gridTableFrameClasses, gridTableHeaderClasses, gridTableRowClasses } from '../../lib/table-styles';
-import { inputSmClasses } from '../../lib/form-styles';
+import { compactLabelClasses, inlineErrorClasses, inputSmClasses } from '../../lib/form-styles';
 import { sectionTitleClasses } from '../../lib/layout-styles';
 
 // Columns: bubble | date | weekday | start | end | where | buttons. Below `sm`
@@ -31,7 +31,7 @@ const INPUT_CLASS = `w-full ${inputSmClasses}`;
 const TIME_INPUT_CLASS = `w-28 ${inputSmClasses}`;
 // Visible only in the stacked mobile layout; the sm+ header row labels the
 // columns there, but the text stays available to screen readers.
-const LABEL_TEXT_CLASS = 'mb-1 block text-xs text-text-muted sm:sr-only';
+const LABEL_TEXT_CLASS = `${compactLabelClasses} sm:sr-only`;
 ---
 
 <div data-selected-pickup-days hidden class="flex flex-col gap-stack">
@@ -53,7 +53,7 @@ const LABEL_TEXT_CLASS = 'mb-1 block text-xs text-text-muted sm:sr-only';
 		<div data-selected-pickup-days-rows class="divide-y divide-border" />
 	</div>
 
-	<p data-selected-pickup-days-error hidden class="text-sm text-error-text" />
+	<p data-selected-pickup-days-error hidden class={inlineErrorClasses} />
 
 	<div>
 		<Button type="button" variant="primary" data-selected-pickup-days-submit>

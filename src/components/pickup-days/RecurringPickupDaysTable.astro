@@ -9,6 +9,7 @@ import { formatDateShort } from '../../lib/dates';
 import { WEEKDAY_NAMES } from '../../lib/pickupDays';
 import PickupDayBubble from './PickupDayBubble.astro';
 import PickupDayDeleteButton from './PickupDayDeleteButton.astro';
+import { emptyStateFramedClasses } from '../../lib/layout-styles';
 import { gridColumnsClasses, gridTableFrameClasses, gridTableHeaderClasses, gridTableRowClasses } from '../../lib/table-styles';
 import type { PickupRecurringRuleRow } from '../../lib/pickupDays';
 
@@ -28,7 +29,7 @@ const GRID_STYLE = '--grid-cols: 1.25rem auto 1fr auto; --grid-cols-sm: 1.25rem 
 
 {
 	rules.length === 0 ? (
-		<p class="text-sm text-text-muted">{emptyMessage}</p>
+		<p class={emptyStateFramedClasses}>{emptyMessage}</p>
 	) : (
 		<div class={gridTableFrameClasses}>
 			<div

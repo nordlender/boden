@@ -84,7 +84,7 @@ file-by-file, not as a drive-by inside an unrelated change (same rule as the
 color-token migration).
 
 - `src/components/wizard/ItemRow.astro`, `ProductTag.astro`,
-  `SubCategoryTag.astro`, `WizardHeader.astro`, `AddItemPanel.astro`,
+  `SubCategoryTag.astro`, `WizardSearch.astro`, `ui/AddPanel.astro`,
   `ButtonStrip.astro`, `Dropdown.astro` — each pass a hand-typed numeric
   `size` (13–18px) to `AppIcon`/`MorphIcon` rather than a token.
 - `src/components/orders/OrdersLayoutToggle.astro` — hand-rolled toggle

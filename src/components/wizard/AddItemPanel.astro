@@ -9,14 +9,12 @@
 // inherited from whichever product the item ends up assigned to, so there's
 // nothing product-dependent left to set at creation — just image, id, name.
 //
-// Collapsed by default (issue #206-style inline expand/collapse rather than
-// always-open) — ButtonStrip.astro's "Add item" shortcut opens this via
-// data-expand-open="add-item-panel" before jumping focus to #add-item-name,
-// so that link still works whether this is already open or not.
-import AppIcon from '../icons/AppIcon.astro';
+// Collapsed by default (see ui/AddPanel.astro) — ButtonStrip.astro's "Add
+// item" shortcut opens this via data-expand-open="add-item-panel" before
+// jumping focus to #add-item-name, so that link still works whether this is
+// already open or not.
+import AddPanel from '../ui/AddPanel.astro';
 import { compactLabelClasses, inputClasses } from '../../lib/form-styles';
-import TextMorphButton from '../ui/TextMorphButton.astro';
-import ExpandBox from '../ui/ExpandBox.astro';
 
 interface Props {
 	redirectTo: string;
@@ -24,36 +22,20 @@ interface Props {
 
 const { redirectTo } = Astro.props;
 ---
-<!-- TODO: Style later — amber/warning-subtle is just the closest existing
-     token hue-wise; this panel isn't really warning about anything, it's
-     highlighting an inline "add new item" row. May want a dedicated
-     highlight/draft token instead. -->
-<div class="rounded-xl border border-border bg-warning-subtle/60">
-	<ExpandBox id="add-item-panel" triggerClass="px-3 py-3">
-		<span slot="trigger" class="flex items-center gap-2">
-			<AppIcon name="product" size={16} class="text-text-muted" />
-			Add item
-		</span>
-		<form method="post" action="/api/wizard/items" class="px-card pb-card">
-			<input type="hidden" name="redirectTo" value={redirectTo} />
-			<div class="grid grid-cols-[10rem_5rem_1fr] items-end gap-stack">
-				<div>
-					<label class={compactLabelClasses} for="add-item-image">Image (optional)</label>
-					<input id="add-item-image" name="imageUrl" type="text" placeholder="https://…" class:list={['w-full', inputClasses]} />
-				</div>
-				<div>
-					<span class={compactLabelClasses}>Item ID</span>
-					<p class="flex min-h-10 items-center rounded-md border border-dashed border-border-strong bg-surface px-3 font-mono text-xs text-text-muted">auto</p>
-				</div>
-				<div>
-					<label class={compactLabelClasses} for="add-item-name">Item name</label>
-					<input id="add-item-name" name="name" type="text" required class:list={['w-full', inputClasses]} />
-				</div>
-			</div>
-			<div class="mt-stack flex justify-end gap-controls">
-				<TextMorphButton type="reset" action="cancel" />
-				<TextMorphButton type="submit" action="save" variant="primary">Save item</TextMorphButton>
-			</div>
-		</form>
-	</ExpandBox>
-</div>
+<AddPanel id="add-item-panel" label="Add item" icon="product" action="/api/wizard/items" submitLabel="Save item">
+	<input type="hidden" name="redirectTo" value={redirectTo} />
+	<div class="grid grid-cols-1 gap-stack sm:grid-cols-[10rem_5rem_1fr] sm:items-end">
+		<div>
+			<label class={compactLabelClasses} for="add-item-image">Image (optional)</label>
+			<input id="add-item-image" name="imageUrl" type="text" placeholder="https://…" class:list={['w-full', inputClasses]} />
+		</div>
+		<div>
+			<span class={compactLabelClasses}>Item ID</span>
+			<p class="flex min-h-10 items-center rounded-md border border-dashed border-border-strong bg-surface px-3 font-mono text-xs text-text-muted">auto</p>
+		</div>
+		<div>
+			<label class={compactLabelClasses} for="add-item-name">Item name</label>
+			<input id="add-item-name" name="name" type="text" required class:list={['w-full', inputClasses]} />
+		</div>
+	</div>
+</AddPanel>

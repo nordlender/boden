@@ -1,6 +1,7 @@
 ---
 import CartActionsBar from './CartActionsBar.astro';
-import { sectionTitleClasses } from '../../lib/layout-styles';
+import { emptyStateClasses, sectionTitleClasses } from '../../lib/layout-styles';
+import MorphButton from '../ui/MorphButton.astro';
 ---
 
 <div data-cart-backdrop class="fixed inset-0 z-40 hidden bg-overlay"></div>
@@ -13,13 +14,11 @@ import { sectionTitleClasses } from '../../lib/layout-styles';
 >
 	<div class="flex items-center justify-between border-b border-border px-card py-4">
 		<h2 class={sectionTitleClasses}>Cart</h2>
-		<button type="button" data-cart-close aria-label="Close cart" class="grid size-10 place-items-center rounded-md text-xl leading-none text-text-muted hover:bg-bg-subtle hover:text-text">
-			&times;
-		</button>
+		<MorphButton action="cancel" label="Close cart" data-cart-close />
 	</div>
 
 	<div data-cart-list class="flex-1 overflow-y-auto px-card">
-		<p data-cart-empty class="py-section text-sm text-text-muted">Your cart is empty.</p>
+		<p data-cart-empty class={emptyStateClasses}>Your cart is empty.</p>
 		<div data-cart-rows class="divide-y divide-border"></div>
 	</div>
 

@@ -14,6 +14,7 @@
 import { formatDateShort, formatWeekdayName } from '../../lib/dates';
 import PickupDayBubble from './PickupDayBubble.astro';
 import PickupDayDeleteButton from './PickupDayDeleteButton.astro';
+import { emptyStateFramedClasses } from '../../lib/layout-styles';
 import { gridColumnsClasses, gridTableFrameClasses, gridTableHeaderClasses, gridTableRowClasses } from '../../lib/table-styles';
 import type { PickupDayBubbleKind } from './PickupDayBubble.astro';
 import type { PickupDayRow } from '../../lib/pickupDays';
@@ -43,7 +44,7 @@ function bubbleKind(row: PickupDayRow): PickupDayBubbleKind {
 
 {
 	rows.length === 0 ? (
-		<p class="text-sm text-text-muted">{emptyMessage}</p>
+		<p class={emptyStateFramedClasses}>{emptyMessage}</p>
 	) : (
 		<div class={gridTableFrameClasses}>
 			<div

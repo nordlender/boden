@@ -1,5 +1,3 @@
-import { compactLabelClasses, inputClasses } from '../../lib/form-styles';
-
 // Shared by UnitTableHeader/UnitRow (column widths, so header and rows line
 // up structurally — same idea as wizard/grid.ts) and by the unit forms
 // (field list and input styling).
@@ -24,7 +22,7 @@ const UNIT_GRID = '3rem minmax(0,1.4fr) minmax(0,1fr) 4rem 4rem 3rem 9rem 4.75re
 const UNIT_GRID_MOBILE = '3rem minmax(0,1fr) 9rem 4.75rem';
 
 export const UNIT_GRID_STYLE = `--grid-cols: ${UNIT_GRID_MOBILE}; --grid-cols-sm: ${UNIT_GRID}`;
-export const UNIT_GRID_CLASS = 'grid grid-cols-(--grid-cols) sm:grid-cols-(--grid-cols-sm) items-center gap-4 px-4';
+export const UNIT_GRID_CLASS = 'grid grid-cols-(--grid-cols) sm:grid-cols-(--grid-cols-sm) items-center gap-4 px-card';
 export const DESKTOP_ONLY_CLASS = 'hidden sm:block';
 
 export const UNIT_FORM_FIELDS = [
@@ -36,5 +34,3 @@ export const UNIT_FORM_FIELDS = [
 	{ name: 'purchasedAt', label: 'Purchased', type: 'date', placeholder: '' },
 ] as const;
 
-export const inputClass = `w-full min-w-0 ${inputClasses}`;
-export const labelClass = compactLabelClasses;

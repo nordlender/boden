@@ -1,9 +1,10 @@
 ---
 // Placeholder shaped like ProductAvailability's section, shown while its
 // server island loads.
+import { labelClasses } from '../../lib/form-styles';
 ---
 <section class="flex flex-col gap-3 border-t border-border pt-6" aria-busy="true" aria-label="Loading availability">
-	<p class="text-sm font-medium text-text">Availability</p>
+	<p class={labelClasses}>Availability</p>
 	<div class="grid animate-pulse grid-cols-7 gap-1.5 pt-6">
 		{Array.from({ length: 28 }, () => <div class="h-9 rounded-md bg-bg-subtle" />)}
 	</div>

@@ -10,7 +10,9 @@
 // <template> would leave every other copy of that icon on the page blank.
 import MorphButton from '../ui/MorphButton.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
-import { inputClass, labelClass } from './unitTable';
+import { compactLabelClasses, inputClasses } from '../../lib/form-styles';
+
+const inputClass = `w-full min-w-0 ${inputClasses}`;
 
 interface Props {
 	opts?: Record<string, string>;
@@ -21,13 +23,13 @@ const entries = Object.entries(opts);
 ---
 <div class="opts-fields" data-opts-fields>
 	<input type="hidden" name="opts" value="1" />
-	<span class={labelClass}>Extra fields</span>
+	<span class={compactLabelClasses}>Extra fields</span>
 	<div class="flex flex-col gap-3" data-opts-list>
 		{entries.map(([key, value]) => (
 			<div class="flex items-center gap-2" data-opts-row>
 				<input class:list={[inputClass, 'w-36 flex-none sm:w-44']} type="text" name="optKey" value={key} placeholder="Name, e.g. Length" aria-label="Extra field name" />
 				<input class={inputClass} type="text" name="optValue" value={value} placeholder="Value, e.g. 58 m" aria-label="Extra field value" />
-				<MorphButton action="delete" label={`Remove ${key}`} size="sm" data-opts-remove />
+				<MorphButton action="delete" variant="danger" label={`Remove ${key}`} data-opts-remove />
 			</div>
 		))}
 	</div>
@@ -35,7 +37,7 @@ const entries = Object.entries(opts);
 		<div class="flex items-center gap-2" data-opts-row>
 			<input class:list={[inputClass, 'w-36 flex-none sm:w-44']} type="text" name="optKey" placeholder="Name, e.g. Length" aria-label="Extra field name" />
 			<input class={inputClass} type="text" name="optValue" placeholder="Value, e.g. 58 m" aria-label="Extra field value" />
-			<MorphButton action="delete" label="Remove field" size="sm" data-opts-remove />
+			<MorphButton action="delete" variant="danger" label="Remove field" data-opts-remove />
 		</div>
 	</template>
 	<TextMorphButton action="add" size="sm" class="mt-3" data-opts-add>Add field</TextMorphButton>

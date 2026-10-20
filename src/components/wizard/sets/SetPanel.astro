@@ -1,7 +1,7 @@
 ---
 // Sets' equivalent of ../ItemPanel.astro.
 import SetToolbar from './SetToolbar.astro';
-import { cardClasses, cardHeaderClasses } from '../../../lib/layout-styles';
+import { cardClasses, cardHeaderClasses, emptyStateClasses } from '../../../lib/layout-styles';
 import SetTableHeader from './SetTableHeader.astro';
 import SetRow from './SetRow.astro';
 import type { SetPanelVariant } from './grid';
@@ -41,7 +41,7 @@ const formId = `set-wizard-${variant}-form`;
 	<SetToolbar variant={variant} formId={formId} products={products} redirectTo={redirectTo} />
 	<SetTableHeader variant={variant} formId={formId} />
 	{sets.length === 0 ? (
-		<p class="px-card py-12 text-center text-sm text-text-muted">No sets yet.</p>
+		<p class={emptyStateClasses}>No sets yet.</p>
 	) : (
 		<div class="overflow-hidden rounded-b-xl">
 			{sets.map((set) => (

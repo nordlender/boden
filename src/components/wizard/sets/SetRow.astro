@@ -74,7 +74,7 @@ const warningLabel = components.length === 0 ? 'This set has no components yet â
 		<details class="label-cell group/edit">
 			<summary class="flex cursor-pointer list-none items-center gap-1 text-sm text-text [&::-webkit-details-marker]:hidden">
 				<span class="truncate">{label || <span class="italic text-text-muted">â€”</span>}</span>
-				<AppIcon name="edit" size={12} class="shrink-0 text-disabled-text group-hover/edit:text-text-muted" />
+				<AppIcon name="edit" size={14} class="shrink-0 text-disabled-text group-hover/edit:text-text-muted" />
 			</summary>
 			<form method="post" action="/api/wizard/sets-label" class="mt-2 flex items-center gap-2">
 				<input type="hidden" name="setId" value={setId} />
@@ -95,15 +95,15 @@ const warningLabel = components.length === 0 ? 'This set has no components yet â
 					<AppIcon name="set" size={14} />
 					Attributes
 				</div>
-				<div class="mt-2.5">
+				<div class="mt-snug">
 					<SetIncludesDisplay display={includes} />
 				</div>
 
-				<div class:list={[eyebrowClasses, 'mt-6 flex items-center gap-1.5']}>
+				<div class:list={[eyebrowClasses, 'mt-stack flex items-center gap-1.5']}>
 					<AppIcon name="attribute" size={14} />
 					Components
 				</div>
-				<div class="mt-2.5">
+				<div class="mt-snug">
 					<SetComponentList setId={setId} components={components} redirectTo={redirectTo} />
 					<SetComponentPicker setId={setId} items={componentItemOptions} redirectTo={redirectTo} />
 				</div>

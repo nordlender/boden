@@ -9,11 +9,11 @@
 // has real item values is a separate, larger piece of work — this form
 // deliberately doesn't attempt it.
 import AppIcon from '../icons/AppIcon.astro';
-import { cardClasses, sectionTitleClasses } from '../../lib/layout-styles';
-import { compactLabelClasses, inputClasses } from '../../lib/form-styles';
+import { actionRowClasses, cardClasses, sectionTitleClasses } from '../../lib/layout-styles';
+import { compactLabelClasses, hintClasses, inputClasses } from '../../lib/form-styles';
 import { chipBaseClasses } from '../../lib/button-styles';
 import TextMorphButton from '../ui/TextMorphButton.astro';
-import Button from '../ui/Button.astro';
+import MorphButton from '../ui/MorphButton.astro';
 import type { CategoryOption, SubcategoryOption, ProductForEdit } from '../../lib/products';
 
 interface Props {
@@ -110,18 +110,16 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 	<section class:list={[cardClasses, 'flex flex-col gap-stack p-card']}>
 		<div class="flex items-center justify-between">
 			<h2 class={sectionTitleClasses}>Links</h2>
-			<Button type="button" size="sm" data-add-row="links">Add link</Button>
+			<TextMorphButton action="add" size="sm" data-add-row="links">Add link</TextMorphButton>
 		</div>
-		<p class="text-xs text-text-muted">External links shown on the product page — manufacturer page, manual PDF, etc.</p>
+		<p class={hintClasses}>External links shown on the product page — manufacturer page, manual PDF, etc.</p>
 
 		<div data-row-list="links" class="flex flex-col gap-3">
 			{links.map((link) => (
 				<div class="flex items-center gap-2" data-row>
 					<input name="linkLabel[]" type="text" placeholder="Label" value={link.label} class:list={['w-40', inputClasses]} />
 					<input name="linkUrl[]" type="text" placeholder="https://…" value={link.url} class:list={['min-w-0 flex-1', inputClasses]} />
-					<button type="button" data-remove-row aria-label="Remove link" class="grid size-10 shrink-0 place-items-center rounded-md text-text-muted hover:bg-error-subtle hover:text-error-text">
-						<AppIcon name="trash" size={16} />
-					</button>
+					<MorphButton action="delete" variant="danger" label="Remove link" data-remove-row />
 				</div>
 			))}
 		</div>
@@ -130,9 +128,7 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 			<div class="flex items-center gap-2" data-row>
 				<input name="linkLabel[]" type="text" placeholder="Label" class:list={['w-40', inputClasses]} />
 				<input name="linkUrl[]" type="text" placeholder="https://…" class:list={['min-w-0 flex-1', inputClasses]} />
-				<button type="button" data-remove-row aria-label="Remove link" class="grid size-10 shrink-0 place-items-center rounded-md text-text-muted hover:bg-error-subtle hover:text-error-text">
-					<AppIcon name="trash" size={16} />
-				</button>
+				<MorphButton action="delete" variant="danger" label="Remove link" data-remove-row />
 			</div>
 		</template>
 	</section>
@@ -142,11 +138,11 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 			<AppIcon name="attribute" size={16} class="text-text-muted" />
 			<h2 class={sectionTitleClasses}>Attributes</h2>
 		</div>
-		<p class="text-xs text-text-muted">
+		<p class={hintClasses}>
 		The field template every item under this product will have (e.g. "Weight", "Size", "Color") — each item fills in its own value per key. {mode === 'edit' && 'Existing keys can\'t be renamed or removed from here, only added to.'}
 		</p>
 
-		<p class="text-xs text-text-muted">
+		<p class={hintClasses}>
 			{mode === 'create' ? (
 				<>
 					Once saved, you can click a key to make it the <span class="font-medium text-text">variant</span> — shoppers choose between its values as buttons on the product page.
@@ -172,16 +168,14 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 
 		<div class="flex items-center justify-between">
 			<span class="text-xs font-medium text-text-muted">{mode === 'edit' ? 'Add attribute key' : 'Attribute keys'}</span>
-			<Button type="button" size="sm" data-add-row="attributes">Add key</Button>
+			<TextMorphButton action="add" size="sm" data-add-row="attributes">Add key</TextMorphButton>
 		</div>
 
 		<div data-row-list="attributes" class="flex flex-col gap-3">
 			{mode === 'create' && (
 				<div class="flex items-center gap-2" data-row>
 					<input name="attributeKey[]" type="text" placeholder="e.g. Size" class:list={['min-w-0 flex-1', inputClasses]} />
-					<button type="button" data-remove-row aria-label="Remove attribute key" class="grid size-10 shrink-0 place-items-center rounded-md text-text-muted hover:bg-error-subtle hover:text-error-text">
-						<AppIcon name="trash" size={16} />
-					</button>
+					<MorphButton action="delete" variant="danger" label="Remove attribute key" data-remove-row />
 				</div>
 			)}
 		</div>
@@ -189,15 +183,13 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 		<template data-row-template="attributes">
 			<div class="flex items-center gap-2" data-row>
 				<input name="attributeKey[]" type="text" placeholder="e.g. Size" class:list={['min-w-0 flex-1', inputClasses]} />
-				<button type="button" data-remove-row aria-label="Remove attribute key" class="grid size-10 shrink-0 place-items-center rounded-md text-text-muted hover:bg-error-subtle hover:text-error-text">
-					<AppIcon name="trash" size={16} />
-				</button>
+				<MorphButton action="delete" variant="danger" label="Remove attribute key" data-remove-row />
 			</div>
 		</template>
 	</section>
 
-	<div class="flex justify-end gap-controls">
-		<TextMorphButton href={redirectTo} action="cancel" variant="danger" />
+	<div class={actionRowClasses}>
+		<TextMorphButton href={redirectTo} action="cancel" />
 		<TextMorphButton type="submit" action="save" variant="primary">{mode === 'create' ? 'Create product' : 'Save changes'}</TextMorphButton>
 	</div>
 </form>

@@ -6,7 +6,7 @@ import { entryKey, type CartLine } from '../../lib/cart';
 import { formatAttributes } from '../../lib/attributes';
 import type { ReservationCartLineRef } from './reservationFormState';
 import Callout from '../ui/Callout.astro';
-import { eyebrowClasses } from '../../lib/layout-styles';
+import { sectionTitleClasses } from '../../lib/layout-styles';
 
 interface Props {
 	cartLines: CartLine[];
@@ -28,21 +28,21 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 ---
 
 <div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} class="flex flex-col gap-section">
-	<section>
-		<h2 class:list={['mb-4', eyebrowClasses]}>1. Pick-up &amp; return dates</h2>
+	<section class="flex flex-col gap-stack">
+		<h2 class={sectionTitleClasses}>1. Pick-up &amp; return dates</h2>
 		<ReservationCalendar availablePickupDates={availablePickupDates} />
 	</section>
 
-	<section>
-		<h2 class:list={['mb-4', eyebrowClasses]}>2. Your items</h2>
+	<section class="flex flex-col gap-stack">
+		<h2 class={sectionTitleClasses}>2. Your items</h2>
 
-		<div data-unavailable-warning hidden class="mb-stack">
+		<div data-unavailable-warning hidden>
 			<Callout variant="warning">
 				<p>Some items are not available in this timeframe. Remove them from your cart below, or choose different dates.</p>
 			</Callout>
 		</div>
 
-		<p data-availability-loading hidden class="mb-stack text-sm text-text-muted">Checking availability…</p>
+		<p data-availability-loading hidden class="text-sm text-text-muted">Checking availability…</p>
 
 		<div class="divide-y divide-border border-y border-border">
 			{
@@ -74,10 +74,10 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 		</div>
 	</section>
 
-	<section>
-		<h2 class:list={['mb-4', eyebrowClasses]}>3. Your details</h2>
+	<section class="flex flex-col gap-stack">
+		<h2 class={sectionTitleClasses}>3. Your details</h2>
 		<CheckoutForm name={name} email={email} mobile={mobile} hasUnpaidFees={hasUnpaidFees} userIsMember={userIsMember} />
-		<p data-submit-hint class="mt-3 text-sm text-text-muted">Select your pick-up and return dates above to continue.</p>
+		<p data-submit-hint class="text-sm text-text-muted">Select your pick-up and return dates above to continue.</p>
 	</section>
 </div>
 

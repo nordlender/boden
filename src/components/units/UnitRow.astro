@@ -20,7 +20,9 @@ import UnitStatusControl from './UnitStatusControl.astro';
 import type { Unit, UnitItemRef } from '../../lib/units';
 import type { MessageRow } from '../../lib/messages';
 import { formatIsoDateDdMmYy } from '../../lib/dates';
-import { DESKTOP_ONLY_CLASS, UNIT_FORM_FIELDS, UNIT_GRID_CLASS, UNIT_GRID_STYLE, inputClass, labelClass } from './unitTable';
+import { DESKTOP_ONLY_CLASS, UNIT_FORM_FIELDS, UNIT_GRID_CLASS, UNIT_GRID_STYLE } from './unitTable';
+import { compactLabelClasses, inputClasses } from '../../lib/form-styles';
+import { actionRowClasses } from '../../lib/layout-styles';
 
 interface Props {
 	unit: Unit;
@@ -85,10 +87,10 @@ const opts = Object.entries(unit.opts);
 				<div class="grid grid-cols-1 gap-stack sm:grid-cols-3">
 					{UNIT_FORM_FIELDS.map((field) => (
 						<div>
-							<label class={labelClass} for={`unit-${unit.id}-${field.name}`}>{field.label}</label>
+							<label class={compactLabelClasses} for={`unit-${unit.id}-${field.name}`}>{field.label}</label>
 							<input
 								id={`unit-${unit.id}-${field.name}`}
-								class={inputClass}
+								class:list={['w-full min-w-0', inputClasses]}
 								type={field.type}
 								name={field.name}
 								value={unit[field.name] ?? ''}
@@ -99,7 +101,10 @@ const opts = Object.entries(unit.opts);
 					))}
 				</div>
 				<OptsFields opts={unit.opts} />
-				<TextMorphButton type="submit" action="save" variant="primary" size="sm" class="self-start">Save details</TextMorphButton>
+				<div class={actionRowClasses}>
+					<TextMorphButton type="reset" action="cancel" />
+					<TextMorphButton type="submit" action="save" variant="primary">Save details</TextMorphButton>
+				</div>
 			</form>
 		</div>
 	</div>

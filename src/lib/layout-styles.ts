@@ -21,18 +21,52 @@ export const pageWidthClasses: Record<PageWidth, string> = {
 	full: 'max-w-6xl',
 };
 
+// Corner radius scale: `rounded-xl` for standalone surfaces (cards, panels,
+// popovers, callouts), `rounded-lg` for a box nested inside one (ImageMenu's
+// file list, a segmented toggle group), `rounded-md` for controls (buttons,
+// inputs, menu rows, icon triggers), `rounded-full` for pills and badges.
+
 // Surface panel; ui/Card.astro adds `p-card` padding on top of this.
 export const cardClasses = 'rounded-xl border border-border bg-surface';
 
+// Heading hierarchy, largest first:
 // One h1 per page (ui/Page.astro renders it from `title`).
 export const pageTitleClasses = 'text-2xl font-semibold tracking-tight text-text';
 
-// A section/card heading under the page title.
+// The h1 of a page whose title lives inside its main card instead of a
+// ui/Page header (order detail, blind count) — one step below a page title,
+// since the card already frames it.
+export const cardTitleClasses = 'text-xl font-semibold tracking-tight text-text';
+
+// A section heading under the page title, and a card/dialog/popover title.
 export const sectionTitleClasses = 'text-base font-semibold text-text';
 
-// Small all-caps label above a group (e.g. a category over a product title,
-// "Today" over a list) — quieter than a section title.
+// Small all-caps label for a group *inside* a card or summary (an order's
+// "Items", a product's category over its title) — quieter than a section
+// title. Page-level sections use sectionTitleClasses, not this.
 export const eyebrowClasses = 'text-xs font-semibold uppercase tracking-wide text-text-muted';
+
+// Row of buttons closing a form, dialog or popover — always right-aligned,
+// Cancel first, then the primary action. Spacing above it comes from the
+// parent's gap, not from padding here.
+export const actionRowClasses = 'flex flex-wrap justify-end gap-controls';
+
+// Action row along the bottom of a ui/Card, separated by a divider (order
+// detail cards). Left-aligned, unlike actionRowClasses: these are the card's
+// main actions, not a form's submit/cancel.
+export const cardFooterClasses = 'flex flex-wrap gap-controls border-t border-border pt-card';
+
+// Empty state for a list or table *inside* a card/panel.
+export const emptyStateClasses = 'px-card py-12 text-center text-sm text-text-muted';
+
+// Empty state for a list that has no card around it (an empty orders list,
+// no pickup days yet) — the dashed frame marks where the list would be.
+export const emptyStateFramedClasses = 'rounded-xl border border-dashed border-border px-card py-12 text-center text-sm text-text-muted';
+
+// Large icon + title + description link tiles on the admin/moderator hubs
+// (admin/ActionButton.astro, moderator/ActionButton.astro).
+export const actionTileClasses =
+	'flex flex-1 flex-col items-center gap-3 rounded-xl border border-border bg-surface px-6 py-8 text-center transition-colors hover:border-accent hover:bg-bg-subtle sm:items-start sm:text-left';
 
 // Floating panel for dropdowns/menus (<details> menus, select menus).
 export const menuPanelClasses = 'rounded-xl border border-border bg-surface p-1.5 shadow-lg';

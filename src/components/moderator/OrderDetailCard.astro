@@ -8,7 +8,8 @@ import SubmittedContactDetails from '../orders/SubmittedContactDetails.astro';
 import StatusChip from './StatusChip.astro';
 import OrderItemsList from './OrderItemsList.astro';
 import Callout from '../ui/Callout.astro';
-import { cardClasses } from '../../lib/layout-styles';
+import Card from '../ui/Card.astro';
+import { cardFooterClasses } from '../../lib/layout-styles';
 import type { FollowingRentalWarning, OrderDetail } from '../../lib/moderatorOrders';
 
 interface Props {
@@ -27,7 +28,7 @@ interface Props {
 const { order, showAvailability = false, adjustableTargets = false, followingRentalWarnings = [], formId } = Astro.props;
 ---
 
-<div class:list={[cardClasses, 'flex flex-col gap-6 p-card']}>
+<Card as="div">
 	<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
 
 	<div class="flex flex-wrap gap-x-6 gap-y-2">
@@ -73,7 +74,7 @@ const { order, showAvailability = false, adjustableTargets = false, followingRen
 
 	<OrderItemsList items={order.items} showAvailability={showAvailability} adjustableTargets={adjustableTargets} formId={formId} />
 
-	<div class="flex flex-wrap gap-controls border-t border-border pt-card">
+	<div class={cardFooterClasses}>
 		<slot name="actions" />
 	</div>
-</div>
+</Card>

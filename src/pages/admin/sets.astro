@@ -5,7 +5,7 @@ export const prerender = false;
 // reached only when logged in with role === 'admin'. Mirrors admin/items.astro.
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Page from '../../components/ui/Page.astro';
-import WizardHeader from '../../components/wizard/WizardHeader.astro';
+import WizardSearch from '../../components/wizard/WizardSearch.astro';
 import AddSetPanel from '../../components/wizard/sets/AddSetPanel.astro';
 import SetPanel from '../../components/wizard/sets/SetPanel.astro';
 import { getWizardSets, listComponentItemOptions } from '../../lib/setWizard';
@@ -32,8 +32,8 @@ const toSetView = (set: Awaited<ReturnType<typeof getWizardSets>>['unassigned'][
 });
 ---
 <AdminLayout title="Sets">
-		<Page width="wide">
-			<WizardHeader title="Sets" />
+		<Page width="wide" title="Sets">
+			<WizardSearch slot="actions" placeholder="Search sets…" />
 
 			<AddSetPanel redirectTo={redirectTo} />
 

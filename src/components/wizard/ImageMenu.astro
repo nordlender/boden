@@ -15,7 +15,7 @@
 // link. Several menus can share a page (one per wizard panel), so the script
 // scopes everything to each `[data-image-menu]` instead of using ids.
 import Button from '../ui/Button.astro';
-import { inputSmClasses } from '../../lib/form-styles';
+import { hintClasses, inputSmClasses } from '../../lib/form-styles';
 import TextIconButton from '../ui/TextIconButton.astro';
 import FileExplorer from '../FileExplorer.astro';
 import { IMAGE_CONTENT_TYPES, MAX_UPLOAD_BYTES } from '../../lib/uploads';
@@ -31,7 +31,7 @@ const accept = Object.values(IMAGE_CONTENT_TYPES).join(',');
 	<div class="flex flex-wrap items-center gap-3">
 		<TextIconButton icon="upload" size="sm" data-image-upload-trigger>Add image</TextIconButton>
 		<input type="file" accept={accept} hidden data-image-upload-input aria-label="Image file to upload" />
-		<p class="min-w-0 flex-1 text-xs text-text-muted" data-image-upload-status aria-live="polite">PNG, JPEG, GIF, WebP or AVIF, up to {MAX_UPLOAD_BYTES / 1024 / 1024} MB.</p>
+		<p class:list={['min-w-0 flex-1', hintClasses]} data-image-upload-status aria-live="polite">PNG, JPEG, GIF, WebP or AVIF, up to {MAX_UPLOAD_BYTES / 1024 / 1024} MB.</p>
 	</div>
 
 	<div class="max-h-[min(20rem,45vh)] min-h-24 overflow-y-auto overscroll-contain rounded-lg border border-border p-3">

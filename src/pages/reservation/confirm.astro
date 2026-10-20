@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Button from '../../components/ui/Button.astro';
 import Page from '../../components/ui/Page.astro';
-import { cardClasses, eyebrowClasses } from '../../lib/layout-styles';
+import { cardClasses, eyebrowClasses, sectionTitleClasses } from '../../lib/layout-styles';
 import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
 import ItemQtyLine from '../../components/ui/ItemQtyLine.astro';
 import { getCartLines, type CartLine } from '../../lib/cart';
@@ -90,10 +90,10 @@ const hiddenFields: Record<string, string> = {
 			</OrdersTableRow>
 		</div>
 
-		<section class="text-sm text-text">
-			<h2 class:list={['mb-3', eyebrowClasses]}>Your details</h2>
+		<section class="flex flex-col gap-snug text-sm text-text">
+			<h2 class:list={['mb-1', sectionTitleClasses]}>Your details</h2>
 			<p>{contact.email}{contact.mobile && ` · ${contact.mobile}`}</p>
-			{note && <p class="mt-2 text-text-muted">Note: {note}</p>}
+			{note && <p class="text-text-muted">Note: {note}</p>}
 		</section>
 
 		<form method="POST" action="/api/orders/create" class="flex items-center gap-controls">

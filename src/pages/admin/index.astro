@@ -8,7 +8,7 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Page from '../../components/ui/Page.astro';
 import Callout from '../../components/ui/Callout.astro';
-import { sectionTitleClasses } from '../../lib/layout-styles';
+import { actionRowClasses, sectionTitleClasses } from '../../lib/layout-styles';
 import { formClasses, textareaClasses } from '../../lib/form-styles';
 import MessageTable from '../../components/messages/MessageTable.astro';
 import Modal from '../../components/ui/Modal.astro';
@@ -80,7 +80,7 @@ const modalId = 'add-message-modal';
 					placeholder="Shift notes, stock issues, closures…"
 					class:list={['min-w-0', textareaClasses]}
 				></textarea>
-				<div class="flex justify-end gap-controls">
+				<div class={actionRowClasses}>
 					<Button type="button" data-modal-close>Cancel</Button>
 					<Button type="submit" variant="primary">Post</Button>
 				</div>

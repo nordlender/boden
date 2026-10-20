@@ -54,9 +54,11 @@ Use these instead of hand-rolling the same classes per page:
 | Page wrapper | `ui/Page.astro` | Gutter, top/bottom padding, `gap-section` between children, optional `title`/`description` header with `before-title`/`subtitle`/`actions` slots. `width`: `narrow` (forms), `medium` (reading flows), `wide` (tools/tables), `full` (shop grid). |
 | Card / panel | `ui/Card.astro` | `p-card`, `gap-stack`, optional `title` + `actions` slot. `padding="none"` for edge-to-edge lists/tables. |
 | Alerts | `ui/Callout.astro` | Use for every error/warning/info box. Don't hand-roll `border-error-border bg-error-subtle p-3`. |
-| Page/section/eyebrow headings, card shell, menus, floating panels | `lib/layout-styles.ts` | `pageTitleClasses`, `sectionTitleClasses`, `eyebrowClasses`, `cardClasses`, `cardHeaderClasses`, `menuPanelClasses`, `menuItemClasses`, `floatingPanelClasses`, `pageWidthClasses` |
-| Form fields | `lib/form-styles.ts` | `formClasses`, `fieldClasses`, `labelClasses`, `compactLabelClasses`, `hintClasses`, `inputClasses` (40px), `inputSmClasses` (32px), `textareaClasses`, `readonlyInputClasses` |
-| Tables | `lib/table-styles.ts` | Real `<table>`: `tableClasses`, `theadRowClasses`, `tbodyRowClasses`, `thClasses`/`tdClasses` (`roomy` / `dense`). CSS-grid tables: `gridColumnsClasses`, `gridTableFrameClasses`, `gridTableHeaderClasses`, `gridTableRowClasses`. |
+| "Add new X" panel | `ui/AddPanel.astro` | Shared shell for add item / add set / add units: tinted box, expand trigger, your fields in the slot, Cancel + Save row. |
+| Back link | `ui/BackLink.astro` | "← Back to X" in `Page`'s `before-title` slot on every detail page. |
+| Headings, card shell, action rows, empty states, menus, floating panels, action tiles | `lib/layout-styles.ts` | `pageTitleClasses`, `cardTitleClasses`, `sectionTitleClasses`, `eyebrowClasses`, `cardClasses`, `cardHeaderClasses`, `cardFooterClasses`, `actionRowClasses`, `emptyStateClasses`, `emptyStateFramedClasses`, `menuPanelClasses`, `menuItemClasses`, `floatingPanelClasses`, `actionTileClasses`, `pageWidthClasses` |
+| Form fields | `lib/form-styles.ts` | `formClasses`, `fieldClasses`, `labelClasses`, `compactLabelClasses`, `hintClasses`, `inlineErrorClasses`, `inputClasses` (40px), `inputSmClasses` (32px), `textareaClasses`, `readonlyInputClasses` |
+| Tables | `lib/table-styles.ts` | Real `<table>`: `tableClasses`, `theadRowClasses`, `tbodyRowClasses`, `thClasses`/`tdClasses` (`roomy` / `dense`). CSS-grid tables: `gridColumnsClasses`, `gridTableFrameClasses`, `gridTableHeaderClasses`, `gridTableRowClasses`, plus `tableToolbarClasses` for the strip above one. |
 | Buttons, chips, dropdown triggers | `lib/button-styles.ts` | Button heights 32/40/48px (`sm`/`md`/`lg`), `summaryButtonClasses` for `<details>` triggers, `chipBaseClasses` for pill toggles/filters |
 | Badges | `lib/badge-styles.ts` / `ui/Badge.astro` | Status pills |
 
@@ -83,3 +85,51 @@ always line up: `inputClasses` sits beside a `md` button,
 7. When something must be denser than the defaults, keep it to small
    elements or a clearly dense context (tables, toolbars) and say why in a
    comment.
+
+## Consistency conventions
+
+These are the decisions that keep the same kind of thing looking the same
+everywhere. Follow them before inventing a variant.
+
+**Headings.** `pageTitleClasses` for the page's h1 (via `Page`'s `title`);
+`cardTitleClasses` when the page's title lives inside its main card (order
+detail, blind count); `sectionTitleClasses` for page sections and for
+card/dialog/popover titles; `eyebrowClasses` only for small group labels
+*inside* a card, summary or detail panel. On the product page, the small
+headings above the picker, attributes and availability use `labelClasses`.
+Hub pages (Admin, Moderator) also get a page title.
+
+**Forms.**
+- Labels: `fieldClasses` + `labelClasses` in member and moderator forms;
+  `compactLabelClasses` in the admin forms (wizard, units, pickup days). One
+  style per form.
+- Field height decides the neighbouring buttons: `inputClasses` rows get
+  `md` buttons, `inputSmClasses` rows (inline table edits, pickup-day rows)
+  get `sm` buttons.
+- Row add/remove controls: "Add …" is `TextMorphButton action="add"
+  size="sm"`; removing a row is `MorphButton action="delete"
+  variant="danger"` at the row's input height.
+- Hints use `hintClasses`; inline errors use `inlineErrorClasses`.
+
+**Action placement.**
+- Panel, dialog and popover forms end with `actionRowClasses`:
+  right-aligned, Cancel (secondary, or `type="reset"` in a panel) then the
+  primary action.
+- A page-level form's main submit (checkout, confirm, blind count, order
+  lookup) is a `lg` primary button, left-aligned (`self-start`).
+- A card's own actions sit in `cardFooterClasses` along its bottom edge.
+
+**Lists and tables.**
+- Empty lists: `emptyStateClasses` inside a card or panel,
+  `emptyStateFramedClasses` when the list has no card around it.
+- Inside a table panel, the card header, toolbar (`tableToolbarClasses`),
+  table header and rows all use `px-card`, so they share one left edge.
+- Wizard/units detail panels: `px-card py-5`, groups separated by
+  `mt-stack`, an eyebrow label `snug` above its content.
+
+**Radius.** `rounded-xl` for standalone surfaces (cards, panels, popovers,
+callouts), `rounded-lg` for a box nested inside one, `rounded-md` for
+controls and icon triggers, `rounded-full` for pills.
+
+**Small icons.** Eyebrow and inline-edit icons are 14px; dropdown chevrons
+14px; expand-panel chevrons 16px.

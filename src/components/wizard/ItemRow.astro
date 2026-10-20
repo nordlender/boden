@@ -83,18 +83,18 @@ const {
 				) : (
 					<p class="text-sm italic text-text-muted">No description yet — inherited from the assigned product.</p>
 				)}
-				<div class:list={[eyebrowClasses, 'mt-5 flex items-center gap-1.5']}>
+				<div class:list={[eyebrowClasses, 'mt-stack flex items-center gap-1.5']}>
 					<AppIcon name="attribute" size={14} />
 					Attributes
 				</div>
 				{variant === 'assigned' ? (
-					<div class="mt-2 flex flex-col gap-1.5">
+					<div class="mt-snug flex flex-col gap-1.5">
 						{attributes.map((attribute) => (
 							<details class="attribute-row group/edit">
 								<summary class="flex cursor-pointer list-none items-center gap-3 py-1 text-sm [&::-webkit-details-marker]:hidden">
 									<span class="w-28 shrink-0 text-text-muted">{attribute.key}</span>
 									<span class="min-w-0 flex-1 truncate text-text">{attribute.value || '—'}</span>
-									<AppIcon name="edit" size={13} class="shrink-0 text-disabled-text group-hover/edit:text-text-muted" />
+									<AppIcon name="edit" size={14} class="shrink-0 text-disabled-text group-hover/edit:text-text-muted" />
 								</summary>
 								<form method="post" action="/api/wizard/attributes" class="ml-[7.75rem] mt-2 flex items-center gap-2">
 									<input type="hidden" name="itemId" value={itemId} />
@@ -129,9 +129,9 @@ const {
 						</form>
 					</div>
 				) : (
-					<p class="mt-2 text-sm italic text-text-muted">No attributes yet — inherited from the assigned product.</p>
+					<p class="mt-snug text-sm italic text-text-muted">No attributes yet — inherited from the assigned product.</p>
 				)}
-				<p class="mt-5 text-sm">
+				<p class="mt-stack text-sm">
 					<a href={`/admin/items/${itemId}/units`} class="text-text underline hover:text-text-muted">
 						Manage units ({totalStock} active)
 					</a>
@@ -141,7 +141,7 @@ const {
 					<>
 						{/* Scheduled availability (every claiming order counts), unlike the
 						    row's "On shelf" figure, which is real availability. */}
-						<p class:list={[eyebrowClasses, 'mt-5 mb-2.5']} title="Counts every requested, scheduled and active order on each day — what members can still book">Scheduled availability</p>
+						<p class:list={[eyebrowClasses, 'mt-stack mb-snug']} title="Counts every requested, scheduled and active order on each day — what members can still book">Scheduled availability</p>
 						<AvailabilityCalendar start={availability.start} daily={availability.daily.map((n) => Math.max(0, n))} total={totalStock} class="max-w-sm" />
 					</>
 				)}

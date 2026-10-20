@@ -3,6 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ReservationForm from '../../components/reservation/ReservationForm.astro';
 import Page from '../../components/ui/Page.astro';
 import Callout from '../../components/ui/Callout.astro';
+import { emptyStateFramedClasses } from '../../lib/layout-styles';
 import { getCartLines } from '../../lib/cart';
 import { getUpcomingAvailablePickupDates } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
@@ -51,7 +52,7 @@ const errorMessage = error ? (errorMessages[error] ?? null) : null;
 		{errorMessage && <Callout variant="error"><p>{errorMessage}</p></Callout>}
 
 		{cartLines.length === 0 && (
-			<p class="text-sm text-text-muted">Your cart is empty. <a href="/" class="font-medium text-accent-text hover:underline">Continue shopping</a></p>
+			<p class={emptyStateFramedClasses}>Your cart is empty. <a href="/" class="font-medium text-accent-text hover:underline">Continue shopping</a></p>
 		)}
 
 		{cartLines.length > 0 && <ReservationForm

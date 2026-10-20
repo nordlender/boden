@@ -19,7 +19,7 @@ const { orderCode, status, fromDate, toDate, customerName, viewHref } = Astro.pr
 const isPersisted = Boolean(orderCode && status && viewHref);
 ---
 
-<div class="flex flex-col gap-3 rounded-xl border border-border bg-surface px-5 py-3.5 text-sm">
+<div class="flex flex-col gap-3 rounded-xl border border-border bg-surface px-card py-4 text-sm">
 	<!--
 		DOM order is the sm+ column order (status, dates, customer, code, view),
 		so reading and focus order match what's on screen at every width. The

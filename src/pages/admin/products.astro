@@ -5,7 +5,7 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Page from '../../components/ui/Page.astro';
 import Badge from '../../components/ui/Badge.astro';
-import { cardClasses } from '../../lib/layout-styles';
+import { cardClasses, emptyStateFramedClasses } from '../../lib/layout-styles';
 import TextMorphButton from '../../components/ui/TextMorphButton.astro';
 import { listProductsForAdmin } from '../../lib/products';
 
@@ -18,7 +18,7 @@ const products = await listProductsForAdmin();
 
 		{
 			products.length === 0 ? (
-				<p class="text-sm text-text-muted">No products yet.</p>
+				<p class={emptyStateFramedClasses}>No products yet.</p>
 			) : (
 				<div class:list={[cardClasses, 'flex flex-col divide-y divide-border overflow-hidden']}>
 					{products.map((product) => (

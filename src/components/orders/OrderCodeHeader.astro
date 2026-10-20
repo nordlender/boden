@@ -1,6 +1,7 @@
 ---
 import { formatDateDisplay } from '../../lib/dates';
 import OrderStatusBadge from './OrderStatusBadge.astro';
+import { cardTitleClasses } from '../../lib/layout-styles';
 
 interface Props {
 	orderCode: string;
@@ -14,7 +15,7 @@ const { orderCode, status, fromDate, toDate } = Astro.props;
 
 <div class="flex flex-col gap-snug">
 	<div class="flex flex-wrap items-center gap-3">
-		<h1 class="text-xl font-semibold tracking-tight text-text">Order #{orderCode}</h1>
+		<h1 class={cardTitleClasses}>Order #{orderCode}</h1>
 		<OrderStatusBadge status={status} />
 	</div>
 	<p class="text-sm text-text-muted">

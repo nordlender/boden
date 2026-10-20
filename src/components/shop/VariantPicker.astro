@@ -38,6 +38,7 @@ import Button from '../ui/Button.astro';
 import AppIcon from '../icons/AppIcon.astro';
 import { formatAttributes } from '../../lib/attributes';
 import { tableClasses, tbodyRowClasses, tdClasses, thClasses } from '../../lib/table-styles';
+import { labelClasses } from '../../lib/form-styles';
 
 interface Props {
 	items: ShopItem[];
@@ -107,7 +108,7 @@ function optionLabel(variant: Variant): string {
 	{
 		variants.length > 1 && (
 			<fieldset>
-				<legend class="mb-3 text-sm font-medium text-text">
+				<legend class:list={['mb-3', labelClasses]}>
 					{variantKind === 'item' && hasVariantKeys ? variantKeys.join(' / ') : 'Choose a variant'}
 				</legend>
 				<div data-variant-options class="flex flex-wrap gap-controls">
@@ -149,7 +150,7 @@ function optionLabel(variant: Variant): string {
 	)}
 
 	<div data-set-includes hidden={variantKind !== 'set'} class="border-t border-border pt-6 text-sm">
-		<p class="mb-3 font-medium text-text">Attributes</p>
+		<p class:list={['mb-3', labelClasses]}>Attributes</p>
 		<div data-set-includes-content class="flex flex-col gap-4">
 			{(initialVariant?.kind === 'set' ? initialVariant.componentDisplay : []).map((group) =>
 				group.kind === 'table' ? (

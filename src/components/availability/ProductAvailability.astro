@@ -12,6 +12,7 @@
 // `data-availability-variant` matches — plain CSS, so it works no matter
 // when this island's HTML arrives relative to the picker's script.
 import AvailabilityCalendar from './AvailabilityCalendar.astro';
+import { labelClasses } from '../../lib/form-styles';
 import { getProductVariantCalendars } from '../../lib/availabilityCalendar';
 
 interface Props {
@@ -28,7 +29,7 @@ const visibilityCss = calendars
 {
 	calendars.length > 0 && (
 		<section class="flex flex-col gap-3 border-t border-border pt-6" aria-labelledby="availability-heading">
-			<h2 id="availability-heading" class="text-sm font-medium text-text">Availability</h2>
+			<h2 id="availability-heading" class={labelClasses}>Availability</h2>
 			<style is:inline set:html={`[data-availability-variant]{display:none}${visibilityCss}`} />
 			{calendars.map((calendar) => (
 				<div data-availability-variant={calendar.key}>

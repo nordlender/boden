@@ -8,7 +8,8 @@
 import ItemLine from '../ui/ItemLine.astro';
 import Button from '../ui/Button.astro';
 import Callout from '../ui/Callout.astro';
-import { cardClasses } from '../../lib/layout-styles';
+import Card from '../ui/Card.astro';
+import { cardTitleClasses } from '../../lib/layout-styles';
 import { formClasses, inputSmClasses } from '../../lib/form-styles';
 
 interface Line {
@@ -32,9 +33,9 @@ interface Props {
 const { title, description, action, mismatch = false, lines, submitLabel = 'Complete' } = Astro.props;
 ---
 
-<div class:list={[cardClasses, 'flex flex-col gap-6 p-card']}>
+<Card as="div">
 	<div class="flex flex-col gap-snug">
-		<h1 class="text-xl font-semibold tracking-tight text-text">{title}</h1>
+		<h1 class={cardTitleClasses}>{title}</h1>
 		<p class="text-sm leading-relaxed text-text-muted">{description}</p>
 	</div>
 
@@ -75,4 +76,4 @@ const { title, description, action, mismatch = false, lines, submitLabel = 'Comp
 			{submitLabel}
 		</Button>
 	</form>
-</div>
+</Card>

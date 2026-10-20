@@ -1,12 +1,10 @@
 ---
-// Collapsed by default, same issue #206-style ExpandBox pattern as
-// /admin/items' AddItemPanel.astro. Label isn't collected here — it's
-// meaningless until the set exists (same reasoning AddItemPanel gives for
-// dropping product-dependent fields at creation time).
-import AppIcon from '../../icons/AppIcon.astro';
+// Collapsed by default, same ui/AddPanel.astro shell as /admin/items'
+// AddItemPanel.astro. Label isn't collected here — it's meaningless until
+// the set exists (same reasoning AddItemPanel gives for dropping
+// product-dependent fields at creation time).
+import AddPanel from '../../ui/AddPanel.astro';
 import { compactLabelClasses, inputClasses } from '../../../lib/form-styles';
-import TextMorphButton from '../../ui/TextMorphButton.astro';
-import ExpandBox from '../../ui/ExpandBox.astro';
 
 interface Props {
 	redirectTo: string;
@@ -14,34 +12,20 @@ interface Props {
 
 const { redirectTo } = Astro.props;
 ---
-<!-- TODO: Style later — see AddItemPanel.astro's identical TODO on the
-     warning-subtle background. -->
-<div class="rounded-xl border border-border bg-warning-subtle/60">
-	<ExpandBox id="add-set-panel" triggerClass="px-3 py-3">
-		<span slot="trigger" class="flex items-center gap-2">
-			<AppIcon name="set" size={16} class="text-text-muted" />
-			Add set
-		</span>
-		<form method="post" action="/api/wizard/sets" class="px-card pb-card">
-			<input type="hidden" name="redirectTo" value={redirectTo} />
-			<div class="grid grid-cols-[10rem_5rem_1fr] items-end gap-stack">
-				<div>
-					<label class={compactLabelClasses} for="add-set-image">Image (optional)</label>
-					<input id="add-set-image" name="imageUrl" type="text" placeholder="https://…" class:list={['w-full', inputClasses]} />
-				</div>
-				<div>
-					<span class={compactLabelClasses}>Set ID</span>
-					<p class="flex min-h-10 items-center rounded-md border border-dashed border-border-strong bg-surface px-3 font-mono text-xs text-text-muted">auto</p>
-				</div>
-				<div>
-					<label class={compactLabelClasses} for="add-set-name">Set name</label>
-					<input id="add-set-name" name="name" type="text" required class:list={['w-full', inputClasses]} />
-				</div>
-			</div>
-			<div class="mt-stack flex justify-end gap-controls">
-				<TextMorphButton type="reset" action="cancel" />
-				<TextMorphButton type="submit" action="save" variant="primary">Save set</TextMorphButton>
-			</div>
-		</form>
-	</ExpandBox>
-</div>
+<AddPanel id="add-set-panel" label="Add set" icon="set" action="/api/wizard/sets" submitLabel="Save set">
+	<input type="hidden" name="redirectTo" value={redirectTo} />
+	<div class="grid grid-cols-1 gap-stack sm:grid-cols-[10rem_5rem_1fr] sm:items-end">
+		<div>
+			<label class={compactLabelClasses} for="add-set-image">Image (optional)</label>
+			<input id="add-set-image" name="imageUrl" type="text" placeholder="https://…" class:list={['w-full', inputClasses]} />
+		</div>
+		<div>
+			<span class={compactLabelClasses}>Set ID</span>
+			<p class="flex min-h-10 items-center rounded-md border border-dashed border-border-strong bg-surface px-3 font-mono text-xs text-text-muted">auto</p>
+		</div>
+		<div>
+			<label class={compactLabelClasses} for="add-set-name">Set name</label>
+			<input id="add-set-name" name="name" type="text" required class:list={['w-full', inputClasses]} />
+		</div>
+	</div>
+</AddPanel>

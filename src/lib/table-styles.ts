@@ -36,7 +36,14 @@ export const gridColumnsClasses = 'grid grid-cols-(--grid-cols) sm:grid-cols-(--
 
 export const gridTableFrameClasses = 'overflow-hidden rounded-xl border border-border bg-surface';
 
+// Horizontal padding is `px-card`, the same as cardHeaderClasses and the
+// toolbars above a table, so a panel's title, toolbar and columns all start
+// on one left edge.
 export const gridTableHeaderClasses =
-	'items-center gap-4 border-b border-border bg-bg-subtle px-4 py-3 text-xs font-medium uppercase tracking-wide text-text-muted';
+	'items-center gap-4 border-b border-border bg-bg-subtle px-card py-3 text-xs font-medium uppercase tracking-wide text-text-muted';
 
-export const gridTableRowClasses = 'items-center gap-x-4 gap-y-2 px-4 py-3 text-sm';
+export const gridTableRowClasses = 'items-center gap-x-4 gap-y-2 px-card py-3 text-sm';
+
+// Toolbar strip between a panel's title and its table (bulk actions,
+// dropdowns) — see wizard/ButtonStrip.astro, wizard/sets/SetToolbar.astro.
+export const tableToolbarClasses = 'flex flex-wrap items-center gap-controls border-b border-border bg-bg-subtle px-card py-3';

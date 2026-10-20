@@ -11,7 +11,7 @@
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
 import Page from '../../components/ui/Page.astro';
 import Callout from '../../components/ui/Callout.astro';
-import { sectionTitleClasses } from '../../lib/layout-styles';
+import { actionRowClasses, emptyStateFramedClasses, sectionTitleClasses } from '../../lib/layout-styles';
 import { formClasses, textareaClasses } from '../../lib/form-styles';
 import MessageTable from '../../components/messages/MessageTable.astro';
 import ActionButton from '../../components/moderator/ActionButton.astro';
@@ -38,7 +38,7 @@ const modalId = 'add-message-modal';
 ---
 
 <ModeratorLayout title="Moderator — Boden">
-	<Page width="wide">
+	<Page width="wide" title="Moderator">
 		{
 			error === 'empty_message' && (
 				<Callout variant="error">
@@ -58,13 +58,13 @@ const modalId = 'add-message-modal';
 
 		<div class="flex flex-col gap-stack">
 			<div class="flex items-center justify-between gap-stack">
-				<h1 class="text-xl font-semibold tracking-tight text-text">Upcoming requests</h1>
+				<h2 class={sectionTitleClasses}>Upcoming requests</h2>
 				<TextMorphButton action="next" href="/moderator/requests" variant="secondary" size="sm">See all</TextMorphButton>
 			</div>
 
 			{
 				previewRequests.length === 0 ? (
-					<p class="text-sm text-text-muted">No orders are waiting for review.</p>
+					<p class={emptyStateFramedClasses}>No orders are waiting for review.</p>
 				) : (
 					<div class="flex flex-col gap-3">
 						{previewRequests.map((order) => (
@@ -117,7 +117,7 @@ const modalId = 'add-message-modal';
 				placeholder="Shift notes, stock issues, closures…"
 				class:list={['min-w-0', textareaClasses]}
 			></textarea>
-			<div class="flex justify-end gap-controls">
+			<div class={actionRowClasses}>
 				<Button type="button" data-modal-close>Cancel</Button>
 				<Button type="submit" variant="primary">Post</Button>
 			</div>

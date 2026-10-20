@@ -1,6 +1,6 @@
 ---
 import ButtonStrip from './ButtonStrip.astro';
-import { cardClasses, cardHeaderClasses } from '../../lib/layout-styles';
+import { cardClasses, cardHeaderClasses, emptyStateClasses } from '../../lib/layout-styles';
 import TableHeader from './TableHeader.astro';
 import ItemRow from './ItemRow.astro';
 import type { PanelVariant } from './grid';
@@ -50,7 +50,7 @@ const formId = `wizard-${variant}-form`;
 	<ButtonStrip variant={variant} formId={formId} products={products} redirectTo={redirectTo} />
 	<TableHeader variant={variant} formId={formId} />
 	{items.length === 0 ? (
-		<p class="px-card py-12 text-center text-sm text-text-muted">No items yet.</p>
+		<p class={emptyStateClasses}>No items yet.</p>
 	) : (
 		<div class="overflow-hidden rounded-b-xl">
 			{items.map((item) => <ItemRow variant={variant} formId={formId} {...item} />)}

@@ -7,6 +7,8 @@ import OrderContents from '../../components/orders/OrderContents.astro';
 import SubmittedContactDetails from '../../components/orders/SubmittedContactDetails.astro';
 import DeleteOrderButton from '../../components/orders/DeleteOrderButton.astro';
 import ChangeOrderLink from '../../components/orders/ChangeOrderLink.astro';
+import Callout from '../../components/ui/Callout.astro';
+import { formatDateTimeDisplay } from '../../lib/dates';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
 // reached only when logged in, so Astro.locals.user is non-null here.
@@ -30,6 +32,16 @@ if (!order || order.userId !== Astro.locals.user?.id) {
 
 		<div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">
 			<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
+			{
+				order.status === 'cancelled' && (
+					<Callout variant="info" title="Order cancelled">
+						<p>
+							You cancelled this order{order.cancelledAt && ` on ${formatDateTimeDisplay(order.cancelledAt)}`}. The gear has been
+							released for others to book.
+						</p>
+					</Callout>
+				)
+			}
 			<OrderContents
 				items={order.orderItems.map((oi) => ({
 					itemName: oi.item.name,
@@ -38,10 +50,16 @@ if (!order || order.userId !== Astro.locals.user?.id) {
 				note={order.note}
 			/>
 			<SubmittedContactDetails contactName={order.contactName} />
-			<div class="flex flex-wrap gap-2 border-t border-border pt-4">
-				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} />
-				<DeleteOrderButton orderCode={order.orderCode} status={order.status} />
-			</div>
+			{
+				// Members can change/delete a 'requested' order and cancel a
+				// 'scheduled' one; from 'active' on there's nothing they can do.
+				(order.status === 'requested' || order.status === 'scheduled') && (
+					<div class="flex flex-wrap gap-2 border-t border-border pt-4">
+						<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} />
+						<DeleteOrderButton orderCode={order.orderCode} status={order.status} />
+					</div>
+				)
+			}
 		</div>
 	</div>
 </BaseLayout>

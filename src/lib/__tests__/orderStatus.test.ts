@@ -9,6 +9,7 @@ describe('order status constants', () => {
 	it('RESERVING_STATUSES are valid statuses and exclude terminal ones', () => {
 		for (const s of RESERVING_STATUSES) expect(ORDER_STATUSES).toContain(s);
 		expect([...RESERVING_STATUSES]).toEqual(['requested', 'scheduled', 'active']);
+		expect(RESERVING_STATUSES).not.toContain('cancelled');
 	});
 	it('isOrderStatus validates', () => {
 		expect(isOrderStatus('scheduled')).toBe(true);

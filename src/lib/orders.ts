@@ -256,13 +256,13 @@ export type DeleteOrderResult =
   | { ok: false; error: 'not_deletable'; status: string };
 
 // Hard delete — only ever offered to a member while their order is still
-// 'requested', which includes a moderator-accepted ("scheduled") order:
-// acceptance only sets `acceptedAt`, so members may still cancel it until it
-// becomes 'active' at pick-up. Ownership and
-// status are filtered directly in the DELETE's WHERE clause rather than
-// checked beforehand, so there's no gap for a moderator action to land
-// between an ownership/status check and the delete itself. orderItems rows
-// cascade automatically (onDelete: 'cascade' on the FK).
+// 'requested' (not yet reviewed). Once a moderator accepts it, acceptOrder
+// (src/lib/moderatorOrders.ts) moves it to 'scheduled', and from then on the
+// member can only soft-cancel it (see cancelOrder below), never delete it.
+// Ownership and status are filtered directly in the DELETE's WHERE clause
+// rather than checked beforehand, so there's no gap for a moderator action
+// to land between an ownership/status check and the delete itself.
+// orderItems rows cascade automatically (onDelete: 'cascade' on the FK).
 export async function deleteOrder(input: DeleteOrderInput): Promise<DeleteOrderResult> {
   const result = db
     .delete(orders)
@@ -283,6 +283,44 @@ export async function deleteOrder(input: DeleteOrderInput): Promise<DeleteOrderR
     return { ok: false, error: 'not_found' };
   }
   return { ok: false, error: 'not_deletable', status: existing.status };
+}
+
+export type CancelOrderInput = { orderCode: string; userId: string };
+
+export type CancelOrderResult =
+  | { ok: true }
+  | { ok: false; error: 'not_found' }
+  | { ok: false; error: 'not_cancellable'; status: string };
+
+// Soft cancel — only ever offered to a member while their order is
+// 'scheduled' (accepted by a moderator, not yet handed out). The row is kept
+// with status 'cancelled' rather than deleted because a moderator has already
+// committed a pick-up window for it, so it stays visible to moderators (#371).
+// 'cancelled' isn't in RESERVING_STATUSES, so its stock and calendar days are
+// freed. Ownership and status = 'scheduled' are filtered in the UPDATE's
+// WHERE clause — same pattern as deleteOrder — so this can't race a
+// moderator's hand-out (confirmRetrieval moves 'scheduled' to 'active').
+export async function cancelOrder(input: CancelOrderInput): Promise<CancelOrderResult> {
+  const result = db
+    .update(orders)
+    .set({ status: 'cancelled', cancelledAt: new Date() })
+    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, 'scheduled')))
+    .run();
+
+  if (result.changes > 0) {
+    return { ok: true };
+  }
+
+  // Nothing matched — disambiguate not-found/not-owned (404) from
+  // exists-but-wrong-status (409) with one follow-up read.
+  const existing = await db.query.orders.findFirst({
+    where: (t, { eq: eqCol }) => eqCol(t.orderCode, input.orderCode),
+    columns: { userId: true, status: true },
+  });
+  if (!existing || existing.userId !== input.userId) {
+    return { ok: false, error: 'not_found' };
+  }
+  return { ok: false, error: 'not_cancellable', status: existing.status };
 }
 
 export type RescheduleOrderInput = { orderCode: string; userId: string; fromDate: string; toDate: string };

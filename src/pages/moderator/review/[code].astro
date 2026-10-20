@@ -35,8 +35,9 @@ const error = Astro.url.searchParams.get('error');
 					alreadyReviewed ? (
 						// Accepted orders move on to the retrieval stage via order-code
 						// lookup (see requests.astro) — there's no per-id retrieval route
-						// to link to. Rejected orders have nothing further to review, so
-						// no link is shown for them at all.
+						// to link to. Rejected and member-cancelled orders have nothing
+						// further to review, so no link is shown for them at all —
+						// OrderDetailCard shows why.
 						order.status === 'scheduled' && (
 							<Button href="/moderator/retrieve">
 								Retrieve order

@@ -1,6 +1,7 @@
 ---
 import Badge from '../ui/Badge.astro';
 import type { BadgeTone } from '../../lib/badge-styles';
+import { isOrderStatus, type OrderStatus } from '../../lib/orderStatus';
 
 interface Props {
 	status: string;
@@ -9,15 +10,19 @@ interface Props {
 
 const { status, class: className } = Astro.props;
 
-// Keyed by the orders.status enum (see OrderStatus in src/lib/orderStatus.ts).
-const toneByStatus: Record<string, BadgeTone> = {
+// Keyed by the orders.status enum (see OrderStatus in src/lib/orderStatus.ts)
+// — typed as Record<OrderStatus, ...> so a new status can't be forgotten.
+// 'cancelled' (member withdrew a scheduled order) is neutral, deliberately
+// distinct from 'rejected' (moderator turned it down) in error red.
+const toneByStatus: Record<OrderStatus, BadgeTone> = {
 	requested: 'warning',
 	scheduled: 'info',
 	active: 'success',
 	returned: 'neutral',
 	rejected: 'error',
+	cancelled: 'neutral',
 };
-const tone = toneByStatus[status] ?? 'neutral';
+const tone = isOrderStatus(status) ? toneByStatus[status] : 'neutral';
 ---
 
 <Badge tone={tone} class:list={['capitalize', className]}>{status}</Badge>

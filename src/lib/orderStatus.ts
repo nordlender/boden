@@ -6,9 +6,11 @@ import { orders } from '../db/schema';
 
 export type OrderStatus = (typeof orders.$inferSelect)['status'];
 
-export const ORDER_STATUSES = ['requested', 'scheduled', 'active', 'returned', 'rejected'] as const satisfies readonly OrderStatus[];
+export const ORDER_STATUSES = ['requested', 'scheduled', 'active', 'returned', 'rejected', 'cancelled'] as const satisfies readonly OrderStatus[];
 
-// Statuses that still hold a claim on stock / calendar days.
+// Statuses that still hold a claim on stock / calendar days. 'cancelled'
+// (member soft-cancelled a scheduled order) is deliberately absent, so a
+// cancellation frees its stock and calendar days.
 export const RESERVING_STATUSES = ['requested', 'scheduled', 'active'] as const satisfies readonly OrderStatus[];
 
 export function isOrderStatus(value: unknown): value is OrderStatus {

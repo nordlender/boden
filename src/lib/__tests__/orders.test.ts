@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { createOrder, deleteOrder, generateOrderCode, rescheduleOrder } from '../orders';
+import { cancelOrder, createOrder, deleteOrder, generateOrderCode, rescheduleOrder } from '../orders';
 import type { CartEntry } from '../cart';
 
 // rescheduleOrder calls isValidDateRange (src/lib/reservation.ts), which
@@ -109,6 +109,14 @@ async function markOrderActive(orderId: number) {
 	const { db } = await import('../../db/client');
 	const schema = await import('../../db/schema');
 	await db.update(schema.orders).set({ status: 'active' }).where(eq(schema.orders.id, orderId));
+}
+
+// What acceptOrder (src/lib/moderatorOrders.ts) actually does today: moves
+// the order to 'scheduled' and stamps acceptedAt.
+async function markOrderScheduled(orderId: number) {
+	const { db } = await import('../../db/client');
+	const schema = await import('../../db/schema');
+	await db.update(schema.orders).set({ status: 'scheduled', acceptedAt: new Date() }).where(eq(schema.orders.id, orderId));
 }
 
 async function markOrderAccepted(orderId: number) {
@@ -263,15 +271,19 @@ describe('deleteOrder', () => {
 		expect(result).toEqual({ ok: false, error: 'not_found' });
 	});
 
-	it('allows deleting an accepted (scheduled) order', async () => {
+	it('rejects deleting a scheduled (moderator-accepted) order — it can only be cancelled', async () => {
 		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-20', '2026-05-21');
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
-		await markOrderAccepted(created.orderId);
+		await markOrderScheduled(created.orderId);
 
-		expect(await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({ ok: true });
-		expect(await findOrderByCode(created.orderCode)).toBeUndefined();
+		expect(await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({
+			ok: false,
+			error: 'not_deletable',
+			status: 'scheduled',
+		});
+		expect(await findOrderByCode(created.orderCode)).toBeDefined();
 	});
 
 	it('rejects deleting an order that has moved past "requested"', async () => {
@@ -284,6 +296,90 @@ describe('deleteOrder', () => {
 		const result = await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' });
 		expect(result).toEqual({ ok: false, error: 'not_deletable', status: 'active' });
 		expect(await findOrderByCode(created.orderCode)).toBeDefined();
+	});
+});
+
+describe('cancelOrder', () => {
+	it('soft-cancels a scheduled order owned by the caller, keeping the row and its orderItems', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-25', '2026-05-26');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+		await markOrderScheduled(created.orderId);
+
+		expect(await cancelOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({ ok: true });
+
+		const after = await findOrderByCode(created.orderCode);
+		expect(after?.status).toBe('cancelled');
+		expect(after?.cancelledAt).toBeInstanceOf(Date);
+		expect(await orderItemRows(created.orderId)).toHaveLength(1);
+	});
+
+	it('rejects cancelling an order owned by someone else, without revealing whether it exists', async () => {
+		expect(await cancelOrder({ orderCode: 'AAAAAA', userId: 'member-1' })).toEqual({ ok: false, error: 'not_found' });
+		expect(await cancelOrder({ orderCode: 'ZZZZZ', userId: 'member-1' })).toEqual({ ok: false, error: 'not_found' });
+	});
+
+	it('rejects cancelling a requested order — that one is deleted instead', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-27', '2026-05-28');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		expect(await cancelOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({
+			ok: false,
+			error: 'not_cancellable',
+			status: 'requested',
+		});
+		expect((await findOrderByCode(created.orderCode))?.status).toBe('requested');
+	});
+
+	it('rejects cancelling an active order and leaves it untouched', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-29', '2026-05-30');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+		await markOrderActive(created.orderId);
+
+		expect(await cancelOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({
+			ok: false,
+			error: 'not_cancellable',
+			status: 'active',
+		});
+		const after = await findOrderByCode(created.orderCode);
+		expect(after?.status).toBe('active');
+		expect(after?.cancelledAt).toBeNull();
+	});
+
+	it('is not repeatable: a second cancel reports not_cancellable', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-06-20', '2026-06-21');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+		await markOrderScheduled(created.orderId);
+
+		expect(await cancelOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({ ok: true });
+		expect(await cancelOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({
+			ok: false,
+			error: 'not_cancellable',
+			status: 'cancelled',
+		});
+	});
+
+	it('frees the stock: a cancelled order stops holding availability', async () => {
+		// Item A has 1 unit — a scheduled order fully books it, so a second
+		// overlapping order fails until the first is cancelled.
+		const first = await placeOrder([{ itemId: ITEM_A_ID, quantity: 1 }], '2026-10-01', '2026-10-05');
+		expect(first.ok).toBe(true);
+		if (!first.ok) return;
+		await markOrderScheduled(first.orderId);
+
+		expect(await placeOrder([{ itemId: ITEM_A_ID, quantity: 1 }], '2026-10-03', '2026-10-04')).toEqual({
+			ok: false,
+			error: 'unavailable',
+			unavailableItemIds: [ITEM_A_ID],
+		});
+
+		expect(await cancelOrder({ orderCode: first.orderCode, userId: 'member-1' })).toEqual({ ok: true });
+
+		const second = await placeOrder([{ itemId: ITEM_A_ID, quantity: 1 }], '2026-10-03', '2026-10-04');
+		expect(second.ok).toBe(true);
 	});
 });
 

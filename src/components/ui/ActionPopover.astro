@@ -43,6 +43,10 @@ interface Props {
 	placement?: 'anchor' | 'fill-parent';
 	side?: 'top' | 'bottom' | 'left' | 'right';
 	formAction?: string;
+	// Label of the button that just closes the popover. Override it when the
+	// confirm action is itself a "cancel" (e.g. cancelling an order), so the
+	// two buttons don't both read "Cancel".
+	dismissLabel?: string;
 	class?: string;
 }
 
@@ -56,6 +60,7 @@ const {
 	placement = 'anchor',
 	side = 'top',
 	formAction,
+	dismissLabel = 'Cancel',
 	class: className,
 } = Astro.props;
 
@@ -78,7 +83,7 @@ const titleId = `${id}-title`;
 				<slot />
 				<div class="flex justify-end gap-2">
 					<Button type="button" variant="secondary" popovertarget={id} popovertargetaction="hide">
-						Cancel
+						{dismissLabel}
 					</Button>
 					<Button type="submit" variant={confirmVariant}>
 						{confirmLabel}
@@ -93,7 +98,7 @@ const titleId = `${id}-title`;
 				<slot />
 				<div class="flex justify-end gap-2">
 					<Button type="button" variant="secondary" popovertarget={id} popovertargetaction="hide">
-						Cancel
+						{dismissLabel}
 					</Button>
 					<Button type="button" variant={confirmVariant} data-action-popover-confirm={id}>
 						{confirmLabel}

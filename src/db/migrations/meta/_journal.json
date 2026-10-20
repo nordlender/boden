@@ -15,6 +15,13 @@
       "when": 1791245544190,
       "tag": "0016_add_attribute_key_is_variant",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1792532637832,
+      "tag": "20261020214357_add_order_cancelled",
+      "breakpoints": true
     }
   ]
 }

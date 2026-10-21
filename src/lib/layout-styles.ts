@@ -17,7 +17,7 @@ export const containerClasses = 'mx-auto w-full max-w-6xl px-gutter';
 // How wide a page's content column may get *inside* the container. It is
 // always left-aligned under the title (never re-centred), so a narrower
 // page still starts on the same edge. full (default): every list, table,
-// hub and tool page; medium: long multi-section forms (reservation,
+// hub and tool page; medium: long multi-section forms and pickup days (reservation,
 // confirm, product create/edit); narrow: one focused form or result (order
 // lookup, order detail, blind count, checkout success, 404).
 export type PageWidth = 'narrow' | 'medium' | 'full';

@@ -38,7 +38,8 @@ their density.
 | `controls` | 12px | Between adjacent buttons/controls in a row |
 | `stack` | 20px | Sibling items in a group: form fields, cards in a list, header ↔ content |
 | `card` | 20px → 24px | Padding inside cards, panels, dialogs |
-| `section` | 32px → 48px | Between distinct sections of a page |
+| `block` | 24px → 32px | Between blocks in a page's body: panels, tables, headed sections (an add panel and its table, two related tables) |
+| `section` | 32px → 48px | Page header ↔ body, and other major breaks (e.g. the product page's image and details columns) |
 | `gutter` | 16px → 32px | Page side padding |
 
 Plain Tailwind numbers (`gap-2`, `py-3`) are still fine *inside* a
@@ -51,7 +52,7 @@ Use these instead of hand-rolling the same classes per page:
 
 | What | Where | Notes |
 |---|---|---|
-| Page wrapper | `ui/Page.astro` | Gutter, top/bottom padding, `gap-section` between children, optional `title`/`description` header with `before-title`/`subtitle`/`actions` slots. `width`: `narrow` (forms), `medium` (reading flows), `wide` (tools/tables), `full` (shop grid). |
+| Page wrapper | `ui/Page.astro` | Gutter, top/bottom padding, `gap-section` between header and body, `gap-block` between body blocks, optional `title`/`description` header with `before-title`/`subtitle`/`actions` slots. `width`: `narrow` (forms), `medium` (reading flows), `wide` (tools/tables), `full` (shop grid). |
 | Card / panel | `ui/Card.astro` | `p-card`, `gap-stack`, optional `title` + `actions` slot. `padding="none"` for edge-to-edge lists/tables. |
 | Alerts | `ui/Callout.astro` | Use for every error/warning/info box. Don't hand-roll `border-error-border bg-error-subtle p-3`. |
 | "Add new X" panel | `ui/AddPanel.astro` | Shared shell for add item / add set / add units: tinted box, expand trigger, your fields in the slot, Cancel + Save row. |
@@ -72,8 +73,9 @@ always line up: `inputClasses` sits beside a `md` button,
    `mx-auto max-w-* p-*` by hand.
 2. Use `ui/Card.astro` (or `cardClasses` + `p-card`) for surface panels,
    and `ui/Callout.astro` for alert boxes.
-3. Use spacing tokens for structural spacing: `gap-section` between page
-   sections, `gap-stack` between items of a group, `gap-snug` within one
+3. Use spacing tokens for structural spacing: `gap-section` between a
+   page's header and body, `gap-block` between blocks in the body (panels,
+   tables, headed sections), `gap-stack` between items of a group, `gap-snug` within one
    item, `gap-controls` between buttons, `p-card` inside panels.
 4. Form controls take their classes from `lib/form-styles.ts`. Don't
    hand-roll `rounded border border-border-interactive px-2 py-1.5`.

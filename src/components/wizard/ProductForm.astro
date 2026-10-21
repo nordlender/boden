@@ -31,7 +31,7 @@ const links = product?.links ?? [];
 const existingAttributeKeys = product?.attributeKeys ?? [];
 ---
 
-<form method="post" action={action} class="flex flex-col gap-section">
+<form method="post" action={action} class="flex flex-col gap-block">
 	<input type="hidden" name="redirectTo" value={redirectTo} />
 
 	<section class:list={[cardClasses, 'flex flex-col gap-stack p-card']}>

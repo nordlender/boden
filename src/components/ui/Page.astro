@@ -1,9 +1,11 @@
 ---
 // Standard page wrapper — use this as the outermost element inside a
 // layout instead of hand-rolling `mx-auto max-w-* p-*`. Gives every page the
-// same side gutter, top/bottom padding and section rhythm (`gap-section`
-// between direct children), from the spacing tokens in global.css (see
-// docs/spacing.md).
+// same side gutter, top/bottom padding and vertical rhythm, from the
+// spacing tokens in global.css (see docs/spacing.md): `gap-section` between
+// the header and the body, and the smaller `gap-block` between the blocks
+// in the body (the default slot's direct children) — so related panels,
+// e.g. an add panel and the table it adds to, don't drift apart.
 //
 // Optional header: `title` renders the page's h1, `description` a muted
 // line under it. Named slots:
@@ -37,5 +39,7 @@ const hasHeader = Boolean(title) || Astro.slots.has('before-title') || Astro.slo
 			</header>
 		)
 	}
-	<slot />
+	<div class="flex flex-col gap-block">
+		<slot />
+	</div>
 </div>

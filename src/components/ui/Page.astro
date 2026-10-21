@@ -3,7 +3,7 @@
 // layout instead of hand-rolling `mx-auto max-w-* p-*`. Gives every page the
 // same side gutter, top/bottom padding and vertical rhythm, from the
 // spacing tokens in global.css (see docs/spacing.md): `gap-section` between
-// the header and the body, and the smaller `gap-block` between the blocks
+// the header and the body, and the smaller `gap-region` between the blocks
 // in the body (the default slot's direct children) — so related panels,
 // e.g. an add panel and the table it adds to, don't drift apart.
 //
@@ -39,7 +39,7 @@ const hasHeader = Boolean(title) || Astro.slots.has('before-title') || Astro.slo
 			</header>
 		)
 	}
-	<div class="flex flex-col gap-block">
+	<div class="flex flex-col gap-region">
 		<slot />
 	</div>
 </div>

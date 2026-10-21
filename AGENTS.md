@@ -36,7 +36,7 @@ Consult these guides before working on related tasks:
 
 This project uses a semantic theme-token system (`--ui-*`/`--color-*` in `src/styles/global.css`) for all colors, with light/dark mode support. Never use raw Tailwind palette classes (`bg-slate-100`, `text-gray-500`, literal `white`/`black`, etc.) in components or pages — use the semantic utilities (`bg-surface`, `text-text-muted`, `border-border-strong`, ...) instead. See `docs/styling.md` for the full token reference and rules.
 
-Spacing works the same way: semantic spacing tokens (`p-card`, `gap-block`, `gap-stack`, `px-gutter`, ...) plus shared primitives — wrap pages in `ui/Page.astro`, panels in `ui/Card.astro`, alerts in `ui/Callout.astro`, and take field/table/menu classes from `src/lib/form-styles.ts`, `table-styles.ts` and `layout-styles.ts` instead of hand-rolling padding. The default is roomy; only the shop grid and small elements stay dense. See `docs/spacing.md`.
+Spacing works the same way: semantic spacing tokens (`p-card`, `gap-region`, `gap-stack`, `px-gutter`, ...) plus shared primitives — wrap pages in `ui/Page.astro`, panels in `ui/Card.astro`, alerts in `ui/Callout.astro`, and take field/table/menu classes from `src/lib/form-styles.ts`, `table-styles.ts` and `layout-styles.ts` instead of hand-rolling padding. The default is roomy; only the shop grid and small elements stay dense. See `docs/spacing.md`.
 
 ## Workflow
 ### Tasks

@@ -23,12 +23,12 @@ import { sectionTitleClasses } from '../../lib/layout-styles';
 // end time; where; buttons — via explicit max-sm: placements below (DOM
 // order, and so focus order, is unchanged), and the header row is hidden in
 // favour of each input's own visible label.
-const GRID_STYLE = '--grid-cols: 1.25rem 1fr 1fr; --grid-cols-sm: 1.25rem 4.5rem 7rem 7rem 7rem 1fr 4.75rem';
+const GRID_STYLE = '--grid-cols: 1.25rem 1fr 1fr; --grid-cols-sm: 1.25rem 4.5rem 7rem 6rem 6rem 1fr 4.5rem';
 const INPUT_CLASS = `w-full ${inputSmClasses}`;
 // Fixed width (= the sm column width) so a time input doesn't grow once a
 // value is typed in — a bare w-full lets the native picker's intrinsic width
 // stretch the cell.
-const TIME_INPUT_CLASS = `w-28 ${inputSmClasses}`;
+const TIME_INPUT_CLASS = `w-24 ${inputSmClasses}`;
 // Visible only in the stacked mobile layout; the sm+ header row labels the
 // columns there, but the text stays available to screen readers.
 const LABEL_TEXT_CLASS = `${compactLabelClasses} sm:sr-only`;

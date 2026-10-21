@@ -171,13 +171,19 @@
  * one below, so space *inside* a group always reads tighter than space
  * *between* groups. Start roomy; tighten per component only on purpose
  * (dense tables, the shop grid).
+ *
+ * Naming: a token name becomes a value for *every* spacing utility
+ * (`w-*`, `inline-*`, `block-*`, `size-*`, ...), so never name one after an
+ * existing utility suffix — e.g. `block` turned `inline-block` into
+ * `display: inline-block; inline-size: 2rem`. Check the built CSS after
+ * adding one.
  */
 :root {
 	--ui-space-snug: 0.5rem; /* 8px: tightly related pieces (label↔field, title↔meta) */
 	--ui-space-controls: 0.75rem; /* 12px: between adjacent buttons/controls */
 	--ui-space-stack: 1.25rem; /* 20px: sibling items in a group (fields, list rows) */
 	--ui-space-card: 1.25rem; /* 20px → 24px: padding inside cards, panels, dialogs */
-	--ui-space-block: 1.5rem; /* 24px → 32px: between blocks in a page's body (panels, tables, headed sections) */
+	--ui-space-region: 1.5rem; /* 24px → 32px: between blocks in a page's body (panels, tables, headed sections) */
 	--ui-space-section: 2rem; /* 32px → 48px: page header ↔ body, and other major breaks */
 	--ui-space-gutter: 1rem; /* 16px → 32px: page side padding */
 }
@@ -185,7 +191,7 @@
 @media (min-width: 40rem) {
 	:root {
 		--ui-space-card: 1.5rem;
-		--ui-space-block: 2rem;
+		--ui-space-region: 2rem;
 		--ui-space-section: 3rem;
 		--ui-space-gutter: 2rem;
 	}
@@ -196,7 +202,7 @@
 	--spacing-controls: var(--ui-space-controls);
 	--spacing-stack: var(--ui-space-stack);
 	--spacing-card: var(--ui-space-card);
-	--spacing-block: var(--ui-space-block);
+	--spacing-region: var(--ui-space-region);
 	--spacing-section: var(--ui-space-section);
 	--spacing-gutter: var(--ui-space-gutter);
 }

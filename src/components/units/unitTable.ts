@@ -8,7 +8,8 @@
 // Actions holds the new-note button and the details toggle. Below `sm` only
 // id | unit | status | actions remain; marking moves under the unit cell, and
 // the dates into the details panel.
-// Every column is left-aligned with the same gap (gap-4), so the visible
+// Every column is left-aligned with the same gap (gap-3, same as
+// lib/table-styles.ts's grid tables), so the visible
 // space between two columns is that gap plus whatever the left one leaves
 // empty. The fixed columns are sized to their content so that slack stays
 // small and even: dates their "BOUGHT" header (dd/mm/yy is narrower), extra
@@ -22,7 +23,7 @@ const UNIT_GRID = '3rem minmax(0,1.4fr) minmax(0,1fr) 4rem 4rem 3rem 9rem 4.75re
 const UNIT_GRID_MOBILE = '3rem minmax(0,1fr) 9rem 4.75rem';
 
 export const UNIT_GRID_STYLE = `--grid-cols: ${UNIT_GRID_MOBILE}; --grid-cols-sm: ${UNIT_GRID}`;
-export const UNIT_GRID_CLASS = 'grid grid-cols-(--grid-cols) sm:grid-cols-(--grid-cols-sm) items-center gap-4 px-card';
+export const UNIT_GRID_CLASS = 'grid grid-cols-(--grid-cols) sm:grid-cols-(--grid-cols-sm) items-center gap-3 px-card';
 export const DESKTOP_ONLY_CLASS = 'hidden sm:block';
 
 export const UNIT_FORM_FIELDS = [

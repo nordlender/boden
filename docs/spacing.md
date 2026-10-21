@@ -38,9 +38,15 @@ their density.
 | `controls` | 12px | Between adjacent buttons/controls in a row |
 | `stack` | 20px | Sibling items in a group: form fields, cards in a list, header ↔ content |
 | `card` | 20px → 24px | Padding inside cards, panels, dialogs |
-| `block` | 24px → 32px | Between blocks in a page's body: panels, tables, headed sections (an add panel and its table, two related tables) |
+| `region` | 24px → 32px | Between blocks in a page's body: panels, tables, headed sections (an add panel and its table, two related tables) |
 | `section` | 32px → 48px | Page header ↔ body, and other major breaks (e.g. the product page's image and details columns) |
 | `gutter` | 16px → 32px | Page side padding |
+
+**Naming a new token:** every token becomes a value for *all* spacing
+utilities (`w-*`, `size-*`, `inline-*`, `block-*`, ...), so never reuse a
+name that is already a utility suffix. A token named `block` silently
+turned the `inline-block` class into a 24–32px-wide box. After adding a
+token, search the built CSS for selectors using it.
 
 Plain Tailwind numbers (`gap-2`, `py-3`) are still fine *inside* a
 component for small, local spacing. Reach for a token whenever the space
@@ -52,7 +58,7 @@ Use these instead of hand-rolling the same classes per page:
 
 | What | Where | Notes |
 |---|---|---|
-| Page wrapper | `ui/Page.astro` | Gutter, top/bottom padding, `gap-section` between header and body, `gap-block` between body blocks, optional `title`/`description` header with `before-title`/`subtitle`/`actions` slots. `width`: `narrow` (forms), `medium` (reading flows), `wide` (tools/tables), `full` (shop grid). |
+| Page wrapper | `ui/Page.astro` | Gutter, top/bottom padding, `gap-section` between header and body, `gap-region` between body blocks, optional `title`/`description` header with `before-title`/`subtitle`/`actions` slots. `width`: `narrow` (forms), `medium` (reading flows), `wide` (tools/tables), `full` (shop grid). |
 | Card / panel | `ui/Card.astro` | `p-card`, `gap-stack`, optional `title` + `actions` slot. `padding="none"` for edge-to-edge lists/tables. |
 | Alerts | `ui/Callout.astro` | Use for every error/warning/info box. Don't hand-roll `border-error-border bg-error-subtle p-3`. |
 | "Add new X" panel | `ui/AddPanel.astro` | Shared shell for add item / add set / add units: tinted box, expand trigger, your fields in the slot, Cancel + Save row. |
@@ -74,7 +80,7 @@ always line up: `inputClasses` sits beside a `md` button,
 2. Use `ui/Card.astro` (or `cardClasses` + `p-card`) for surface panels,
    and `ui/Callout.astro` for alert boxes.
 3. Use spacing tokens for structural spacing: `gap-section` between a
-   page's header and body, `gap-block` between blocks in the body (panels,
+   page's header and body, `gap-region` between blocks in the body (panels,
    tables, headed sections), `gap-stack` between items of a group, `gap-snug` within one
    item, `gap-controls` between buttons, `p-card` inside panels.
 4. Form controls take their classes from `lib/form-styles.ts`. Don't

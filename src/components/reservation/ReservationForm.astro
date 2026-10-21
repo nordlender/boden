@@ -27,7 +27,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 );
 ---
 
-<div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} class="flex flex-col gap-block">
+<div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} class="flex flex-col gap-region">
 	<section class="flex flex-col gap-stack">
 		<h2 class={sectionTitleClasses}>1. Pick-up &amp; return dates</h2>
 		<ReservationCalendar availablePickupDates={availablePickupDates} />

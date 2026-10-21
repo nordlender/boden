@@ -38,11 +38,12 @@ export const gridTableFrameClasses = 'overflow-hidden rounded-xl border border-b
 
 // Horizontal padding is `px-card`, the same as cardHeaderClasses and the
 // toolbars above a table, so a panel's title, toolbar and columns all start
-// on one left edge.
+// on one left edge. Columns are 12px apart (gap-3) in both: header and rows
+// are separate grids, so their column gaps must match to stay aligned.
 export const gridTableHeaderClasses =
-	'items-center gap-4 border-b border-border bg-bg-subtle px-card py-3 text-xs font-medium uppercase tracking-wide text-text-muted';
+	'items-center gap-3 border-b border-border bg-bg-subtle px-card py-3 text-xs font-medium uppercase tracking-wide text-text-muted';
 
-export const gridTableRowClasses = 'items-center gap-x-4 gap-y-2 px-card py-3 text-sm';
+export const gridTableRowClasses = 'items-center gap-x-3 gap-y-2 px-card py-3 text-sm';
 
 // Toolbar strip between a panel's title and its table (bulk actions,
 // dropdowns) — see wizard/ButtonStrip.astro, wizard/sets/SetToolbar.astro.

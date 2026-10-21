@@ -18,7 +18,8 @@ The rework follows four ideas from the research behind it:
 3. **A constrained scale.** Pick from a few named steps instead of
    hand-typing `p-3`/`p-4`/`p-5` per file (Atlassian, Polaris, GOV.UK).
 4. **Density is a deliberate choice.** Dense layouts are fine where density
-   is the point: the shop grid, data tables, unit notes. Small elements
+   is the point: the shop grid, data tables, unit notes, the file explorer
+   tree. Small elements
    (badges, inline note rows, legend dots) may keep low padding.
 
 Touch targets follow `docs/sizing.md`: 24px is the hard floor (WCAG 2.5.8),

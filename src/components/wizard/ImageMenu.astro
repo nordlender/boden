@@ -34,7 +34,7 @@ const accept = Object.values(IMAGE_CONTENT_TYPES).join(',');
 		<p class:list={['min-w-0 flex-1', hintClasses]} data-image-upload-status aria-live="polite">PNG, JPEG, GIF, WebP or AVIF, up to {MAX_UPLOAD_BYTES / 1024 / 1024} MB.</p>
 	</div>
 
-	<div class="max-h-[min(20rem,45vh)] min-h-24 overflow-y-auto overscroll-contain rounded-lg border border-border p-3">
+	<div class="max-h-[min(20rem,45vh)] min-h-24 overflow-y-auto overscroll-contain rounded-lg border border-border p-2">
 		<div class="flex flex-col gap-3">
 			<FileExplorer root="uploads" label="Uploaded images" emptyMessage="No uploads yet." />
 			<FileExplorer root="site-images" label="Site images" />

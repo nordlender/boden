@@ -5,13 +5,24 @@
 // `roomy` is the default for a page-level table (orders, pickup days);
 // `dense` is for a small table nested inside something else (a set's
 // component breakdown on the product page) where full padding would swamp
-// its container.
+// its container. Each density carries its own text size, so a table never
+// needs a second, competing `text-*` class on top.
+//
+// Plain strings, so a client-side <script> that builds a table at runtime
+// (VariantPicker.astro's set breakdown) can import and reuse them too —
+// server-rendered and script-rendered copies of a table then always match.
 
 export type TableDensity = 'roomy' | 'dense';
 
-export const tableClasses = 'w-full border-collapse text-sm';
+export const tableClasses: Record<TableDensity, string> = {
+	roomy: 'w-full border-collapse text-sm',
+	dense: 'w-full border-collapse text-xs',
+};
 
-export const theadRowClasses = 'border-b border-border text-left text-xs uppercase tracking-wide text-text-muted';
+export const theadRowClasses: Record<TableDensity, string> = {
+	roomy: 'border-b border-border text-left text-xs uppercase tracking-wide text-text-muted',
+	dense: 'border-b border-border text-left text-text-muted',
+};
 
 export const tbodyRowClasses = 'border-b border-border last:border-0';
 

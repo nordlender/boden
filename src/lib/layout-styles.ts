@@ -9,16 +9,23 @@
 // without the wrapper (e.g. a <details> dropdown panel, a heading inside a
 // component that isn't a Card).
 
-// Max content width for ui/Page.astro. narrow: single forms/confirmations;
-// medium: reading-width flows (cart review, order detail); wide: admin and
-// moderator tools with tables; full: the shop grid.
-export type PageWidth = 'narrow' | 'medium' | 'wide' | 'full';
+// The site container: one max width and side gutter shared by the navbar
+// and every page (ui/Page.astro), so a page's title always lines up under
+// the logo and the page never changes width as you move between pages.
+export const containerClasses = 'mx-auto w-full max-w-6xl px-gutter';
+
+// How wide a page's content column may get *inside* the container. It is
+// always left-aligned under the title (never re-centred), so a narrower
+// page still starts on the same edge. full (default): every list, table,
+// hub and tool page; medium: long multi-section forms (reservation,
+// confirm, product create/edit); narrow: one focused form or result (order
+// lookup, order detail, blind count, checkout success, 404).
+export type PageWidth = 'narrow' | 'medium' | 'full';
 
 export const pageWidthClasses: Record<PageWidth, string> = {
 	narrow: 'max-w-xl',
 	medium: 'max-w-3xl',
-	wide: 'max-w-5xl',
-	full: 'max-w-6xl',
+	full: '',
 };
 
 // Corner radius scale: `rounded-xl` for standalone surfaces (cards, panels,

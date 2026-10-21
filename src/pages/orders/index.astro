@@ -30,7 +30,7 @@ const rows: OrdersTableRow[] = userOrders.map((order) => ({
 ---
 
 <BaseLayout title="My orders">
-	<Page width="medium" title="My orders">
+	<Page title="My orders">
 		<OrdersLayoutToggle slot="actions" />
 
 		<OrdersTable orders={rows} viewHref={(code: string) => `/orders/${code}`} emptyMessage="You haven't placed any orders yet." />

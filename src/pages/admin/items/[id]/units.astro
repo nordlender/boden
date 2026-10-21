@@ -47,7 +47,7 @@ const tableProps = { notesByUnit, currentUserId, isAdmin, today, redirectTo };
 ---
 
 <AdminLayout title={`Units · ${item.name}`}>
-	<Page width="wide" title={item.name}>
+	<Page title={item.name}>
 		<BackLink slot="before-title" href="/admin/items">Back to items</BackLink>
 		<Fragment slot="subtitle">
 			<p class="text-sm text-text-muted">

@@ -42,7 +42,7 @@ const modalId = 'add-message-modal';
 				</p>
 			)
 		}
-		<MessageTable messages={messages} currentUserId={Astro.locals.user?.id ?? null} redirectTo={redirectTo}>
+		<MessageTable messages={messages} currentUserId={Astro.locals.user?.id ?? null} redirectTo={redirectTo} scrollable>
 			<TextMorphButton
 				slot="actions"
 				action="message"

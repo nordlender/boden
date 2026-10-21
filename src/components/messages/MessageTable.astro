@@ -13,9 +13,18 @@ interface Props {
 	currentUserId?: string | null;
 	isAdmin?: boolean;
 	redirectTo?: string;
+	/** Cap the list's height to the viewport and scroll inside it (hub pages). */
+	scrollable?: boolean;
 }
 
-const { messages, currentUserId = null, isAdmin = false, redirectTo } = Astro.props;
+const { messages, currentUserId = null, isAdmin = false, redirectTo, scrollable = false } = Astro.props;
+
+// Reserves leave room below the board: on mobile the action tiles stack, so
+// only room for one is kept; from `sm` they sit in a row, so all three fit.
+// The 10rem floor keeps the board usable on very short viewports.
+const scrollClass = scrollable
+	? 'max-h-[max(10rem,calc(100dvh-22rem))] overflow-y-auto sm:max-h-[max(10rem,calc(100dvh-26rem))]'
+	: '';
 ---
 
 <div class="flex flex-col gap-3">
@@ -24,7 +33,7 @@ const { messages, currentUserId = null, isAdmin = false, redirectTo } = Astro.pr
 		<slot name="actions" />
 	</div>
 
-	<div class="rounded-lg border border-border bg-surface">
+	<div class={`rounded-lg border border-border bg-surface ${scrollClass}`}>
 		{
 			messages.length === 0 ? (
 				<p class="p-4 text-sm text-text-muted">No messages right now.</p>

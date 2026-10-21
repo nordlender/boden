@@ -22,7 +22,7 @@ const rows: OrdersTableRow[] = pendingRequests.map((order) => ({
 ---
 
 <ModeratorLayout title="Order requests — Moderator">
-	<Page title="Order requests" description="Orders waiting for review, earliest submitted first.">
+	<Page width="wide" title="Order requests" description="Orders waiting for review, earliest submitted first.">
 
 		<OrdersTable
 			orders={rows}

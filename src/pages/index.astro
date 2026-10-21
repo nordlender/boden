@@ -14,7 +14,7 @@ const snapshot = await getShopGridProducts();
 ---
 
 <BaseLayout title="Boden">
-	<Page>
+	<Page width="full">
 		<ShopGrid server:defer>
 			{snapshot.length > 0 ? <ItemGrid slot="fallback" products={snapshot} /> : <ItemGridSkeleton slot="fallback" />}
 		</ShopGrid>

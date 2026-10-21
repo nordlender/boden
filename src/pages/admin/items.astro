@@ -31,7 +31,7 @@ const toItemView = (item: Awaited<ReturnType<typeof getWizardItems>>['unassigned
 });
 ---
 <AdminLayout title="Items">
-	<Page title="Items">
+	<Page width="wide" title="Items">
 		<WizardSearch slot="actions" placeholder="Search items…" />
 
 		<AddItemPanel redirectTo={redirectTo} />

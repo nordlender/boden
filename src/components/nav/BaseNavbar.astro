@@ -8,7 +8,7 @@ import ThemeToggle from './ThemeToggle.astro';
 import MorphIcon from 'morphicons/astro';
 import { navMenu } from '../../lib/icon-nodes';
 import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
-import { containerClasses, floatingPanelClasses } from '../../lib/layout-styles';
+import { floatingPanelClasses } from '../../lib/layout-styles';
 
 interface Props {
 	links: NavLink[];
@@ -19,7 +19,7 @@ const { links, showCart = false } = Astro.props;
 ---
 
 <header class="border-b border-border bg-bg">
-	<nav class:list={[containerClasses, 'flex items-center justify-between gap-6 py-4']}>
+	<nav class="mx-auto flex max-w-6xl items-center justify-between gap-6 px-gutter py-4">
 		<Logo />
 
 		<div class="flex items-center gap-8">

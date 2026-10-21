@@ -135,6 +135,16 @@ Hub pages (Admin, Moderator) also get a page title.
 - Wizard/units detail panels: `px-card py-5`, groups separated by
   `mt-stack`, an eyebrow label `snug` above its content.
 
+**Alerts.** `ui/Callout` is a screen-reader live region by default (right
+for a message reporting what just happened). Pass `live={false}` for
+static content: explanatory notices, standing warnings, and anything that
+contains form controls (the checkout disclaimer).
+
+**Item rows.** In `ui/ItemLine`, put content that belongs under the whole
+row (a set's component list) in the `below` slot. It indents itself to the
+name, so don't hand-compute a `ml-*` from the thumbnail size. Inline
+pieces in the default slot (badges) need `self-start`.
+
 **Radius.** `rounded-xl` for standalone surfaces (cards, panels, popovers,
 callouts), `rounded-lg` for a box nested inside one, `rounded-md` for
 controls and icon triggers, `rounded-full` for pills.

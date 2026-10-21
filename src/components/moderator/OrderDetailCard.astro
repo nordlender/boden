@@ -51,7 +51,7 @@ const { order, showAvailability = false, adjustableTargets = false, followingRen
 
 	{
 		followingRentalWarnings.length > 0 && (
-			<Callout variant="warning" title="Order must be returned on the correct day">
+			<Callout variant="warning" title="Order must be returned on the correct day" live={false}>
 				<ul class="flex flex-col gap-1.5">
 					{followingRentalWarnings.map((warning) => (
 						<li>
@@ -67,7 +67,7 @@ const { order, showAvailability = false, adjustableTargets = false, followingRen
 	{order.note && <p class="text-sm text-text-muted">Note: {order.note}</p>}
 
 	{order.status === 'rejected' && order.rejectedReason && (
-		<Callout variant="error" title="Rejected">
+		<Callout variant="error" title="Rejected" live={false}>
 			<p>{order.rejectedReason}</p>
 		</Callout>
 	)}

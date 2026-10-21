@@ -26,7 +26,7 @@ const labelClass = `${fieldClasses} ${labelClasses}`;
 	<input type="hidden" name="fromDate" data-checkout-from-date />
 	<input type="hidden" name="toDate" data-checkout-to-date />
 	{hasUnpaidFees && (
-		<Callout variant="error">
+		<Callout variant="error" live={false}>
 			<p>
 				Note: you have an unpaid fee. You can still submit the form. Please check your payments on osiklatring.no. If you have paid the current semester fee, this could be an error.
 			</p>
@@ -58,7 +58,7 @@ const labelClass = `${fieldClasses} ${labelClasses}`;
 		Note
 		<textarea name="note" placeholder="Optional note for the moderator" rows={3} class:list={['w-full', textareaClasses]}></textarea>
 	</label>
-	<Callout variant="info">
+	<Callout variant="info" live={false}>
 		<p>
 			Oslo Studentidrettslag (OSI) is not liable for any injury, loss, or damage arising from the use of rented
 			equipment. By checking the box below, you confirm that you have read and accept this.

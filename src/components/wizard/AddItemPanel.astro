@@ -1,20 +1,15 @@
 ---
-// The doc calls for showing the auto-generated id here without advancing
-// the DB's counter until save — satisfied for free by the schema's
-// autoincrement PK (nothing increments until an INSERT actually commits),
-// but that also means there's no safe way to preview the exact number in
-// advance, so this just says "auto-generated" rather than guessing one.
-//
 // Description and Type/Category both used to be fields here. Both are now
 // inherited from whichever product the item ends up assigned to, so there's
-// nothing product-dependent left to set at creation — just image, id, name.
+// nothing product-dependent left to set at creation — just image, id, name
+// (AddRecordFields.astro, shared with the add-set panel).
 //
 // Collapsed by default (see ui/AddPanel.astro) — ButtonStrip.astro's "Add
 // item" shortcut opens this via data-expand-open="add-item-panel" before
 // jumping focus to #add-item-name, so that link still works whether this is
 // already open or not.
 import AddPanel from '../ui/AddPanel.astro';
-import { compactLabelClasses, inputClasses } from '../../lib/form-styles';
+import AddRecordFields from './AddRecordFields.astro';
 
 interface Props {
 	redirectTo: string;
@@ -24,18 +19,5 @@ const { redirectTo } = Astro.props;
 ---
 <AddPanel id="add-item-panel" label="Add item" icon="product" action="/api/wizard/items" submitLabel="Save item">
 	<input type="hidden" name="redirectTo" value={redirectTo} />
-	<div class="grid grid-cols-1 gap-stack sm:grid-cols-[10rem_5rem_1fr] sm:items-end">
-		<div>
-			<label class={compactLabelClasses} for="add-item-image">Image (optional)</label>
-			<input id="add-item-image" name="imageUrl" type="text" placeholder="https://…" class:list={['w-full', inputClasses]} />
-		</div>
-		<div>
-			<span class={compactLabelClasses}>Item ID</span>
-			<p class="flex min-h-10 items-center rounded-md border border-dashed border-border-strong bg-surface px-3 font-mono text-xs text-text-muted">auto</p>
-		</div>
-		<div>
-			<label class={compactLabelClasses} for="add-item-name">Item name</label>
-			<input id="add-item-name" name="name" type="text" required class:list={['w-full', inputClasses]} />
-		</div>
-	</div>
+	<AddRecordFields noun="item" />
 </AddPanel>

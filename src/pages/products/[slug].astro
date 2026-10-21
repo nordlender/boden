@@ -71,7 +71,7 @@ const initialVariantKey = product.items[0] ? variantKey('item', product.items[0]
 
 			{
 				product.items.length === 0 && product.sets.length === 0 ? (
-					<Callout variant="error"><p>No items available for this product yet.</p></Callout>
+					<Callout variant="error" live={false}><p>No items available for this product yet.</p></Callout>
 				) : (
 					<VariantPicker
 						items={product.items}

@@ -10,7 +10,7 @@
 // deliberately doesn't attempt it.
 import AppIcon from '../icons/AppIcon.astro';
 import { actionRowClasses, cardClasses, sectionTitleClasses } from '../../lib/layout-styles';
-import { compactLabelClasses, hintClasses, inputClasses } from '../../lib/form-styles';
+import { compactLabelClasses, hintClasses, inputClasses, textareaClasses } from '../../lib/form-styles';
 import { chipBaseClasses } from '../../lib/button-styles';
 import TextMorphButton from '../ui/TextMorphButton.astro';
 import MorphButton from '../ui/MorphButton.astro';
@@ -55,7 +55,7 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 				id="product-description"
 				name="description"
 				rows="3"
-				class:list={['w-full', inputClasses]}
+				class:list={['w-full', textareaClasses]}
 				set:text={product?.description ?? ''}
 			/>
 		</div>

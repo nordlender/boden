@@ -38,7 +38,7 @@ const lineKey = `${kind}:${id}`;
 		gap="lg"
 		class="flex-wrap"
 	>
-		{kind === 'set' && <Badge class="mt-0.5 inline-block">Set</Badge>}
+		{kind === 'set' && <Badge class="mt-0.5 self-start">Set</Badge>}
 		<Fragment slot="badge">
 			<p data-availability-badge hidden class={badgeBaseClasses}></p>
 		</Fragment>
@@ -55,6 +55,6 @@ const lineKey = `${kind}:${id}`;
 				<span class="sr-only">{productTitle} from your cart</span>
 			</button>
 		</Fragment>
+		{kind === 'set' && <SetChildrenList slot="below" components={components} quantity={quantity} />}
 	</ItemLine>
-	{kind === 'set' && <SetChildrenList components={components} quantity={quantity} class="ml-21" />}
 </div>

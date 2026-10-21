@@ -4,8 +4,8 @@
 // lib/cart.ts's CartSetChild). Shared by the cart sidebar and
 // the reservation row so the two can't drift apart.
 //
-// `class` supplies the left indent, since it depends on the host row's
-// thumbnail size + gap (so the list lines up under the set's name).
+// Hosts render it in ui/ItemLine.astro's "below" slot, which indents it
+// to line up under the set's name.
 interface Props {
 	components: { productTitle: string; quantityPerSet: number }[];
 	// How many of the set are in the cart — each component's shown count is

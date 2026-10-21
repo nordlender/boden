@@ -1,10 +1,10 @@
 ---
-// Collapsed by default, same ui/AddPanel.astro shell as /admin/items'
-// AddItemPanel.astro. Label isn't collected here — it's meaningless until
-// the set exists (same reasoning AddItemPanel gives for dropping
-// product-dependent fields at creation time).
+// Collapsed by default, same ui/AddPanel.astro shell and AddRecordFields
+// as /admin/items' AddItemPanel.astro. Label isn't collected here — it's
+// meaningless until the set exists (same reasoning AddItemPanel gives for
+// dropping product-dependent fields at creation time).
 import AddPanel from '../../ui/AddPanel.astro';
-import { compactLabelClasses, inputClasses } from '../../../lib/form-styles';
+import AddRecordFields from '../AddRecordFields.astro';
 
 interface Props {
 	redirectTo: string;
@@ -14,18 +14,5 @@ const { redirectTo } = Astro.props;
 ---
 <AddPanel id="add-set-panel" label="Add set" icon="set" action="/api/wizard/sets" submitLabel="Save set">
 	<input type="hidden" name="redirectTo" value={redirectTo} />
-	<div class="grid grid-cols-1 gap-stack sm:grid-cols-[10rem_5rem_1fr] sm:items-end">
-		<div>
-			<label class={compactLabelClasses} for="add-set-image">Image (optional)</label>
-			<input id="add-set-image" name="imageUrl" type="text" placeholder="https://…" class:list={['w-full', inputClasses]} />
-		</div>
-		<div>
-			<span class={compactLabelClasses}>Set ID</span>
-			<p class="flex min-h-10 items-center rounded-md border border-dashed border-border-strong bg-surface px-3 font-mono text-xs text-text-muted">auto</p>
-		</div>
-		<div>
-			<label class={compactLabelClasses} for="add-set-name">Set name</label>
-			<input id="add-set-name" name="name" type="text" required class:list={['w-full', inputClasses]} />
-		</div>
-	</div>
+	<AddRecordFields noun="set" />
 </AddPanel>

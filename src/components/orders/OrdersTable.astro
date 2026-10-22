@@ -13,7 +13,9 @@ export interface OrdersTableRow {
 	status: string;
 	fromDate: string;
 	toDate: string;
-	customerName: string;
+	// Omitted on the member's own order list (/orders), where it would
+	// just repeat their own name — the column is then dropped.
+	customerName?: string;
 	items: OrderRowItem[];
 }
 
@@ -22,6 +24,8 @@ interface Props {
 	viewHref: (orderCode: string) => string;
 	emptyMessage?: string;
 }
+// Optional `empty-action` slot: rendered under emptyMessage when there are
+// no orders (e.g. a "Browse gear" link on the member's own list).
 
 const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 ---
@@ -29,7 +33,14 @@ const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 <div class="orders-table flex flex-col gap-3" data-orders-table>
 	{
 		orders.length === 0 ? (
-			<p class={emptyStateFramedClasses}>{emptyMessage}</p>
+			<div class={emptyStateFramedClasses}>
+				<p>{emptyMessage}</p>
+				{Astro.slots.has('empty-action') && (
+					<div class="mt-4">
+						<slot name="empty-action" />
+					</div>
+				)}
+			</div>
 		) : (
 			<>
 				<div class="flex flex-col gap-3" data-orders-layout="compact">

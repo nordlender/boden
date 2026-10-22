@@ -35,15 +35,24 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 	<section>
 		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">2. Your items</h2>
 
-		<p
-			data-unavailable-warning
-			hidden
-			class="mb-4 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-warning-text"
-		>
-			Some items are not available in this timeframe. Remove them from your cart below, or choose different dates.
-		</p>
-
-		<p data-availability-loading hidden class="mb-4 text-sm text-text-muted">Checking availability…</p>
+		{/* One polite live region around the loading/warning/error boxes so
+		    their text is announced when it changes. reservationFormState.ts
+		    fills the text in (#262). */}
+		<div aria-live="polite">
+			<p data-availability-loading hidden class="mb-4 text-sm text-text-muted">Checking availability…</p>
+			<p
+				data-unavailable-warning
+				hidden
+				class="mb-4 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-warning-text"
+			>
+			</p>
+			<p
+				data-availability-error
+				hidden
+				class="mb-4 rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text"
+			>
+			</p>
+		</div>
 
 		<div class="divide-y divide-border border-y border-border">
 			{
@@ -78,7 +87,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 	<section>
 		<h2 class="mb-3 text-sm font-semibold tracking-wide text-text-muted uppercase">3. Your details</h2>
 		<CheckoutForm name={name} email={email} mobile={mobile} hasUnpaidFees={hasUnpaidFees} userIsMember={userIsMember} />
-		<p data-submit-hint class="mt-2 text-sm text-text-muted">Select your pick-up and return dates above to continue.</p>
+		<p data-submit-hint aria-live="polite" class="mt-2 text-sm text-text-muted">Select your pick-up and return dates above to continue.</p>
 	</section>
 </div>
 

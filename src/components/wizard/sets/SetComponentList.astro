@@ -5,6 +5,7 @@
 // <details>-per-row disclosure since there's nothing to hide, just a number
 // to edit.
 import Thumbnail from '../../ui/Thumbnail.astro';
+import { inputSmClasses } from '../../../lib/form-styles';
 import MorphButton from '../../ui/MorphButton.astro';
 import TextMorphButton from '../../ui/TextMorphButton.astro';
 import type { WizardSetComponent } from '../../../lib/setWizard';
@@ -17,7 +18,7 @@ interface Props {
 
 const { setId, components, redirectTo } = Astro.props;
 ---
-<div class="flex flex-col gap-1.5">
+<div class="flex flex-col gap-2.5">
 	{components.map((component) => (
 		<div class="flex items-center gap-2">
 			<Thumbnail src={component.imageUrl} alt={component.name} size={28} />
@@ -27,7 +28,7 @@ const { setId, components, redirectTo } = Astro.props;
 				</span>
 				{component.archived && <span class="ml-1 text-xs text-error">(archived)</span>}
 			</div>
-			<form method="post" action="/api/wizard/set-component-update" class="flex items-center gap-1.5">
+			<form method="post" action="/api/wizard/set-component-update" class="flex items-center gap-2">
 				<input type="hidden" name="setId" value={setId} />
 				<input type="hidden" name="itemId" value={component.itemId} />
 				<input type="hidden" name="redirectTo" value={redirectTo} />
@@ -36,7 +37,7 @@ const { setId, components, redirectTo } = Astro.props;
 					name="quantity"
 					value={component.quantity}
 					min="1"
-					class="w-16 rounded border border-border-interactive px-2 py-1 text-right text-sm"
+					class:list={['w-16 text-right', inputSmClasses]}
 				/>
 				<TextMorphButton type="submit" action="save" size="sm" />
 			</form>

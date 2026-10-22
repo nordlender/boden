@@ -21,7 +21,7 @@ const { items, ...rowProps } = Astro.props;
 ---
 
 <OrdersTableRow {...rowProps}>
-	<ul class="flex flex-col gap-1 pl-1 text-text-muted">
+	<ul class="flex flex-col gap-1.5 pl-1 text-text-muted">
 		{items.map((item) => <ItemQtyLine name={item.itemName} quantity={item.requestedQuantity} />)}
 	</ul>
 </OrdersTableRow>

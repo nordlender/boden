@@ -19,18 +19,18 @@ const normalize = (path: string) => path.replace(/\/$/, '') || '/';
 const currentPath = normalize(Astro.url.pathname);
 ---
 
-<ul class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+<ul class="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
 	{
 		links.map((link) =>
 			link.disabled ? (
 				<li>
-					<span class="cursor-not-allowed text-sm text-text-muted/50" aria-disabled="true" title="Coming soon">
+					<span class="block cursor-not-allowed rounded-md px-3 py-2 text-sm text-text-muted/50" aria-disabled="true" title="Coming soon">
 						{link.label}
 					</span>
 				</li>
 			) : (
 				<li {...(link.authOnly ? { 'data-signed-in': true, hidden: true } : {})}>
-					<a href={link.href} aria-current={normalize(link.href) === currentPath ? 'page' : undefined} class="text-sm text-text-muted hover:text-text">
+					<a href={link.href} aria-current={normalize(link.href) === currentPath ? 'page' : undefined} class="block rounded-md px-3 py-2 text-sm text-text-muted hover:bg-bg-subtle hover:text-text aria-[current=page]:font-medium aria-[current=page]:text-text">
 						{link.label}
 					</a>
 				</li>

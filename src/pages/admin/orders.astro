@@ -2,6 +2,8 @@
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin) —
 // reached only when logged in with role === 'admin'.
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import Page from '../../components/ui/Page.astro';
+import { chipBaseClasses } from '../../lib/button-styles';
 import { db } from '../../db/client';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
 import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
@@ -40,20 +42,16 @@ const rows: OrdersTableRow[] = allOrders.map((order) => ({
 }));
 ---
 <AdminLayout title="Orders">
-	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-		<div>
-			<h1 class="text-xl font-semibold text-text">Orders</h1>
-			<p class="mt-1 text-sm text-text-muted">All member rental requests, most recent first.</p>
-		</div>
-
-		<div class="flex flex-wrap items-center justify-between gap-2">
+	<Page width="wide" title="Orders" description="All member rental requests, most recent first.">
+		<div class="flex flex-wrap items-center justify-between gap-stack">
 			<div class="flex flex-wrap gap-2">
 				<a
 					href={statusHref(null)}
 					aria-current={activeStatus === null ? 'true' : undefined}
 					class:list={[
-						'rounded-full border px-3 py-1 text-xs font-medium capitalize',
-						activeStatus === null ? 'border-border-strong bg-bg text-text' : 'border-border text-text-muted hover:text-text',
+						chipBaseClasses,
+						'capitalize',
+						activeStatus === null ? 'border-border-strong bg-surface text-text' : 'border-border text-text-muted hover:bg-bg-subtle hover:text-text',
 					]}
 				>
 					All
@@ -64,10 +62,11 @@ const rows: OrdersTableRow[] = allOrders.map((order) => ({
 							href={statusHref(status)}
 							aria-current={activeStatus === status ? 'true' : undefined}
 							class:list={[
-								'rounded-full border px-3 py-1 text-xs font-medium capitalize',
+								chipBaseClasses,
+								'capitalize',
 								activeStatus === status
-									? 'border-border-strong bg-bg text-text'
-									: 'border-border text-text-muted hover:text-text',
+									? 'border-border-strong bg-surface text-text'
+									: 'border-border text-text-muted hover:bg-bg-subtle hover:text-text',
 							]}
 						>
 							{status}
@@ -79,5 +78,5 @@ const rows: OrdersTableRow[] = allOrders.map((order) => ({
 		</div>
 
 		<OrdersTable orders={rows} viewHref={(code: string) => `/admin/orders/${code}`} emptyMessage="No orders match this filter." />
-	</div>
+	</Page>
 </AdminLayout>

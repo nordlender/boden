@@ -4,7 +4,8 @@
 // target — the whole point is the moderator reports an unbiased count).
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /moderator).
 import ModeratorLayout from '../../../../layouts/ModeratorLayout.astro';
-import BackLink from '../../../../components/moderator/BackLink.astro';
+import Page from '../../../../components/ui/Page.astro';
+import BackLink from '../../../../components/ui/BackLink.astro';
 import BlindCountList from '../../../../components/moderator/BlindCountList.astro';
 import { getOrderDetail } from '../../../../lib/moderatorOrders';
 
@@ -41,8 +42,8 @@ const lines = order.items.map((item) => {
 ---
 
 <ModeratorLayout title={`Confirm order #${order.orderCode} — Moderator`}>
-	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
-		<BackLink href={`/moderator/retrieve/${order.id}`}>Back to order</BackLink>
+	<Page width="narrow">
+		<BackLink slot="before-title" href={`/moderator/retrieve/${order.id}`}>Back to order</BackLink>
 
 		<BlindCountList
 			title={`Confirm order #${order.orderCode}`}
@@ -51,5 +52,5 @@ const lines = order.items.map((item) => {
 			mismatch={mismatch}
 			lines={lines}
 		/>
-	</div>
+	</Page>
 </ModeratorLayout>

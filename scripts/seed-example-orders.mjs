@@ -234,7 +234,7 @@ function seedOrder(order) {
     confirmedBy: handedOut ? MODERATOR_ID : null,
     returnedBy: returned ? MODERATOR_ID : null,
     createdAt,
-    acceptedAt: accepted || rejected ? createdAt + 86400 : null,
+    acceptedAt: accepted ? createdAt + 86400 : null,
     activatedAt: handedOut ? unix(order.fromDate, '18:30') : null,
     returnedAt: returned ? unix(order.toDate, '18:30') : null,
     rejectedAt: rejected ? createdAt + 86400 : null,

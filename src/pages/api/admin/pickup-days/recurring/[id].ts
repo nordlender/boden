@@ -12,10 +12,11 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
 	if (id === null) return jsonError('invalid_id', 400);
 
 	// Cascades to every generated pickup_days row (see schema.ts) — no
-	// separate cleanup needed here.
-	const deleted = await deleteRecurringRule(id);
-	if (!deleted) {
-		return jsonError('not_found', 404);
+	// separate cleanup needed here. Refused while one of those days is a
+	// scheduled order's confirmed window (#369).
+	const result = await deleteRecurringRule(id);
+	if (!result.ok) {
+		return result.error === 'assigned' ? json(result, 409) : jsonError('not_found', 404);
 	}
 
 	return json({ ok: true });

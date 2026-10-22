@@ -16,9 +16,11 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
 	// WHERE clause, not just checked here — a moderator can never delete
 	// another moderator's offer or a recurring-generated day by id, even if
 	// they know/guess it.
-	const deleted = await deleteSingleDay(id, locals.user!.id);
-	if (!deleted) {
-		return jsonError('not_found', 404);
+	const result = await deleteSingleDay(id, locals.user!.id);
+	if (!result.ok) {
+		// 'assigned': a scheduled order has this window as its confirmed
+		// pick-up/return time (#369) — PickupDayDeleteButton lists the codes.
+		return result.error === 'assigned' ? json(result, 409) : jsonError('not_found', 404);
 	}
 
 	return json({ ok: true });

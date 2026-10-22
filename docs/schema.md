@@ -234,7 +234,7 @@ export const orders = sqliteTable('orders', {
   // The pick-up window (on fromDate) and return window (on toDate) a
   // moderator confirmed, from the windows overlapping the member's time
   // ranges (orderTimeRanges below). Null until accepted. No onDelete:
-  // deleting an assigned window is blocked by the app (#369).
+  // deleting a window a scheduled order is assigned is refused (#369).
   pickupDayId: integer('pickup_day_id').references(() => pickupDays.id),
   returnDayId: integer('return_day_id').references(() => pickupDays.id),
 }, (table) => [
@@ -589,6 +589,8 @@ moderator then assigns a real window to the order when accepting it
   range (16:00-18:00 vs 18:00-20:00) doesn't match. Used by `/reservation`
   presets (#368), the review page and `acceptOrder` (#343).
 - **Assigned windows** (`orders.pickupDayId` / `returnDayId`) stay null until
-  the order is accepted. There's no `onDelete`: deleting a window an order is
-  assigned to fails on the FK, and #369 makes the app block it with a proper
-  message.
+  the order is accepted. There's no `onDelete`: `deleteSingleDay` /
+  `deleteRecurringRule` refuse (listing the order codes) while a `scheduled`
+  order is assigned one of the affected windows (#369), and otherwise clear
+  the reference of orders that are done with it (rejected, returned, …) in
+  the same transaction as the delete.

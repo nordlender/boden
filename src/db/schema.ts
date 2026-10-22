@@ -355,8 +355,9 @@ export const orders = sqliteTable('orders', {
   // the member's requested time ranges (`orderTimeRanges` below, matched by
   // findOverlappingWindows in src/lib/pickupDays.ts). Null until the order is
   // accepted: the member only gives time ranges at request time, never a
-  // window. No onDelete: deleting a pick-up day that an order is assigned to
-  // is to be blocked by the app (#369), not cascaded or nulled here.
+  // window. No onDelete: deleteSingleDay / deleteRecurringRule
+  // (src/lib/pickupDays.ts) refuse while a scheduled order is assigned the
+  // window (#369), and clear the reference of orders past needing it.
   pickupDayId: integer('pickup_day_id').references(() => pickupDays.id),
   returnDayId: integer('return_day_id').references(() => pickupDays.id),
   // TODO: dueAt (rental due date) — not yet confirmed, see docs/schema-legacy-fixes.md #9

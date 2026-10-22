@@ -6,7 +6,7 @@ vi.mock('../../db/client', async () => {
 });
 
 const { db } = await import('../../db/client');
-const { users } = await import('../../db/schema');
+const { orders, users } = await import('../../db/schema');
 const {
 	isValidDateString,
 	isValidTimeString,
@@ -25,6 +25,7 @@ const MODERATOR_B = 'moderator-b';
 const ADMIN = 'admin-a';
 
 beforeEach(async () => {
+	await db.delete(orders);
 	await db.delete((await import('../../db/schema')).pickupDays);
 	await db.delete((await import('../../db/schema')).pickupRecurringRules);
 	for (const id of [MODERATOR_A, MODERATOR_B, ADMIN]) {
@@ -107,10 +108,10 @@ describe('single pickup days', () => {
 		await createSingleDays(MODERATOR_A, [{ date: '2026-09-10', startTime: '09:00', endTime: '10:00', where: null }]);
 		const [row] = await listUpcomingPickupDays('2026-01-01');
 
-		expect(await deleteSingleDay(row.id, MODERATOR_B)).toBe(false);
+		expect(await deleteSingleDay(row.id, MODERATOR_B)).toEqual({ ok: false, error: 'not_found' });
 		expect(await listUpcomingPickupDays('2026-01-01')).toHaveLength(1);
 
-		expect(await deleteSingleDay(row.id, MODERATOR_A)).toBe(true);
+		expect(await deleteSingleDay(row.id, MODERATOR_A)).toEqual({ ok: true });
 		expect(await listUpcomingPickupDays('2026-01-01')).toHaveLength(0);
 	});
 });
@@ -157,13 +158,13 @@ describe('recurring pickup days', () => {
 		});
 		expect(await listUpcomingPickupDays('2026-01-01')).not.toHaveLength(0);
 
-		expect(await deleteRecurringRule(rule.id)).toBe(true);
+		expect(await deleteRecurringRule(rule.id)).toEqual({ ok: true });
 		expect(await listUpcomingPickupDays('2026-01-01')).toHaveLength(0);
 		expect(await listRecurringRules()).toHaveLength(0);
 	});
 
 	it('deleting an unknown rule id returns false', async () => {
-		expect(await deleteRecurringRule(999999)).toBe(false);
+		expect(await deleteRecurringRule(999999)).toEqual({ ok: false, error: 'not_found' });
 	});
 });
 
@@ -253,5 +254,56 @@ describe('findOverlappingWindows', () => {
 		await offer([['18:00', '20:00']]);
 		expect(findOverlappingWindows(DATE, [])).toEqual([]);
 		expect(findOverlappingWindows(DATE, [{ from: '19:00', to: '18:00' }, { from: 'x', to: '19:00' }])).toEqual([]);
+	});
+});
+
+describe('deleting windows assigned to orders (#369)', () => {
+	let orderSeq = 0;
+	async function orderUsing(status: 'requested' | 'scheduled' | 'active' | 'returned' | 'rejected', days: { pickupDayId?: number; returnDayId?: number }) {
+		orderSeq += 1;
+		const [order] = await db
+			.insert(orders)
+			.values({ orderCode: `${10 + orderSeq}AAM`, userId: MODERATOR_A, status, fromDate: '2026-09-07', toDate: '2026-09-14', ...days })
+			.returning();
+		return order;
+	}
+
+	it('refuses to delete a single day that is a scheduled order\'s pick-up or return window, listing the codes', async () => {
+		await createSingleDays(MODERATOR_A, [{ date: '2026-09-07', startTime: '18:00', endTime: '20:00', where: null }]);
+		const [day] = await listUpcomingPickupDays('2026-01-01');
+		const pickupOrder = await orderUsing('scheduled', { pickupDayId: day.id });
+		const returnOrder = await orderUsing('scheduled', { returnDayId: day.id });
+
+		expect(await deleteSingleDay(day.id, MODERATOR_A)).toEqual({ ok: false, error: 'assigned', orderCodes: [pickupOrder.orderCode, returnOrder.orderCode].sort() });
+		expect(await listUpcomingPickupDays('2026-01-01')).toHaveLength(1);
+	});
+
+	it('still deletes a day referenced only by orders that are done with it, clearing their reference', async () => {
+		await createSingleDays(MODERATOR_A, [{ date: '2026-09-07', startTime: '18:00', endTime: '20:00', where: null }]);
+		const [day] = await listUpcomingPickupDays('2026-01-01');
+		const returned = await orderUsing('returned', { pickupDayId: day.id, returnDayId: day.id });
+		const rejected = await orderUsing('rejected', { pickupDayId: day.id });
+
+		expect(await deleteSingleDay(day.id, MODERATOR_A)).toEqual({ ok: true });
+		expect(await listUpcomingPickupDays('2026-01-01')).toHaveLength(0);
+		const rows = await db.select().from(orders);
+		expect(rows.filter((o) => o.id === returned.id || o.id === rejected.id).map((o) => [o.pickupDayId, o.returnDayId])).toEqual([
+			[null, null],
+			[null, null],
+		]);
+	});
+
+	it('refuses to delete a recurring rule while one of its generated days is assigned to a scheduled order', async () => {
+		const rule = await createRecurringRule({ createdByUserId: ADMIN, weekday: 1, startTime: '18:00', endTime: '20:00', startDate: '2026-09-07', endDate: '2026-09-21' });
+		const days = await listUpcomingPickupDays('2026-01-01');
+		const order = await orderUsing('scheduled', { returnDayId: days[1].id });
+
+		expect(await deleteRecurringRule(rule.id)).toEqual({ ok: false, error: 'assigned', orderCodes: [order.orderCode] });
+		expect(await listUpcomingPickupDays('2026-01-01')).toHaveLength(3);
+		expect(await listRecurringRules()).toHaveLength(1);
+
+		await db.update(orders).set({ status: 'returned' });
+		expect(await deleteRecurringRule(rule.id)).toEqual({ ok: true });
+		expect(await listUpcomingPickupDays('2026-01-01')).toHaveLength(0);
 	});
 });

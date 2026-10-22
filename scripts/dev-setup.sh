@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # One-shot dev environment bootstrap for a fresh worktree: copies .env from
 # the main checkout (worktrees don't inherit untracked files), runs pending
-# Drizzle migrations, then seeds the example catalog — including the units
-# behind every item, since an item's stock is its number of active units.
+# Drizzle migrations, then seeds the example catalog (including the units
+# behind every item, since an item's stock is its number of active units)
+# and example orders, pick-up days and messages.
 #
 # Usage: npm run dev-setup
 set -euo pipefail
@@ -40,5 +41,8 @@ npx drizzle-kit migrate
 
 echo "Seeding example catalog (items and their units)..."
 node scripts/seed-example-catalog.mjs
+
+echo "Seeding example orders, pick-up days and messages..."
+node scripts/seed-example-orders.mjs
 
 echo "dev-setup complete."

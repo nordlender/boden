@@ -9,6 +9,7 @@
 // DeleteOrderButton uses — these rows are dense table rows, not a single
 // detail-page action.
 import ActionPopover from '../ui/ActionPopover.astro';
+import { inlineErrorClasses } from '../../lib/form-styles';
 import MorphButton from '../ui/MorphButton.astro';
 
 interface Props {
@@ -30,7 +31,7 @@ const popoverId = `pickup-day-delete-${id}`;
 		</Fragment>
 		<p class="text-sm text-text-muted">{body}</p>
 	</ActionPopover>
-	<p data-pickup-day-delete-error hidden class="mt-1 text-xs text-error-text" />
+	<p data-pickup-day-delete-error hidden class:list={['mt-2', inlineErrorClasses]} />
 </div>
 
 <script>

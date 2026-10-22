@@ -22,7 +22,7 @@ const { node, root } = Astro.props;
 	node.type === 'directory' ? (
 		<li>
 			<details class="group">
-				<summary class="flex cursor-pointer list-none items-center gap-1.5 rounded py-1 text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
+				<summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-md py-1 text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
 					<MorphIcon icon={folderToggle.closed} size={16} class="folder-icon shrink-0 text-text-muted" />
 					<span class="truncate">{node.name}</span>
 				</summary>
@@ -48,7 +48,7 @@ const { node, root } = Astro.props;
 		<li>
 			<button
 				type="button"
-				class="flex w-full min-w-0 items-center gap-1.5 rounded py-1 text-left text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:bg-selected-subtle aria-pressed:text-text"
+				class="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-left text-text-muted hover:bg-bg-subtle hover:text-text aria-pressed:bg-selected-subtle aria-pressed:text-text"
 				data-file-path={node.path}
 				data-file-url={fileUrl(root, node.path)}
 				aria-pressed="false"

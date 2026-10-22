@@ -4,7 +4,7 @@
 // item rows' availability badges.
 export type BadgeTone = 'neutral' | 'success' | 'info' | 'warning' | 'error';
 
-export const badgeBaseClasses = 'rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap';
+export const badgeBaseClasses = 'rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap';
 
 // Written out in full (not built from a template) so Tailwind's class
 // scanner can see every class — same convention as button-styles.ts.

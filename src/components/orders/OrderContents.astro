@@ -2,6 +2,7 @@
 import ItemQtyLine from '../ui/ItemQtyLine.astro';
 import ItemLine from '../ui/ItemLine.astro';
 import type { Attribute } from '../../lib/attributes';
+import { eyebrowClasses } from '../../lib/layout-styles';
 
 interface OrderItemView {
 	itemName: string;
@@ -27,9 +28,9 @@ interface Props {
 const { items, note, showImages = false } = Astro.props;
 ---
 
-<section class="flex flex-col gap-2">
-	<h2 class="text-sm font-semibold tracking-wide text-text-muted uppercase">Items</h2>
-	<ul class:list={['flex flex-col text-sm text-text', showImages ? 'gap-3' : 'gap-1']}>
+<section class="flex flex-col gap-3">
+	<h2 class={eyebrowClasses}>Items</h2>
+	<ul class:list={['flex flex-col text-sm text-text', showImages ? 'gap-3' : 'gap-2']}>
 		{
 			items.map((item) =>
 				showImages ? (

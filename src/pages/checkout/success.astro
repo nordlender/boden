@@ -3,6 +3,7 @@ import ConfirmationLayout from '../../layouts/ConfirmationLayout.astro';
 import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import Button from '../../components/ui/Button.astro';
 import PickupInfo from '../../components/orders/PickupInfo.astro';
+import Card from '../../components/ui/Card.astro';
 import { db } from '../../db/client';
 import { getOrderPickupWindows } from '../../lib/pickupDays';
 import { toOrderItemView } from '../../lib/orderItemView';
@@ -39,7 +40,7 @@ const pickupWindows = await getOrderPickupWindows(order);
 		</p>
 	</Fragment>
 
-	<div class="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
+	<Card as="div">
 		<UserOrderSummary
 			orderCode={order.orderCode}
 			status={order.status}
@@ -53,7 +54,7 @@ const pickupWindows = await getOrderPickupWindows(order);
 		<Button variant="primary" size="lg" href={`/orders/${order.orderCode}`} class="self-start">
 			View or manage this order
 		</Button>
-	</div>
+	</Card>
 
 	<a href="/" class="self-center text-sm font-medium text-accent-text hover:underline">
 		Continue shopping

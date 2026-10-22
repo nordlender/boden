@@ -30,7 +30,9 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 	let lastTo: string | undefined;
 
 	const warning = document.querySelector<HTMLElement>('[data-unavailable-warning]');
+	const warningText = document.querySelector<HTMLElement>('[data-unavailable-warning-text]');
 	const errorBox = document.querySelector<HTMLElement>('[data-availability-error]');
+	const errorText = document.querySelector<HTMLElement>('[data-availability-error-text]');
 	const loadingIndicator = document.querySelector<HTMLElement>('[data-availability-loading]');
 	const submitHint = document.querySelector('[data-submit-hint]');
 	const checkoutForm = document.querySelector('.checkout-form');
@@ -53,14 +55,10 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 		setSubmitEnabled(submitButton, view.submitEnabled && cartLines.length > 0);
 		setSubmitHint(submitHint, view.hint);
 		if (loadingIndicator) loadingIndicator.hidden = !view.loading;
-		if (warning) {
-			warning.hidden = view.warning === null;
-			warning.textContent = view.warning ?? '';
-		}
-		if (errorBox) {
-			errorBox.hidden = view.error === null;
-			errorBox.textContent = view.error ?? '';
-		}
+		if (warning) warning.hidden = view.warning === null;
+		if (warningText) warningText.textContent = view.warning ?? '';
+		if (errorBox) errorBox.hidden = view.error === null;
+		if (errorText) errorText.textContent = view.error ?? '';
 	}
 
 	setSubmitEnabled(submitButton, false);

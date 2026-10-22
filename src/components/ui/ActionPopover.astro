@@ -30,6 +30,7 @@
 // ignored when a custom trigger is slotted in.
 import Popover from './Popover.astro';
 import Button from './Button.astro';
+import { actionRowClasses, sectionTitleClasses } from '../../lib/layout-styles';
 
 interface Props {
 	id: string;
@@ -76,12 +77,12 @@ const titleId = `${id}-title`;
 <Popover id={id} placement={placement} side={side} labelledBy={titleId} class={className}>
 	{
 		formAction ? (
-			<form method="post" action={formAction} class="flex flex-col gap-3">
-				<p id={titleId} class="font-medium">
+			<form method="post" action={formAction} class="flex flex-col gap-stack">
+				<p id={titleId} class={sectionTitleClasses}>
 					{title}
 				</p>
 				<slot />
-				<div class="flex justify-end gap-2">
+				<div class={actionRowClasses}>
 					<Button type="button" variant="secondary" popovertarget={id} popovertargetaction="hide">
 						{dismissLabel}
 					</Button>
@@ -91,12 +92,12 @@ const titleId = `${id}-title`;
 				</div>
 			</form>
 		) : (
-			<div class="flex flex-col gap-3">
-				<p id={titleId} class="font-medium">
+			<div class="flex flex-col gap-stack">
+				<p id={titleId} class={sectionTitleClasses}>
 					{title}
 				</p>
 				<slot />
-				<div class="flex justify-end gap-2">
+				<div class={actionRowClasses}>
 					<Button type="button" variant="secondary" popovertarget={id} popovertargetaction="hide">
 						{dismissLabel}
 					</Button>

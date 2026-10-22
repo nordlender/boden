@@ -21,7 +21,7 @@ interface Props {
 
 const { itemId, formId, checked = false, label, name = 'itemIds' } = Astro.props;
 ---
-<label class:list={['grid cursor-pointer place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]}>
+<label class:list={['grid cursor-pointer place-items-center rounded-md text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]}>
 	<input
 		type="checkbox"
 		name={name}

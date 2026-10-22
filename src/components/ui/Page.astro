@@ -1,0 +1,45 @@
+---
+// Standard page wrapper — use this as the outermost element inside a
+// layout instead of hand-rolling `mx-auto max-w-* p-*`. Gives every page the
+// same side gutter, top/bottom padding and vertical rhythm, from the
+// spacing tokens in global.css (see docs/spacing.md): `gap-section` between
+// the header and the body, and the smaller `gap-region` between the blocks
+// in the body (the default slot's direct children) — so related panels,
+// e.g. an add panel and the table it adds to, don't drift apart.
+//
+// Optional header: `title` renders the page's h1, `description` a muted
+// line under it. Named slots:
+//   - "before-title": above the h1 (e.g. a moderator BackLink)
+//   - "subtitle": extra lines under the title/description (e.g. a badge)
+//   - "actions": right-aligned beside the title (e.g. a "New" button)
+import { pageTitleClasses, pageWidthClasses, type PageWidth } from '../../lib/layout-styles';
+
+interface Props {
+	width?: PageWidth;
+	title?: string;
+	description?: string;
+	class?: string;
+}
+
+const { width = 'wide', title, description, class: className } = Astro.props;
+const hasHeader = Boolean(title) || Astro.slots.has('before-title') || Astro.slots.has('actions');
+---
+
+<div class:list={['mx-auto flex w-full flex-col gap-section px-gutter py-section', pageWidthClasses[width], className]}>
+	{
+		hasHeader && (
+			<header class="flex flex-wrap items-end justify-between gap-stack">
+				<div class="flex min-w-0 flex-col gap-snug">
+					<slot name="before-title" />
+					{title && <h1 class={pageTitleClasses}>{title}</h1>}
+					{description && <p class="text-sm leading-relaxed text-text-muted">{description}</p>}
+					<slot name="subtitle" />
+				</div>
+				<slot name="actions" />
+			</header>
+		)
+	}
+	<div class="flex flex-col gap-region">
+		<slot />
+	</div>
+</div>

@@ -1,0 +1,35 @@
+---
+// Standard surface panel: border, rounded corners and `p-card` padding from
+// the spacing tokens (docs/spacing.md), with `gap-stack` between children.
+// Use instead of hand-rolling `rounded-lg border bg-surface p-*`.
+//
+// `title` renders an h2 header row; the "actions" slot sits right-aligned
+// beside it. `padding="none"` drops the padding and gap for content that
+// runs edge to edge (a divide-y list, a table) — that content then owns its
+// own row padding.
+import { cardClasses, sectionTitleClasses } from '../../lib/layout-styles';
+
+interface Props {
+	as?: 'section' | 'div' | 'article';
+	title?: string;
+	padding?: 'card' | 'none';
+	class?: string;
+	[key: `data-${string}`]: string | boolean | undefined;
+	'aria-labelledby'?: string;
+}
+
+const { as: Tag = 'section', title, padding = 'card', class: className, ...rest } = Astro.props;
+const hasHeader = Boolean(title) || Astro.slots.has('actions');
+---
+
+<Tag class:list={[cardClasses, padding === 'card' && 'flex flex-col gap-stack p-card', className]} {...rest}>
+	{
+		hasHeader && (
+			<div class:list={['flex flex-wrap items-center justify-between gap-stack', padding === 'none' && 'px-card pt-card pb-stack']}>
+				{title && <h2 class={sectionTitleClasses}>{title}</h2>}
+				<slot name="actions" />
+			</div>
+		)
+	}
+	<slot />
+</Tag>

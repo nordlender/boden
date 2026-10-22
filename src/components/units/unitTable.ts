@@ -8,21 +8,22 @@
 // Actions holds the new-note button and the details toggle. Below `sm` only
 // id | unit | status | actions remain; marking moves under the unit cell, and
 // the dates into the details panel.
-// Every column is left-aligned with the same gap (gap-3), so the visible
+// Every column is left-aligned with the same gap (gap-3, same as
+// lib/table-styles.ts's grid tables), so the visible
 // space between two columns is that gap plus whatever the left one leaves
 // empty. The fixed columns are sized to their content so that slack stays
 // small and even: dates their "BOUGHT" header (dd/mm/yy is narrower), extra
 // its "EXTRA" header, status the widest pill ("Out of service") plus its pencil, actions the
-// new-note button (30px) + details toggle (32px) + gap. Everything left over
+// new-note button (32px) + details toggle (36px) + gap. Everything left over
 // goes to the two text columns, unit getting the larger share.
 //
 // Header and rows are separate grids, so every non-flexible column must be
 // a fixed width (not `auto`) for them to line up.
-const UNIT_GRID = '3rem minmax(0,1.4fr) minmax(0,1fr) 4rem 4rem 3rem 8.5rem 4.25rem';
-const UNIT_GRID_MOBILE = '3rem minmax(0,1fr) 8.5rem 4.25rem';
+const UNIT_GRID = '3rem minmax(0,1.4fr) minmax(0,1fr) 4rem 4rem 3rem 9rem 4.75rem';
+const UNIT_GRID_MOBILE = '3rem minmax(0,1fr) 9rem 4.75rem';
 
 export const UNIT_GRID_STYLE = `--grid-cols: ${UNIT_GRID_MOBILE}; --grid-cols-sm: ${UNIT_GRID}`;
-export const UNIT_GRID_CLASS = 'grid grid-cols-(--grid-cols) sm:grid-cols-(--grid-cols-sm) items-center gap-3 px-3';
+export const UNIT_GRID_CLASS = 'grid grid-cols-(--grid-cols) sm:grid-cols-(--grid-cols-sm) items-center gap-3 px-card';
 export const DESKTOP_ONLY_CLASS = 'hidden sm:block';
 
 export const UNIT_FORM_FIELDS = [
@@ -34,5 +35,3 @@ export const UNIT_FORM_FIELDS = [
 	{ name: 'purchasedAt', label: 'Purchased', type: 'date', placeholder: '' },
 ] as const;
 
-export const inputClass = 'w-full min-w-0 rounded border border-border-interactive bg-surface px-2 py-1.5 text-sm text-text';
-export const labelClass = 'mb-1 block text-xs text-text-muted';

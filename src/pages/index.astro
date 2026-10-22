@@ -2,6 +2,7 @@
 export const prerender = true;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Page from '../components/ui/Page.astro';
 import ItemGrid from '../components/shop/ItemGrid.astro';
 import ItemGridSkeleton from '../components/shop/ItemGridSkeleton.astro';
 import ShopGrid from '../components/shop/ShopGrid.astro';
@@ -13,9 +14,9 @@ const snapshot = await getShopGridProducts();
 ---
 
 <BaseLayout title="Boden">
-	<div class="mx-auto max-w-6xl px-4 py-8">
+	<Page width="full">
 		<ShopGrid server:defer>
 			{snapshot.length > 0 ? <ItemGrid slot="fallback" products={snapshot} /> : <ItemGridSkeleton slot="fallback" />}
 		</ShopGrid>
-	</div>
+	</Page>
 </BaseLayout>

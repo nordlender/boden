@@ -7,6 +7,9 @@ import OrderCodeHeader from '../orders/OrderCodeHeader.astro';
 import SubmittedContactDetails from '../orders/SubmittedContactDetails.astro';
 import StatusChip from './StatusChip.astro';
 import OrderItemsList from './OrderItemsList.astro';
+import Callout from '../ui/Callout.astro';
+import Card from '../ui/Card.astro';
+import { cardFooterClasses } from '../../lib/layout-styles';
 import type { FollowingRentalWarning, OrderDetail } from '../../lib/moderatorOrders';
 import { formatDateTimeDisplay } from '../../lib/dates';
 
@@ -26,10 +29,10 @@ interface Props {
 const { order, showAvailability = false, adjustableTargets = false, followingRentalWarnings = [], formId } = Astro.props;
 ---
 
-<div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">
+<Card as="div">
 	<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
 
-	<div class="flex flex-wrap gap-4">
+	<div class="flex flex-wrap gap-x-6 gap-y-2">
 		<StatusChip label="Unpaid fees" value={order.hasUnpaidFees} goodValue={false} />
 		<StatusChip label="Is member" value={order.userIsMember} goodValue={true} />
 	</div>
@@ -49,9 +52,8 @@ const { order, showAvailability = false, adjustableTargets = false, followingRen
 
 	{
 		followingRentalWarnings.length > 0 && (
-			<div class="flex flex-col gap-2 rounded-md border border-warning-border bg-warning-subtle p-3 text-sm text-warning-text">
-				<p class="font-semibold">Order must be returned on the correct day</p>
-				<ul class="flex flex-col gap-1">
+			<Callout variant="warning" title="Order must be returned on the correct day" live={false}>
+				<ul class="flex flex-col gap-1.5">
 					{followingRentalWarnings.map((warning) => (
 						<li>
 							{warning.itemName} is needed for order #{warning.followingOrderCode}, starting {warning.followingFromDate} — make
@@ -59,17 +61,16 @@ const { order, showAvailability = false, adjustableTargets = false, followingRen
 						</li>
 					))}
 				</ul>
-			</div>
+			</Callout>
 		)
 	}
 
 	{order.note && <p class="text-sm text-text-muted">Note: {order.note}</p>}
 
 	{order.status === 'rejected' && order.rejectedReason && (
-		<div class="rounded-md border border-error-border bg-error-subtle p-3 text-sm text-error-text">
-			<p class="font-semibold">Rejected</p>
+		<Callout variant="error" title="Rejected" live={false}>
 			<p>{order.rejectedReason}</p>
-		</div>
+		</Callout>
 	)}
 
 	{order.status === 'cancelled' && (
@@ -84,7 +85,7 @@ const { order, showAvailability = false, adjustableTargets = false, followingRen
 
 	<OrderItemsList items={order.items} showAvailability={showAvailability} adjustableTargets={adjustableTargets} formId={formId} />
 
-	<div class="flex flex-wrap gap-2 border-t border-border pt-4">
+	<div class={cardFooterClasses}>
 		<slot name="actions" />
 	</div>
-</div>
+</Card>

@@ -2,6 +2,9 @@
 import Modal from '../ui/Modal.astro';
 import Button from '../ui/Button.astro';
 import ReservationCalendar from '../reservation/ReservationCalendar.astro';
+import TimeRangesPicker from '../reservation/TimeRangesPicker.astro';
+import type { PickupDayRow } from '../../lib/pickupDays';
+import type { OrderTimeRanges } from '../../lib/orderTimeRanges';
 import { actionRowClasses, sectionTitleClasses } from '../../lib/layout-styles';
 import { inlineErrorClasses } from '../../lib/form-styles';
 
@@ -15,16 +18,19 @@ interface Props {
 	maxRentalDays: number;
 	// Upcoming dates with a pick-up window — return days must be one (#336).
 	availablePickupDates: string[];
+	// New dates need new time ranges (#368): presets and the current ranges.
+	timeRangeWindows: PickupDayRow[];
+	timeRanges: OrderTimeRanges;
 }
 
-const { orderCode, status, acceptedAt, fromDate, toDate, maxRentalDays, availablePickupDates } = Astro.props;
+const { orderCode, status, acceptedAt, fromDate, toDate, maxRentalDays, availablePickupDates, timeRangeWindows, timeRanges } = Astro.props;
 const modalId = `change-order-${orderCode}`;
 const titleId = `${modalId}-title`;
 ---
 
 {
 	status === 'requested' && !acceptedAt && (
-		<div data-change-order={orderCode}>
+		<div data-change-order={orderCode} data-time-ranges-scope data-initial-from={fromDate} data-initial-to={toDate}>
 			<Button type="button" data-modal-open data-modal-target={modalId}>
 				Change order
 			</Button>
@@ -34,11 +40,12 @@ const titleId = `${modalId}-title`;
 					Change pick-up &amp; return dates
 				</h2>
 				<ReservationCalendar value={`${fromDate}/${toDate}`} maxRangeDays={maxRentalDays} availablePickupDates={availablePickupDates} />
+				<TimeRangesPicker windows={timeRangeWindows} initial={{ fromDate, toDate, pickup: timeRanges.pickup, return: timeRanges.return }} />
 				<p data-change-order-error hidden class={inlineErrorClasses} />
 				<div class={actionRowClasses}>
 					<Button type="button" data-modal-close>Cancel</Button>
 					<Button type="button" variant="primary" data-change-order-confirm disabled>
-						Confirm new dates
+						Confirm changes
 					</Button>
 				</div>
 			</Modal>
@@ -47,22 +54,38 @@ const titleId = `${modalId}-title`;
 }
 
 <script>
+	import { orderTimeRangeErrorMessage } from '../../lib/timeRanges';
+	import type { TimeRangesChangeDetail } from '../reservation/timeRangesPicker';
+
 	document.querySelectorAll<HTMLElement>('[data-change-order]').forEach((container) => {
 		const orderCode = container.dataset.changeOrder;
 		const confirmButton = container.querySelector<HTMLButtonElement>('[data-change-order-confirm]');
 		const errorEl = container.querySelector<HTMLElement>('[data-change-order-error]');
 
-		let pending: { from: string; to: string } | null = null;
+		// Starts on the order's current dates, so only the times can change too.
+		const { initialFrom, initialTo } = container.dataset;
+		let pending: { from: string; to: string } | null = initialFrom && initialTo ? { from: initialFrom, to: initialTo } : null;
+		// Filled by TimeRangesPicker (#368); null until its ranges are valid.
+		let times: TimeRangesChangeDetail | null = null;
+		const refreshConfirm = () => {
+			if (confirmButton) confirmButton.disabled = !pending || !times;
+		};
 
 		container.addEventListener('reservation-range-change', (event) => {
 			const { from, to } = (event as CustomEvent<{ from?: string; to?: string }>).detail;
 			pending = from && to ? { from, to } : null;
-			if (confirmButton) confirmButton.disabled = !pending;
+			refreshConfirm();
 			errorEl?.setAttribute('hidden', '');
 		});
 
+		container.addEventListener('time-ranges-change', (event) => {
+			const detail = (event as CustomEvent<TimeRangesChangeDetail>).detail;
+			times = detail.valid ? detail : null;
+			refreshConfirm();
+		});
+
 		confirmButton?.addEventListener('click', async () => {
-			if (!orderCode || !pending) return;
+			if (!orderCode || !pending || !times) return;
 
 			confirmButton.disabled = true;
 			errorEl?.setAttribute('hidden', '');
@@ -71,7 +94,7 @@ const titleId = `${modalId}-title`;
 				const res = await fetch(`/api/orders/${orderCode}/reschedule`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ fromDate: pending.from, toDate: pending.to }),
+					body: JSON.stringify({ fromDate: pending.from, toDate: pending.to, pickupRanges: times.pickup, returnRanges: times.return }),
 				});
 				if (res.ok) {
 					window.location.reload();
@@ -88,7 +111,9 @@ const titleId = `${modalId}-title`;
 									? 'Please pick a valid date range (within the maximum rental duration).'
 									: body.error === 'return_not_pickup_day'
 										? 'Returns can only be made on a pick-up day — please pick another return date.'
-										: 'This order could not be rescheduled.';
+										: body.error === 'invalid_time_ranges' && body.detail
+											? orderTimeRangeErrorMessage(body.detail)
+											: 'This order could not be rescheduled.';
 					errorEl.removeAttribute('hidden');
 				}
 			} catch {
@@ -97,7 +122,7 @@ const titleId = `${modalId}-title`;
 					errorEl.removeAttribute('hidden');
 				}
 			} finally {
-				confirmButton.disabled = !pending;
+				refreshConfirm();
 			}
 		});
 	});

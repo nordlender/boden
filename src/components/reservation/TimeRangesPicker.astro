@@ -1,0 +1,67 @@
+---
+// The member's pick-up and return time ranges (#368), shown once both dates
+// are picked: pick-up on the first day, return on the last. Each section has
+// one or more from–to rows, and the windows moderators offer that day as
+// presets that add themselves as a range. Hidden until the calendar inside
+// the same [data-time-ranges-scope] reports a full date range. See
+// timeRangesPicker.ts for the behaviour and the `time-ranges-change` event.
+import { hintClasses, inlineErrorClasses, labelClasses } from '../../lib/form-styles';
+import { baseClasses, sizeClasses, variantClasses } from '../../lib/button-styles';
+import { MAX_TIME_RANGES_PER_KIND, type TimeRange } from '../../lib/timeRanges';
+import type { PickerWindow } from './timeRangesPicker';
+
+interface Props {
+	// Upcoming pick-up windows (any kind or moderator), used as presets.
+	windows: (PickerWindow & { date: string })[];
+	// Prefills the rows while the chosen dates still match (the reschedule
+	// modal opens on the order's current dates and ranges).
+	initial?: { fromDate: string; toDate: string; pickup: TimeRange[]; return: TimeRange[] };
+}
+
+const { windows, initial } = Astro.props;
+
+const windowsByDate: Record<string, PickerWindow[]> = {};
+for (const { date, startTime, endTime, where } of windows) {
+	const list = (windowsByDate[date] ??= []);
+	// Two moderators can offer the exact same window; show it once.
+	if (!list.some((w) => w.startTime === startTime && w.endTime === endTime && w.where === where)) {
+		list.push({ startTime, endTime, where });
+	}
+}
+
+const sections = [
+	{ kind: 'pickup', title: 'Pick-up time' },
+	{ kind: 'return', title: 'Return time' },
+] as const;
+const addButtonClasses = `${baseClasses} ${sizeClasses.sm} ${variantClasses.secondary} self-start`;
+---
+
+<div data-time-ranges data-windows={JSON.stringify(windowsByDate)} data-initial={initial ? JSON.stringify(initial) : undefined} hidden class="flex flex-col gap-stack">
+	<p class={hintClasses}>
+		When can you meet a moderator? Add one or more time ranges for each day (up to {MAX_TIME_RANGES_PER_KIND}). A wider time range makes it more likely a moderator can meet you.
+	</p>
+	{
+		sections.map((section) => (
+			<fieldset data-time-ranges-section={section.kind} class="flex flex-col gap-snug">
+				<legend class:list={['mb-snug', labelClasses]}>
+					{section.title} <span data-time-ranges-date class="font-normal text-text-muted" />
+				</legend>
+				<p data-time-ranges-presets-label hidden class={hintClasses}>
+					Offered that day (click to add):
+				</p>
+				<div data-time-ranges-presets class="flex flex-wrap gap-snug" />
+				<ul data-time-ranges-list class="flex flex-col gap-snug" />
+				<button type="button" data-time-ranges-add class={addButtonClasses}>
+					Add time range
+				</button>
+			</fieldset>
+		))
+	}
+	<p data-time-ranges-message hidden class={inlineErrorClasses} aria-live="polite"></p>
+</div>
+
+<script>
+	import { initTimeRangesPicker } from './timeRangesPicker';
+
+	document.querySelectorAll<HTMLElement>('[data-time-ranges]').forEach((root) => initTimeRangesPicker(root));
+</script>

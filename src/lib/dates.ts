@@ -80,6 +80,20 @@ export function todayIsoInOslo(): string {
   return dateToIsoInOslo(new Date());
 }
 
+const OSLO_TIME_PARTS_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/Oslo',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+// The date (YYYY-MM-DD) and wall-clock time (HH:MM, 24h) in Oslo at `date` —
+// e.g. to tell whether a requested time range today has already passed.
+export function nowInOslo(date: Date = new Date()): { date: string; time: string } {
+  const parts = Object.fromEntries(OSLO_TIME_PARTS_FORMATTER.formatToParts(date).map((p) => [p.type, p.value]));
+  return { date: dateToIsoInOslo(date), time: `${parts.hour}:${parts.minute}` };
+}
+
 // dd/mm/yy for a bare YYYY-MM-DD date (e.g. a unit's manufacturedAt) — a
 // plain reformat, no timezone involved.
 export function formatIsoDateDdMmYy(value: string): string {

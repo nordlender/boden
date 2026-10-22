@@ -2,7 +2,9 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { db } from '../../db/client';
 import { getMaxRentalDays } from '../../lib/rental-policy';
-import { getUpcomingAvailablePickupDates } from '../../lib/pickupDays';
+import { getUpcomingAvailablePickupDates, listUpcomingPickupDays } from '../../lib/pickupDays';
+import { getOrderTimeRanges } from '../../lib/orderTimeRanges';
+import RequestedTimeRanges from '../../components/orders/RequestedTimeRanges.astro';
 import { todayIsoInOslo } from '../../lib/dates';
 import OrderCodeHeader from '../../components/orders/OrderCodeHeader.astro';
 import OrderContents from '../../components/orders/OrderContents.astro';
@@ -29,8 +31,12 @@ if (!order || order.userId !== Astro.locals.user?.id) {
   return Astro.redirect('/');
 }
 
-// Only the reschedule modal needs these (return days must be pick-up days, #336).
-const availablePickupDates = order.status === 'requested' && !order.acceptedAt ? await getUpcomingAvailablePickupDates(todayIsoInOslo()) : [];
+// Only the reschedule modal needs these: return days must be pick-up days
+// (#336), and the day's windows are the time-range presets (#368).
+const reschedulable = order.status === 'requested' && !order.acceptedAt;
+const availablePickupDates = reschedulable ? await getUpcomingAvailablePickupDates(todayIsoInOslo()) : [];
+const timeRangeWindows = reschedulable ? await listUpcomingPickupDays(todayIsoInOslo()) : [];
+const timeRanges = getOrderTimeRanges(order.id);
 ---
 
 <BaseLayout title={`Order #${order.orderCode}`}>
@@ -39,6 +45,7 @@ const availablePickupDates = order.status === 'requested' && !order.acceptedAt ?
 
 		<Card as="div">
 			<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
+			{order.status === 'requested' && <RequestedTimeRanges fromDate={order.fromDate} toDate={order.toDate} ranges={timeRanges} framed={false} />}
 			<OrderContents
 				items={order.orderItems.map((oi) => ({
 					itemName: oi.item.name,
@@ -48,7 +55,7 @@ const availablePickupDates = order.status === 'requested' && !order.acceptedAt ?
 			/>
 			<SubmittedContactDetails contactName={order.contactName} />
 			<div class={cardFooterClasses}>
-				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} availablePickupDates={availablePickupDates} />
+				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} availablePickupDates={availablePickupDates} timeRangeWindows={timeRangeWindows} timeRanges={timeRanges} />
 				<DeleteOrderButton orderCode={order.orderCode} status={order.status} />
 			</div>
 		</Card>

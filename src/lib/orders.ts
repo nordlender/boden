@@ -7,6 +7,9 @@ import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
 import { getPickupDatesAmong } from './pickupDays';
+import { setOrderTimeRanges } from './orderTimeRanges';
+import { validateOrderTimeRanges, type OrderTimeRangeError, type OrderTimeRangeInput, type TimeRange } from './timeRanges';
+import { nowInOslo } from './dates';
 
 // NNAAX: two digits, two free letters, one role letter.
 export const ORDER_CODE_LENGTH = 5;
@@ -94,6 +97,10 @@ export type CreateOrderInput = {
   cartEntries: CartEntry[];
   fromDate: string;
   toDate: string;
+  // The member's requested pick-up (on fromDate) and return (on toDate) time
+  // ranges (#368), validated by validateOrderTimeRanges and stored merged in
+  // order_time_ranges.
+  timeRanges: OrderTimeRangeInput;
   // Snapshot of the checkout form's contact fields — see schema.ts's
   // orders.contactName/contactEmail/contactMobile doc comment.
   contactName: string;
@@ -114,6 +121,7 @@ export type CreateOrderResult =
   | { ok: false; error: 'empty_cart' }
   | { ok: false; error: 'invalid_dates' }
   | { ok: false; error: 'return_not_pickup_day' }
+  | { ok: false; error: 'invalid_time_ranges'; detail: OrderTimeRangeError }
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
   | { ok: false; error: 'user_not_found' };
 
@@ -127,6 +135,8 @@ function insertOrder(
     note: string | null;
     fromDate: string;
     toDate: string;
+    // Already validated and merged (validateOrderTimeRanges).
+    timeRanges: { pickup: TimeRange[]; return: TimeRange[] };
     // Always already resolved down to real items (see
     // resolveEntriesToItemQuantities) — a set never reaches this far; orders
     // always reference items, never sets (see schema.ts's `sets` comment).
@@ -184,6 +194,9 @@ function insertOrder(
         )
         .run();
 
+      setOrderTimeRanges(order.id, 'pickup', input.timeRanges.pickup, tx);
+      setOrderTimeRanges(order.id, 'return', input.timeRanges.return, tx);
+
       return order;
     } catch (err) {
       if (!isUniqueConstraintViolation(err) || attempt === MAX_ORDER_CODE_ATTEMPTS - 1) {
@@ -229,6 +242,8 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   if (!isValidDateRange({ from: input.fromDate, to: input.toDate })) {
     return { ok: false, error: 'invalid_dates' };
   }
+  const times = validateOrderTimeRanges(input.timeRanges, input, nowInOslo());
+  if (!times.ok) return { ok: false, error: 'invalid_time_ranges', detail: times.detail };
   const entriesToOrder = await resolveOrderableEntries(input.cartEntries);
   if (entriesToOrder.length === 0) {
     return { ok: false, error: 'empty_cart' };
@@ -251,6 +266,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         note: input.note,
         fromDate: input.fromDate,
         toDate: input.toDate,
+        timeRanges: times.ranges,
         entries: resolvedEntries,
         contactName: input.contactName,
         contactEmail: input.contactEmail,
@@ -315,7 +331,9 @@ export async function deleteOrder(input: DeleteOrderInput): Promise<DeleteOrderR
   return { ok: false, error: 'not_deletable', status: existing.status };
 }
 
-export type RescheduleOrderInput = { orderCode: string; userId: string; fromDate: string; toDate: string };
+// New dates always come with new time ranges (#368): the old ranges belong
+// to the old dates, so both kinds are replaced.
+export type RescheduleOrderInput = { orderCode: string; userId: string; fromDate: string; toDate: string; timeRanges: OrderTimeRangeInput };
 
 export type RescheduleOrderResult =
   | { ok: true; fromDate: string; toDate: string }
@@ -323,6 +341,7 @@ export type RescheduleOrderResult =
   | { ok: false; error: 'not_modifiable'; status: string }
   | { ok: false; error: 'invalid_dates' }
   | { ok: false; error: 'return_not_pickup_day' }
+  | { ok: false; error: 'invalid_time_ranges'; detail: OrderTimeRangeError }
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] };
 
 // Thrown inside the transaction below when the order's status changed to
@@ -355,6 +374,8 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
   if (!isValidDateRange({ from: input.fromDate, to: input.toDate })) {
     return { ok: false, error: 'invalid_dates' };
   }
+  const times = validateOrderTimeRanges(input.timeRanges, input, nowInOslo());
+  if (!times.ok) return { ok: false, error: 'invalid_time_ranges', detail: times.detail };
 
   const order = await db.query.orders.findFirst({
     where: (t, { eq: eqCol }) => eqCol(t.orderCode, input.orderCode),
@@ -400,6 +421,8 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
       }
 
       tx.update(orders).set({ fromDate: input.fromDate, toDate: input.toDate }).where(eq(orders.id, order.id)).run();
+      setOrderTimeRanges(order.id, 'pickup', times.ranges.pickup, tx);
+      setOrderTimeRanges(order.id, 'return', times.ranges.return, tx);
     });
   } catch (err) {
     if (err instanceof UnavailableItemsError) {

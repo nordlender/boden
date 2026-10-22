@@ -20,7 +20,11 @@ afterAll(() => {
 // contact snapshot itself. `role` is likewise a fixed 'member' stand-in
 // (see the "order code role suffix" describe block below for role-specific
 // behavior).
+// Requested pick-up/return ranges (#368) — any valid pair will do here.
+const TIMES = { pickup: [{ from: '10:00', to: '12:00' }], return: [{ from: '18:00', to: '20:00' }] };
+
 const CONTACT = {
+	timeRanges: TIMES,
 	contactName: 'Test Member',
 	contactEmail: 'member@example.com',
 	contactMobile: null,
@@ -159,6 +163,36 @@ describe('createOrder', () => {
 	it('rejects a return day without a pick-up window (#336), but not such a pick-up day', async () => {
 		expect(await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-12-18', NO_PICKUP_DAY)).toEqual({ ok: false, error: 'return_not_pickup_day' });
 		expect((await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], NO_PICKUP_DAY, '2026-12-21')).ok).toBe(true);
+	});
+
+	it('stores the requested time ranges, merged (#368)', async () => {
+		const result = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
+			fromDate: '2026-03-10',
+			toDate: '2026-03-12',
+			...CONTACT,
+			timeRanges: { pickup: [{ from: '12:00', to: '14:00' }, { from: '13:00', to: '15:00' }], return: [{ from: '09:00', to: '10:00' }] },
+		});
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		const { getOrderTimeRanges } = await import('../orderTimeRanges');
+		expect(getOrderTimeRanges(result.orderId)).toEqual({ pickup: [{ from: '12:00', to: '15:00' }], return: [{ from: '09:00', to: '10:00' }] });
+	});
+
+	it('rejects invalid time ranges without creating an order', async () => {
+		const result = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
+			fromDate: '2026-03-14',
+			toDate: '2026-03-14',
+			...CONTACT,
+			// Same-day rental whose return ends before the pick-up starts.
+			timeRanges: { pickup: [{ from: '16:00', to: '18:00' }], return: [{ from: '08:00', to: '09:00' }] },
+		});
+		expect(result).toEqual({ ok: false, error: 'invalid_time_ranges', detail: { kind: 'return', error: 'return_before_pickup' } });
 	});
 
 	it('rejects an invalid date range', async () => {
@@ -313,7 +347,7 @@ describe('rescheduleOrder', () => {
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
-		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-06-10', toDate: '2026-06-11' });
+		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-06-10', toDate: '2026-06-11', timeRanges: TIMES });
 		expect(result).toEqual({ ok: true, fromDate: '2026-06-10', toDate: '2026-06-11' });
 
 		const updated = await findOrderByCode(created.orderCode);
@@ -329,7 +363,7 @@ describe('rescheduleOrder', () => {
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
-		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-08-02', toDate: '2026-08-04' });
+		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-08-02', toDate: '2026-08-04', timeRanges: TIMES });
 		expect(result).toEqual({ ok: true, fromDate: '2026-08-02', toDate: '2026-08-04' });
 	});
 
@@ -343,7 +377,7 @@ describe('rescheduleOrder', () => {
 		expect(second.ok).toBe(true);
 		if (!first.ok || !second.ok) return;
 
-		const result = await rescheduleOrder({ orderCode: second.orderCode, userId: 'member-1', fromDate: '2026-09-02', toDate: '2026-09-03' });
+		const result = await rescheduleOrder({ orderCode: second.orderCode, userId: 'member-1', fromDate: '2026-09-02', toDate: '2026-09-03', timeRanges: TIMES });
 		expect(result).toEqual({ ok: false, error: 'unavailable', unavailableItemIds: [ITEM_A_ID] });
 	});
 
@@ -352,7 +386,7 @@ describe('rescheduleOrder', () => {
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
-		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-10-05', toDate: '2026-10-25' });
+		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-10-05', toDate: '2026-10-25', timeRanges: TIMES });
 		expect(result).toEqual({ ok: false, error: 'invalid_dates' });
 	});
 
@@ -363,7 +397,7 @@ describe('rescheduleOrder', () => {
 
 		await markOrderActive(created.orderId);
 
-		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-10', toDate: '2026-11-11' });
+		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-10', toDate: '2026-11-11', timeRanges: TIMES });
 		expect(result).toEqual({ ok: false, error: 'not_modifiable', status: 'active' });
 	});
 
@@ -374,9 +408,39 @@ describe('rescheduleOrder', () => {
 
 		await markOrderAccepted(created.orderId);
 
-		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-20', toDate: '2026-11-21' });
+		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-20', toDate: '2026-11-21', timeRanges: TIMES });
 		expect(result).toEqual({ ok: false, error: 'not_modifiable', status: 'scheduled' });
 		expect((await findOrderByCode(created.orderCode))?.fromDate).toBe('2026-11-15');
+	});
+
+	it('replaces the time ranges together with the dates (#368)', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-12-05', '2026-12-06');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		const timeRanges = { pickup: [{ from: '08:00', to: '09:00' }], return: [{ from: '11:00', to: '13:00' }] };
+		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-12-07', toDate: '2026-12-08', timeRanges });
+		expect(result.ok).toBe(true);
+		const { getOrderTimeRanges } = await import('../orderTimeRanges');
+		expect(getOrderTimeRanges(created.orderId)).toEqual(timeRanges);
+	});
+
+	it('rejects a reschedule with invalid time ranges and keeps the old ones', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-12-09', '2026-12-10');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		const result = await rescheduleOrder({
+			orderCode: created.orderCode,
+			userId: 'member-1',
+			fromDate: '2026-12-11',
+			toDate: '2026-12-12',
+			timeRanges: { pickup: [], return: TIMES.return },
+		});
+		expect(result).toEqual({ ok: false, error: 'invalid_time_ranges', detail: { kind: 'pickup', error: 'no_ranges' } });
+		const { getOrderTimeRanges } = await import('../orderTimeRanges');
+		expect(getOrderTimeRanges(created.orderId)).toEqual(TIMES);
+		expect((await findOrderByCode(created.orderCode))?.fromDate).toBe('2026-12-09');
 	});
 
 	it('rejects rescheduling onto a return day without a pick-up window (#336)', async () => {
@@ -384,13 +448,13 @@ describe('rescheduleOrder', () => {
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
-		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-12-18', toDate: NO_PICKUP_DAY });
+		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-12-18', toDate: NO_PICKUP_DAY, timeRanges: TIMES });
 		expect(result).toEqual({ ok: false, error: 'return_not_pickup_day' });
 		expect((await findOrderByCode(created.orderCode))?.toDate).toBe('2026-12-02');
 	});
 
 	it('rejects rescheduling an order owned by someone else, without revealing whether it exists', async () => {
-		const result = await rescheduleOrder({ orderCode: 'AAAAAA', userId: 'member-1', fromDate: '2026-12-01', toDate: '2026-12-02' });
+		const result = await rescheduleOrder({ orderCode: 'AAAAAA', userId: 'member-1', fromDate: '2026-12-01', toDate: '2026-12-02', timeRanges: TIMES });
 		expect(result).toEqual({ ok: false, error: 'not_found' });
 	});
 });

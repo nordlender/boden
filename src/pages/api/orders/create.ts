@@ -4,6 +4,7 @@ import { getCart, setCart } from '../../../lib/cart';
 import { createOrder } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
 import { redirectWithError, requireUser } from '../../../lib/http';
+import { parseTimeRanges } from '../../../lib/timeRanges';
 
 export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => {
   const authError = requireUser(locals);
@@ -20,6 +21,13 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const toDate = form.get('toDate')?.toString() ?? '';
   if (!isValidDateRange({ from: fromDate, to: toDate })) {
     return redirect(redirectWithError('/reservation', 'invalid_dates'));
+  }
+  // The member's requested pick-up/return time ranges (#368), JSON-encoded
+  // by the reservation form. Their values are validated by createOrder.
+  const pickupRanges = parseTimeRanges(form.get('pickupRanges')?.toString() ?? '');
+  const returnRanges = parseTimeRanges(form.get('returnRanges')?.toString() ?? '');
+  if (!pickupRanges || !returnRanges) {
+    return redirect(redirectWithError('/reservation', 'invalid_time_ranges'));
   }
 
   // Snapshot of the checkout form's contact fields, persisted on the order
@@ -52,6 +60,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     cartEntries: cart,
     fromDate,
     toDate,
+    timeRanges: { pickup: pickupRanges, return: returnRanges },
     contactName,
     contactEmail,
     contactMobile,
@@ -74,7 +83,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     }
     // 'return_not_pickup_day': the return day's last pick-up window was
     // removed since the member chose it (#336).
-    if (result.error === 'invalid_dates' || result.error === 'return_not_pickup_day') {
+    if (result.error === 'invalid_dates' || result.error === 'return_not_pickup_day' || result.error === 'invalid_time_ranges') {
       return redirect(redirectWithError('/reservation', result.error));
     }
     // 'empty_cart' from createOrder means every line was dropped as

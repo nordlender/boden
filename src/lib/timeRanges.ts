@@ -82,3 +82,109 @@ export function normalizeTimeRanges(ranges: readonly TimeRange[]): NormalizeTime
 	}
 	return { ok: true, ranges: merged };
 }
+
+export type TimeRangeKind = 'pickup' | 'return';
+
+/** A member's requested ranges for one order: pick-up on fromDate, return on toDate. */
+export interface OrderTimeRangeInput {
+	pickup: readonly TimeRange[];
+	return: readonly TimeRange[];
+}
+
+export type OrderTimeRangeError =
+	| { kind: TimeRangeKind; error: 'no_ranges' }
+	| { kind: TimeRangeKind; error: 'invalid_time'; index: number }
+	| { kind: TimeRangeKind; error: 'from_not_before_to'; index: number }
+	| { kind: TimeRangeKind; error: 'too_many'; max: number }
+	// A range on today that is already over (Europe/Oslo time).
+	| { kind: TimeRangeKind; error: 'already_passed'; index: number }
+	// Same-day rental: no return range ends after the earliest pick-up start.
+	| { kind: 'return'; error: 'return_before_pickup' };
+
+export type ValidateOrderTimeRangesResult =
+	| { ok: true; ranges: { pickup: TimeRange[]; return: TimeRange[] } }
+	| { ok: false; detail: OrderTimeRangeError };
+
+/**
+ * Validates both kinds of an order's ranges (#368): each kind through
+ * normalizeTimeRanges, then two date-aware rules. On today (`now`, Oslo), a
+ * range that has already ended is rejected. For a same-day rental (fromDate
+ * = toDate), some return range must end after the earliest pick-up range
+ * starts. Pure, so the reservation form runs the same checks client-side.
+ */
+export function validateOrderTimeRanges(
+	input: OrderTimeRangeInput,
+	dates: { fromDate: string; toDate: string },
+	now: { date: string; time: string },
+): ValidateOrderTimeRangesResult {
+	const ranges = { pickup: [] as TimeRange[], return: [] as TimeRange[] };
+	for (const kind of ['pickup', 'return'] as const) {
+		const result = normalizeTimeRanges(input[kind]);
+		if (!result.ok) {
+			const detail: OrderTimeRangeError =
+				result.error === 'no_ranges'
+					? { kind, error: result.error }
+					: result.error === 'too_many'
+						? { kind, error: result.error, max: result.max }
+						: { kind, error: result.error, index: result.index };
+			return { ok: false, detail };
+		}
+		const date = kind === 'pickup' ? dates.fromDate : dates.toDate;
+		if (date === now.date) {
+			const index = input[kind].findIndex((range) => range.to <= now.time);
+			if (index >= 0) return { ok: false, detail: { kind, error: 'already_passed', index } };
+		}
+		ranges[kind] = result.ranges;
+	}
+	if (dates.fromDate === dates.toDate) {
+		const earliestPickup = ranges.pickup[0].from;
+		if (!ranges.return.some((range) => range.to > earliestPickup)) {
+			return { ok: false, detail: { kind: 'return', error: 'return_before_pickup' } };
+		}
+	}
+	return { ok: true, ranges };
+}
+
+/** A member-facing sentence for a validateOrderTimeRanges error. */
+export function orderTimeRangeErrorMessage(error: OrderTimeRangeError): string {
+	const which = error.kind === 'pickup' ? 'pick-up' : 'return';
+	switch (error.error) {
+		case 'no_ranges':
+			return `Add at least one ${which} time range.`;
+		case 'invalid_time':
+			return `Enter both times of each ${which} range as HH:MM (24h).`;
+		case 'from_not_before_to':
+			return `Each ${which} range must end after it starts, on the same day.`;
+		case 'too_many':
+			return `Give at most ${error.max} ${which} time ranges.`;
+		case 'already_passed':
+			return `One of your ${which} time ranges today has already passed.`;
+		case 'return_before_pickup':
+			return 'For a same-day rental, a return time range must end after your pick-up time starts.';
+	}
+}
+
+/**
+ * Parses a ranges list as it arrives from a form field (a JSON string) or a
+ * JSON body (an array): an array of { from, to } string pairs. Anything else
+ * returns null; the values themselves are checked by validateOrderTimeRanges.
+ */
+export function parseTimeRanges(value: unknown): TimeRange[] | null {
+	let parsed = value;
+	if (typeof value === 'string') {
+		try {
+			parsed = JSON.parse(value);
+		} catch {
+			return null;
+		}
+	}
+	if (!Array.isArray(parsed)) return null;
+	const ranges: TimeRange[] = [];
+	for (const entry of parsed) {
+		if (typeof entry !== 'object' || entry === null) return null;
+		const { from, to } = entry as Record<string, unknown>;
+		if (typeof from !== 'string' || typeof to !== 'string') return null;
+		ranges.push({ from, to });
+	}
+	return ranges;
+}

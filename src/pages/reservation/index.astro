@@ -5,7 +5,7 @@ import Page from '../../components/ui/Page.astro';
 import Callout from '../../components/ui/Callout.astro';
 import { emptyStateFramedClasses } from '../../lib/layout-styles';
 import { getCartLines } from '../../lib/cart';
-import { getUpcomingAvailablePickupDates } from '../../lib/pickupDays';
+import { getUpcomingAvailablePickupDates, listUpcomingPickupDays } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
 import { todayIsoInOslo } from '../../lib/dates';
 import { getSession } from 'auth-astro/server';
@@ -25,6 +25,7 @@ const [session, feeStatus] = await Promise.all([
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
 const todayIso = todayIsoInOslo();
 const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
+const timeRangeWindows = await listUpcomingPickupDays(todayIso);
 
 // Surfaces the error redirects /api/orders/create (and /reservation/confirm)
 // can send back here — see the keys of errorMessages below. Without this the
@@ -32,6 +33,8 @@ const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
 const error = Astro.url.searchParams.get('error');
 const errorMessages: Record<string, string> = {
 	invalid_dates: `Your selected dates were invalid, the pick-up date has already passed, or the range was longer than the maximum ${getMaxRentalDays()} days — please choose your dates again.`,
+	invalid_time_ranges:
+		'Your pick-up or return time ranges were not valid (for example, one has already passed, or a same-day return ends before the pick-up starts) — please check them and submit again.',
 	return_not_pickup_day:
 		'Returns can only be made on a pick-up day, and your return date no longer has a pick-up time — please choose your dates again.',
 	unavailable:
@@ -60,6 +63,7 @@ const errorMessage = error ? (errorMessages[error] ?? null) : null;
 		{cartLines.length > 0 && <ReservationForm
 			cartLines={cartLines}
 			availablePickupDates={availablePickupDates}
+			timeRangeWindows={timeRangeWindows}
 			name={session?.user?.name ?? null}
 			email={session?.user?.email ?? null}
 			mobile={session?.bloc?.mobile ?? null}

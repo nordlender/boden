@@ -42,6 +42,7 @@ const ITEM_B_ID = 2;
 const ITEM_C_ID = 3;
 const SET_X_ID = 1;
 const SET_Y_ID = 2; // contains only item D, which is archived
+const NO_PICKUP_DAY = '2026-12-20'; // the one day of 2026 without a pick-up window
 
 vi.mock('../../db/client', async () => {
 	const { createTestDb, insertItems } = await import('../../db/testDb');
@@ -81,6 +82,16 @@ vi.mock('../../db/client', async () => {
 		.values({ orderCode: 'AAAAAA', userId: otherUser.id, fromDate: '2026-01-05', toDate: '2026-01-10' })
 		.returning();
 	await db.insert(schema.orderItems).values({ orderId: existingOrder.id, itemId: 1, requestedQuantity: 1 }); // item A
+
+	// Returns only happen on pick-up days (#336): every day of 2026 has a
+	// pick-up window, except NO_PICKUP_DAY (2026-12-20, literal for the same
+	// hoisting reason as above).
+	const { addDaysIso } = await import('../dates');
+	const days = [];
+	for (let date = '2026-01-01'; date <= '2026-12-31'; date = addDaysIso(date, 1)) {
+		if (date !== '2026-12-20') days.push({ date, startTime: '18:00', endTime: '20:00', userId: 'member-1' });
+	}
+	await db.insert(schema.pickupDays).values(days);
 
 	return { db };
 });
@@ -143,6 +154,15 @@ describe('createOrder', () => {
 		const { orders } = await import('../../db/schema');
 		const row = db.select().from(orders).where(eq(orders.id, result.orderId)).get();
 		expect(row?.disclaimerAcceptedAt).toBeInstanceOf(Date);
+	});
+
+	it('rejects a return day without a pick-up window (#336), but not such a pick-up day', async () => {
+		expect(await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-12-18', NO_PICKUP_DAY)).toEqual({ ok: false, error: 'return_not_pickup_day' });
+		expect((await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], NO_PICKUP_DAY, '2026-12-21')).ok).toBe(true);
+	});
+
+	it('rejects an invalid date range', async () => {
+		expect(await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-12-10', '2026-12-01')).toEqual({ ok: false, error: 'invalid_dates' });
 	});
 
 	it('rejects with "unavailable" instead of creating an order when an item is already fully booked', async () => {
@@ -357,6 +377,16 @@ describe('rescheduleOrder', () => {
 		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-20', toDate: '2026-11-21' });
 		expect(result).toEqual({ ok: false, error: 'not_modifiable', status: 'scheduled' });
 		expect((await findOrderByCode(created.orderCode))?.fromDate).toBe('2026-11-15');
+	});
+
+	it('rejects rescheduling onto a return day without a pick-up window (#336)', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-12-01', '2026-12-02');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-12-18', toDate: NO_PICKUP_DAY });
+		expect(result).toEqual({ ok: false, error: 'return_not_pickup_day' });
+		expect((await findOrderByCode(created.orderCode))?.toDate).toBe('2026-12-02');
 	});
 
 	it('rejects rescheduling an order owned by someone else, without revealing whether it exists', async () => {

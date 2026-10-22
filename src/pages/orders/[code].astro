@@ -2,6 +2,8 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { db } from '../../db/client';
 import { getMaxRentalDays } from '../../lib/rental-policy';
+import { getUpcomingAvailablePickupDates } from '../../lib/pickupDays';
+import { todayIsoInOslo } from '../../lib/dates';
 import OrderCodeHeader from '../../components/orders/OrderCodeHeader.astro';
 import OrderContents from '../../components/orders/OrderContents.astro';
 import SubmittedContactDetails from '../../components/orders/SubmittedContactDetails.astro';
@@ -26,6 +28,9 @@ const order = code
 if (!order || order.userId !== Astro.locals.user?.id) {
   return Astro.redirect('/');
 }
+
+// Only the reschedule modal needs these (return days must be pick-up days, #336).
+const availablePickupDates = order.status === 'requested' && !order.acceptedAt ? await getUpcomingAvailablePickupDates(todayIsoInOslo()) : [];
 ---
 
 <BaseLayout title={`Order #${order.orderCode}`}>
@@ -43,7 +48,7 @@ if (!order || order.userId !== Astro.locals.user?.id) {
 			/>
 			<SubmittedContactDetails contactName={order.contactName} />
 			<div class={cardFooterClasses}>
-				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} />
+				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} availablePickupDates={availablePickupDates} />
 				<DeleteOrderButton orderCode={order.orderCode} status={order.status} />
 			</div>
 		</Card>

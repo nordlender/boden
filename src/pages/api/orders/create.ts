@@ -72,6 +72,11 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     if (result.error === 'user_not_found') {
       return redirect(redirectWithError('/reservation', 'account_not_found'));
     }
+    // 'return_not_pickup_day': the return day's last pick-up window was
+    // removed since the member chose it (#336).
+    if (result.error === 'invalid_dates' || result.error === 'return_not_pickup_day') {
+      return redirect(redirectWithError('/reservation', result.error));
+    }
     // 'empty_cart' from createOrder means every line was dropped as
     // unrentable (archived item/unpublished product) — see orders.ts. Distinct
     // from the 'cart_empty' check above, where the cart cookie itself was empty.

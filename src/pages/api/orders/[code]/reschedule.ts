@@ -29,7 +29,7 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
   if (!result.ok) {
     // 'not_found' also covers an order owned by someone else — don't leak
     // another member's order by distinguishing the two.
-    const status = result.error === 'not_found' ? 404 : result.error === 'invalid_dates' ? 400 : 409;
+    const status = result.error === 'not_found' ? 404 : result.error === 'invalid_dates' || result.error === 'return_not_pickup_day' ? 400 : 409;
     return json(result, status);
   }
 

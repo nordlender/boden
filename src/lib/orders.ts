@@ -6,6 +6,7 @@ import type { Role } from './auth';
 import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
+import { getPickupDatesAmong } from './pickupDays';
 
 // NNAAX: two digits, two free letters, one role letter.
 export const ORDER_CODE_LENGTH = 5;
@@ -66,6 +67,24 @@ class UnavailableItemsError extends Error {
   }
 }
 
+// Thrown inside the create/reschedule transaction when the return day has
+// no pick-up window (any more) — returns only happen on pick-up days (#336).
+class ReturnDayNotPickupDayError extends Error {
+  constructor() {
+    super('return_not_pickup_day');
+  }
+}
+
+// The return-day rule (#336), checked inside the create/reschedule
+// transaction so a window deleted mid-request can't slip through. The caller
+// has already checked the plain date range, so failing here means the return
+// day has no pick-up window.
+function assertReturnOnPickupDay(tx: Tx, fromDate: string, toDate: string): void {
+  if (!isValidDateRange({ from: fromDate, to: toDate }, getPickupDatesAmong([toDate], tx))) {
+    throw new ReturnDayNotPickupDayError();
+  }
+}
+
 export type CreateOrderInput = {
   userId: string;
   // Role of the member creating the order, used to pick the order code's
@@ -93,11 +112,15 @@ export type CreateOrderInput = {
 export type CreateOrderResult =
   | { ok: true; orderId: number; orderCode: string }
   | { ok: false; error: 'empty_cart' }
+  | { ok: false; error: 'invalid_dates' }
+  | { ok: false; error: 'return_not_pickup_day' }
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
   | { ok: false; error: 'user_not_found' };
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 function insertOrder(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: Tx,
   input: {
     userId: string;
     role: Role;
@@ -123,6 +146,7 @@ function insertOrder(
   // point. Doing it here rather than before the transaction closes the race
   // between two members submitting overlapping requests concurrently: the
   // check and the insert commit atomically together.
+  assertReturnOnPickupDay(tx, input.fromDate, input.toDate);
   const availabilities = getReservationAvailability({ from: input.fromDate, to: input.toDate }, input.entries, undefined, tx);
   const unavailableItemIds = availabilities.filter((a) => !a.available).map((a) => a.itemId);
   if (unavailableItemIds.length > 0) {
@@ -202,6 +226,9 @@ async function resolveOrderableEntries(cartEntries: CartEntry[]): Promise<CartEn
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
+  if (!isValidDateRange({ from: input.fromDate, to: input.toDate })) {
+    return { ok: false, error: 'invalid_dates' };
+  }
   const entriesToOrder = await resolveOrderableEntries(input.cartEntries);
   if (entriesToOrder.length === 0) {
     return { ok: false, error: 'empty_cart' };
@@ -237,6 +264,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   } catch (err) {
     if (err instanceof UnavailableItemsError) {
       return { ok: false, error: 'unavailable', unavailableItemIds: err.itemIds };
+    }
+    if (err instanceof ReturnDayNotPickupDayError) {
+      return { ok: false, error: 'return_not_pickup_day' };
     }
     // orders.userId is a FK sourced from the checkout route's ambient
     // session id (locals.user!.id) rather than a freshly-looked-up row —
@@ -292,6 +322,7 @@ export type RescheduleOrderResult =
   | { ok: false; error: 'not_found' }
   | { ok: false; error: 'not_modifiable'; status: string }
   | { ok: false; error: 'invalid_dates' }
+  | { ok: false; error: 'return_not_pickup_day' }
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] };
 
 // Thrown inside the transaction below when the order's status changed to
@@ -355,6 +386,7 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
       if (current.acceptedAt) {
         throw new OrderNotModifiableError('scheduled');
       }
+      assertReturnOnPickupDay(tx, input.fromDate, input.toDate);
 
       const availabilities = getReservationAvailability(
         { from: input.fromDate, to: input.toDate },
@@ -378,6 +410,9 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
     }
     if (err instanceof OrderGoneError) {
       return { ok: false, error: 'not_found' };
+    }
+    if (err instanceof ReturnDayNotPickupDayError) {
+      return { ok: false, error: 'return_not_pickup_day' };
     }
     throw err;
   }

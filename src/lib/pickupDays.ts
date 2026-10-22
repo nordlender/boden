@@ -53,6 +53,15 @@ export async function getUpcomingAvailablePickupDates(fromDate: string): Promise
 	return rows.map((row) => row.date);
 }
 
+// Which of `dates` have at least one pick-up window. Synchronous with an
+// optional executor so order creation and reschedule can check the return
+// day (#336, see isValidDateRange) inside their transaction.
+export function getPickupDatesAmong(dates: string[], executor: QueryExecutor = db): Set<string> {
+	if (dates.length === 0) return new Set();
+	const rows = executor.select({ date: pickupDays.date }).from(pickupDays).where(inArray(pickupDays.date, dates)).all();
+	return new Set(rows.map((row) => row.date));
+}
+
 // Full rows (both kinds, every submitter) for the moderator/admin pages'
 // "All pickup days" table and for deriving "My"/"Other"/"Single" from —
 // those are all filters over this same result set, not separate queries.

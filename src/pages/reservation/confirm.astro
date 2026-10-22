@@ -7,7 +7,7 @@ import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
 import ItemQtyLine from '../../components/ui/ItemQtyLine.astro';
 import { getCartLines, type CartLine } from '../../lib/cart';
 import { isValidDateRange } from '../../lib/reservation';
-import { listPickupDaysOn } from '../../lib/pickupDays';
+import { getPickupDatesAmong, listPickupDaysOn } from '../../lib/pickupDays';
 import { formatDateDisplay } from '../../lib/dates';
 import { formatAttributes } from '../../lib/attributes';
 
@@ -29,6 +29,10 @@ const fromDate = form.get('fromDate')?.toString() ?? '';
 const toDate = form.get('toDate')?.toString() ?? '';
 if (!isValidDateRange({ from: fromDate, to: toDate })) {
 	return Astro.redirect('/reservation?error=invalid_dates');
+}
+// Returns only happen on pick-up days (#336); the calendar enforces it too.
+if (!isValidDateRange({ from: fromDate, to: toDate }, getPickupDatesAmong([toDate]))) {
+	return Astro.redirect('/reservation?error=return_not_pickup_day');
 }
 if (form.get('disclaimerAccepted') !== 'on') {
 	return Astro.redirect('/reservation?error=disclaimer_required');

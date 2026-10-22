@@ -7,6 +7,7 @@ import { formatAttributes } from '../../lib/attributes';
 import type { ReservationCartLineRef } from './reservationFormState';
 import Callout from '../ui/Callout.astro';
 import { sectionTitleClasses } from '../../lib/layout-styles';
+import { getMaxRentalDays } from '../../lib/rental-policy';
 
 interface Props {
 	cartLines: CartLine[];
@@ -30,7 +31,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 <div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} class="flex flex-col gap-region">
 	<section class="flex flex-col gap-stack">
 		<h2 class={sectionTitleClasses}>1. Pick-up &amp; return dates</h2>
-		<ReservationCalendar availablePickupDates={availablePickupDates} />
+		<ReservationCalendar availablePickupDates={availablePickupDates} maxRangeDays={getMaxRentalDays()} />
 	</section>
 
 	<section class="flex flex-col gap-stack">

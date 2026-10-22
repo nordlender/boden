@@ -13,9 +13,11 @@ interface Props {
 	fromDate: string;
 	toDate: string;
 	maxRentalDays: number;
+	// Upcoming dates with a pick-up window — return days must be one (#336).
+	availablePickupDates: string[];
 }
 
-const { orderCode, status, acceptedAt, fromDate, toDate, maxRentalDays } = Astro.props;
+const { orderCode, status, acceptedAt, fromDate, toDate, maxRentalDays, availablePickupDates } = Astro.props;
 const modalId = `change-order-${orderCode}`;
 const titleId = `${modalId}-title`;
 ---
@@ -31,7 +33,7 @@ const titleId = `${modalId}-title`;
 				<h2 id={titleId} class={sectionTitleClasses}>
 					Change pick-up &amp; return dates
 				</h2>
-				<ReservationCalendar value={`${fromDate}/${toDate}`} maxRangeDays={maxRentalDays} />
+				<ReservationCalendar value={`${fromDate}/${toDate}`} maxRangeDays={maxRentalDays} availablePickupDates={availablePickupDates} />
 				<p data-change-order-error hidden class={inlineErrorClasses} />
 				<div class={actionRowClasses}>
 					<Button type="button" data-modal-close>Cancel</Button>
@@ -84,7 +86,9 @@ const titleId = `${modalId}-title`;
 								? `This order can no longer be rescheduled (status: ${body.status}).`
 								: body.error === 'invalid_dates'
 									? 'Please pick a valid date range (within the maximum rental duration).'
-									: 'This order could not be rescheduled.';
+									: body.error === 'return_not_pickup_day'
+										? 'Returns can only be made on a pick-up day — please pick another return date.'
+										: 'This order could not be rescheduled.';
 					errorEl.removeAttribute('hidden');
 				}
 			} catch {

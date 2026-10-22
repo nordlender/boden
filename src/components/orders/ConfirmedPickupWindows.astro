@@ -1,0 +1,44 @@
+---
+// The pick-up and return windows a moderator confirmed when accepting the
+// order (orders.pickupDayId / returnDayId, #343), shown to the member on
+// /orders/[code] in place of their requested ranges (RequestedTimeRanges).
+import { eyebrowClasses } from '../../lib/layout-styles';
+import { formatDateDisplay } from '../../lib/dates';
+
+interface Window {
+	date: string;
+	startTime: string;
+	endTime: string;
+	where: string | null;
+}
+
+interface Props {
+	pickup: Window | null;
+	return: Window | null;
+}
+
+const { pickup, return: ret } = Astro.props;
+const rows = [
+	{ label: 'Pick-up', window: pickup },
+	{ label: 'Return', window: ret },
+].filter((row): row is { label: string; window: Window } => row.window !== null);
+---
+
+{
+	rows.length > 0 && (
+		<section class="flex flex-col gap-snug">
+			<h2 class={eyebrowClasses}>Confirmed times</h2>
+			<dl class="grid grid-cols-[auto_1fr] gap-x-stack gap-y-1 text-sm text-text">
+				{rows.map((row) => (
+					<>
+						<dt class="font-medium">{row.label}</dt>
+						<dd>
+							{formatDateDisplay(row.window.date, { weekday: true })} · {row.window.startTime}–{row.window.endTime}
+							{row.window.where && <span class="text-text-muted"> · {row.window.where}</span>}
+						</dd>
+					</>
+				))}
+			</dl>
+		</section>
+	)
+}

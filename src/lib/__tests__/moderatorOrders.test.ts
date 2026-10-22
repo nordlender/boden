@@ -4,6 +4,7 @@ import type { OrderStatus } from '../orderStatus';
 import {
 	acceptOrder,
 	confirmRetrieval,
+	getAcceptReadiness,
 	getFollowingRentalWorries,
 	getOrderDetail,
 	getOrderIdByCode,
@@ -163,24 +164,89 @@ describe('getOrderIdByCode', () => {
 	});
 });
 
-describe('acceptOrder', () => {
-	it('accepts a pending order, setting acceptedAt and status to scheduled', async () => {
-		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID });
-		const result = await acceptOrder(orderId);
-		expect(result).toEqual({ ok: true });
-		const detail = await getOrderDetail(orderId);
-		expect(detail?.acceptedAt).toBeInstanceOf(Date);
-		expect(detail?.status).toBe('scheduled');
+describe('acceptOrder (#343)', () => {
+	// Each call gets its own dates (pick-up day N, return N+2, next order N+4, from
+	// 2026-06-10 on; the clock is pinned to 2026-05-01), so windows seeded by
+	// one test never overlap another's order.
+	let seq = 0;
+	async function seedAcceptable() {
+		const { addDaysIso } = await import('../dates');
+		const fromDate = addDaysIso('2026-06-10', 4 * seq);
+		const toDate = addDaysIso(fromDate, 2);
+		seq += 1;
+		const { db } = await import('../../db/client');
+		const schema = await import('../../db/schema');
+		const { setOrderTimeRanges } = await import('../orderTimeRanges');
+		const seeded = await seedOrder({ itemId: ITEM_AVAILABLE_ID, fromDate, toDate });
+		setOrderTimeRanges(seeded.orderId, 'pickup', [{ from: '16:00', to: '19:00' }]);
+		setOrderTimeRanges(seeded.orderId, 'return', [{ from: '10:00', to: '12:00' }]);
+		const window = async (date: string, startTime: string, endTime: string) =>
+			(await db.insert(schema.pickupDays).values({ date, startTime, endTime, userId: 'moderator-1' }).returning())[0].id;
+		return {
+			...seeded,
+			fromDate,
+			toDate,
+			// 60 min overlap, 30 min overlap, touching only, the return day's.
+			bestPickup: await window(fromDate, '18:00', '20:00'),
+			otherPickup: await window(fromDate, '15:30', '16:30'),
+			touchingPickup: await window(fromDate, '19:00', '21:00'),
+			returnWindow: await window(toDate, '11:00', '13:00'),
+		};
+	}
+
+	it('offers the overlapping windows per side, best match first, with nothing blocking', async () => {
+		const order = await seedAcceptable();
+		const readiness = getAcceptReadiness({ id: order.orderId, fromDate: order.fromDate, toDate: order.toDate }, '2026-05-01');
+		expect(readiness.pickup.ranges).toEqual([{ from: '16:00', to: '19:00' }]);
+		expect(readiness.pickup.windows.map((w) => [w.id, w.overlapMinutes])).toEqual([
+			[order.bestPickup, 60],
+			[order.otherPickup, 30],
+		]);
+		expect(readiness.return.windows.map((w) => w.id)).toEqual([order.returnWindow]);
+		expect(readiness.blockers).toEqual([]);
+	});
+
+	it('reports blockers: a passed start date and a side without an overlapping window', async () => {
+		const order = await seedAcceptable();
+		// As if the order's return day had no windows, seen the day after pick-up.
+		const { addDaysIso } = await import('../dates');
+		const lateReturn = addDaysIso(order.toDate, 1);
+		const readiness = getAcceptReadiness({ id: order.orderId, fromDate: order.fromDate, toDate: lateReturn }, addDaysIso(order.fromDate, 1));
+		expect(readiness.blockers).toEqual([{ error: 'start_date_passed' }, { error: 'no_overlapping_window', kind: 'return', date: lateReturn }]);
+	});
+
+	it('accepts with both windows, setting them, acceptedAt and status scheduled', async () => {
+		const order = await seedAcceptable();
+		expect(await acceptOrder(order.orderId, { pickupDayId: order.otherPickup, returnDayId: order.returnWindow })).toEqual({ ok: true });
+		const { db } = await import('../../db/client');
+		const row = await db.query.orders.findFirst({ where: (t, { eq }) => eq(t.id, order.orderId) });
+		expect(row).toMatchObject({ status: 'scheduled', pickupDayId: order.otherPickup, returnDayId: order.returnWindow });
+		expect(row?.acceptedAt).toBeInstanceOf(Date);
+	});
+
+	it('refuses a missing, touching-only or wrong-date window and leaves the order requested', async () => {
+		const order = await seedAcceptable();
+		expect(await acceptOrder(order.orderId, { pickupDayId: null, returnDayId: order.returnWindow })).toEqual({ ok: false, error: 'invalid_window', kind: 'pickup' });
+		expect(await acceptOrder(order.orderId, { pickupDayId: order.touchingPickup, returnDayId: order.returnWindow })).toEqual({ ok: false, error: 'invalid_window', kind: 'pickup' });
+		// The return window used as the pick-up window: right overlap, wrong date.
+		expect(await acceptOrder(order.orderId, { pickupDayId: order.returnWindow, returnDayId: order.returnWindow })).toEqual({ ok: false, error: 'invalid_window', kind: 'pickup' });
+		expect(await acceptOrder(order.orderId, { pickupDayId: order.bestPickup, returnDayId: 999999 })).toEqual({ ok: false, error: 'invalid_window', kind: 'return' });
+		expect((await getOrderDetail(order.orderId))?.status).toBe('requested');
+	});
+
+	it('refuses an order whose pick-up date has passed', async () => {
+		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, fromDate: '2026-04-20', toDate: '2026-05-03' });
+		expect(await acceptOrder(orderId, { pickupDayId: null, returnDayId: null })).toEqual({ ok: false, error: 'start_date_passed' });
 	});
 
 	it('fails with not_pending_review for an order that is already accepted', async () => {
 		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, status: 'scheduled', acceptedAt: new Date() });
-		expect(await acceptOrder(orderId)).toEqual({ ok: false, error: 'not_pending_review' });
+		expect(await acceptOrder(orderId, { pickupDayId: null, returnDayId: null })).toEqual({ ok: false, error: 'not_pending_review' });
 	});
 
 	it('fails with not_pending_review for an order that is already rejected', async () => {
 		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, status: 'rejected', rejectedAt: new Date() });
-		expect(await acceptOrder(orderId)).toEqual({ ok: false, error: 'not_pending_review' });
+		expect(await acceptOrder(orderId, { pickupDayId: null, returnDayId: null })).toEqual({ ok: false, error: 'not_pending_review' });
 	});
 });
 

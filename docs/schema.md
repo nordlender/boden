@@ -594,3 +594,19 @@ moderator then assigns a real window to the order when accepting it
   order is assigned one of the affected windows (#369), and otherwise clear
   the reference of orders that are done with it (rejected, returned, …) in
   the same transaction as the delete.
+- **Requesting** (#368): `/reservation` collects the ranges once the dates
+  are picked (the day's windows are presets); `validateOrderTimeRanges`
+  adds the date rules (no range on today that has already passed, Oslo
+  time; for a same-day rental a return range must end after the pick-up
+  starts). `createOrder` writes them in its transaction; a reschedule
+  replaces them together with the dates.
+- **Accepting** (#343): the review page lists, per side, the windows that
+  overlap the member's ranges, best match pre-selected. `acceptOrder` takes
+  `pickupDayId` / `returnDayId` and, in its transaction, refuses unless each
+  window is on the right date and overlaps a range (`findOverlappingWindows`)
+  and the pick-up date hasn't passed. A free time is never confirmed as-is:
+  with no overlapping window the moderator adds one or rejects.
+- **Return day** (#336): returns only happen on pick-up days, so `toDate`
+  must have a `pickup_days` row (`isValidDateRange(range, pickupDates)`,
+  checked inside the create/reschedule transaction). `fromDate` can still
+  be any day.

@@ -5,6 +5,7 @@ import { getMaxRentalDays } from '../../lib/rental-policy';
 import { getUpcomingAvailablePickupDates, listUpcomingPickupDays } from '../../lib/pickupDays';
 import { getOrderTimeRanges } from '../../lib/orderTimeRanges';
 import RequestedTimeRanges from '../../components/orders/RequestedTimeRanges.astro';
+import ConfirmedPickupWindows from '../../components/orders/ConfirmedPickupWindows.astro';
 import { todayIsoInOslo } from '../../lib/dates';
 import OrderCodeHeader from '../../components/orders/OrderCodeHeader.astro';
 import OrderContents from '../../components/orders/OrderContents.astro';
@@ -22,7 +23,7 @@ const { code } = Astro.params;
 const order = code
   ? await db.query.orders.findFirst({
       where: (t, { eq }) => eq(t.orderCode, code),
-      with: { orderItems: { with: { item: true } } },
+      with: { orderItems: { with: { item: true } }, pickupDay: true, returnDay: true },
     })
   : undefined;
 
@@ -46,6 +47,7 @@ const timeRanges = getOrderTimeRanges(order.id);
 		<Card as="div">
 			<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
 			{order.status === 'requested' && <RequestedTimeRanges fromDate={order.fromDate} toDate={order.toDate} ranges={timeRanges} framed={false} />}
+			{(order.status === 'scheduled' || order.status === 'active') && <ConfirmedPickupWindows pickup={order.pickupDay} return={order.returnDay} />}
 			<OrderContents
 				items={order.orderItems.map((oi) => ({
 					itemName: oi.item.name,

@@ -11,6 +11,9 @@ const {
 	isValidDateString,
 	isValidTimeString,
 	getUpcomingAvailablePickupDates,
+	getUpcomingPickupWindows,
+	getPickupWindowsForDate,
+	getOrderPickupWindows,
 	listUpcomingPickupDays,
 	createSingleDays,
 	deleteSingleDay,
@@ -100,6 +103,27 @@ describe('single pickup days', () => {
 			{ date: '2026-09-15', startTime: '09:00', endTime: '10:00', where: null },
 		]);
 		expect(await getUpcomingAvailablePickupDates('2026-09-10')).toEqual(['2026-09-15']);
+	});
+
+	it('pickup windows carry time and place, are deduplicated, and sorted by start time', async () => {
+		await createSingleDays(MODERATOR_A, [
+			{ date: '2026-09-10', startTime: '18:00', endTime: '20:00', where: 'At Vulkan' },
+			{ date: '2026-09-10', startTime: '12:00', endTime: '14:00', where: null },
+			{ date: '2026-09-01', startTime: '09:00', endTime: '10:00', where: null },
+		]);
+		await createSingleDays(MODERATOR_B, [{ date: '2026-09-10', startTime: '18:00', endTime: '20:00', where: 'At Vulkan' }]);
+
+		expect(await getUpcomingPickupWindows('2026-09-10')).toEqual({
+			'2026-09-10': [
+				{ startTime: '12:00', endTime: '14:00', where: null },
+				{ startTime: '18:00', endTime: '20:00', where: 'At Vulkan' },
+			],
+		});
+		// Exact-date lookup (for order pages) isn't floored to upcoming.
+		expect(await getPickupWindowsForDate('2026-09-01')).toEqual([{ startTime: '09:00', endTime: '10:00', where: null }]);
+		expect(await getPickupWindowsForDate('2026-09-02')).toEqual([]);
+		// Order pages: the order's pick-up date windows until #367 adds pickupDayId.
+		expect(await getOrderPickupWindows({ fromDate: '2026-09-01' })).toEqual([{ startTime: '09:00', endTime: '10:00', where: null }]);
 	});
 
 	it('a moderator can only delete their own single day', async () => {

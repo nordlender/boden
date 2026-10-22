@@ -2,6 +2,7 @@ import { and, asc, eq, gte } from 'drizzle-orm';
 import { db } from '../db/client';
 import { addDaysIso, isIsoDate } from './dates';
 import { pickupDays, pickupRecurringRules } from '../db/schema';
+import type { PickupWindowDisplay } from './pickupWindowFormat';
 
 const TIME_FORMAT = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -54,6 +55,57 @@ export async function getUpcomingAvailablePickupDates(fromDate: string): Promise
 	return rows.map((row) => row.date);
 }
 
+// Time + place only — what members see. Same shape the client-side
+// formatter (pickupWindowFormat.ts) takes.
+export type PickupWindow = PickupWindowDisplay;
+
+function groupWindowsByDate(rows: Array<PickupWindow & { date: string }>): Map<string, PickupWindow[]> {
+	const byDate = new Map<string, PickupWindow[]>();
+	for (const { date, startTime, endTime, where } of rows) {
+		const windows = byDate.get(date) ?? [];
+		// Two moderators (or overlapping recurring rules) can offer the exact
+		// same window — members only need to see it once.
+		if (!windows.some((w) => w.startTime === startTime && w.endTime === endTime && w.where === where)) {
+			windows.push({ startTime, endTime, where });
+		}
+		byDate.set(date, windows);
+	}
+	return byDate;
+}
+
+// Time + place of every pick-up window from `fromDate` onward, keyed by date
+// — the /reservation page lists the selected day's windows under the
+// calendar summary. Same date set as getUpcomingAvailablePickupDates.
+export async function getUpcomingPickupWindows(fromDate: string): Promise<Record<string, PickupWindow[]>> {
+	const rows = await db
+		.select({ date: pickupDays.date, startTime: pickupDays.startTime, endTime: pickupDays.endTime, where: pickupDays.where })
+		.from(pickupDays)
+		.where(gte(pickupDays.date, fromDate))
+		.orderBy(asc(pickupDays.date), asc(pickupDays.startTime), asc(pickupDays.endTime));
+	return Object.fromEntries(groupWindowsByDate(rows));
+}
+
+// Windows for one exact date, past or future — an order's pick-up day
+// keeps showing its time/place on the order pages, and the
+// /reservation/confirm overview lists the chosen day's windows.
+export async function getPickupWindowsForDate(date: string): Promise<PickupWindow[]> {
+	const rows = await db
+		.select({ date: pickupDays.date, startTime: pickupDays.startTime, endTime: pickupDays.endTime, where: pickupDays.where })
+		.from(pickupDays)
+		.where(eq(pickupDays.date, date))
+		.orderBy(asc(pickupDays.startTime), asc(pickupDays.endTime));
+	return groupWindowsByDate(rows).get(date) ?? [];
+}
+
+// The pick-up window(s) to show a member for their order (/orders/[code],
+// /checkout/success). For now every window on orders.fromDate; once #367/#343
+// add orders.pickupDayId, this returns just that confirmed row (falling back
+// to the date's windows while unconfirmed), and a returnDayId counterpart
+// joins it — callers and PickupInfo.astro stay unchanged.
+export async function getOrderPickupWindows(order: { fromDate: string }): Promise<PickupWindow[]> {
+	return getPickupWindowsForDate(order.fromDate);
+}
+
 // Full rows (both kinds, every submitter) for the moderator/admin pages'
 // "All pickup days" table and for deriving "My"/"Other"/"Single" from —
 // those are all filters over this same result set, not separate queries.
@@ -63,13 +115,6 @@ export async function listUpcomingPickupDays(fromDate: string): Promise<PickupDa
 		.from(pickupDays)
 		.where(gte(pickupDays.date, fromDate))
 		.orderBy(asc(pickupDays.date), asc(pickupDays.startTime));
-}
-
-// Pick-up windows offered on one date (any kind, any moderator), earliest
-// first — shown on the /reservation/confirm overview.
-export async function listPickupDaysOn(date: string): Promise<PickupDayRow[]> {
-	const rows = await db.select().from(pickupDays).where(eq(pickupDays.date, date)).orderBy(asc(pickupDays.startTime));
-	return rows;
 }
 
 export interface NewSingleDay {

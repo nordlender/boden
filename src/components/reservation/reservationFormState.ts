@@ -12,6 +12,7 @@
 // enable/disable). Pure DOM painting lives in reservationFormRender.ts — this
 // module decides *what* to render and calls those functions with the result.
 import { hideRow, renderRow, setSubmitEnabled, setSubmitHint, type LineAvailability } from './reservationFormRender';
+import { deriveReservationStatus, type ReservationStatusInput } from '../../lib/reservationStatus';
 
 // A cart line's reservation-relevant shape — `key` is cart.ts's entryKey
 // ('item:<id>' or 'set:<id>'), matching this line's `[data-line-key]`
@@ -28,16 +29,17 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 	let lastFrom: string | undefined;
 	let lastTo: string | undefined;
 
-	const warning = document.querySelector('[data-unavailable-warning]');
-	const loadingIndicator = document.querySelector('[data-availability-loading]');
+	const warning = document.querySelector<HTMLElement>('[data-unavailable-warning]');
+	const warningText = document.querySelector<HTMLElement>('[data-unavailable-warning-text]');
+	const errorBox = document.querySelector<HTMLElement>('[data-availability-error]');
+	const errorText = document.querySelector<HTMLElement>('[data-availability-error-text]');
+	const loadingIndicator = document.querySelector<HTMLElement>('[data-availability-loading]');
 	const submitHint = document.querySelector('[data-submit-hint]');
 	const checkoutForm = document.querySelector('.checkout-form');
 	const submitButton = checkoutForm?.querySelector('button[type="submit"]');
 	const fromDateInput = checkoutForm?.querySelector('[data-checkout-from-date]');
 	const toDateInput = checkoutForm?.querySelector('[data-checkout-to-date]');
 
-	let lastAllAvailable = false;
-	let lastSomeUnavailable = false;
 	// Guards against an in-flight request landing after a later one (rapid
 	// date changes while typing/dragging the calendar selection).
 	let requestToken = 0;
@@ -46,16 +48,17 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 		return document.querySelectorAll('[data-reservation-row]');
 	}
 
-	function refreshSubmitState() {
-		const enabled = lastAllAvailable && cartLines.length > 0;
-		setSubmitEnabled(submitButton, enabled);
-		if (enabled) {
-			setSubmitHint(submitHint, '');
-		} else if (lastSomeUnavailable) {
-			setSubmitHint(submitHint, 'Remove the unavailable item(s) from your cart to continue, or choose different dates.');
-		} else {
-			setSubmitHint(submitHint, 'Select your pick-up and return dates above to continue.');
-		}
+	// Paints every status element from one derived view. The states and their
+	// text live in src/lib/reservationStatus.ts.
+	function applyStatus(input: ReservationStatusInput) {
+		const view = deriveReservationStatus(input);
+		setSubmitEnabled(submitButton, view.submitEnabled && cartLines.length > 0);
+		setSubmitHint(submitHint, view.hint);
+		if (loadingIndicator) loadingIndicator.hidden = !view.loading;
+		if (warning) warning.hidden = view.warning === null;
+		if (warningText) warningText.textContent = view.warning ?? '';
+		if (errorBox) errorBox.hidden = view.error === null;
+		if (errorText) errorText.textContent = view.error ?? '';
 	}
 
 	setSubmitEnabled(submitButton, false);
@@ -69,16 +72,13 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 		const token = ++requestToken;
 
 		if (!from || !to) {
-			warning?.setAttribute('hidden', '');
-			loadingIndicator?.setAttribute('hidden', '');
-			lastAllAvailable = false;
-			lastSomeUnavailable = false;
-			refreshSubmitState();
+			applyStatus({ hasDates: false, availabilities: null });
 			getRows().forEach((row) => hideRow(row));
 			return;
 		}
 
-		loadingIndicator?.removeAttribute('hidden');
+		// Loading: submit stays disabled until this check answers.
+		applyStatus({ hasDates: true, availabilities: null });
 
 		let availabilities: LineAvailability[];
 		try {
@@ -88,27 +88,20 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 				body: JSON.stringify({ from, to, lines: cartLines }),
 			});
 			if (token !== requestToken) return;
-			if (!res.ok) {
-				loadingIndicator?.setAttribute('hidden', '');
-				return;
-			}
+			if (!res.ok) throw new Error(`availability check failed: ${res.status}`);
 			({ availabilities } = await res.json());
 			if (token !== requestToken) return;
+			if (!Array.isArray(availabilities)) throw new Error('availability check returned no lines');
 		} catch {
-			if (token === requestToken) loadingIndicator?.setAttribute('hidden', '');
+			if (token !== requestToken) return;
+			applyStatus({ hasDates: true, availabilities: 'error' });
+			getRows().forEach((row) => hideRow(row));
 			return;
 		}
 
-		loadingIndicator?.setAttribute('hidden', '');
+		applyStatus({ hasDates: true, availabilities });
 
 		const byKey = new Map(availabilities.map((a) => [a.key, a]));
-		const someUnavailable = availabilities.some((a) => !a.available);
-
-		warning?.toggleAttribute('hidden', !someUnavailable);
-		lastAllAvailable = availabilities.every((a) => a.available);
-		lastSomeUnavailable = someUnavailable;
-		refreshSubmitState();
-
 		getRows().forEach((row) => {
 			const availability = byKey.get((row as HTMLElement).dataset.lineKey ?? '');
 			if (availability) renderRow(row, availability);

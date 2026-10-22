@@ -17,6 +17,9 @@ interface Props {
 	// orders, per src/lib/pickupDays.ts. Colored green in the calendar;
 	// everything else is left at the default "request pick up" styling.
 	availablePickupDates?: string[];
+	// Time + place windows per pick-up date; the selected pick-up day's are
+	// listed under the range summary. Unset (reschedule modal) shows none.
+	pickupWindows?: Record<string, PickupWindowDisplay[]>;
 	// Preselects an existing range — "YYYY-MM-DD/YYYY-MM-DD", same shape as
 	// this component's own `change` event value. Used by the reschedule flow
 	// (ChangeOrderLink.astro) to open the calendar already showing the
@@ -30,8 +33,9 @@ interface Props {
 }
 
 import { todayIsoInOslo } from '../../lib/dates';
+import type { PickupWindowDisplay } from '../../lib/pickupWindowFormat';
 
-const { availablePickupDates = [], value, maxRangeDays } = Astro.props;
+const { availablePickupDates = [], pickupWindows = {}, value, maxRangeDays } = Astro.props;
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
 const todayIso = todayIsoInOslo();
 ---
@@ -55,6 +59,7 @@ const todayIso = todayIsoInOslo();
 		min={todayIso}
 		value={value}
 		data-available-pickup-dates={JSON.stringify(availablePickupDates)}
+		data-pickup-windows={JSON.stringify(pickupWindows)}
 		data-max-range-days={maxRangeDays}
 	>
 		<svg slot="previous" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -70,6 +75,7 @@ const todayIso = todayIsoInOslo();
 	<p class="mt-stack text-sm text-text-muted">
 		<span data-range-summary>Select a pick-up and return date.</span>
 	</p>
+	<ul data-pickup-windows-list hidden class="mt-1 list-inside list-disc text-sm text-text-muted"></ul>
 </div>
 
 <style>
@@ -111,7 +117,14 @@ const todayIso = todayIsoInOslo();
 		width: 100%;
 	}
 
+	/* The day grid (head, day, today, pickup-available, range-*) lives in
+	   each slotted <calendar-month>'s shadow root, not <calendar-range>'s,
+	   and Cally doesn't re-export those parts — so they're targeted as
+	   calendar-month::part(...). Its :host also resets --color-accent to
+	   black, hence the theme values set here too (same fix as #331). */
 	.reservation-calendar calendar-range calendar-month {
+		--color-accent: var(--ui-accent);
+		--color-text-on-accent: var(--color-text-inverted);
 		width: 100%;
 	}
 
@@ -130,43 +143,45 @@ const todayIso = todayIsoInOslo();
 		}
 	}
 
-	.reservation-calendar calendar-range::part(button) {
+	.reservation-calendar calendar-range::part(button),
+	.reservation-calendar calendar-range calendar-month::part(button) {
 		border-radius: 0.375rem;
 		color: var(--color-text-muted);
 	}
 
-	.reservation-calendar calendar-range::part(button):hover {
+	.reservation-calendar calendar-range::part(button):hover,
+	.reservation-calendar calendar-range calendar-month::part(button):hover {
 		background-color: var(--color-bg-subtle);
 	}
 
-	.reservation-calendar calendar-range::part(head) {
+	.reservation-calendar calendar-range calendar-month::part(head) {
 		font-weight: 600;
 		color: var(--color-text);
 	}
 
-	.reservation-calendar calendar-range::part(day) {
+	.reservation-calendar calendar-range calendar-month::part(day) {
 		border-radius: 0.375rem;
 	}
 
-	.reservation-calendar calendar-range::part(today) {
+	.reservation-calendar calendar-range calendar-month::part(today) {
 		font-weight: 700;
 	}
 
 	/* Availability tint — declared before range-start/range-end/range-inner
 	   below so an actual selection always visually wins over it. */
-	.reservation-calendar calendar-range::part(pickup-available) {
+	.reservation-calendar calendar-range calendar-month::part(pickup-available) {
 		background-color: var(--color-success-subtle);
 		box-shadow: inset 0 0 0 1px var(--color-success-border);
 		color: var(--color-success-text);
 	}
 
-	.reservation-calendar calendar-range::part(range-inner) {
+	.reservation-calendar calendar-range calendar-month::part(range-inner) {
 		background-color: var(--color-selected-subtle);
 		color: var(--color-selected-text);
 	}
 
-	.reservation-calendar calendar-range::part(range-start),
-	.reservation-calendar calendar-range::part(range-end) {
+	.reservation-calendar calendar-range calendar-month::part(range-start),
+	.reservation-calendar calendar-range calendar-month::part(range-end) {
 		background-color: var(--color-selected);
 		color: var(--color-text-inverted);
 	}
@@ -175,6 +190,7 @@ const todayIso = todayIsoInOslo();
 <script>
 	import 'cally';
 	import { formatDateDisplay, dateToIsoInOslo, addDaysIso } from '../../lib/dates';
+	import { formatPickupWindow, type PickupWindowDisplay } from '../../lib/pickupWindowFormat';
 
 	type RangeCalendar = HTMLElement & {
 		value?: string;
@@ -184,6 +200,7 @@ const todayIso = todayIsoInOslo();
 
 	const calendar = document.querySelector<RangeCalendar>('[data-reservation-calendar]');
 	const summary = document.querySelector<HTMLElement>('[data-range-summary]');
+	const windowsList = document.querySelector<HTMLElement>('[data-pickup-windows-list]');
 	const maxRangeDays = calendar ? Number(calendar.dataset.maxRangeDays || '') || undefined : undefined;
 
 	if (calendar) {
@@ -203,6 +220,28 @@ const todayIso = todayIsoInOslo();
 		calendar.getDayParts = (date) => (availableDates.has(dateToIsoInOslo(date)) ? 'pickup-available' : '');
 	}
 
+	let pickupWindows: Record<string, PickupWindowDisplay[]> = {};
+	try {
+		pickupWindows = JSON.parse(calendar?.dataset.pickupWindows ?? '{}');
+	} catch {
+		// No windows listed — the summary still works without them.
+	}
+
+	// Lists the time + place of the selected pick-up day's windows under the
+	// summary; hidden when no day is selected or it has none on record.
+	function renderPickupWindows(from: string | undefined) {
+		if (!windowsList) return;
+		const windows = from ? (pickupWindows[from] ?? []) : [];
+		windowsList.replaceChildren(
+			...windows.map((window) => {
+				const li = document.createElement('li');
+				li.textContent = formatPickupWindow(window);
+				return li;
+			}),
+		);
+		windowsList.hidden = windows.length === 0;
+	}
+
 	// Fires once the calendar first upgrades even with a preselected `value`
 	// and no user interaction yet — show that preselection in the summary.
 	if (calendar?.value) {
@@ -210,6 +249,8 @@ const todayIso = todayIsoInOslo();
 		if (summary && initialFrom && initialTo) {
 			summary.textContent = `Pick-up ${formatDateDisplay(initialFrom)} · Return ${formatDateDisplay(initialTo)}`;
 		}
+		// Back-navigation from /reservation/confirm can restore the range.
+		renderPickupWindows(initialFrom && initialTo ? initialFrom : undefined);
 	}
 
 	calendar?.addEventListener('change', () => {
@@ -239,6 +280,8 @@ const todayIso = todayIsoInOslo();
 		if (summary) {
 			summary.textContent = from && to ? `Pick-up ${formatDateDisplay(from)} · Return ${formatDateDisplay(to)}` : 'Select a pick-up and return date.';
 		}
+
+		renderPickupWindows(from && to ? from : undefined);
 
 		calendar.dispatchEvent(new CustomEvent('reservation-range-change', { bubbles: true, detail: { from, to } }));
 	});

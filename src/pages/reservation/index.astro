@@ -5,7 +5,7 @@ import Page from '../../components/ui/Page.astro';
 import Callout from '../../components/ui/Callout.astro';
 import { emptyStateFramedClasses } from '../../lib/layout-styles';
 import { getCartLines } from '../../lib/cart';
-import { getUpcomingAvailablePickupDates } from '../../lib/pickupDays';
+import { getUpcomingPickupWindows } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
 import { todayIsoInOslo } from '../../lib/dates';
 import { getSession } from 'auth-astro/server';
@@ -24,7 +24,7 @@ const [session, feeStatus] = await Promise.all([
 
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
 const todayIso = todayIsoInOslo();
-const availablePickupDates = await getUpcomingAvailablePickupDates(todayIso);
+const pickupWindows = await getUpcomingPickupWindows(todayIso);
 
 // Surfaces the error redirects /api/orders/create (and /reservation/confirm)
 // can send back here — see the keys of errorMessages below. Without this the
@@ -57,7 +57,7 @@ const errorMessage = error ? (errorMessages[error] ?? null) : null;
 
 		{cartLines.length > 0 && <ReservationForm
 			cartLines={cartLines}
-			availablePickupDates={availablePickupDates}
+			pickupWindows={pickupWindows}
 			name={session?.user?.name ?? null}
 			email={session?.user?.email ?? null}
 			mobile={session?.bloc?.mobile ?? null}

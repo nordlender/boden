@@ -9,12 +9,9 @@
 // picks up the resulting `change` events and renders the hidden "Selected
 // days" table underneath.
 import { todayIsoInOslo } from '../../lib/dates';
+import { buildPickupDayKinds, type PickupDayKindRow } from '../../lib/pickupDayKinds';
 
-export interface PickupDaysCalendarEntry {
-	date: string;
-	kind: 'single' | 'recurring';
-	userId: string;
-}
+export type PickupDaysCalendarEntry = PickupDayKindRow;
 
 interface Props {
 	rows: PickupDaysCalendarEntry[];
@@ -24,20 +21,9 @@ interface Props {
 const { rows, currentUserId } = Astro.props;
 const todayIso = todayIsoInOslo();
 
-// One kind per date, highest-precedence wins when more than one row lands
-// on the same date (e.g. a recurring training day a moderator also offered
-// themselves) — recurring (red) reads as the more load-bearing fact of the
-// two, then "is this mine".
-const PRECEDENCE = { recurring: 2, mine: 1, other: 0 } as const;
-const kindByDate = new Map<string, keyof typeof PRECEDENCE>();
-for (const row of rows) {
-	const kind = row.kind === 'recurring' ? 'recurring' : row.userId === currentUserId ? 'mine' : 'other';
-	const existing = kindByDate.get(row.date);
-	if (!existing || PRECEDENCE[kind] > PRECEDENCE[existing]) {
-		kindByDate.set(row.date, kind);
-	}
-}
-const dayKinds = Object.fromEntries(kindByDate);
+// One kind per date: recurring (red) wins over "mine", which wins over
+// "other". See buildPickupDayKinds.
+const dayKinds = buildPickupDayKinds(rows, currentUserId);
 ---
 
 <div class="pickup-days-calendar rounded-lg border border-border bg-surface p-3">
@@ -96,7 +82,16 @@ const dayKinds = Object.fromEntries(kindByDate);
 		width: 100%;
 	}
 
+	/* Only container/header/months/heading and the prev/next buttons are
+	   parts of <calendar-multi>'s own shadow tree. The day grid (head, day,
+	   today, selected, and the getDayParts kinds) is rendered inside each
+	   slotted <calendar-month>'s shadow root, and Cally doesn't re-export
+	   those parts, so they must be targeted as calendar-month::part(...).
+	   calendar-month's :host also resets --color-accent to black, so the
+	   theme values are set on it directly (#331). */
 	.pickup-days-calendar calendar-multi calendar-month {
+		--color-accent: var(--ui-accent);
+		--color-text-on-accent: var(--color-text-inverted);
 		width: 100%;
 	}
 
@@ -123,49 +118,51 @@ const dayKinds = Object.fromEntries(kindByDate);
 		}
 	}
 
-	.pickup-days-calendar calendar-multi::part(button) {
+	.pickup-days-calendar calendar-multi::part(button),
+	.pickup-days-calendar calendar-multi calendar-month::part(button) {
 		border-radius: 0.375rem;
 		color: var(--color-text-muted);
 	}
 
-	.pickup-days-calendar calendar-multi::part(button):hover {
+	.pickup-days-calendar calendar-multi::part(button):hover,
+	.pickup-days-calendar calendar-multi calendar-month::part(button):hover {
 		background-color: var(--color-bg-subtle);
 	}
 
-	.pickup-days-calendar calendar-multi::part(head) {
+	.pickup-days-calendar calendar-multi calendar-month::part(head) {
 		font-weight: 600;
 		color: var(--color-text);
 	}
 
-	.pickup-days-calendar calendar-multi::part(day) {
+	.pickup-days-calendar calendar-multi calendar-month::part(day) {
 		border-radius: 0.375rem;
 	}
 
-	.pickup-days-calendar calendar-multi::part(today) {
+	.pickup-days-calendar calendar-multi calendar-month::part(today) {
 		font-weight: 700;
 	}
 
 	/* Declared before ::part(selected) so an actual selection always visually
 	   wins over the origin-kind tint underneath it. */
-	.pickup-days-calendar calendar-multi::part(recurring) {
+	.pickup-days-calendar calendar-multi calendar-month::part(recurring) {
 		background-color: var(--color-error-subtle);
 		box-shadow: inset 0 0 0 1px var(--color-error-border);
 		color: var(--color-error-text);
 	}
 
-	.pickup-days-calendar calendar-multi::part(mine) {
+	.pickup-days-calendar calendar-multi calendar-month::part(mine) {
 		background-color: var(--color-success-subtle);
 		box-shadow: inset 0 0 0 1px var(--color-success-border);
 		color: var(--color-success-text);
 	}
 
-	.pickup-days-calendar calendar-multi::part(other) {
+	.pickup-days-calendar calendar-multi calendar-month::part(other) {
 		background-color: var(--color-warning-subtle);
 		box-shadow: inset 0 0 0 1px var(--color-warning-border);
 		color: var(--color-warning-text);
 	}
 
-	.pickup-days-calendar calendar-multi::part(selected) {
+	.pickup-days-calendar calendar-multi calendar-month::part(selected) {
 		background-color: var(--color-selected);
 		color: var(--color-text-inverted);
 	}
@@ -173,7 +170,7 @@ const dayKinds = Object.fromEntries(kindByDate);
 
 <script>
 	import 'cally';
-	import { dateToIsoInOslo } from '../../lib/dates';
+	import { pickupDayPartsFor, type PickupDayCalendarKind } from '../../lib/pickupDayKinds';
 
 	type MultiCalendar = HTMLElement & {
 		value?: string;
@@ -182,14 +179,16 @@ const dayKinds = Object.fromEntries(kindByDate);
 
 	const calendar = document.querySelector<MultiCalendar>('[data-pickup-days-calendar]');
 	if (calendar) {
-		let dayKinds: Record<string, 'mine' | 'other' | 'recurring'>;
+		let dayKinds: Record<string, PickupDayCalendarKind>;
 		try {
 			dayKinds = JSON.parse(calendar.dataset.dayKinds ?? '{}');
 		} catch {
 			dayKinds = {};
 		}
 
-		calendar.getDayParts = (date) => dayKinds[dateToIsoInOslo(date)] ?? '';
+		// Assigning after Cally has upgraded is fine: getDayParts is a reactive
+		// prop, so the months re-render with the kinds as parts.
+		calendar.getDayParts = pickupDayPartsFor(dayKinds);
 		// Every day stays pickable, including one already showing "mine" — a
 		// moderator can offer more than one time window on the same day (e.g.
 		// 12:00-14:00 and 18:00-20:00), so re-selecting a day they've already

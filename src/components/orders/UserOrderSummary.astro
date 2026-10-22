@@ -1,11 +1,14 @@
 ---
 import OrderCodeHeader from './OrderCodeHeader.astro';
 import OrderContents from './OrderContents.astro';
+import type { Attribute } from '../../lib/attributes';
 
 interface OrderItemView {
 	itemName: string;
 	requestedQuantity: number;
 	itemImageUrl?: string | null;
+	attributes?: Attribute[];
+	href?: string | null;
 }
 
 interface Props {

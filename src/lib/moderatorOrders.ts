@@ -5,6 +5,10 @@ import { isForeignKeyViolation } from './db-errors';
 import { getReservationAvailability } from './reservation';
 import { lineQuantity, occupiedQuantity } from './availability';
 import { RESERVING_STATUSES, type OrderStatus } from './orderStatus';
+import { findOverlappingWindows, type OverlappingWindow } from './pickupDays';
+import { getOrderTimeRanges } from './orderTimeRanges';
+import { todayIsoInOslo } from './dates';
+import type { TimeRange, TimeRangeKind } from './timeRanges';
 
 // Moderator-side order operations — kept separate from member-side
 // src/lib/orders.ts (createOrder/deleteOrder/
@@ -196,8 +200,6 @@ export async function getOrderIdByCode(orderCode: string): Promise<number | null
 	return order?.id ?? null;
 }
 
-export type AcceptOrderResult = { ok: true } | { ok: false; error: 'not_pending_review' };
-
 // Gate shared by acceptOrder/rejectOrder: an order is pending review only
 // while its status is still 'requested'. Re-POSTing
 // against an order that's since moved on (accepted by another moderator tab,
@@ -208,13 +210,105 @@ export type AcceptOrderResult = { ok: true } | { ok: false; error: 'not_pending_
 const PENDING_REVIEW_WHERE = (orderId: number) =>
 	and(eq(orders.id, orderId), eq(orders.status, 'requested'));
 
-export async function acceptOrder(orderId: number): Promise<AcceptOrderResult> {
-	const result = db
-		.update(orders)
-		.set({ status: 'scheduled', acceptedAt: new Date() })
-		.where(PENDING_REVIEW_WHERE(orderId))
-		.run();
-	return result.changes > 0 ? { ok: true } : { ok: false, error: 'not_pending_review' };
+// One side (pick-up on fromDate, return on toDate) of what the review page
+// offers a moderator (#343): the member's requested ranges and the windows
+// on that date overlapping them, best match (largest overlap) first.
+export interface AcceptTimeOption {
+	kind: TimeRangeKind;
+	date: string;
+	ranges: TimeRange[];
+	windows: OverlappingWindow[];
+}
+
+export type AcceptBlocker =
+	| { error: 'start_date_passed' }
+	| { error: 'no_overlapping_window'; kind: TimeRangeKind; date: string };
+
+export interface AcceptReadiness {
+	pickup: AcceptTimeOption;
+	return: AcceptTimeOption;
+	// Why accepting is impossible right now; empty when it can go ahead.
+	blockers: AcceptBlocker[];
+}
+
+type Executor = Parameters<typeof findOverlappingWindows>[2];
+
+function acceptTimeOption(kind: TimeRangeKind, date: string, ranges: TimeRange[], executor?: Executor): AcceptTimeOption {
+	return { kind, date, ranges, windows: findOverlappingWindows(date, ranges, executor) };
+}
+
+// What the review page needs to offer, and gate, accepting an order (#343).
+// acceptOrder re-checks the same rules inside its transaction.
+export function getAcceptReadiness(order: { id: number; fromDate: string; toDate: string }, today: string = todayIsoInOslo()): AcceptReadiness {
+	const ranges = getOrderTimeRanges(order.id);
+	const pickup = acceptTimeOption('pickup', order.fromDate, ranges.pickup);
+	const ret = acceptTimeOption('return', order.toDate, ranges.return);
+	const blockers: AcceptBlocker[] = [];
+	if (order.fromDate < today) blockers.push({ error: 'start_date_passed' });
+	for (const option of [pickup, ret]) {
+		if (option.windows.length === 0) blockers.push({ error: 'no_overlapping_window', kind: option.kind, date: option.date });
+	}
+	return { pickup, return: ret, blockers };
+}
+
+export type AcceptOrderInput = { pickupDayId: number | null; returnDayId: number | null };
+
+export type AcceptOrderResult =
+	| { ok: true }
+	| { ok: false; error: 'not_pending_review' }
+	| { ok: false; error: 'start_date_passed' }
+	// The chosen window is missing, on another date than fromDate / toDate,
+	// or doesn't overlap any of the member's ranges for that side.
+	| { ok: false; error: 'invalid_window'; kind: TimeRangeKind };
+
+class AcceptRefusedError extends Error {
+	constructor(public result: Exclude<AcceptOrderResult, { ok: true }>) {
+		super(result.error);
+	}
+}
+
+// Accepting confirms a pick-up and a return window for the order (#343):
+// both are required, each must be a pick-up window on the right date
+// (fromDate / toDate) that overlaps one of the member's requested ranges for
+// that side, and the pick-up date must not have passed. All of it is
+// re-checked inside the transaction that sets the windows and moves the
+// order to 'scheduled', so a window deleted or an order changed in between
+// can't slip through.
+export async function acceptOrder(orderId: number, input: AcceptOrderInput): Promise<AcceptOrderResult> {
+	try {
+		db.transaction((tx) => {
+			const order = tx
+				.select({ id: orders.id, status: orders.status, fromDate: orders.fromDate, toDate: orders.toDate })
+				.from(orders)
+				.where(eq(orders.id, orderId))
+				.get();
+			if (!order || order.status !== 'requested') throw new AcceptRefusedError({ ok: false, error: 'not_pending_review' });
+			if (order.fromDate < todayIsoInOslo()) throw new AcceptRefusedError({ ok: false, error: 'start_date_passed' });
+
+			const ranges = getOrderTimeRanges(order.id, tx);
+			const sides = [
+				{ kind: 'pickup' as const, dayId: input.pickupDayId, date: order.fromDate, ranges: ranges.pickup },
+				{ kind: 'return' as const, dayId: input.returnDayId, date: order.toDate, ranges: ranges.return },
+			];
+			for (const side of sides) {
+				// findOverlappingWindows only returns windows on `date` that
+				// overlap a range, so membership covers all three rules.
+				const valid = side.dayId !== null && findOverlappingWindows(side.date, side.ranges, tx).some((w) => w.id === side.dayId);
+				if (!valid) throw new AcceptRefusedError({ ok: false, error: 'invalid_window', kind: side.kind });
+			}
+
+			const result = tx
+				.update(orders)
+				.set({ status: 'scheduled', acceptedAt: new Date(), pickupDayId: input.pickupDayId, returnDayId: input.returnDayId })
+				.where(PENDING_REVIEW_WHERE(orderId))
+				.run();
+			if (result.changes === 0) throw new AcceptRefusedError({ ok: false, error: 'not_pending_review' });
+		});
+	} catch (err) {
+		if (err instanceof AcceptRefusedError) return err.result;
+		throw err;
+	}
+	return { ok: true };
 }
 
 export type RejectOrderResult = { ok: true } | { ok: false; error: 'not_pending_review' } | { ok: false; error: 'blank_reason' };

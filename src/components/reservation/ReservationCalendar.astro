@@ -70,6 +70,7 @@ const todayIso = todayIsoInOslo();
 	<p class="mt-stack text-sm text-text-muted">
 		<span data-range-summary>Select a pick-up and return date.</span>
 	</p>
+	<p class="mt-snug text-xs text-text-muted">Returns can only be made on a pick-up day.</p>
 </div>
 
 <style>
@@ -175,19 +176,22 @@ const todayIso = todayIsoInOslo();
 <script>
 	import 'cally';
 	import { formatDateDisplay, dateToIsoInOslo, addDaysIso } from '../../lib/dates';
+	import { isSecondClickAllowed, validReturnDays } from '../../lib/returnDays';
 
 	type RangeCalendar = HTMLElement & {
 		value?: string;
 		max?: string;
+		tentative?: string;
 		getDayParts?: (date: Date) => string;
+		isDateDisallowed?: (date: Date) => boolean;
 	};
 
 	const calendar = document.querySelector<RangeCalendar>('[data-reservation-calendar]');
 	const summary = document.querySelector<HTMLElement>('[data-range-summary]');
 	const maxRangeDays = calendar ? Number(calendar.dataset.maxRangeDays || '') || undefined : undefined;
 
+	let availableDates = new Set<string>();
 	if (calendar) {
-		let availableDates: Set<string>;
 		try {
 			availableDates = new Set(JSON.parse(calendar.dataset.availablePickupDates ?? '[]'));
 		} catch {
@@ -202,6 +206,33 @@ const todayIso = todayIsoInOslo();
 		// viewer's own device timezone.
 		calendar.getDayParts = (date) => (availableDates.has(dateToIsoInOslo(date)) ? 'pickup-available' : '');
 	}
+
+	// Returns only happen on pick-up days (#336). Cally fires `rangestart` on
+	// the first click (the tentative pick-up day) and `rangeend` on the
+	// second: in between, only days that would make a valid range stay
+	// clickable — a later green day within maxRangeDays as the return day, or
+	// an earlier day when the first click itself is a green day (cally then
+	// swaps them). The pick-up day itself can be any day ("Request pick up").
+	// The server enforces the same rule in isValidDateRange.
+	calendar?.addEventListener('rangestart', (event) => {
+		// Cally's event Dates are UTC midnight, so the ISO date is exact.
+		const tentative = (event as CustomEvent<Date>).detail.toISOString().slice(0, 10);
+		if (validReturnDays(tentative, availableDates, maxRangeDays).length === 0) {
+			// Every other day would be disallowed, leaving the member stuck —
+			// drop the first click instead and say why.
+			calendar.tentative = '';
+			calendar.isDateDisallowed = () => false;
+			if (summary) {
+				summary.textContent = `No pick-up day ${maxRangeDays ? `within ${maxRangeDays} days of` : 'after'} ${formatDateDisplay(tentative)} to return on — returns can only be made on a pick-up day. Choose another pick-up date.`;
+			}
+			return;
+		}
+		calendar.isDateDisallowed = (date) => !isSecondClickAllowed(dateToIsoInOslo(date), tentative, availableDates, maxRangeDays);
+		if (summary) summary.textContent = `Pick-up ${formatDateDisplay(tentative)} · now choose a return date (a green pick-up day).`;
+	});
+	calendar?.addEventListener('rangeend', () => {
+		calendar.isDateDisallowed = () => false;
+	});
 
 	// Fires once the calendar first upgrades even with a preselected `value`
 	// and no user interaction yet — show that preselection in the summary.

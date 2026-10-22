@@ -1,16 +1,21 @@
 ---
 import ReservationCalendar from './ReservationCalendar.astro';
 import ReservationItemRow from './ReservationItemRow.astro';
+import TimeRangesPicker from './TimeRangesPicker.astro';
+import type { PickupDayRow } from '../../lib/pickupDays';
 import CheckoutForm from '../cart/CheckoutForm.astro';
 import { entryKey, type CartLine } from '../../lib/cart';
 import { formatAttributes } from '../../lib/attributes';
 import type { ReservationCartLineRef } from './reservationFormState';
 import Callout from '../ui/Callout.astro';
 import { sectionTitleClasses } from '../../lib/layout-styles';
+import { getMaxRentalDays } from '../../lib/rental-policy';
 
 interface Props {
 	cartLines: CartLine[];
 	availablePickupDates: string[];
+	// Upcoming pick-up windows, the presets of the time-range picker (#368).
+	timeRangeWindows: PickupDayRow[];
 	name: string | null;
 	email: string | null;
 	mobile: string | null;
@@ -18,7 +23,7 @@ interface Props {
 	userIsMember: boolean | null;
 }
 
-const { cartLines, availablePickupDates, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
+const { cartLines, availablePickupDates, timeRangeWindows, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
 
 const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 	'setId' in line
@@ -27,10 +32,11 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 );
 ---
 
-<div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} class="flex flex-col gap-region">
+<div data-reservation-form data-time-ranges-scope data-cart-lines={JSON.stringify(lineRefs)} class="flex flex-col gap-region">
 	<section class="flex flex-col gap-stack">
 		<h2 class={sectionTitleClasses}>1. Pick-up &amp; return dates</h2>
-		<ReservationCalendar availablePickupDates={availablePickupDates} />
+		<ReservationCalendar availablePickupDates={availablePickupDates} maxRangeDays={getMaxRentalDays()} />
+		<TimeRangesPicker windows={timeRangeWindows} />
 	</section>
 
 	<section class="flex flex-col gap-stack">

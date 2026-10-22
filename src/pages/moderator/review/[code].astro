@@ -10,7 +10,9 @@ import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro
 import BackLink from '../../../components/ui/BackLink.astro';
 import Button from '../../../components/ui/Button.astro';
 import TextMorphButton from '../../../components/ui/TextMorphButton.astro';
-import { getOrderDetailByCode } from '../../../lib/moderatorOrders';
+import AcceptTimeChoice from '../../../components/moderator/AcceptTimeChoice.astro';
+import { getAcceptReadiness, getOrderDetailByCode, type AcceptBlocker } from '../../../lib/moderatorOrders';
+import { formatDateDisplay } from '../../../lib/dates';
 
 const codeParam = Astro.params.code;
 const order = codeParam ? await getOrderDetailByCode(codeParam) : null;
@@ -26,6 +28,19 @@ if (!order) {
 // another tab).
 const alreadyReviewed = order.status !== 'requested';
 const error = Astro.url.searchParams.get('error');
+
+// Accepting confirms a pick-up and a return window overlapping the member's
+// requested time ranges (#343); acceptOrder re-checks all of this.
+const readiness = alreadyReviewed ? null : getAcceptReadiness(order);
+const blockerText = (blocker: AcceptBlocker) =>
+	blocker.error === 'start_date_passed'
+		? 'The pick-up date has already passed. Reject the order, or ask the member to change the dates.'
+		: `No ${blocker.kind === 'pickup' ? 'pick-up' : 'return'} window on ${formatDateDisplay(blocker.date, { weekday: true })} overlaps the member's time ranges. Add a pick-up window that covers one of them, or reject the order with a reason.`;
+const acceptErrors: Record<string, string> = {
+	start_date_passed: 'The order could not be accepted: its pick-up date has already passed.',
+	invalid_pickup_window: 'The order could not be accepted: the chosen pick-up window is gone or no longer overlaps the member\'s time ranges. Choose again.',
+	invalid_return_window: 'The order could not be accepted: the chosen return window is gone or no longer overlaps the member\'s time ranges. Choose again.',
+};
 ---
 
 <ModeratorLayout title={`Review order #${order.orderCode} — Moderator`}>
@@ -47,8 +62,26 @@ const error = Astro.url.searchParams.get('error');
 						)
 					) : (
 						<>
-							<form method="post" action={`/api/moderator/orders/${order.id}/accept`}>
-								<TextMorphButton action="accept" type="submit" variant="primary" size="lg" />
+							<form method="post" action={`/api/moderator/orders/${order.id}/accept`} class="flex w-full flex-col gap-stack">
+								{error && acceptErrors[error] && (
+									<Callout variant="error">
+										<p>{acceptErrors[error]}</p>
+									</Callout>
+								)}
+								{readiness && (
+									<>
+										<AcceptTimeChoice option={readiness.pickup} />
+										<AcceptTimeChoice option={readiness.return} />
+									</>
+								)}
+								{readiness && readiness.blockers.length > 0 && (
+									<Callout variant="warning" title="Can't accept yet" live={false}>
+										<ul class="flex flex-col gap-1">
+											{readiness.blockers.map((blocker) => <li>{blockerText(blocker)}</li>)}
+										</ul>
+									</Callout>
+								)}
+								<TextMorphButton action="accept" type="submit" variant="primary" size="lg" class="self-start" disabled={!readiness || readiness.blockers.length > 0} />
 							</form>
 
 							<form method="post" action={`/api/moderator/orders/${order.id}/reject`} class="flex w-full flex-col gap-3">

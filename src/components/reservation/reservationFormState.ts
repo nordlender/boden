@@ -12,6 +12,7 @@
 // enable/disable). Pure DOM painting lives in reservationFormRender.ts — this
 // module decides *what* to render and calls those functions with the result.
 import { hideRow, renderRow, setSubmitEnabled, setSubmitHint, type LineAvailability } from './reservationFormRender';
+import type { TimeRangesChangeDetail } from './timeRangesPicker';
 
 // A cart line's reservation-relevant shape — `key` is cart.ts's entryKey
 // ('item:<id>' or 'set:<id>'), matching this line's `[data-line-key]`
@@ -38,6 +39,10 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 
 	let lastAllAvailable = false;
 	let lastSomeUnavailable = false;
+	// Whether TimeRangesPicker holds valid pick-up and return ranges (#368).
+	let timesValid = false;
+	const pickupRangesInput = checkoutForm?.querySelector('[data-checkout-pickup-ranges]');
+	const returnRangesInput = checkoutForm?.querySelector('[data-checkout-return-ranges]');
 	// Guards against an in-flight request landing after a later one (rapid
 	// date changes while typing/dragging the calendar selection).
 	let requestToken = 0;
@@ -47,12 +52,14 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 	}
 
 	function refreshSubmitState() {
-		const enabled = lastAllAvailable && cartLines.length > 0;
+		const enabled = lastAllAvailable && cartLines.length > 0 && timesValid;
 		setSubmitEnabled(submitButton, enabled);
 		if (enabled) {
 			setSubmitHint(submitHint, '');
 		} else if (lastSomeUnavailable) {
 			setSubmitHint(submitHint, 'Remove the unavailable item(s) from your cart to continue, or choose different dates.');
+		} else if (lastAllAvailable && !timesValid) {
+			setSubmitHint(submitHint, 'Add at least one valid pick-up and one valid return time range above to continue.');
 		} else {
 			setSubmitHint(submitHint, 'Select your pick-up and return dates above to continue.');
 		}
@@ -139,6 +146,14 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 		}
 		await refreshAvailability(lastFrom, lastTo);
 	}
+
+	document.addEventListener('time-ranges-change', (event) => {
+		const detail = (event as CustomEvent<TimeRangesChangeDetail>).detail;
+		timesValid = detail.valid;
+		if (pickupRangesInput instanceof HTMLInputElement) pickupRangesInput.value = detail.valid ? JSON.stringify(detail.pickup) : '';
+		if (returnRangesInput instanceof HTMLInputElement) returnRangesInput.value = detail.valid ? JSON.stringify(detail.return) : '';
+		refreshSubmitState();
+	});
 
 	document.addEventListener('reservation-range-change', (event) => {
 		const { from, to } = (event as CustomEvent<{ from?: string; to?: string }>).detail;

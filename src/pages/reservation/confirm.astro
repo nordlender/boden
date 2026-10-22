@@ -7,8 +7,10 @@ import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
 import ItemQtyLine from '../../components/ui/ItemQtyLine.astro';
 import { getCartLines, type CartLine } from '../../lib/cart';
 import { isValidDateRange } from '../../lib/reservation';
-import { listPickupDaysOn } from '../../lib/pickupDays';
-import { formatDateDisplay } from '../../lib/dates';
+import { getPickupDatesAmong, listPickupDaysOn } from '../../lib/pickupDays';
+import { formatDateDisplay, nowInOslo } from '../../lib/dates';
+import { parseTimeRanges, validateOrderTimeRanges } from '../../lib/timeRanges';
+import RequestedTimeRanges from '../../components/orders/RequestedTimeRanges.astro';
 import { formatAttributes } from '../../lib/attributes';
 
 // Gated by src/middleware/prefixes.ts (/reservation) — member-only. Only
@@ -30,8 +32,21 @@ const toDate = form.get('toDate')?.toString() ?? '';
 if (!isValidDateRange({ from: fromDate, to: toDate })) {
 	return Astro.redirect('/reservation?error=invalid_dates');
 }
+// Returns only happen on pick-up days (#336); the calendar enforces it too.
+if (!isValidDateRange({ from: fromDate, to: toDate }, getPickupDatesAmong([toDate]))) {
+	return Astro.redirect('/reservation?error=return_not_pickup_day');
+}
 if (form.get('disclaimerAccepted') !== 'on') {
 	return Astro.redirect('/reservation?error=disclaimer_required');
+}
+// The member's requested time ranges (#368); /api/orders/create re-checks them.
+const times = validateOrderTimeRanges(
+	{ pickup: parseTimeRanges(form.get('pickupRanges')?.toString() ?? '') ?? [], return: parseTimeRanges(form.get('returnRanges')?.toString() ?? '') ?? [] },
+	{ fromDate, toDate },
+	nowInOslo(),
+);
+if (!times.ok) {
+	return Astro.redirect('/reservation?error=invalid_time_ranges');
 }
 
 const text = (name: string) => form.get(name)?.toString().trim() ?? '';
@@ -55,6 +70,8 @@ const hiddenFields: Record<string, string> = {
 	email: contact.email,
 	mobile: contact.mobile,
 	note,
+	pickupRanges: JSON.stringify(times.ranges.pickup),
+	returnRanges: JSON.stringify(times.ranges.return),
 	disclaimerAccepted: 'on',
 };
 ---
@@ -81,6 +98,8 @@ const hiddenFields: Record<string, string> = {
 				}
 			</dd>
 		</dl>
+
+		<RequestedTimeRanges fromDate={fromDate} toDate={toDate} ranges={times.ranges} />
 
 		<div>
 			<OrdersTableRow fromDate={fromDate} toDate={toDate} customerName={contact.name}>

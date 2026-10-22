@@ -25,6 +25,9 @@ const labelClass = `${fieldClasses} ${labelClasses}`;
 <form class:list={['checkout-form', formClasses]} method="POST" action="/reservation/confirm">
 	<input type="hidden" name="fromDate" data-checkout-from-date />
 	<input type="hidden" name="toDate" data-checkout-to-date />
+	{/* JSON lists of { from, to }, filled from TimeRangesPicker (#368). */}
+	<input type="hidden" name="pickupRanges" data-checkout-pickup-ranges />
+	<input type="hidden" name="returnRanges" data-checkout-return-ranges />
 	{hasUnpaidFees && (
 		<Callout variant="error" live={false}>
 			<p>

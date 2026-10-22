@@ -1,0 +1,49 @@
+---
+// One side (pick-up or return) of the review page's accept form (#343): the
+// member's requested time ranges and the pick-up windows that overlap them,
+// as radios named pickupDayId / returnDayId. The best match (largest
+// overlap) comes first and is pre-selected; the moderator can pick another.
+import { formatDateDisplay } from '../../lib/dates';
+import { labelClasses } from '../../lib/form-styles';
+import type { AcceptTimeOption } from '../../lib/moderatorOrders';
+
+interface Props {
+	option: AcceptTimeOption;
+}
+
+const { option } = Astro.props;
+const title = option.kind === 'pickup' ? 'Pick-up' : 'Return';
+const name = option.kind === 'pickup' ? 'pickupDayId' : 'returnDayId';
+const formatMinutes = (minutes: number) => (minutes % 60 === 0 ? `${minutes / 60} h` : minutes > 60 ? `${Math.floor(minutes / 60)} h ${minutes % 60} min` : `${minutes} min`);
+---
+
+<fieldset class="flex flex-col gap-snug">
+	<legend class:list={['mb-snug', labelClasses]}>
+		{title} <span class="font-normal text-text-muted">· {formatDateDisplay(option.date, { weekday: true })}</span>
+	</legend>
+	<p class="text-sm text-text">
+		<span class="text-text-muted">Member can do:</span>
+		{option.ranges.length > 0 ? option.ranges.map((r) => `${r.from}–${r.to}`).join(', ') : 'no time ranges given'}
+	</p>
+	{
+		option.windows.length > 0 ? (
+			<ul class="flex flex-col gap-1">
+				{option.windows.map((window, index) => (
+					<li>
+						<label class="flex flex-wrap items-center gap-snug text-sm text-text">
+							<input type="radio" name={name} value={window.id} checked={index === 0} required class="size-4 accent-accent" />
+							<span class="font-medium">
+								{window.startTime}–{window.endTime}
+							</span>
+							{window.where && <span class="text-text-muted">· {window.where}</span>}
+							<span class="text-text-muted">· overlaps {formatMinutes(window.overlapMinutes)}</span>
+							{index === 0 && <span class="text-xs font-medium text-success-text">Best match</span>}
+						</label>
+					</li>
+				))}
+			</ul>
+		) : (
+			<p class="text-sm text-warning-text">No pick-up window on this day overlaps the member's time ranges.</p>
+		)
+	}
+</fieldset>

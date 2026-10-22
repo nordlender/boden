@@ -1,6 +1,9 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ReservationForm from '../../components/reservation/ReservationForm.astro';
+import Page from '../../components/ui/Page.astro';
+import Callout from '../../components/ui/Callout.astro';
+import { emptyStateFramedClasses } from '../../lib/layout-styles';
 import { getCartLines } from '../../lib/cart';
 import { getUpcomingAvailablePickupDates } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
@@ -41,14 +44,15 @@ const errorMessage = error ? (errorMessages[error] ?? null) : null;
 ---
 
 <BaseLayout title="Reservation dates">
-	<div class="mx-auto max-w-3xl px-4 py-8">
-		<h1 class="mb-2 text-2xl font-semibold tracking-tight text-text">Reserve your items</h1>
-		{cartLines.length > 0 && <p class="mb-6 text-sm text-text-muted">Choose your dates, then review your items and submit your request.</p>}
-
-		{errorMessage && <p class="mb-6 rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">{errorMessage}</p>}
+	<Page
+		width="medium"
+		title="Reserve your items"
+		description={cartLines.length > 0 ? 'Choose your dates, then review your items and submit your request.' : undefined}
+	>
+		{errorMessage && <Callout variant="error"><p>{errorMessage}</p></Callout>}
 
 		{cartLines.length === 0 && (
-			<p class="text-sm text-text-muted">Your cart is empty. <a href="/" class="font-medium text-accent-text hover:underline">Continue shopping</a></p>
+			<p class={emptyStateFramedClasses}>Your cart is empty. <a href="/" class="font-medium text-accent-text hover:underline">Continue shopping</a></p>
 		)}
 
 		{cartLines.length > 0 && <ReservationForm
@@ -60,5 +64,5 @@ const errorMessage = error ? (errorMessages[error] ?? null) : null;
 			hasUnpaidFees={feeStatus.hasUnpaidFees}
 			userIsMember={feeStatus.userIsMember}
 		/>}
-	</div>
+	</Page>
 </BaseLayout>

@@ -4,6 +4,7 @@
 // unit's id — the same endpoint and rules as a hub message. A note is dated
 // by when it's posted, so there's no date field.
 import ActionPopover from '../ui/ActionPopover.astro';
+import { textareaClasses } from '../../lib/form-styles';
 import IconButton from '../ui/IconButton.astro';
 
 interface Props {
@@ -26,6 +27,6 @@ const popoverId = `unit-${unitId}-new-note`;
 		required
 		aria-label="Note"
 		placeholder="e.g. Inspected, no damage"
-		class="min-w-0 rounded border border-border-interactive bg-surface px-2 py-1.5 text-sm text-text"
+		class:list={['min-w-0', textareaClasses]}
 	></textarea>
 </ActionPopover>

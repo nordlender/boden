@@ -7,6 +7,10 @@
 // form as a hidden/pre-filled value.
 import ItemLine from '../ui/ItemLine.astro';
 import Button from '../ui/Button.astro';
+import Callout from '../ui/Callout.astro';
+import Card from '../ui/Card.astro';
+import { cardTitleClasses } from '../../lib/layout-styles';
+import { formClasses, inputSmClasses } from '../../lib/form-styles';
 
 interface Line {
 	orderItemId: number;
@@ -29,25 +33,25 @@ interface Props {
 const { title, description, action, mismatch = false, lines, submitLabel = 'Complete' } = Astro.props;
 ---
 
-<div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">
-	<div>
-		<h1 class="text-xl font-semibold text-text">{title}</h1>
-		<p class="mt-1 text-sm text-text-muted">{description}</p>
+<Card as="div">
+	<div class="flex flex-col gap-snug">
+		<h1 class={cardTitleClasses}>{title}</h1>
+		<p class="text-sm leading-relaxed text-text-muted">{description}</p>
 	</div>
 
 	{
 		mismatch && (
-			<p class="rounded-md border border-warning-border bg-warning-subtle px-3 py-2 text-sm text-warning-text">
-				Some counts don't match yet — see the notes below and adjust.
-			</p>
+			<Callout variant="warning">
+				<p>Some counts don't match yet — see the notes below and adjust.</p>
+			</Callout>
 		)
 	}
 
-	<form method="post" action={action} class="flex flex-col gap-4">
+	<form method="post" action={action} class={formClasses}>
 		<ul class="flex flex-col divide-y divide-border">
 			{
 				lines.map((line) => (
-					<li class="py-2">
+					<li class="py-3">
 						<ItemLine imageUrl={line.itemImageUrl} name={line.itemName}>
 							{line.correction && <span class="text-xs font-medium text-warning-text">{line.correction}</span>}
 							<Fragment slot="action">
@@ -59,7 +63,7 @@ const { title, description, action, mismatch = false, lines, submitLabel = 'Comp
 									min="0"
 									value={line.enteredValue ?? undefined}
 									required
-									class="w-20 rounded border border-border-interactive px-2 py-1 text-sm text-text"
+									class:list={['w-20', inputSmClasses]}
 								/>
 							</Fragment>
 						</ItemLine>
@@ -72,4 +76,4 @@ const { title, description, action, mismatch = false, lines, submitLabel = 'Comp
 			{submitLabel}
 		</Button>
 	</form>
-</div>
+</Card>

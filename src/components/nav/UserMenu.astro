@@ -2,6 +2,7 @@
 import UserMenuLinks from './UserMenuLinks.astro';
 import AppIcon from '../icons/AppIcon.astro';
 import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
+import { menuPanelClasses } from '../../lib/layout-styles';
 ---
 
 <details class="group relative">
@@ -11,7 +12,7 @@ import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 	>
 		<AppIcon name="user" size={triggerIconPixelSize.md} />
 	</summary>
-	<div class="absolute right-0 z-10 mt-2 w-48 rounded-md border border-border bg-surface p-2 shadow-lg">
+	<div class:list={['absolute right-0 z-10 mt-3 w-60', menuPanelClasses]}>
 		<UserMenuLinks />
 	</div>
 </details>

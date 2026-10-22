@@ -2,6 +2,8 @@
 import Modal from '../ui/Modal.astro';
 import Button from '../ui/Button.astro';
 import ReservationCalendar from '../reservation/ReservationCalendar.astro';
+import { actionRowClasses, sectionTitleClasses } from '../../lib/layout-styles';
+import { inlineErrorClasses } from '../../lib/form-styles';
 
 interface Props {
 	orderCode: string;
@@ -26,12 +28,12 @@ const titleId = `${modalId}-title`;
 			</Button>
 
 			<Modal id={modalId} labelledBy={titleId}>
-				<h2 id={titleId} class="text-base font-semibold text-text">
+				<h2 id={titleId} class={sectionTitleClasses}>
 					Change pick-up &amp; return dates
 				</h2>
 				<ReservationCalendar value={`${fromDate}/${toDate}`} maxRangeDays={maxRentalDays} />
-				<p data-change-order-error hidden class="text-sm text-error-text" />
-				<div class="flex justify-end gap-2">
+				<p data-change-order-error hidden class={inlineErrorClasses} />
+				<div class={actionRowClasses}>
 					<Button type="button" data-modal-close>Cancel</Button>
 					<Button type="button" variant="primary" data-change-order-confirm disabled>
 						Confirm new dates

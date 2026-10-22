@@ -1,4 +1,12 @@
 ---
+// Member-side "get rid of this order" action, behind a confirm popover.
+// Which action depends on how far the order has got (#371):
+// - 'requested' (not yet reviewed): hard delete, DELETE /api/orders/[code].
+// - 'scheduled' (accepted, not handed out): soft cancel,
+//   POST /api/orders/[code]/cancel — the order is kept as 'cancelled'.
+// - anything later: nothing is rendered.
+// Either way, success lands on /orders with a notice (see orders/index.astro).
+// The fetch/confirm flow is shared via src/lib/action-popover-confirm.ts.
 import ActionPopover from '../ui/ActionPopover.astro';
 import { inlineErrorClasses } from '../../lib/form-styles';
 
@@ -8,12 +16,13 @@ interface Props {
 }
 
 const { orderCode, status } = Astro.props;
-const popoverId = `delete-order-${orderCode}-confirm`;
+const mode = status === 'requested' ? 'delete' : status === 'scheduled' ? 'cancel' : null;
+const popoverId = `${mode}-order-${orderCode}-confirm`;
 ---
 
 {
-	status === 'requested' && (
-		<div data-delete-order={orderCode}>
+	mode === 'delete' && (
+		<div data-delete-order={orderCode} data-order-action="delete">
 			<ActionPopover
 				id={popoverId}
 				title={`Delete order #${orderCode}?`}
@@ -28,43 +37,47 @@ const popoverId = `delete-order-${orderCode}-confirm`;
 		</div>
 	)
 }
+{
+	mode === 'cancel' && (
+		<div data-delete-order={orderCode} data-order-action="cancel">
+			<ActionPopover
+				id={popoverId}
+				title={`Cancel order #${orderCode}?`}
+				triggerLabel="Cancel order"
+				triggerVariant="danger"
+				confirmLabel="Cancel order"
+				confirmVariant="danger"
+				dismissLabel="Keep order"
+			>
+				<p class="text-sm text-text-muted">
+					A moderator has already accepted this order. Cancelling frees the gear for others and cannot be undone.
+				</p>
+			</ActionPopover>
+			<p data-delete-order-error hidden class:list={['mt-2', inlineErrorClasses]} />
+		</div>
+	)
+}
 
 <script>
+	import { wireActionPopoverConfirm } from '../../lib/action-popover-confirm';
+
 	document.querySelectorAll<HTMLElement>('[data-delete-order]').forEach((container) => {
 		const orderCode = container.dataset.deleteOrder;
-		const trigger = container.querySelector<HTMLButtonElement>('[data-action-popover-confirm]');
-		const errorEl = container.querySelector<HTMLElement>('[data-delete-order-error]');
+		if (!orderCode) return;
+		const isCancel = container.dataset.orderAction === 'cancel';
+		const verb = isCancel ? 'cancelled' : 'deleted';
 
-		trigger?.addEventListener('click', async () => {
-			if (!orderCode) return;
-
-			const popover = trigger.closest('[popover]') as HTMLElement | null;
-			popover?.hidePopover();
-			trigger.disabled = true;
-			errorEl?.setAttribute('hidden', '');
-
-			try {
-				const res = await fetch(`/api/orders/${orderCode}`, { method: 'DELETE' });
-				if (res.ok) {
-					window.location.href = '/';
-					return;
-				}
-				const body = await res.json().catch(() => ({}));
-				if (errorEl) {
-					errorEl.textContent =
-						body.error === 'not_deletable'
-							? `This order can no longer be deleted (status: ${body.status}).`
-							: 'This order could not be deleted.';
-					errorEl.removeAttribute('hidden');
-				}
-			} catch {
-				if (errorEl) {
-					errorEl.textContent = 'Something went wrong. Please try again.';
-					errorEl.removeAttribute('hidden');
-				}
-			} finally {
-				trigger.disabled = false;
-			}
+		wireActionPopoverConfirm(container, {
+			endpoint: isCancel ? `/api/orders/${orderCode}/cancel` : `/api/orders/${orderCode}`,
+			method: isCancel ? 'POST' : 'DELETE',
+			errorEl: container.querySelector<HTMLElement>('[data-delete-order-error]'),
+			onSuccess: () => {
+				window.location.href = `/orders?${verb}=${encodeURIComponent(orderCode)}`;
+			},
+			formatError: (body) =>
+				body.error === 'not_deletable' || body.error === 'not_cancellable'
+					? `This order can no longer be ${verb} (status: ${String(body.status)}).`
+					: `This order could not be ${verb}.`,
 		});
 	});
 </script>

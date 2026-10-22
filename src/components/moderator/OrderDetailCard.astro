@@ -11,6 +11,7 @@ import Callout from '../ui/Callout.astro';
 import Card from '../ui/Card.astro';
 import { cardFooterClasses } from '../../lib/layout-styles';
 import type { FollowingRentalWarning, OrderDetail } from '../../lib/moderatorOrders';
+import { formatDateTimeDisplay } from '../../lib/dates';
 
 interface Props {
 	order: OrderDetail;
@@ -70,6 +71,16 @@ const { order, showAvailability = false, adjustableTargets = false, followingRen
 		<Callout variant="error" title="Rejected" live={false}>
 			<p>{order.rejectedReason}</p>
 		</Callout>
+	)}
+
+	{order.status === 'cancelled' && (
+		<div class="rounded-md border border-border bg-bg-subtle p-3 text-sm text-text">
+			<p class="font-semibold">Cancelled by member</p>
+			<p class="text-text-muted">
+				{order.cancelledAt ? `Cancelled ${formatDateTimeDisplay(order.cancelledAt)}, after it was accepted.` : 'Cancelled after it was accepted.'}
+				{' '}No hand-out is needed; the gear is free again.
+			</p>
+		</div>
 	)}
 
 	<OrderItemsList items={order.items} showAvailability={showAvailability} adjustableTargets={adjustableTargets} formId={formId} />

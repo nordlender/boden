@@ -50,6 +50,7 @@ export interface OrderDetail {
 	returnedAt: Date | null;
 	rejectedAt: Date | null;
 	rejectedReason: string | null;
+	cancelledAt: Date | null;
 	confirmedByUserId: string | null;
 	returnedByUserId: string | null;
 	items: OrderDetailItem[];
@@ -102,6 +103,7 @@ function toOrderDetail(order: RawOrderDetail): OrderDetail {
 		returnedAt: order.returnedAt,
 		rejectedAt: order.rejectedAt,
 		rejectedReason: order.rejectedReason,
+		cancelledAt: order.cancelledAt,
 		confirmedByUserId: order.confirmedByUserId,
 		returnedByUserId: order.returnedByUserId,
 		items: order.orderItems.map((oi) => ({

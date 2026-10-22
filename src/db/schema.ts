@@ -303,7 +303,7 @@ export const orders = sqliteTable('orders', {
   orderCode: text('order_code').notNull().unique(),
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', {
-    enum: ['requested', 'scheduled', 'active', 'returned', 'rejected'],
+    enum: ['requested', 'scheduled', 'active', 'returned', 'rejected', 'cancelled'],
   }).notNull().default('requested'),
   // Reservation date range (YYYY-MM-DD, inclusive on both ends) chosen on the
   // /reservation page — the whole order (all its orderItems) shares one
@@ -344,6 +344,11 @@ export const orders = sqliteTable('orders', {
   returnedAt: integer('returned_at', { mode: 'timestamp' }), // set when moderator marks returned
   rejectedAt: integer('rejected_at', { mode: 'timestamp' }), // set when moderator rejects
   rejectedReason: text('rejected_reason'), // set when moderator rejects
+  // Set when the member soft-cancels a 'scheduled' order (status moves to
+  // 'cancelled' — see src/lib/orders.ts's cancelOrder). Soft rather than a
+  // delete because a moderator has already committed a pick-up window, so
+  // the order stays visible to moderators (#371).
+  cancelledAt: integer('cancelled_at', { mode: 'timestamp' }),
   // Set when the checkout submitter (the renting user) accepted the liability
   // disclaimer (OSI is not liable for injury, etc — see #134). Required at
   // checkout, shown to moderators on the order detail. A timestamp (not a

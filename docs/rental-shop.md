@@ -165,7 +165,7 @@ boden/
 │   │   ├── admin/                           # images.ts (upload), pickup-days/recurring/
 │   │   ├── messages/                        # add / delete (moderator), pin / unpin (admin)
 │   │   ├── products/                        # create / [id]/update — admin only
-│   │   ├── wizard/                          # items, sets, units, attributes, set-product, images, archive — admin only
+│   │   ├── wizard/                          # items, sets, set-component-*, sets-*, units, attributes(/bulk), set-product, set-image, archive — admin only
 │   │   └── debug/                           # bloc API exploration endpoints, see docs/bloc-api.md
 │   │
 │   ├── db/
@@ -303,19 +303,6 @@ export async function createOrder(input: {
   | { ok: false; error: 'empty_cart' }
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
   | { ok: false; error: 'user_not_found' }
->;
-```
-
-`/checkout/success?order=<orderCode>`.
-
-```ts
-// src/lib/orders.ts (signatures)
-export async function createOrder(input: {
-  userId: string; note: string | null; cartEntries: CartEntry[]; fromDate: string; toDate: string;
-}): Promise<
-  | { ok: true; orderId: number; orderCode: string }
-  | { ok: false; error: 'empty_cart' }
-  | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
 >;
 ```
 

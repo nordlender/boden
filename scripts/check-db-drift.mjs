@@ -33,6 +33,10 @@ writeFileSync(
 const result = spawnSync('npx', ['drizzle-kit', 'generate', '--config', configPath, '--name', 'drift'], {
   cwd: rootDir,
   encoding: 'utf8',
+  // A rename makes drizzle-kit ask "created or renamed?"; closed stdin and a
+  // timeout turn that into a failure instead of a hang.
+  stdio: ['ignore', 'pipe', 'pipe'],
+  timeout: 60_000,
 });
 const created = readdirSync(out).filter((f) => !before.has(f) && f.endsWith('.sql'));
 const sql = created.length ? readFileSync(path.join(out, created[0]), 'utf8') : '';

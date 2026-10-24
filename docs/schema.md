@@ -750,7 +750,7 @@ wizard (e.g. a product created but never given a title), that's a different
 check than "hidden," and would need its own definition.
 
 # Work notes
-Agents: only append new entries below this line. Do not edit or remove anything above it.
+Agents: append new work notes below this line. Everything above is the current design — update it when the design changes (the schema block is generated, see the top of this file).
 
 ## Work item: "Set product" reassignment must keep attribute values consistent
 Assigning or reassigning an item to a product (the wizard's "Set product"

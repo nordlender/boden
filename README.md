@@ -60,22 +60,25 @@ messages via `scripts/seed-example-orders.mjs`. See `scripts/dev-setup.sh` for d
 
 See [`.env.example`](.env.example) for the full list — bloc OAuth app
 credentials, the OAuth redirect URI, a session secret, and a temporary
-comma-separated admin/moderator user-id allowlist (bloc has no role API
+comma-separated admin/board/moderator user-id allowlist (bloc has no role API
 yet).
 
 ### Scripts
 
 | Command | Action |
 |---|---|
-| `npm run dev-setup` | Copy `.env` from the main checkout, run migrations, seed the example catalog |
+| `npm run dev-setup` | Bootstrap a fresh worktree: copy `.env` from main, run migrations, seed example data (`db:seed`) |
 | `npm run dev` | Start the dev server |
-| `npm run dev-setup` | Bootstrap a fresh worktree: copy `.env` from main, migrate, seed |
 | `npm run build` | Build for production |
 | `npm run preview` | Preview a production build locally |
 | `npm test` | Run the test suite once |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run typecheck` | Run `astro check` |
 | `npm run lint` | Run ESLint |
+| `npm run db:seed` | Seed the example catalog, orders, pick-up days and messages into the local db |
+| `npm run docs:schema` | Regenerate the schema block in `docs/schema.md` from `src/db/schema.ts` (CI runs `docs:schema:check`) |
+| `npm run dev:tunnel` | Start the dev server and expose it via a public localtunnel URL (see `scripts/README.md`) |
+| `npm run branches` / `npm run worktrees:prune` | List local branches / remove merged worktrees (see `scripts/README.md`) |
 
 ## Project structure
 
@@ -86,16 +89,21 @@ src/
 │   ├── shop/             # catalogue grid, product cards
 │   ├── cart/             # cart sidebar, checkout form
 │   ├── nav/               # navbar, user menu, cart button
-│   └── wizard/            # admin product/item wizard
+│   ├── wizard/            # admin product/item/set wizard
+│   ├── moderator/         # order review, blind-count lists
+│   └── ui/                # buttons, modal, popovers, callouts
 ├── db/
 │   ├── schema.ts          # Drizzle schema (see docs/schema.md)
 │   └── migrations/
 ├── lib/                  # auth, cart, orders, wizard, shop query helpers
 ├── middleware/            # session + role-gate middleware
 └── pages/
-    ├── api/                # cart, orders, wizard API routes
+    ├── api/                # cart, orders, moderator, wizard API routes
     ├── products/[slug]     # product detail page
-    ├── admin/               # admin item management
+    ├── reservation/         # date picking + order confirmation
+    ├── orders/              # a member's own orders
+    ├── moderator/           # request queue, review, retrieve, return
+    ├── admin/               # products, items, sets, units, orders, pick-up days
     └── auth/                # sign-in page
 ```
 
@@ -105,10 +113,12 @@ src/
 - [`docs/schema.md`](docs/schema.md) — the current database schema and design rationale.
 - [`docs/wizard.md`](docs/wizard.md) — the admin product/item wizard design and implementation notes.
 - [`docs/icons.md`](docs/icons.md) — icon system (astro-icon + morphicons).
-- [`docs/moderator-review.md`](docs/moderator-review.md) — the moderator order-review page (planned).
+- [`docs/moderator-review.md`](docs/moderator-review.md) — the moderator order-review page.
+- [`docs/styling.md`](docs/styling.md) — semantic color tokens and rules.
+- [`docs/sizing.md`](docs/sizing.md) — icon and component size scales.
 - [`docs/auth-testing.md`](docs/auth-testing.md) — manual bloc-login testing guide and open items.
 - [`docs/bloc-api.md`](docs/bloc-api.md) — notes from exploring bloc's API.
-- [`docs/rental-shop.md`](docs/rental-shop.md) — the original project spec.
+- [`docs/rental-shop.md`](docs/rental-shop.md) — the project spec, kept current with what's built.
 - [`docs/schema-legacy-fixes.md`](docs/schema-legacy-fixes.md) — historical, superseded by `docs/schema.md`; kept because a few decisions in it are still cited by number elsewhere.
 
 For agent-specific workflow notes (dev server conventions, worktree etiquette), see [`AGENTS.md`](AGENTS.md).

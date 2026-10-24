@@ -47,8 +47,8 @@ npm run worktrees:prune -- --yes   # actually remove them
 ## `dev-setup.sh` — `npm run dev-setup`
 
 Bootstraps a fresh worktree: copies `.env` from the main checkout, runs
-Drizzle migrations (creating `data/` if needed) and seeds the example catalog
-via `seed-example-catalog.mjs`. `check-db-baseline.mjs` runs first and moves a
+Drizzle migrations (creating `data/` if needed) and seeds example data via
+`seed-example-catalog.mjs` then `seed-example-orders.mjs`. `check-db-baseline.mjs` runs first and moves a
 local db that predates the current migration baseline aside to
 `data/backups/stale-<timestamp>/` instead of letting the migration fail.
 
@@ -73,8 +73,9 @@ migration contains. Nothing in the repo is modified. Not in CI yet: it
 currently fails because the squashed baseline and `0016_add_attribute_key_is_variant`
 disagree about `product_attribute_keys.is_variant` (see PR #362).
 
-## `seed-example-catalog.mjs` — `npm run db:seed`
+## `seed-example-catalog.mjs` + `seed-example-orders.mjs` — `npm run db:seed`
 
-Seeds the example catalog (categories, products, items, units, sets) into the
-local db. CI runs it after migrating, as a smoke test that the seed still
+Seeds the example catalog (categories, products, items, units, sets), then
+example users, orders, pick-up days and messages on top of it, into the local
+db. Both are idempotent. CI runs it after migrating, as a smoke test that the seed still
 matches the schema.

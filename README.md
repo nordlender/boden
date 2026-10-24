@@ -67,7 +67,7 @@ yet).
 
 | Command | Action |
 |---|---|
-| `npm run dev-setup` | Bootstrap a fresh worktree: copy `.env` from main, run migrations, seed the example catalog |
+| `npm run dev-setup` | Bootstrap a fresh worktree: copy `.env` from main, run migrations, seed example data (`db:seed`) |
 | `npm run dev` | Start the dev server |
 | `npm run build` | Build for production |
 | `npm run preview` | Preview a production build locally |
@@ -75,6 +75,7 @@ yet).
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run typecheck` | Run `astro check` |
 | `npm run lint` | Run ESLint |
+| `npm run db:seed` | Seed the example catalog, orders, pick-up days and messages into the local db |
 | `npm run docs:schema` | Regenerate the schema block in `docs/schema.md` from `src/db/schema.ts` (CI runs `docs:schema:check`) |
 | `npm run dev:tunnel` | Start the dev server and expose it via a public localtunnel URL (see `scripts/README.md`) |
 | `npm run branches` / `npm run worktrees:prune` | List local branches / remove merged worktrees (see `scripts/README.md`) |

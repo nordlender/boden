@@ -1,5 +1,8 @@
 // Single source of truth for how many of an item are available. Two views:
 //
+// stockCount throughout is an item's number of active units (src/lib/units.ts)
+// — taking a unit out of service or retiring it lowers it.
+//
 // - Scheduled availability (everything below except the last section): for
 //   each day, stockCount minus every order holding a claim on that day —
 //   including requested and scheduled orders whose items haven't been handed
@@ -42,6 +45,7 @@ import { items, orderItems, orders } from '../db/schema';
 import { RESERVING_STATUSES } from './orderStatus';
 import { addDaysIso, daysInclusive, todayIsoInOslo } from './dates';
 import { setsThatFit } from './sets';
+import { activeUnitCount } from './units';
 
 /**
  * Units an order line occupies: what was actually handed out once a
@@ -133,10 +137,14 @@ export function getClaims(
 	return claims;
 }
 
-/** stockCount per item (missing ids are simply absent). */
+/** stockCount (active units) per item (missing ids are simply absent). */
 export function getStockCounts(itemIds: number[], executor: QueryExecutor = db): Map<number, number> {
 	if (itemIds.length === 0) return new Map();
-	const rows = executor.select({ id: items.id, stockCount: items.stockCount }).from(items).where(inArray(items.id, itemIds)).all();
+	const rows = executor
+		.select({ id: items.id, stockCount: activeUnitCount(items.id) })
+		.from(items)
+		.where(inArray(items.id, itemIds))
+		.all();
 	return new Map(rows.map((row) => [row.id, row.stockCount]));
 }
 
@@ -197,6 +205,36 @@ export function getAvailableForRange(
 ): Map<number, number> {
 	const daily = getDailyAvailability(itemIds, from, daysInclusive(from, to), options);
 	return new Map([...daily].map(([id, perDay]) => [id, perDay.length === 0 ? 0 : Math.min(...perDay)]));
+}
+
+/**
+ * Orders holding `itemId` on a day when it's overbooked (availability < 0)
+ * within the next `days` days — what happens when stock drops under what's
+ * already booked, e.g. after an admin takes a unit out of service. The
+ * admin is warned and decides what to do; nothing is cancelled here.
+ */
+export function getOverbookedOrders(
+	itemId: number,
+	days: number,
+	options: { executor?: QueryExecutor; today?: string } = {},
+): { orderId: number; orderCode: string; status: string; fromDate: string; toDate: string }[] {
+	const { executor = db, today = todayIsoInOslo() } = options;
+	// Same as getDailyAvailability, but keeping the claims to find which
+	// orders cover the overbooked days — one claims query instead of two.
+	const stock = getStockCounts([itemId], executor).get(itemId) ?? 0;
+	const claims = getClaims([itemId], today, addDaysIso(today, days - 1), { executor, today });
+	const occupied = occupiedByDay(claims, today, days).get(itemId) ?? [];
+	const shortDays = occupied.flatMap((n, i) => (stock - n < 0 ? [addDaysIso(today, i)] : []));
+	if (shortDays.length === 0) return [];
+
+	const orderIds = [...new Set(claims.filter((c) => shortDays.some((d) => c.start <= d && d <= c.end)).map((c) => c.orderId))];
+	if (orderIds.length === 0) return [];
+	return executor
+		.select({ orderId: orders.id, orderCode: orders.orderCode, status: orders.status, fromDate: orders.fromDate, toDate: orders.toDate })
+		.from(orders)
+		.where(inArray(orders.id, orderIds))
+		.orderBy(orders.fromDate)
+		.all();
 }
 
 /**

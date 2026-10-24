@@ -1,0 +1,114 @@
+---
+export const prerender = false;
+
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin).
+// The physical units behind one item (src/db/schema.ts's `units`), as a
+// table modelled on /admin/items: add a batch; per unit, its latest notes
+// (messages, posted via /api/messages/add), a status popover and a details
+// panel for its fields (both via /api/wizard/units) — see UnitRow.astro.
+// Retired units are listed in a separate table below the units in use.
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import Page from '../../../../components/ui/Page.astro';
+import BackLink from '../../../../components/ui/BackLink.astro';
+import Callout from '../../../../components/ui/Callout.astro';
+import AddPanel from '../../../../components/ui/AddPanel.astro';
+import UnitTable from '../../../../components/units/UnitTable.astro';
+import OptsFields from '../../../../components/units/OptsFields.astro';
+import { UNIT_FORM_FIELDS } from '../../../../components/units/unitTable';
+import { compactLabelClasses, hintClasses, inputClasses } from '../../../../lib/form-styles';
+import type { UnitStatus } from '../../../../db/schema';
+import { compareUnitsByStatus, getUnitsPageItem, listUnitsForItem } from '../../../../lib/units';
+import { listUnitNotes } from '../../../../lib/messages';
+import { getOverbookedOrders } from '../../../../lib/availability';
+import { todayIsoInOslo } from '../../../../lib/dates';
+import { hasRole } from '../../../../lib/auth';
+
+// How far ahead to look for orders a lowered stock can no longer cover.
+const OVERBOOK_HORIZON_DAYS = 180;
+
+const itemId = Number(Astro.params.id);
+if (!Number.isInteger(itemId) || itemId <= 0) return Astro.redirect('/admin/items');
+const item = await getUnitsPageItem(itemId);
+if (!item) return Astro.redirect('/admin/items');
+
+const today = todayIsoInOslo();
+const unitRows = (await listUnitsForItem(itemId)).sort(compareUnitsByStatus);
+const notesByUnit = await listUnitNotes(unitRows.map((unit) => unit.id));
+const overbooked = getOverbookedOrders(itemId, OVERBOOK_HORIZON_DAYS, { today });
+const count = (status: UnitStatus) => unitRows.filter((unit) => unit.status === status).length;
+const redirectTo = Astro.url.pathname;
+// Message rules for unit notes, same as the hub board (MessageTableRow.astro).
+const currentUserId = Astro.locals.user?.id ?? null;
+const isAdmin = hasRole(Astro.locals.user?.role, 'admin');
+// Retired units get their own table below the units in use.
+const unitsInUse = unitRows.filter((unit) => unit.status !== 'retired');
+const retiredUnits = unitRows.filter((unit) => unit.status === 'retired');
+const tableProps = { notesByUnit, currentUserId, isAdmin, today, redirectTo };
+---
+
+<AdminLayout title={`Units · ${item.name}`}>
+	<Page width="wide" title={item.name}>
+		<BackLink slot="before-title" href="/admin/items">Back to items</BackLink>
+		<Fragment slot="subtitle">
+			<p class="text-sm text-text-muted">
+				{item.product?.title ?? 'Unassigned'} · #{item.id}{item.archived && ' · archived'}
+			</p>
+			<p class="text-sm text-text">
+				<strong>{count('active')}</strong> active (stock)
+				<span class="text-text-muted"> · {count('out_of_service')} out of service · {count('retired')} retired</span>
+			</p>
+		</Fragment>
+
+		{overbooked.length > 0 && (
+			<Callout variant="warning" title="Stock no longer covers existing bookings">
+				<p>
+					With {count('active')} active unit{count('active') === 1 ? '' : 's'}, these orders overlap days where this item is overbooked. Contact the members or put a unit back in service.
+				</p>
+				<ul class="mt-3 flex list-disc flex-col gap-1 pl-5">
+					{overbooked.map((order) => (
+						<li>
+							<a class="underline" href={`/moderator/retrieve/${order.orderId}`}>{order.orderCode}</a> — {order.fromDate} → {order.toDate} ({order.status})
+						</li>
+					))}
+				</ul>
+			</Callout>
+		)}
+
+		<AddPanel id="add-units-panel" label="Add units" icon="product" action="/api/wizard/units" submitLabel="Add units">
+			<input type="hidden" name="action" value="create" />
+			<input type="hidden" name="itemId" value={item.id} />
+			<input type="hidden" name="redirectTo" value={redirectTo} />
+			<div class="grid grid-cols-1 gap-stack sm:grid-cols-4">
+				<div>
+					<label class={compactLabelClasses} for="add-units-count">How many</label>
+					<input id="add-units-count" class:list={['w-full min-w-0', inputClasses]} type="number" name="count" min="1" max="100" value="1" required />
+				</div>
+				{UNIT_FORM_FIELDS.map((field) => (
+					<div>
+						<label class={compactLabelClasses} for={`add-units-${field.name}`}>{field.label}</label>
+						<input
+							id={`add-units-${field.name}`}
+							class:list={['w-full min-w-0', inputClasses]}
+							type={field.type}
+							name={field.name}
+							placeholder={field.placeholder}
+							max={field.type === 'date' ? today : undefined}
+						/>
+					</div>
+				))}
+			</div>
+			<OptsFields />
+			<p class={hintClasses}>Every unit in the batch gets these values; adjust markings and serials per unit afterwards.</p>
+		</AddPanel>
+
+		<UnitTable title="Units" units={unitsInUse} emptyText="No units in use, so this item has no stock." {...tableProps} />
+		{retiredUnits.length > 0 && <UnitTable title="Retired units" units={retiredUnits} emptyText="" {...tableProps} />}
+	</Page>
+</AdminLayout>
+
+<script>
+	// Unit forms submit in place and show validation errors inline.
+	import { wireUnitForms } from '../../../../lib/unit-forms';
+
+	wireUnitForms();
+</script>

@@ -8,6 +8,7 @@
 // to what a shopper should see rather than the admin wizard's full set.
 import { db } from '../db/client';
 import { getOccupiedToday } from './availability';
+import { itemStockExtras } from './units';
 import { computeSetAvailability, getSetChildrenDetailedBulk, getSetComponentDisplayBulk, type SetChildDetail, type SetComponentDisplay } from './sets';
 
 export interface ShopAttribute {
@@ -82,6 +83,10 @@ export interface ShopProduct {
 	// each item's/set's flat attribute values consistently and to know
 	// whether a per-variant attribute list should render at all.
 	attributeKeyOrder: string[];
+	// Subset of attributeKeyOrder the admin flagged as the variant(s) — the
+	// product page renders these as picker buttons and omits them from the
+	// attribute list.
+	variantKeys: string[];
 	items: ShopItem[];
 	sets: ShopSet[];
 }
@@ -165,6 +170,7 @@ export async function getShopItems(): Promise<ShopItem[]> {
 	const rows = await db.query.items.findMany({
 		where: (t, { eq }) => eq(t.archived, false),
 		orderBy: (t, { asc }) => asc(t.id),
+		extras: itemStockExtras,
 		with: {
 			product: {
 				with: { category: true, subcategory: true },
@@ -318,6 +324,7 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 			links: true,
 			attributeKeys: { orderBy: (t, { asc }) => asc(t.sortOrder) },
 			items: {
+				extras: itemStockExtras,
 				with: { attributeValues: { with: { attribute: true } } },
 			},
 			sets: true,
@@ -353,6 +360,7 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 		subcategoryName: product.subcategory?.name ?? null,
 		links: product.links,
 		attributeKeyOrder: product.attributeKeys.map((key) => key.name),
+		variantKeys: product.attributeKeys.filter((key) => key.isVariant).map((key) => key.name),
 		items,
 		sets,
 	};

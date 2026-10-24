@@ -1,7 +1,9 @@
-import { db } from '../db/client';
-import { items, productAttributeKeys, itemAttributeValues } from '../db/schema';
+import { db, type Tx } from '../db/client';
+import { items, productAttributeKeys, itemAttributeValues, units } from '../db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { getRealAvailability } from './availability';
+import { itemStockExtras } from './units';
+import { assertProductAcceptsKind } from './wizardVariants';
 
 export interface WizardAttribute {
 	key: string;
@@ -51,6 +53,7 @@ export async function getWizardItems(): Promise<{ unassigned: WizardItem[]; assi
 	const rows = await db.query.items.findMany({
 		where: (t, { eq }) => eq(t.archived, false),
 		orderBy: (t, { asc }) => asc(t.id),
+		extras: itemStockExtras,
 		with: {
 			product: {
 				with: {
@@ -95,31 +98,23 @@ export async function listProductOptions(): Promise<{ id: number; title: string 
 	});
 }
 
-export async function createItem(input: { name: string; imageUrl?: string | null; stockCount?: number }): Promise<number> {
+// Creates the item with `unitCount` blank placeholder units (default 1, the
+// old stockCount default) — the admin fills in brand/serial/etc. per unit
+// afterwards on /admin/items/[id]/units.
+export async function createItem(input: { name: string; imageUrl?: string | null; unitCount?: number }): Promise<number> {
 	const slug = await uniqueItemSlug(input.name);
-	const [created] = await db
-		.insert(items)
-		.values({
-			name: input.name,
-			slug,
-			imageUrl: input.imageUrl?.trim() || null,
-			stockCount: input.stockCount ?? 1,
-		})
-		.returning({ id: items.id });
-	return created.id;
-}
-
-export async function archiveItems(itemIds: number[]): Promise<void> {
-	if (itemIds.length === 0) return;
-	await db.update(items).set({ archived: true }).where(inArray(items.id, itemIds));
-}
-
-// Bulk "Set image" — assigns the same imageUrl to every selected item, same
-// shape as archiveItems above. Unlike setItemsProduct there's no attribute
-// fan-out to worry about, so this is a plain single-statement bulk update.
-export async function setItemsImage(itemIds: number[], imageUrl: string): Promise<void> {
-	if (itemIds.length === 0) return;
-	await db.update(items).set({ imageUrl }).where(inArray(items.id, itemIds));
+	const unitCount = input.unitCount ?? 1;
+	return db.transaction((tx) => {
+		const created = tx
+			.insert(items)
+			.values({ name: input.name, slug, imageUrl: input.imageUrl?.trim() || null })
+			.returning({ id: items.id })
+			.get();
+		if (unitCount > 0) {
+			tx.insert(units).values(Array.from({ length: unitCount }, () => ({ itemId: created.id }))).run();
+		}
+		return created.id;
+	});
 }
 
 // docs/schema.md Work item: "'Set product' reassignment must keep attribute
@@ -135,19 +130,11 @@ export async function setItemsImage(itemIds: number[], imageUrl: string): Promis
 export async function setItemsProduct(itemIds: number[], productId: number): Promise<void> {
 	if (itemIds.length === 0) return;
 
-	// A product's variants are assumed all items or all sets, never a mix —
-	// see src/components/shop/VariantPicker.astro's comment, which enforces
-	// that assumption on the customer-facing picker. Enforced here too,
-	// rather than only defended against on the read side, so the invalid
-	// state can't be created in the first place.
-	const existingSet = await db.query.sets.findFirst({
-		where: (t, { eq: eqCol, and: andCol }) => andCol(eqCol(t.productId, productId), eqCol(t.archived, false)),
-	});
-	if (existingSet) {
-		throw new Error('This product already has sets assigned — a product cannot mix item and set variants.');
-	}
-
 	db.transaction((tx) => {
+		// Enforced on the write side, not only defended against on the read
+		// side, so the invalid mixed state can't be created in the first place.
+		assertProductAcceptsKind(tx, productId, 'item');
+
 		const current = tx
 			.select({ id: items.id, productId: items.productId })
 			.from(items)
@@ -175,8 +162,6 @@ export async function setItemsProduct(itemIds: number[], productId: number): Pro
 		}
 	});
 }
-
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // Looks up the product's attribute key by name, creating it and fanning out
 // a blank value to every existing item of the product if it doesn't exist

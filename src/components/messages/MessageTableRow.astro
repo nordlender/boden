@@ -8,7 +8,7 @@
 // editing — a correction is just a new message (see issue #225).
 import MorphButton from '../ui/MorphButton.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
-import type { MessageRow } from '../../lib/messages';
+import { canDeleteMessage, type MessageRow } from '../../lib/messages';
 import { formatDateTimeDisplay } from '../../lib/dates';
 
 interface Props {
@@ -21,20 +21,21 @@ interface Props {
 const { message, currentUserId = null, isAdmin = false, redirectTo } = Astro.props;
 
 const canPin = isAdmin;
-const canDelete = isAdmin || (currentUserId !== null && message.authorId === currentUserId);
+// Same rule as unit notes (UnitNoteList.astro) — see canDeleteMessage.
+const canDelete = canDeleteMessage(message, currentUserId, isAdmin);
 ---
 
-<li class="px-4 py-3">
-	<div class="flex items-start justify-between gap-3">
+<li class="px-card py-4">
+	<div class="flex items-start justify-between gap-stack">
 		<div class="min-w-0">
-			<p class="whitespace-pre-wrap text-sm text-text">{message.content}</p>
-			<p class="mt-1 text-xs text-text-muted">
+			<p class="whitespace-pre-wrap text-sm leading-relaxed text-text">{message.content}</p>
+			<p class="mt-1.5 text-xs text-text-muted">
 				{message.authorName} &middot; {formatDateTimeDisplay(message.createdAt)}
 			</p>
 		</div>
 		{
 			(canPin || canDelete) && (
-				<div class="flex shrink-0 items-center gap-1">
+				<div class="flex shrink-0 items-center gap-2">
 					{canPin && (
 						<form method="post" action={message.pinnedAt ? '/api/messages/unpin' : '/api/messages/pin'}>
 							<input type="hidden" name="id" value={message.id} />

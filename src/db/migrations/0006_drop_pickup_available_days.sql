@@ -1,1 +1,0 @@
-DROP TABLE `pickup_available_days`;

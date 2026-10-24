@@ -1,0 +1,49 @@
+---
+// Collapsible "add a new X" panel at the top of an admin list — add item
+// (/admin/items), add set (/admin/sets), add units (/admin/items/[id]/units).
+// One shared shell so all three look and behave the same: tinted box, an
+// ExpandBox header trigger with an icon, the caller's fields, then a
+// Cancel (reset) + primary Save row.
+//
+// The default slot holds everything inside the <form> before the action
+// row: hidden inputs, the field grid, hints. Fields should use
+// compactLabelClasses/inputClasses from lib/form-styles.ts, and a field
+// grid should collapse to one column below `sm`.
+//
+// Collapsed by default (issue #206-style inline expand/collapse); another
+// control can open it with data-expand-open={id} (see ExpandBox.astro).
+import AppIcon from '../icons/AppIcon.astro';
+import ExpandBox from './ExpandBox.astro';
+import TextMorphButton from './TextMorphButton.astro';
+import { actionRowClasses } from '../../lib/layout-styles';
+import type { icons } from '../../lib/icons';
+
+interface Props {
+	id: string;
+	label: string;
+	icon: keyof typeof icons;
+	action: string;
+	submitLabel: string;
+}
+
+const { id, label, icon, action, submitLabel } = Astro.props;
+---
+<!-- TODO: Style later — amber/warning-subtle is just the closest existing
+     token hue-wise; this panel isn't really warning about anything, it's
+     highlighting an inline "add new" row. May want a dedicated
+     highlight/draft token instead. -->
+<div class="rounded-xl border border-border bg-warning-subtle/60">
+	<ExpandBox id={id} triggerClass="px-card py-4">
+		<span slot="trigger" class="flex items-center gap-2">
+			<AppIcon name={icon} size={16} class="text-text-muted" />
+			{label}
+		</span>
+		<form method="post" action={action} class="flex flex-col gap-stack px-card pb-card">
+			<slot />
+			<div class={actionRowClasses}>
+				<TextMorphButton type="reset" action="cancel" />
+				<TextMorphButton type="submit" action="save" variant="primary">{submitLabel}</TextMorphButton>
+			</div>
+		</form>
+	</ExpandBox>
+</div>

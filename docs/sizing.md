@@ -33,18 +33,20 @@ Two scales exist today, for two different kinds of element:
 1. **`src/lib/button-styles.ts`** — for the `ui/` button primitives
    (`Button`, `IconButton`, `TextIconButton`, `MorphButton`,
    `TextMorphButton`), which render a real `<button>`/`<a>`. Exports
-   `sizeClasses`/`iconOnlySizeClasses` (Tailwind padding classes) and
+   `sizeClasses`/`iconOnlySizeClasses` (Tailwind height/padding classes) and
    `iconOnlyPixelSize`/`textIconPixelSize` (the icon's pixel size) per
-   `ButtonSize` (`sm`/`md`/`lg`). As of the issue #198 sizing pass, icon-only
-   boxes are 28px (`sm`)/36px (`md`)/44px (`lg`) with icons at roughly half
-   the box (16/20/24px), and text buttons land at the same ~28/36/44px
-   heights via padding + text size.
+   `ButtonSize` (`sm`/`md`/`lg`). Since the 2026-10 spacing rework (see
+   `docs/spacing.md`), icon-only boxes are 32px (`sm`)/40px (`md`)/48px
+   (`lg`) with icons at roughly half the box (16/20/24px), and text buttons
+   are pinned to the same 32/40/48px heights with `min-h-*`, so bordered and
+   filled variants match exactly. `lib/form-styles.ts`'s inputs use the same
+   heights (`inputSmClasses` 32px, `inputClasses` 40px).
 2. **`src/lib/icon-sizes.ts`** — for icon-only *triggers* that aren't a real
    `<button>`/`<a>` and so can't use the primitives above: `<details>`/
    `<summary>` dropdowns (`SelectMenu`, nav triggers) and checkbox-style
    toggles built from `<label>` (`SelectIcon`). Exports `triggerBoxClasses`
    (a fixed `h-N w-N` box) and `triggerIconPixelSize`, keyed by `TriggerSize`
-   (`sm` = 32px box, `md` = 36px box). Also exports `actionTileIconPixelSize`
+   (`sm` = 36px box, `md` = 40px box, matching IconButton `md`). Also exports `actionTileIconPixelSize`
    — a named constant (not a scale step) for the moderator homepage's 3
    large action tiles, which are deliberately oversized and don't belong on
    either scale.
@@ -82,25 +84,23 @@ file-by-file, not as a drive-by inside an unrelated change (same rule as the
 color-token migration).
 
 - `src/components/wizard/ItemRow.astro`, `ProductTag.astro`,
-  `SubCategoryTag.astro`, `WizardHeader.astro`, `AddItemPanel.astro`,
+  `SubCategoryTag.astro`, `WizardSearch.astro`, `ui/AddPanel.astro`,
   `ButtonStrip.astro`, `ui/Dropdown.astro` — each pass a hand-typed numeric
   `size` (13–18px) to `AppIcon`/`MorphIcon` rather than a token.
-- `src/components/orders/OrdersLayoutToggle.astro`,
-  `src/components/reservation/ReservationItemRow.astro` — hand-rolled
-  buttons with their own numeric icon sizes, not using `ui/IconButton`.
+- `src/components/orders/OrdersLayoutToggle.astro` — hand-rolled toggle
+  buttons (fixed 36px boxes) with their own numeric icon size, not using
+  `ui/IconButton`. (`ReservationItemRow.astro`'s remove button now takes
+  its classes from `button-styles.ts`'s `sm` size, but is still a
+  hand-rolled `<button>` rather than `ui/Button`.)
 - `src/components/ui/Callout.astro`, `src/layouts/ConfirmationLayout.astro` —
   standalone status-icon inline `<svg>`s at a fixed 20px, independent of
   either scale. Whether these become `AppIcon` calls (and thus pick up a
   token) is tracked in the inline-SVG conversion issue, not here.
-- `src/components/wizard/Thumbnail.astro`, `src/components/shop/
+- `src/components/ui/Thumbnail.astro`, `src/components/shop/
   ImagePlaceholder.astro` — these intentionally keep a numeric `size` prop
   (not a token) since callers need arbitrary sizes (a table cell vs. an
   expanded detail view); `Thumbnail`'s placeholder icon already derives its
   size as ~45% of the box per the ratio guidance above.
-- `src/components/cart/CartActionsBar.astro` — overrides `Button`'s/
-  `EmptyCartButton`'s height with an ad-hoc `class="h-10"` instead of
-  relying on `sizeClasses`, since neither `md` (36px) nor `lg` (44px) lands
-  on the 40px these primary cart CTAs were reviewed at (issue #199).
 
 ## Related follow-up work
 

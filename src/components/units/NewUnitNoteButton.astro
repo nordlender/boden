@@ -1,0 +1,32 @@
+---
+// The "new note" control on a unit row: a message-plus icon that opens an
+// ActionPopover with one text box, posted to /api/messages/add with the
+// unit's id — the same endpoint and rules as a hub message. A note is dated
+// by when it's posted, so there's no date field.
+import ActionPopover from '../ui/ActionPopover.astro';
+import { textareaClasses } from '../../lib/form-styles';
+import IconButton from '../ui/IconButton.astro';
+
+interface Props {
+	unitId: number;
+	redirectTo: string;
+}
+
+const { unitId, redirectTo } = Astro.props;
+const popoverId = `unit-${unitId}-new-note`;
+---
+<ActionPopover id={popoverId} title={`New note on unit #${unitId}`} confirmLabel="Post" confirmVariant="primary" formAction="/api/messages/add" side="left">
+	<Fragment slot="trigger">
+		<IconButton icon="messagePlus" label={`New note on unit #${unitId}`} size="sm" popovertarget={popoverId} />
+	</Fragment>
+	<input type="hidden" name="unitId" value={unitId} />
+	<input type="hidden" name="redirectTo" value={redirectTo} />
+	<textarea
+		name="content"
+		rows="4"
+		required
+		aria-label="Note"
+		placeholder="e.g. Inspected, no damage"
+		class:list={['min-w-0', textareaClasses]}
+	></textarea>
+</ActionPopover>

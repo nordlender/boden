@@ -6,6 +6,10 @@ mode in issue #68) instead of raw Tailwind palette classes (`gray-500`,
 these tokens, not hardcoded Tailwind colors** — hardcoded colors don't react
 to dark mode.
 
+This doc covers colors. Spacing tokens (`p-card`, `gap-section`, ...) and the
+layout primitives built on them (`ui/Page.astro`, `ui/Card.astro`) live in
+`docs/spacing.md`; control and icon sizes in `docs/sizing.md`.
+
 ## Where it's defined
 
 `src/styles/global.css` defines two layers:
@@ -31,7 +35,8 @@ to dark mode.
 | Disabled state | `disabled-bg`, `disabled-text` | `bg-disabled-bg`, `text-disabled-text` |
 | Modal/overlay backdrop | `overlay` | `bg-overlay` |
 | Brand/primary action | `accent`, `accent-hover`, `accent-subtle`, `accent-text` | `bg-accent`, `text-accent-text` |
-| "This is selected" (wizard rows, calendar days) | `selected`, `selected-subtle`, `selected-text` | `bg-selected`, `text-selected-text` |
+| "This is selected" (wizard rows, calendar days) | `selected`, `selected-subtle`, `selected-border`, `selected-text` | `bg-selected`, `border-selected-border`, `text-selected-text` |
+| Keyboard focus outline | `focus-ring` | `outline-focus-ring` (defined, not yet used anywhere) |
 | Success / in-stock | `success`, `success-subtle`, `success-border`, `success-text` | `bg-success-subtle`, `text-success-text` |
 | Availability scale (AvailabilityCalendar): units available that day, 0 … 4+ (semi-transparent; text on top stays `text-text`) | `availability-0` … `availability-4` | `bg-availability-2` |
 | Informational | `info`, `info-subtle`, `info-border`, `info-text` | `bg-info-subtle`, `text-info-text` |
@@ -69,21 +74,15 @@ changing what "this is selected" looks like.
    states (success/error/warning/info/selected/help/disabled) already have
    a token family.
 
-## Migration status: components still on raw palette colors
+## Migration status: complete
 
 The token system (#67/#68) was introduced after most of the app already
-existed, so adoption is incremental, not yet complete. `Navbar.astro`,
-`ItemCard.astro`, `AdminNavbar.astro`, `admin/items.astro`, and
-`admin/pickup-days.astro` (docs#PR124) are on tokens. As of 2026-09-18 these
-still use raw Tailwind `gray-*`/`green-*`/`red-*`/`amber-*`/`white` classes
-and need converting — pick whichever migration work picks these up first,
-and update this list:
+existed; adoption has since finished — a search of `src/` finds no raw
+Tailwind palette color classes left. Keep it that way (rule 1 above). If a
+legacy snippet or a pasted example turns up with raw colors, convert the
+whole file in its own commit/PR and verify it in both themes.
 
-- `src/components/reservation/ReservationCalendar.astro` — fixed on
-  branch `fix/calendar-dark-mode` (PR #110, not yet merged to main); once
-  merged, drop it from this list.
-
-When converting one of these, the raw-to-token mapping is consistent
+When converting raw palette classes, the raw-to-token mapping is consistent
 throughout the app; use it rather than guessing per file:
 
 | Raw Tailwind class(es) | Token utility |
@@ -101,7 +100,6 @@ throughout the app; use it rather than guessing per file:
 | `bg-amber-50`, `border-amber-200`, `text-amber-800` | `bg-warning-subtle`, `border-warning-border`, `text-warning-text` |
 | `divide-gray-200`/`slate-200`/`gray-100` | `divide-border` |
 
-Don't do a drive-by conversion of one of these files as a side effect of an
-unrelated change — it inflates the diff and risks a visual regression that's
-hard to spot in review. Convert a whole file in its own commit/PR, verify it
-in both themes, and remove it from the list above.
+Don't do a drive-by conversion of a file as a side effect of an unrelated
+change — it inflates the diff and risks a visual regression that's hard to
+spot in review.

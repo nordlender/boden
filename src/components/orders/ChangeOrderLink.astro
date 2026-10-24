@@ -2,34 +2,38 @@
 import Modal from '../ui/Modal.astro';
 import Button from '../ui/Button.astro';
 import ReservationCalendar from '../reservation/ReservationCalendar.astro';
+import { actionRowClasses, sectionTitleClasses } from '../../lib/layout-styles';
+import { inlineErrorClasses } from '../../lib/form-styles';
 
 interface Props {
 	orderCode: string;
 	status: string;
+	// Set once a moderator accepts the order ("scheduled") — no more date changes.
+	acceptedAt?: Date | null;
 	fromDate: string;
 	toDate: string;
 	maxRentalDays: number;
 }
 
-const { orderCode, status, fromDate, toDate, maxRentalDays } = Astro.props;
+const { orderCode, status, acceptedAt, fromDate, toDate, maxRentalDays } = Astro.props;
 const modalId = `change-order-${orderCode}`;
 const titleId = `${modalId}-title`;
 ---
 
 {
-	status === 'requested' && (
+	status === 'requested' && !acceptedAt && (
 		<div data-change-order={orderCode}>
 			<Button type="button" data-modal-open data-modal-target={modalId}>
 				Change order
 			</Button>
 
 			<Modal id={modalId} labelledBy={titleId}>
-				<h2 id={titleId} class="text-base font-semibold text-text">
+				<h2 id={titleId} class={sectionTitleClasses}>
 					Change pick-up &amp; return dates
 				</h2>
 				<ReservationCalendar value={`${fromDate}/${toDate}`} maxRangeDays={maxRentalDays} />
-				<p data-change-order-error hidden class="text-sm text-error-text" />
-				<div class="flex justify-end gap-2">
+				<p data-change-order-error hidden class={inlineErrorClasses} />
+				<div class={actionRowClasses}>
 					<Button type="button" data-modal-close>Cancel</Button>
 					<Button type="button" variant="primary" data-change-order-confirm disabled>
 						Confirm new dates

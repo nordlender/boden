@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # One-shot dev environment bootstrap for a fresh worktree: copies .env from
 # the main checkout (worktrees don't inherit untracked files), runs pending
-# Drizzle migrations, then seeds the example catalog.
+# Drizzle migrations, then seeds the example catalog (including the units
+# behind every item, since an item's stock is its number of active units)
+# and example orders, pick-up days and messages.
 #
 # Usage: npm run dev-setup
 set -euo pipefail
@@ -9,7 +11,11 @@ set -euo pipefail
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root_dir"
 
-main_root="$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')"
+# awk reads to the end rather than `exit`ing on the first match: exiting
+# early closes the pipe while git is still writing, git dies of SIGPIPE, and
+# pipefail aborts the whole script (exit 141) whenever there are enough
+# worktrees for the output not to fit in one write.
+main_root="$(git worktree list --porcelain | awk '/^worktree / && !found {print $2; found = 1}')"
 
 if [[ -z "$main_root" ]]; then
   echo "Could not determine the main checkout path via 'git worktree list'." >&2
@@ -28,9 +34,15 @@ fi
 
 echo "Running pending migrations..."
 mkdir -p "$root_dir/data"
+# Moves aside a db from before the last migration squash, which migrate
+# can't upgrade in place (see the script's header).
+node scripts/check-db-baseline.mjs
 npx drizzle-kit migrate
 
-echo "Seeding example catalog..."
+echo "Seeding example catalog (items and their units)..."
 node scripts/seed-example-catalog.mjs
+
+echo "Seeding example orders, pick-up days and messages..."
+node scripts/seed-example-orders.mjs
 
 echo "dev-setup complete."

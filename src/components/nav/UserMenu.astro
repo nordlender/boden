@@ -5,12 +5,7 @@ import Dropdown from '../ui/Dropdown.astro';
 import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 ---
 
-<Dropdown
-	align="right"
-	ariaLabel="Account"
-	panelClass="mt-2 w-48 p-2"
-	class="group"
->
+<Dropdown align="right" ariaLabel="Account" panelClass="mt-3 w-60" class="group">
 	<span slot="trigger" class:list={['flex items-center justify-center rounded-full border border-border-strong text-text-muted hover:bg-bg-subtle', triggerBoxClasses.md]}>
 		<AppIcon name="user" size={triggerIconPixelSize.md} />
 	</span>

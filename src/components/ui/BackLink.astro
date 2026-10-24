@@ -1,0 +1,14 @@
+---
+// Shared "&larr; Back to X" link for detail pages (moderator order pages,
+// an item's units page, a member's order). Goes in ui/Page.astro's
+// `before-title` slot.
+interface Props {
+	href: string;
+}
+
+const { href } = Astro.props;
+---
+
+<a href={href} class="self-start text-sm font-medium text-text-muted hover:text-text">
+	&larr; <slot />
+</a>

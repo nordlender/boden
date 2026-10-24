@@ -3,6 +3,9 @@
 // reached only when logged in with role === 'admin'. Links out to
 // /admin/products/new and each row into /admin/products/[id]/edit.
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import Page from '../../components/ui/Page.astro';
+import Badge from '../../components/ui/Badge.astro';
+import { cardClasses, emptyStateFramedClasses } from '../../lib/layout-styles';
 import TextMorphButton from '../../components/ui/TextMorphButton.astro';
 import { listProductsForAdmin } from '../../lib/products';
 
@@ -10,43 +13,30 @@ const products = await listProductsForAdmin();
 ---
 
 <AdminLayout title="Products">
-	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-		<div class="flex items-center justify-between gap-4">
-			<div>
-				<h1 class="text-xl font-semibold text-text">Products</h1>
-				<p class="mt-1 text-sm text-text-muted">All product listings, alphabetical by title.</p>
-			</div>
-			<TextMorphButton href="/admin/products/new" action="add" variant="primary">New product</TextMorphButton>
-		</div>
+	<Page width="wide" title="Products" description="All product listings, alphabetical by title.">
+		<TextMorphButton slot="actions" href="/admin/products/new" action="add" variant="primary">New product</TextMorphButton>
 
 		{
 			products.length === 0 ? (
-				<p class="text-sm text-text-muted">No products yet.</p>
+				<p class={emptyStateFramedClasses}>No products yet.</p>
 			) : (
-				<div class="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
+				<div class:list={[cardClasses, 'flex flex-col divide-y divide-border overflow-hidden']}>
 					{products.map((product) => (
-						<a href={`/admin/products/${product.id}/edit`} class="flex items-center justify-between gap-4 px-4 py-3 hover:bg-bg-subtle">
-							<div class="flex flex-col">
+						<a href={`/admin/products/${product.id}/edit`} class="flex items-center justify-between gap-stack px-card py-4 hover:bg-bg-subtle">
+							<div class="flex flex-col gap-1">
 								<span class="text-sm font-medium text-text">{product.title}</span>
 								<span class="text-xs text-text-muted">
 									{product.categoryName}
 									{product.subcategoryName ? ` → ${product.subcategoryName}` : ''}
 								</span>
 							</div>
-							<span
-								class:list={[
-									'rounded-full border px-3 py-1 text-xs font-medium capitalize',
-									product.status === 'published'
-										? 'border-success-border bg-success-subtle text-success-text'
-										: 'border-border text-text-muted',
-								]}
-							>
+							<Badge tone={product.status === 'published' ? 'success' : 'neutral'} class="capitalize">
 								{product.status}
-							</span>
+							</Badge>
 						</a>
 					))}
 				</div>
 			)
 		}
-	</div>
+	</Page>
 </AdminLayout>

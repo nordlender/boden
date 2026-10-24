@@ -2,6 +2,8 @@
 import ItemLine from '../ui/ItemLine.astro';
 import Badge from '../ui/Badge.astro';
 import SetChildrenList from '../cart/SetChildrenList.astro';
+import { badgeBaseClasses } from '../../lib/badge-styles';
+import { baseClasses, sizeClasses, variantClasses } from '../../lib/button-styles';
 
 interface Props {
 	kind: 'item' | 'set';
@@ -25,7 +27,7 @@ const { kind, id, productSlug, productTitle, imageUrl, quantity, subtitle, compo
 const lineKey = `${kind}:${id}`;
 ---
 
-<div data-reservation-row data-line-key={lineKey} class="py-4">
+<div data-reservation-row data-line-key={lineKey} class="py-5">
 	<ItemLine
 		imageUrl={imageUrl}
 		name={productTitle}
@@ -36,9 +38,9 @@ const lineKey = `${kind}:${id}`;
 		gap="lg"
 		class="flex-wrap"
 	>
-		{kind === 'set' && <Badge class="mt-0.5 inline-block">Set</Badge>}
+		{kind === 'set' && <Badge class="mt-0.5 self-start">Set</Badge>}
 		<Fragment slot="badge">
-			<p data-availability-badge hidden class="rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"></p>
+			<p data-availability-badge hidden class={badgeBaseClasses}></p>
 		</Fragment>
 
 		<Fragment slot="action">
@@ -47,12 +49,12 @@ const lineKey = `${kind}:${id}`;
 				data-remove-item-button
 				hidden
 				title={`Remove this ${kind} from your cart`}
-				class="shrink-0 rounded-md border border-border-strong px-2 py-1 text-sm text-text-muted hover:bg-bg-subtle hover:text-text"
+				class:list={['shrink-0', baseClasses, sizeClasses.sm, variantClasses.secondary]}
 			>
 				Remove
 				<span class="sr-only">{productTitle} from your cart</span>
 			</button>
 		</Fragment>
+		{kind === 'set' && <SetChildrenList slot="below" components={components} quantity={quantity} />}
 	</ItemLine>
-	{kind === 'set' && <SetChildrenList components={components} quantity={quantity} class="ml-20" />}
 </div>

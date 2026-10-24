@@ -9,13 +9,17 @@
 // reuses the same query/shape as requests.astro via getPendingRequestRows
 // so the two never drift apart.
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
+import Page from '../../components/ui/Page.astro';
+import Callout from '../../components/ui/Callout.astro';
+import { actionRowClasses, emptyStateFramedClasses, sectionTitleClasses } from '../../lib/layout-styles';
+import { formClasses, textareaClasses } from '../../lib/form-styles';
 import MessageTable from '../../components/messages/MessageTable.astro';
 import ActionButton from '../../components/moderator/ActionButton.astro';
 import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
 import Modal from '../../components/ui/Modal.astro';
 import Button from '../../components/ui/Button.astro';
 import TextMorphButton from '../../components/ui/TextMorphButton.astro';
-import { getPendingRequestRows } from '../../lib/moderatorOrders';
+import { getPendingRequestRows } from '../../lib/orders';
 import { listMessages } from '../../lib/messages';
 
 // This is a preview, not the full queue (see the "See all" link to
@@ -28,21 +32,35 @@ const MAX_PREVIEW_REQUESTS = 8;
 const pendingRequests = await getPendingRequestRows();
 const previewRequests = pendingRequests.slice(0, MAX_PREVIEW_REQUESTS);
 const messages = await listMessages();
+
+// The requests preview sits between the message board and the action tiles,
+// so the board's scroll cap (MessageTable `scrollable`) has to leave room for
+// it: gap to the block, its header row (2rem), gap under it, then the list.
+// Row heights are the compact OrdersTableRow card (4.5rem in one line from
+// `sm`, 8.5rem in the stacked mobile layout) plus 0.75rem between rows; the
+// empty state is one framed message (~7.5rem). With a full preview the board
+// just sits at its 10rem floor and the page scrolls.
+const requestsBlockReserve = (rowRem: number, emptyRem: number) => {
+	const n = previewRequests.length;
+	const listRem = n === 0 ? emptyRem : n * rowRem + (n - 1) * 0.75;
+	return `calc(var(--ui-space-region) + var(--ui-space-stack) + ${2 + listRem}rem)`;
+};
+const extraReserve = { base: requestsBlockReserve(8.5, 7.5), sm: requestsBlockReserve(4.5, 7.5) };
 const redirectTo = Astro.url.pathname;
 const error = Astro.url.searchParams.get('error');
 const modalId = 'add-message-modal';
 ---
 
 <ModeratorLayout title="Moderator — Boden">
-	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+	<Page width="wide" title="Moderator">
 		{
 			error === 'empty_message' && (
-				<p class="rounded-lg border border-error-border bg-error-subtle p-3 text-sm text-error-text">
-					Message can't be blank.
-				</p>
+				<Callout variant="error">
+					<p>Message can't be blank.</p>
+				</Callout>
 			)
 		}
-		<MessageTable messages={messages} currentUserId={Astro.locals.user?.id ?? null} redirectTo={redirectTo}>
+		<MessageTable messages={messages} currentUserId={Astro.locals.user?.id ?? null} redirectTo={redirectTo} scrollable extraReserve={extraReserve}>
 			<TextMorphButton
 				slot="actions"
 				action="message"
@@ -52,17 +70,17 @@ const modalId = 'add-message-modal';
 			/>
 		</MessageTable>
 
-		<div class="flex flex-col gap-3">
-			<div class="flex items-baseline justify-between gap-4">
-				<h1 class="text-xl font-semibold text-text">Upcoming requests</h1>
+		<div class="flex flex-col gap-stack">
+			<div class="flex items-center justify-between gap-stack">
+				<h2 class={sectionTitleClasses}>Upcoming requests</h2>
 				<TextMorphButton action="next" href="/moderator/requests" variant="secondary" size="sm">See all</TextMorphButton>
 			</div>
 
 			{
 				previewRequests.length === 0 ? (
-					<p class="text-sm text-text-muted">No orders are waiting for review.</p>
+					<p class={emptyStateFramedClasses}>No orders are waiting for review.</p>
 				) : (
-					<div class="flex flex-col gap-2">
+					<div class="flex flex-col gap-3">
 						{previewRequests.map((order) => (
 							<OrdersTableRow
 								orderCode={order.orderCode}
@@ -78,7 +96,7 @@ const modalId = 'add-message-modal';
 			}
 		</div>
 
-		<div class="flex flex-col gap-3 sm:flex-row">
+		<div class="flex flex-col gap-stack sm:flex-row">
 			<ActionButton
 				href="/moderator/retrieve"
 				iconKey="retrieve"
@@ -98,22 +116,22 @@ const modalId = 'add-message-modal';
 				description="Register your availability for pickup."
 			/>
 		</div>
-	</div>
+	</Page>
 
 	<Modal id={modalId} labelledBy={`${modalId}-title`}>
-		<h2 id={`${modalId}-title`} class="text-sm font-semibold text-text">
+		<h2 id={`${modalId}-title`} class={sectionTitleClasses}>
 			New message
 		</h2>
-		<form method="post" action="/api/messages/add" class="flex flex-col gap-3">
+		<form method="post" action="/api/messages/add" class={formClasses}>
 			<input type="hidden" name="redirectTo" value={redirectTo} />
 			<textarea
 				name="content"
 				rows="4"
 				required
 				placeholder="Shift notes, stock issues, closures…"
-				class="min-w-0 rounded border border-border-interactive px-2 py-1.5 text-sm"
+				class:list={['min-w-0', textareaClasses]}
 			></textarea>
-			<div class="flex justify-end gap-2">
+			<div class={actionRowClasses}>
 				<Button type="button" data-modal-close>Cancel</Button>
 				<Button type="submit" variant="primary">Post</Button>
 			</div>

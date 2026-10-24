@@ -2,7 +2,8 @@
 // Dev-only: seeds a fixed set of example categories/products/items, adapted
 // from the flat item+option-group catalog that used to live on the
 // `navbar-homepage` worktree (pre schema_v3) into this branch's
-// categories -> products -> items -> itemAttributeValues model.
+// categories -> products -> items -> itemAttributeValues model, plus the
+// physical `units` behind each item (an item's stock is its active units).
 //
 // Not wired into astro dev/build/preview. Run manually after
 // `npx drizzle-kit migrate` to get example catalog data to test the shop
@@ -45,13 +46,28 @@ const products = [
     categorySlug: 'ropes',
     thumbnailImageUrl: '/uploads/rope-60m.svg',
     attributeKeys: ['Diameter', 'Length'],
+    unitDefaults: { brand: 'Edelrid', model: 'Boa 9.8' },
     items: [
       {
         slug: 'dynamic-rope-60m',
         name: 'Dynamic Climbing Rope 60m',
         imageUrl: '/uploads/rope-60m.svg',
-        stockCount: 5,
+        unitCount: 4,
         values: { Diameter: '9.8 mm', Length: '60 m' },
+        // Example of `opts`: a rope cut down after core damage near one end
+        // is still in use, just shorter than its item says.
+        specialUnits: [
+          {
+            marking: 'Black tape on both ends',
+            serialNumber: 'BOA-2021-0731',
+            status: 'active',
+            opts: { length: '58 m' },
+            notes: [
+              { date: '2025-06-14', text: 'Core damage 2 m from one end after a fall over an edge.' },
+              { date: '2025-06-15', text: 'Cut to 58 m, ends sealed and re-marked.' },
+            ],
+          },
+        ],
       },
     ],
   },
@@ -62,26 +78,37 @@ const products = [
     categorySlug: 'harness',
     thumbnailImageUrl: '/uploads/harness.svg',
     attributeKeys: ['Size', 'Type', 'Color'],
+    unitDefaults: { brand: 'Edelrid', model: 'Jay III' },
     items: [
       {
         slug: 'climbing-harness-red',
         name: 'Climbing Harness — Red',
         imageUrl: '/uploads/harness-red.svg',
-        stockCount: 4,
+        unitCount: 4,
         values: { Size: 'M (adjustable)', Type: 'Sit harness', Color: 'Red' },
+        // Example of an out-of-service unit: it exists, but doesn't count
+        // toward stock until it's set back to active.
+        specialUnits: [
+          {
+            marking: 'White tape on belay loop',
+            serialNumber: 'JAY-2022-1187',
+            status: 'out_of_service',
+            notes: [{ date: '2026-09-20', text: 'Status: Active → Out of service — Belay loop fuzzed, sent for inspection.' }],
+          },
+        ],
       },
       {
         slug: 'climbing-harness-blue',
         name: 'Climbing Harness — Blue',
         imageUrl: '/uploads/harness-blue.svg',
-        stockCount: 3,
+        unitCount: 3,
         values: { Size: 'M (adjustable)', Type: 'Sit harness', Color: 'Blue' },
       },
       {
         slug: 'climbing-harness-green',
         name: 'Climbing Harness — Green',
         imageUrl: '/uploads/harness-green.svg',
-        stockCount: 3,
+        unitCount: 3,
         values: { Size: 'M (adjustable)', Type: 'Sit harness', Color: 'Green' },
       },
       // S/L sizes exist mainly to give the example set below (Indoor Rope
@@ -94,14 +121,14 @@ const products = [
         slug: 'climbing-harness-s',
         name: 'Climbing Harness — S',
         imageUrl: '/uploads/harness.svg',
-        stockCount: 3,
+        unitCount: 3,
         values: { Size: 'S (adjustable)', Type: 'Sit harness', Color: 'Black' },
       },
       {
         slug: 'climbing-harness-l',
         name: 'Climbing Harness — L',
         imageUrl: '/uploads/harness.svg',
-        stockCount: 3,
+        unitCount: 3,
         values: { Size: 'L (adjustable)', Type: 'Sit harness', Color: 'Black' },
       },
     ],
@@ -118,7 +145,7 @@ const products = [
         slug: 'chalk-bag',
         name: 'Chalk Bag',
         imageUrl: '/uploads/quickdraws.svg',
-        stockCount: 6,
+        unitCount: 6,
         values: { Capacity: '650 ml' },
       },
     ],
@@ -135,7 +162,7 @@ const products = [
         slug: 'singing-rock-rama',
         name: 'Singing Rock Rama Belay Device',
         imageUrl: '/uploads/harness.svg',
-        stockCount: 5,
+        unitCount: 5,
         values: { Type: 'Assisted-braking', 'Compatible rope diameter': '8.5–11 mm' },
       },
     ],
@@ -152,7 +179,7 @@ const products = [
         slug: 'climbing-helmet',
         name: 'Climbing Helmet',
         imageUrl: '/uploads/helmet.svg',
-        stockCount: 8,
+        unitCount: 8,
         values: { Size: 'Adjustable', Weight: '300 g' },
       },
     ],
@@ -169,7 +196,7 @@ const products = [
         slug: 'quickdraw-set-6',
         name: 'Quickdraw Set (6-pack)',
         imageUrl: '/uploads/quickdraws.svg',
-        stockCount: 6,
+        unitCount: 6,
         values: { Count: '6', Gate: 'Wire' },
       },
     ],
@@ -183,12 +210,13 @@ const products = [
     subcategorySlug: 'cams',
     thumbnailImageUrl: '/product/dragon1.webp',
     attributeKeys: ['Size', 'Colour', 'Active strength', 'Passive strength', 'Weight', 'Range', 'Product code'],
+    unitDefaults: { brand: 'DMM', model: 'Dragon 2' },
     items: [
       {
         slug: 'dmm-dragon-cam-00',
         name: 'Dragon Cam #00',
         imageUrl: '/product/dragon00.webp',
-        stockCount: 2,
+        unitCount: 2,
         values: {
           Size: '#00',
           Colour: 'Blue',
@@ -203,7 +231,7 @@ const products = [
         slug: 'dmm-dragon-cam-0',
         name: 'Dragon Cam #0',
         imageUrl: '/product/dragon0.webp',
-        stockCount: 2,
+        unitCount: 2,
         values: {
           Size: '#0',
           Colour: 'Silver',
@@ -218,7 +246,7 @@ const products = [
         slug: 'dmm-dragon-cam-1',
         name: 'Dragon Cam #1',
         imageUrl: '/product/dragon1.webp',
-        stockCount: 3,
+        unitCount: 3,
         values: {
           Size: '#1',
           Colour: 'Purple',
@@ -233,7 +261,7 @@ const products = [
         slug: 'dmm-dragon-cam-2',
         name: 'Dragon Cam #2',
         imageUrl: '/product/dragon2.webp',
-        stockCount: 2,
+        unitCount: 2,
         values: {
           Size: '#2',
           Colour: 'Green',
@@ -246,11 +274,23 @@ const products = [
       },
       {
         // Deliberately zero stock — an example of an out-of-stock variant
-        // for exercising that path in the shop/cart UI.
+        // for exercising that path in the shop/cart UI. Its one unit is
+        // retired, so the item still has a history but no active stock.
         slug: 'dmm-dragon-cam-3',
         name: 'Dragon Cam #3',
         imageUrl: '/product/dragon3.webp',
-        stockCount: 0,
+        unitCount: 0,
+        specialUnits: [
+          {
+            marking: 'Blue tape',
+            serialNumber: 'DR2-3-20190412',
+            status: 'retired',
+            notes: [
+              { date: '2024-05-02', text: 'Trigger wire frayed. Replaced by DMM under warranty.' },
+              { date: '2026-08-11', text: 'Status: Active → Retired — Lobe deformed after a long fall, failed inspection.' },
+            ],
+          },
+        ],
         values: {
           Size: '#3',
           Colour: 'Red',
@@ -265,7 +305,7 @@ const products = [
         slug: 'dmm-dragon-cam-4',
         name: 'Dragon Cam #4',
         imageUrl: '/product/dragon4.webp',
-        stockCount: 1,
+        unitCount: 1,
         values: {
           Size: '#4',
           Colour: 'Gold',
@@ -290,7 +330,7 @@ const products = [
         slug: 'ice-axe',
         name: 'Ice Axe',
         imageUrl: '/uploads/ice-axe.svg',
-        stockCount: 4,
+        unitCount: 4,
         values: { Length: '60 cm', Type: 'Mountaineering' },
       },
     ],
@@ -307,7 +347,7 @@ const products = [
         slug: 'crampons',
         name: 'Crampons',
         imageUrl: '/uploads/crampons.svg',
-        stockCount: 4,
+        unitCount: 4,
         values: { Points: '12', Type: 'Step-in' },
       },
     ],
@@ -429,16 +469,31 @@ const upsertAttributeKey = db.prepare(
 const getAttributeKey = db.prepare('SELECT id FROM product_attribute_keys WHERE product_id = ? AND name = ?');
 
 const upsertItem = db.prepare(
-  `INSERT INTO items (product_id, slug, name, image_url, stock_count, archived)
-   VALUES (@productId, @slug, @name, @imageUrl, @stockCount, 0)
+  `INSERT INTO items (product_id, slug, name, image_url, archived)
+   VALUES (@productId, @slug, @name, @imageUrl, 0)
    ON CONFLICT(slug) DO UPDATE SET
      product_id = excluded.product_id,
      name = excluded.name,
      image_url = excluded.image_url,
-     stock_count = excluded.stock_count,
      archived = 0`,
 );
 const getItemBySlug = db.prepare('SELECT id FROM items WHERE slug = ?');
+
+// Units have no natural unique key, so the seed identifies its own units by
+// (item, serial number) — every seeded unit has one. Re-running only adds
+// units that are missing, so it never duplicates them or overwrites what an
+// admin has edited since.
+const getUnitBySerial = db.prepare('SELECT id FROM units WHERE item_id = ? AND serial_number = ?');
+const insertUnit = db.prepare(
+  `INSERT INTO units (item_id, brand, model, marking, serial_number, manufactured_at, purchased_at, status, opts)
+   VALUES (@itemId, @brand, @model, @marking, @serialNumber, @manufacturedAt, @purchasedAt, @status, @opts)`,
+);
+// A unit's notes are messages with unit_id set (see the `messages` table in
+// src/db/schema.ts), dated by created_at.
+const insertUnitNote = db.prepare(
+  `INSERT INTO messages (content, author_name, unit_id, created_at)
+   VALUES (@content, 'Example admin', @unitId, unixepoch(@date))`,
+);
 
 const upsertAttributeValue = db.prepare(
   `INSERT INTO item_attribute_values (item_id, attribute_id, value) VALUES (?, ?, ?)
@@ -480,19 +535,58 @@ function upsertProductRow(p) {
   return getProductBySlug.get(p.slug).id;
 }
 
-function seedItem(productId, item, attributeIds) {
+// A marking is just how a unit is physically marked so it can be told apart
+// on the shelf — not a name. Some units have none.
+const EXAMPLE_MARKINGS = ['Red and white tape', 'Blue tape', null, 'Yellow dot', 'Green tape', 'Engraved "OSI"', null, 'Orange tape'];
+
+// Every item gets `unitCount` active units (its stock) with varied but
+// deterministic markings, serials and purchase/manufacture dates, plus any
+// hand-written `specialUnits` (out of service, retired, cut ropes, …) on top.
+function seedUnits(itemId, item, unitDefaults = {}) {
+  const numbered = Array.from({ length: item.unitCount }, (_, i) => {
+    const n = i + 1;
+    const year = 2021 + ((itemId + n) % 5);
+    const month = String(1 + ((itemId * 3 + n) % 12)).padStart(2, '0');
+    return {
+      marking: EXAMPLE_MARKINGS[(itemId + i) % EXAMPLE_MARKINGS.length],
+      serialNumber: `${String(itemId).padStart(3, '0')}${String(year).slice(2)}${String(1000 + n * 37)}`,
+      manufacturedAt: `${year - 1}-${month}-01`,
+      purchasedAt: `${year}-${month}-15`,
+      status: 'active',
+    };
+  });
+
+  for (const unit of [...numbered, ...(item.specialUnits ?? [])]) {
+    if (getUnitBySerial.get(itemId, unit.serialNumber)) continue;
+    const { lastInsertRowid: unitId } = insertUnit.run({
+      itemId,
+      brand: unit.brand ?? unitDefaults.brand ?? null,
+      model: unit.model ?? unitDefaults.model ?? null,
+      marking: unit.marking ?? null,
+      serialNumber: unit.serialNumber,
+      manufacturedAt: unit.manufacturedAt ?? null,
+      purchasedAt: unit.purchasedAt ?? null,
+      status: unit.status ?? 'active',
+      opts: JSON.stringify(unit.opts ?? {}),
+    });
+    // Only with a freshly inserted unit, so re-running never duplicates notes.
+    for (const note of unit.notes ?? []) insertUnitNote.run({ content: note.text, unitId, date: note.date });
+  }
+}
+
+function seedItem(productId, item, attributeIds, unitDefaults) {
   upsertItem.run({
     productId,
     slug: item.slug,
     name: item.name,
     imageUrl: item.imageUrl,
-    stockCount: item.stockCount,
   });
   const itemId = getItemBySlug.get(item.slug).id;
 
   for (const [key, value] of Object.entries(item.values)) {
     upsertAttributeValue.run(itemId, attributeIds[key], value);
   }
+  seedUnits(itemId, item, unitDefaults);
 }
 
 function seedProduct(p) {
@@ -504,7 +598,7 @@ function seedProduct(p) {
     attributeIds[name] = getAttributeKey.get(productId, name).id;
   });
 
-  for (const item of p.items) seedItem(productId, item, attributeIds);
+  for (const item of p.items) seedItem(productId, item, attributeIds, p.unitDefaults);
 }
 
 function seedSet(productId, set) {
@@ -539,6 +633,10 @@ db.close();
 
 const totalItems = products.reduce((sum, p) => sum + p.items.length, 0);
 const totalSets = setProducts.reduce((sum, p) => sum + p.sets.length, 0);
+const totalUnits = products.reduce(
+  (sum, p) => sum + p.items.reduce((n, item) => n + item.unitCount + (item.specialUnits?.length ?? 0), 0),
+  0,
+);
 console.log(
-  `Seeded ${categories.length} categories, ${products.length + setProducts.length} products, ${totalItems} items, ${totalSets} sets.`,
+  `Seeded ${categories.length} categories, ${products.length + setProducts.length} products, ${totalItems} items, ${totalUnits} units, ${totalSets} sets.`,
 );

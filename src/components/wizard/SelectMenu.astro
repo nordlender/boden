@@ -8,6 +8,7 @@
 // rather than duplicating that logic here.
 import AppIcon from '../icons/AppIcon.astro';
 import Dropdown from '../ui/Dropdown.astro';
+import { menuItemClasses } from '../../lib/layout-styles';
 import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 
 interface Props {
@@ -17,20 +18,21 @@ interface Props {
 const { formId } = Astro.props;
 
 const options = [
-	{ label: 'None', icon: 'selectNone' as const, data: { 'select-action': 'none' } },
-	{ label: 'All', icon: 'selectAll' as const, data: { 'select-action': 'all' } },
-	{ label: 'Invert', icon: 'selectInvert' as const, data: { 'select-action': 'invert' } },
+	{ label: 'None', icon: 'selectNone' as const, action: 'none' as const },
+	{ label: 'All', icon: 'selectAll' as const, action: 'all' as const },
+	{ label: 'Invert', icon: 'selectInvert' as const, action: 'invert' as const },
 ];
 ---
-<Dropdown
-	ariaLabel="Select items"
-	panelClass="mt-1 min-w-[8rem] py-1"
-	data-form-id={formId}
-	items={options}
->
-	<span slot="trigger" class:list={['grid place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]}>
+<Dropdown ariaLabel="Select items" data-form-id={formId}>
+	<span slot="trigger" class:list={['grid place-items-center rounded-md text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]}>
 		<AppIcon name="selectMenu" size={triggerIconPixelSize.sm} />
 	</span>
+	{options.map((option) => (
+		<button type="button" class={menuItemClasses} data-select-action={option.action}>
+			<AppIcon name={option.icon} size={16} class="text-text-muted" />
+			<span>{option.label}</span>
+		</button>
+	))}
 </Dropdown>
 
 <script>

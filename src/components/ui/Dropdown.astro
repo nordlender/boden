@@ -1,76 +1,66 @@
 ---
-// General-purpose dropdown built on <details>/<summary>: native open/close
-// and keyboard toggling come for free, and the delegated script below adds
-// the rest of what a dropdown should do (close on outside click / Escape,
-// so only one is open at a time).
+// General-purpose dropdown built on <details>/<summary>: native open/close,
+// keyboard toggling and expanded/collapsed state for screen readers come
+// for free. The delegated script below adds the rest of what a dropdown
+// should do: close on outside click, on focus moving elsewhere, and on
+// Escape (returning focus to the trigger).
 //
 // Trigger — the element that gives the trigger its shape (bounding box,
-// border, background, hover). The <summary> itself is an unstyled wrapper
-// around it, so it's always exactly one element either way:
+// border, background, hover). The <summary> is an unstyled wrapper around
+// it, so it's always exactly one element either way:
 //   - `slot="trigger"`: any shape, e.g. a circle with an icon inside. Use a
 //     <span>/<div>, not a <button> — the <summary> is already the
 //     interactive element, and interactive content can't nest inside it.
-//   - the default, when nothing is slotted: a rounded rectangle with an
-//     optional `triggerIcon`/`triggerLabel` and a morphing chevron.
-// Content — either:
-//   - the default slot: anything (forms, link lists, ...).
-//   - `items`: a simple action list (buttons, or links when `href` is set;
-//     `data` becomes `data-*` attributes so callers can delegate clicks).
-// The panel gets the surface chrome (border, background, shadow) unless
-// `chrome={false}`; `panelClass` sets its offset, size and padding.
-// Extra attributes (class, data-*, ...) land on the <details>.
-import AppIcon from '../icons/AppIcon.astro';
+//   - the default, when nothing is slotted: a secondary `md` button with
+//     `triggerLabel` and a morphing chevron, level with real buttons.
+// The keyboard focus ring is drawn on the trigger element, so it follows
+// its shape (a circle trigger gets a circular ring).
+//
+// Content — the default slot, inside a panel styled by `panel`: `menu` for
+// a list of rows (pair with lib/layout-styles.ts's menuItemClasses), or
+// `floating` for a small form. `panelClass` sets its offset and width.
+import type { HTMLAttributes } from 'astro/types';
 import MorphIcon from 'morphicons/astro';
-import type { IconName } from '../../lib/icons';
+import { baseClasses, sizeClasses, variantClasses } from '../../lib/button-styles';
 import { dropdownChevron } from '../../lib/icon-nodes';
+import { floatingPanelClasses, menuPanelClasses } from '../../lib/layout-styles';
 
-interface MenuItem {
-	label: string;
-	icon?: IconName;
-	href?: string;
-	data?: Record<string, string>;
-}
-
-interface Props {
+interface Props extends HTMLAttributes<'details'> {
 	triggerLabel?: string;
-	triggerIcon?: IconName;
 	/** Required whenever the trigger has no visible text. */
 	ariaLabel?: string;
-	items?: MenuItem[];
 	align?: 'left' | 'right';
-	/** Offset, size and padding of the panel; defaults suit an `items` list. */
+	panel?: 'menu' | 'floating';
+	/** Offset and width of the panel. */
 	panelClass?: string;
-	chrome?: boolean;
-	class?: string;
-	[attr: string]: unknown;
 }
 
 const {
 	triggerLabel,
-	triggerIcon,
 	ariaLabel,
-	items = [],
 	align = 'left',
-	panelClass = 'mt-1 min-w-[10rem] py-1',
-	chrome = true,
+	panel = 'menu',
+	panelClass = 'mt-2 min-w-[10rem]',
 	class: className,
 	...rest
 } = Astro.props;
 
 const hasTriggerSlot = Astro.slots.has('trigger');
-// `w-fit` so the summary (and its focus outline) hugs the trigger element
-// rather than stretching to the <details>' width.
-const summaryReset = 'block w-fit cursor-pointer list-none rounded [&::-webkit-details-marker]:hidden';
-const defaultTriggerClasses = 'flex items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle';
-const itemClasses = 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-text hover:bg-bg-subtle';
+// `w-fit` so the summary hugs the trigger element rather than stretching to
+// the <details>' width. Its own outline is suppressed in favour of one on
+// the trigger element (its only child), which follows the trigger's shape.
+const summaryClasses = [
+	'block w-fit cursor-pointer list-none [&::-webkit-details-marker]:hidden',
+	'focus-visible:outline-none [&:focus-visible>*]:outline-2 [&:focus-visible>*]:outline-offset-2 [&:focus-visible>*]:outline-focus-ring',
+];
+const defaultTriggerClasses = [baseClasses, sizeClasses.md, variantClasses.secondary];
 ---
 <details data-dropdown class:list={['relative inline-block', className]} {...rest}>
-	<summary class={summaryReset} aria-label={ariaLabel}>
+	<summary class:list={summaryClasses} aria-label={ariaLabel}>
 		{hasTriggerSlot ? (
 			<slot name="trigger" />
 		) : (
-			<span class={defaultTriggerClasses}>
-				{triggerIcon && <AppIcon name={triggerIcon} size={16} />}
+			<span class:list={defaultTriggerClasses}>
 				{triggerLabel && <span>{triggerLabel}</span>}
 				<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
 			</span>
@@ -79,21 +69,9 @@ const itemClasses = 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-s
 	<div class:list={[
 		'absolute z-10',
 		align === 'right' ? 'right-0' : 'left-0',
-		chrome && 'rounded-md border border-border bg-surface shadow-lg',
+		panel === 'menu' ? menuPanelClasses : floatingPanelClasses,
 		panelClass,
 	]}>
-		{items.map((item) => {
-			const data = Object.fromEntries(Object.entries(item.data ?? {}).map(([key, value]) => [`data-${key}`, value]));
-			const content = (
-				<>
-					{item.icon && <AppIcon name={item.icon} size={16} class="text-text-muted" />}
-					<span>{item.label}</span>
-				</>
-			);
-			return item.href
-				? <a href={item.href} class={itemClasses} {...data}>{content}</a>
-				: <button type="button" class={itemClasses} {...data}>{content}</button>;
-		})}
 		<slot />
 	</div>
 </details>
@@ -129,12 +107,22 @@ const itemClasses = 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-s
 		});
 	});
 
+	// Tabbing out closes, so the panel doesn't stay floating over the page.
+	// A null `relatedTarget` (focus going nowhere, e.g. a click on the
+	// panel's padding) is left to the click handler above.
+	document.addEventListener('focusout', (event) => {
+		const next = event.relatedTarget;
+		if (!(next instanceof Node)) return;
+		openDropdowns().forEach((details) => {
+			if (details.contains(event.target as Node) && !details.contains(next)) details.removeAttribute('open');
+		});
+	});
+
 	// Escape closes the innermost open dropdown containing focus (or all of
 	// them if focus is elsewhere) and hands focus back to its trigger.
 	document.addEventListener('keydown', (event) => {
 		if (event.key !== 'Escape') return;
-		const active = document.activeElement;
-		const focused = active?.closest<HTMLDetailsElement>('details[data-dropdown][open]');
+		const focused = document.activeElement?.closest<HTMLDetailsElement>('details[data-dropdown][open]');
 		const targets = focused ? [focused] : [...openDropdowns()];
 		targets.forEach((details) => details.removeAttribute('open'));
 		focused?.querySelector<HTMLElement>(':scope > summary')?.focus();

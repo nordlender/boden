@@ -1,6 +1,7 @@
 ---
 // Sets' equivalent of ../ItemPanel.astro.
 import SetToolbar from './SetToolbar.astro';
+import { cardClasses, cardHeaderClasses, emptyStateClasses } from '../../../lib/layout-styles';
 import SetTableHeader from './SetTableHeader.astro';
 import SetRow from './SetRow.astro';
 import type { SetPanelVariant } from './grid';
@@ -34,15 +35,15 @@ const { variant, title, sets, products, componentItemOptions, redirectTo } = Ast
 // ../ItemPanel.astro — see that file's comment for why.
 const formId = `set-wizard-${variant}-form`;
 ---
-<section class="rounded-lg border border-border bg-surface">
-	<h2 class="border-b border-border px-3 py-2 text-sm font-semibold text-text">{title}</h2>
-	<form id={formId} method="post" action="/api/wizard/sets-archive"></form>
+<section class={cardClasses}>
+	<h2 class={cardHeaderClasses}>{title}</h2>
+	<form id={formId} method="post" action="/api/wizard/sets/archive"></form>
 	<SetToolbar variant={variant} formId={formId} products={products} redirectTo={redirectTo} />
 	<SetTableHeader variant={variant} formId={formId} />
 	{sets.length === 0 ? (
-		<p class="px-3 py-8 text-center text-sm text-text-muted">No sets yet.</p>
+		<p class={emptyStateClasses}>No sets yet.</p>
 	) : (
-		<div class="overflow-hidden rounded-b-lg">
+		<div class="overflow-hidden rounded-b-xl">
 			{sets.map((set) => (
 				<SetRow
 					variant={variant}

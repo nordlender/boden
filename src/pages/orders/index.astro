@@ -6,7 +6,7 @@ import { getMemberOrderRows } from '../../lib/orders';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
 // reached only when logged in, so Astro.locals.user is non-null here.
-const rows = await getMemberOrderRows(Astro.locals.user!.id);
+const rows = await getMemberOrderRows(Astro.locals.user?.id ?? '');
 ---
 
 <BaseLayout title="My orders">

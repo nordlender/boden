@@ -3,7 +3,7 @@
 // reached only when logged in with role === 'admin'.
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
-import { getAllOrderRows } from '../../lib/moderatorOrders';
+import { getAllOrderRows } from '../../lib/orders';
 import { ORDER_STATUSES, isOrderStatus, type OrderStatus } from '../../lib/orderStatus';
 import OrdersLayoutToggle from '../../components/orders/OrdersLayoutToggle.astro';
 

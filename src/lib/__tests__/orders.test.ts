@@ -384,10 +384,29 @@ describe('getMemberOrder', () => {
 
 describe('getMemberOrderRows', () => {
 	it("lists only the member's own orders, named by the checkout contact snapshot", async () => {
+		// users.name ('Member') deliberately differs from the contact name, so a
+		// row that picked up the account name would fail the customerName check.
+		const result = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
+			fromDate: '2026-12-10',
+			toDate: '2026-12-11',
+			...CONTACT,
+			contactName: 'Checkout Name',
+		});
+		if (!result.ok) throw new Error('expected order to be created');
+
 		const rows = await getMemberOrderRows('member-1');
-		expect(rows.length).toBeGreaterThan(0);
+		expect(rows.find((r) => r.orderCode === result.orderCode)).toMatchObject({
+			customerName: 'Checkout Name',
+			items: [{ itemName: 'Item B', requestedQuantity: 1 }],
+		});
 		expect(rows.map((r) => r.orderCode)).not.toContain('AAAAAA');
-		expect(rows.every((r) => r.customerName === CONTACT.contactName)).toBe(true);
+	});
+
+	it('returns an empty list for a member with no orders', async () => {
+		expect(await getMemberOrderRows('')).toEqual([]);
 	});
 });
 

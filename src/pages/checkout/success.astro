@@ -6,8 +6,11 @@ import { getMemberOrder } from '../../lib/orders';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /checkout) —
 // reached only when logged in, so Astro.locals.user is non-null here.
-// `order` is the order code; getMemberOrder scopes it to the signed-in user.
-const order = await getMemberOrder(Astro.url.searchParams.get('order') ?? '', Astro.locals.user!.id);
+//
+// `order` is the order code. getMemberOrder scopes the lookup to the signed-in
+// user, so guessing another member's code just redirects away rather than
+// leaking it (an empty code or missing user likewise resolves to undefined).
+const order = await getMemberOrder(Astro.url.searchParams.get('order') ?? '', Astro.locals.user?.id ?? '');
 
 if (!order) {
   return Astro.redirect('/orders');

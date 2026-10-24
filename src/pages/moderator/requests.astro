@@ -5,7 +5,7 @@
 // (ROUTE_RULES via /moderator).
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
-import { getPendingRequestRows } from '../../lib/moderatorOrders';
+import { getPendingRequestRows } from '../../lib/orders';
 
 const rows = await getPendingRequestRows();
 ---

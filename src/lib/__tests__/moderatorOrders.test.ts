@@ -4,13 +4,13 @@ import type { OrderStatus } from '../orderStatus';
 import {
 	acceptOrder,
 	confirmRetrieval,
-	getAllOrderRows,
 	getFollowingRentalWorries,
 	getOrderDetail,
 	getOrderIdByCode,
 	markReturned,
 	rejectOrder,
 } from '../moderatorOrders';
+import { getAllOrderRows } from '../orders';
 
 // Availability treats an active order past its toDate as overdue and extends
 // it week by week up to "today" (src/lib/availability.ts), so pin the clock

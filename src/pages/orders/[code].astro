@@ -10,7 +10,10 @@ import ChangeOrderLink from '../../components/orders/ChangeOrderLink.astro';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
 // reached only when logged in, so Astro.locals.user is non-null here.
-const order = await getMemberOrder(Astro.params.code ?? '', Astro.locals.user!.id);
+// getMemberOrder scopes the lookup to the signed-in user, so another member's
+// code resolves exactly like a nonexistent one — don't leak it by guessing or
+// enumerating order codes (never redirect differently for "not yours").
+const order = await getMemberOrder(Astro.params.code ?? '', Astro.locals.user?.id ?? '');
 
 if (!order) {
   return Astro.redirect('/');

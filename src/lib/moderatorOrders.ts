@@ -5,7 +5,6 @@ import { isForeignKeyViolation } from './db-errors';
 import { getReservationAvailability } from './reservation';
 import { lineQuantity, occupiedQuantity } from './availability';
 import { RESERVING_STATUSES, type OrderStatus } from './orderStatus';
-import { toOrderRow, type OrderRow } from './orders';
 
 // Moderator-side order operations — kept separate from member-side
 // src/lib/orders.ts (createOrder/deleteOrder/
@@ -116,37 +115,6 @@ function toOrderDetail(order: RawOrderDetail): OrderDetail {
 			doubleBooked: !(availableByItemId.get(oi.itemId) ?? true),
 		})),
 	};
-}
-
-export interface PendingRequestRow extends OrderRow {
-	id: number;
-}
-
-// Every member's orders, most recent first, optionally filtered by status —
-// the admin's all-orders list.
-export async function getAllOrderRows(status: OrderStatus | null = null): Promise<OrderRow[]> {
-	const allOrders = await db.query.orders.findMany({
-		where: status ? (t, { eq: eqCol }) => eqCol(t.status, status) : undefined,
-		orderBy: (t, { desc }) => [desc(t.createdAt)],
-		with: { user: true, orderItems: { with: { item: true } } },
-	});
-	return allOrders.map(toOrderRow);
-}
-
-// Shared by src/pages/moderator/requests.astro (the full queue) and
-// src/pages/moderator/index.astro (the hub's upcoming-requests preview) —
-// same pending-review query and OrdersTable-row shape, so both stay in
-// sync rather than drifting from two copies of this query.
-export async function getPendingRequestRows(): Promise<PendingRequestRow[]> {
-	const pendingOrders = await db.query.orders.findMany({
-		where: (t, { eq: eqCol }) => eqCol(t.status, 'requested'),
-		// Earliest submitted first (first come, first served); id breaks
-		// ties since createdAt only has one-second resolution.
-		orderBy: (t, { asc: ascCol }) => [ascCol(t.createdAt), ascCol(t.id)],
-		with: { user: true, orderItems: { with: { item: true } } },
-	});
-
-	return pendingOrders.map((order) => ({ id: order.id, ...toOrderRow(order) }));
 }
 
 export async function getOrderDetail(orderId: number): Promise<OrderDetail | null> {

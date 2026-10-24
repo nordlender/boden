@@ -5,8 +5,6 @@
 export const prerender = true;
 
 import HtmlShell from '../../layouts/HtmlShell.astro';
-import { DEV_MODE, DEV_USERS } from '../../lib/devMode';
-import { menuItemClasses, menuPanelClasses, sectionTitleClasses } from '../../lib/layout-styles';
 ---
 <HtmlShell title="Signing in…" bodyClass="">
 		<!--
@@ -16,28 +14,9 @@ import { menuItemClasses, menuPanelClasses, sectionTitleClasses } from '../../li
 			/api/auth/csrf, which a plain server-side redirect can't do without
 			reimplementing Auth.js's CSRF handling), so this brief document is
 			unavoidable, but the user never sees an interactive login screen —
-			just an instant redirect to bloc. Exception: a dev-mode build
-			(src/lib/devMode.ts) shows a test-user picker instead.
+			just an instant redirect to bloc.
 		-->
-		{DEV_MODE ? (
-			<main data-dev-mode class="mx-auto flex max-w-sm flex-col gap-4 p-gutter pt-12">
-				<h1 class={sectionTitleClasses}>Sign in as</h1>
-				<ul class:list={['flex flex-col gap-1', menuPanelClasses]}>
-					{DEV_USERS.map((u) => (
-						<li>
-							<button type="button" data-dev-user={u.id} class={menuItemClasses}>
-								{u.name} ({u.role})
-							</button>
-						</li>
-					))}
-					<li class="border-t border-border pt-1">
-						<button type="button" data-bloc-login class={menuItemClasses}>Real bloc login</button>
-					</li>
-				</ul>
-			</main>
-		) : (
-			<p class="p-gutter text-sm text-text-muted">Signing in…</p>
-		)}
+		<p class="p-gutter text-sm text-text-muted">Signing in…</p>
 		<script>
 			import { signIn } from 'auth-astro/client';
 
@@ -45,15 +24,6 @@ import { menuItemClasses, menuPanelClasses, sectionTitleClasses } from '../../li
 			// auth-astro's SignInOptions type pulls in `next-auth/react`, which
 			// isn't installed as a dependency here — cast to bypass the resulting
 			// type gap rather than pull in the whole next-auth package for types.
-			const options = (extra: object = {}) => ({ callbackUrl: next, ...extra }) as Parameters<typeof signIn>[1];
-
-			if (document.querySelector('[data-dev-mode]')) {
-				document.querySelectorAll<HTMLButtonElement>('[data-dev-user]').forEach((button) => {
-					button.addEventListener('click', () => signIn('credentials', options({ userId: button.dataset.devUser })));
-				});
-				document.querySelector('[data-bloc-login]')?.addEventListener('click', () => signIn('bloc', options()));
-			} else {
-				signIn('bloc', options());
-			}
+			signIn('bloc', { callbackUrl: next } as Parameters<typeof signIn>[1]);
 		</script>
 </HtmlShell>

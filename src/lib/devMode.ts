@@ -1,7 +1,7 @@
 import type { Role } from './auth';
 
 // Dev mode: swaps bloc OAuth for four fixed test users, one per role, picked
-// from the navbar's user menu ("Change user") or the login page. Lets you
+// from the navbar's user menu ("Change user" submenu). Lets you
 // reach member/board/moderator/admin pages without bloc credentials or your
 // bloc id in ADMIN_USER_IDS etc.
 //

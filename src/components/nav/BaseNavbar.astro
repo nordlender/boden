@@ -5,10 +5,10 @@ import UserMenu from './UserMenu.astro';
 import UserMenuLinks from './UserMenuLinks.astro';
 import CartButton from './CartButton.astro';
 import ThemeToggle from './ThemeToggle.astro';
+import Dropdown from '../ui/Dropdown.astro';
 import MorphIcon from 'morphicons/astro';
 import { navMenu } from '../../lib/icon-nodes';
 import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
-import { floatingPanelClasses } from '../../lib/layout-styles';
 
 interface Props {
 	links: NavLink[];
@@ -35,20 +35,21 @@ const { links, showCart = false } = Astro.props;
 					<UserMenu />
 				</div>
 
-				<details class="nav-menu group relative md:hidden">
-					<summary
-						class:list={['flex cursor-pointer list-none items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle [&::-webkit-details-marker]:hidden', triggerBoxClasses.md]}
-						aria-label="Open menu"
-					>
+				<Dropdown
+					align="right"
+					ariaLabel="Open menu"
+					panel="floating"
+					panelClass="mt-3 w-60"
+					class="nav-menu group md:hidden"
+				>
+					<span slot="trigger" class:list={['flex items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle', triggerBoxClasses.md]}>
 						<MorphIcon icon={navMenu.closed} size={triggerIconPixelSize.md} class="nav-menu-icon" />
-					</summary>
-					<div class:list={['absolute right-0 z-10 mt-3 w-60', floatingPanelClasses]}>
-						<NavLinks links={links} />
-						<div class="mt-4 border-t border-border pt-4">
-							<UserMenuLinks />
-						</div>
+					</span>
+					<NavLinks links={links} />
+					<div class="mt-4 border-t border-border pt-4">
+						<UserMenuLinks />
 					</div>
-				</details>
+				</Dropdown>
 			</div>
 		</div>
 	</nav>

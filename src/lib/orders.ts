@@ -6,6 +6,7 @@ import type { Role } from './auth';
 import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
+import type { OrderStatus } from './orderStatus';
 
 // NNAAX: two digits, two free letters, one role letter.
 export const ORDER_CODE_LENGTH = 5;
@@ -246,6 +247,90 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     }
     throw err;
   }
+}
+
+// Row shape rendered by OrdersTable.astro — shared by the member, admin and
+// moderator order lists.
+export interface OrderRow {
+  orderCode: string;
+  status: OrderStatus;
+  fromDate: string;
+  toDate: string;
+  customerName: string;
+  items: { itemName: string; requestedQuantity: number }[];
+}
+
+type OrderRowSource = Pick<OrderRow, 'orderCode' | 'status' | 'fromDate' | 'toDate'> & {
+  contactName: string;
+  user?: { name: string | null } | null;
+  orderItems: { requestedQuantity: number; item: { name: string } }[];
+};
+
+export function toOrderRow(order: OrderRowSource): OrderRow {
+  return {
+    orderCode: order.orderCode,
+    status: order.status,
+    fromDate: order.fromDate,
+    toDate: order.toDate,
+    // users.name is nullable (set from the external OAuth provider) — fall
+    // back to the checkout-time contact name snapshot. Callers that don't
+    // load `user` (a member's own list) always get the snapshot.
+    customerName: order.user?.name || order.contactName,
+    items: order.orderItems.map((oi) => ({
+      itemName: oi.item.name,
+      requestedQuantity: oi.requestedQuantity,
+    })),
+  };
+}
+
+export async function getMemberOrderRows(userId: string): Promise<OrderRow[]> {
+  const memberOrders = await db.query.orders.findMany({
+    where: (t, { eq: eqCol }) => eqCol(t.userId, userId),
+    orderBy: (t, { desc }) => [desc(t.createdAt)],
+    with: { orderItems: { with: { item: true } } },
+  });
+  return memberOrders.map(toOrderRow);
+}
+
+export interface PendingRequestRow extends OrderRow {
+	id: number;
+}
+
+// Every member's orders, most recent first, optionally filtered by status —
+// the admin's all-orders list.
+export async function getAllOrderRows(status: OrderStatus | null = null): Promise<OrderRow[]> {
+	const allOrders = await db.query.orders.findMany({
+		where: status ? (t, { eq: eqCol }) => eqCol(t.status, status) : undefined,
+		orderBy: (t, { desc }) => [desc(t.createdAt)],
+		with: { user: true, orderItems: { with: { item: true } } },
+	});
+	return allOrders.map(toOrderRow);
+}
+
+// Shared by src/pages/moderator/requests.astro (the full queue) and
+// src/pages/moderator/index.astro (the hub's upcoming-requests preview) —
+// same pending-review query and OrdersTable-row shape, so both stay in
+// sync rather than drifting from two copies of this query.
+export async function getPendingRequestRows(): Promise<PendingRequestRow[]> {
+	const pendingOrders = await db.query.orders.findMany({
+		where: (t, { eq: eqCol }) => eqCol(t.status, 'requested'),
+		// Earliest submitted first (first come, first served); id breaks
+		// ties since createdAt only has one-second resolution.
+		orderBy: (t, { asc: ascCol }) => [ascCol(t.createdAt), ascCol(t.id)],
+		with: { user: true, orderItems: { with: { item: true } } },
+	});
+
+	return pendingOrders.map((order) => ({ id: order.id, ...toOrderRow(order) }));
+}
+
+// Ownership is part of the WHERE clause, so another member's order code
+// resolves to undefined exactly like a nonexistent one — callers can't leak it.
+export async function getMemberOrder(orderCode: string, userId: string) {
+  if (!orderCode || !userId) return undefined;
+  return db.query.orders.findFirst({
+    where: (t, { eq: eqCol }) => and(eqCol(t.orderCode, orderCode), eqCol(t.userId, userId)),
+    with: { orderItems: { with: { item: true } } },
+  });
 }
 
 export type DeleteOrderInput = { orderCode: string; userId: string };

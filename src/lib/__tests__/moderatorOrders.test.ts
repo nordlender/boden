@@ -10,6 +10,7 @@ import {
 	markReturned,
 	rejectOrder,
 } from '../moderatorOrders';
+import { getAllOrderRows } from '../orders';
 
 // Availability treats an active order past its toDate as overdue and extends
 // it week by week up to "today" (src/lib/availability.ts), so pin the clock
@@ -293,5 +294,22 @@ describe('getFollowingRentalWorries', () => {
 	it('returns no warnings when no later order is affected', async () => {
 		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, fromDate: '2026-06-01', toDate: '2026-06-05' });
 		expect(await getFollowingRentalWorries(orderId)).toEqual([]);
+	});
+});
+
+describe('getAllOrderRows', () => {
+	it("lists every member's orders, filtered by status when given", async () => {
+		const { orderCode } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, status: 'rejected', rejectedAt: new Date() });
+
+		expect((await getAllOrderRows()).map((r) => r.orderCode)).toContain(orderCode);
+
+		const rejected = await getAllOrderRows('rejected');
+		expect(rejected.every((r) => r.status === 'rejected')).toBe(true);
+		expect(rejected.find((r) => r.orderCode === orderCode)).toMatchObject({
+			customerName: 'Member',
+			items: [{ requestedQuantity: 1 }],
+		});
+
+		expect((await getAllOrderRows('returned')).map((r) => r.orderCode)).not.toContain(orderCode);
 	});
 });

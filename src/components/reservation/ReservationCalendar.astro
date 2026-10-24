@@ -133,11 +133,7 @@ const todayIso = todayIsoInOslo();
 		}
 	}
 
-	/* Cally fixes day buttons at 2.25rem, but the table stretches to the card,
-	   so cells are wider than their buttons and a selected band shows gaps.
-	   Fill the cell instead (rows have no spacing, so cells touch). */
 	.reservation-calendar calendar-range::part(button) {
-		inline-size: 100%;
 		border-radius: 0.375rem;
 		color: var(--color-text-muted);
 	}
@@ -151,7 +147,12 @@ const todayIso = todayIsoInOslo();
 		color: var(--color-text);
 	}
 
+	/* Cally fixes day buttons at 2.25rem, but the table stretches to the card,
+	   so cells are wider than their buttons and a selected band shows gaps.
+	   Fill the cell instead (rows have no spacing, so cells touch). Day parts
+	   only — ::part(button) would also resize the prev/next header buttons. */
 	.reservation-calendar calendar-range::part(day) {
+		inline-size: 100%;
 		border-radius: 0.375rem;
 	}
 

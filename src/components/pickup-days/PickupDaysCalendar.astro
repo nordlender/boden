@@ -126,11 +126,7 @@ const dayKinds = Object.fromEntries(kindByDate);
 		}
 	}
 
-	/* Cally fixes day buttons at 2.25rem, but the table stretches to the card,
-	   so cells are wider than their buttons and a selected band shows gaps.
-	   Fill the cell instead (rows have no spacing, so cells touch). */
 	.pickup-days-calendar calendar-multi::part(button) {
-		inline-size: 100%;
 		border-radius: 0.375rem;
 		color: var(--color-text-muted);
 	}
@@ -144,7 +140,12 @@ const dayKinds = Object.fromEntries(kindByDate);
 		color: var(--color-text);
 	}
 
+	/* Cally fixes day buttons at 2.25rem, but the table stretches to the card,
+	   so cells are wider than their buttons and a selected band shows gaps.
+	   Fill the cell instead (rows have no spacing, so cells touch). Day parts
+	   only — ::part(button) would also resize the prev/next header buttons. */
 	.pickup-days-calendar calendar-multi::part(day) {
+		inline-size: 100%;
 		border-radius: 0.375rem;
 	}
 

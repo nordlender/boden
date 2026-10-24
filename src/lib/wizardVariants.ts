@@ -3,13 +3,11 @@
 // the parts that really are identical live here; anything kind-specific
 // (e.g. setItemsProduct's attribute fan-out) stays in its own file. The
 // routes' URL/form wiring is in wizardRoutes.ts.
-import { db } from '../db/client';
+import { db, type Tx } from '../db/client';
 import { items, sets } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 
 export type VariantKind = 'item' | 'set';
-
-export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 const tables = { item: items, set: sets } as const;
 const otherKind = { item: 'set', set: 'item' } as const;

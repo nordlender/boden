@@ -41,7 +41,7 @@ const confirmId = `archive-confirm-${formId}`;
 <div class={tableToolbarClasses}>
 	<div class="relative inline-block">
 	<AssignWarning variant={variant} reason="product_has_sets">
-		Product is already assigned to sets
+		Product can only be assigned items or sets.
 	</AssignWarning>
 	<details class="set-dropdown relative inline-block">
 		<summary class={summaryButtonClasses}>
@@ -107,7 +107,7 @@ const confirmId = `archive-confirm-${formId}`;
 {/* No `popovertarget` invoker element points at this — the archive button below
 	must stay a plain submit button (see the click handler) — so it's shown via
 	`showPopover()` and positioned manually in the click handler rather than by
-	Popover.astro's own trigger-lookup script. */}
+	lib/popover.ts's own trigger lookup. */}
 <Popover id={archiveHintId} placement="anchor" side="bottom" class="p-0 shadow-lg">
 	<Callout variant="warning">Select at least one item to delete.</Callout>
 </Popover>

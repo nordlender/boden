@@ -18,6 +18,13 @@ export const POST: APIRoute = async (context) => {
 		return new Response(`Select at least one ${route.kind}`, { status: 400 });
 	}
 
-	await updateVariants(route.kind, ids, { archived: true });
+	try {
+		await updateVariants(route.kind, ids, { archived: true });
+	} catch {
+		// Same as set-image.ts: a clean 400 rather than a 500 carrying the raw
+		// driver message (e.g. SQLITE_BUSY).
+		return new Response(`Could not archive ${route.kind}s`, { status: 400 });
+	}
+
 	return context.redirect(safeRedirectTarget(form, context.url.origin, route.fallback));
 };

@@ -131,8 +131,6 @@ export async function createSet(input: { name: string; imageUrl?: string | null 
 	return created.id;
 }
 
-// Archive and "Set image" are shared with items — see wizardVariants.ts.
-
 // No attribute fan-out to worry about on reassignment (unlike
 // wizard.ts's setItemsProduct) — sets don't own attribute values. Same
 // no-mixing guard as setItemsProduct, from the other side.

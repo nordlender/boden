@@ -29,7 +29,7 @@ const { variant, formId, products, redirectTo } = Astro.props;
 <div class={tableToolbarClasses}>
 	<div class="relative inline-block">
 	<AssignWarning variant={variant} reason="product_has_items">
-		Product is already assigned to items
+		Product can only be assigned items or sets.
 	</AssignWarning>
 	<details class="assign-dropdown relative inline-block">
 		<summary class={summaryButtonClasses}>

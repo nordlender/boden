@@ -1,9 +1,9 @@
-import { db } from '../db/client';
+import { db, type Tx } from '../db/client';
 import { items, productAttributeKeys, itemAttributeValues, units } from '../db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { getRealAvailability } from './availability';
 import { itemStockExtras } from './units';
-import { assertProductAcceptsKind, type Tx } from './wizardVariants';
+import { assertProductAcceptsKind } from './wizardVariants';
 
 export interface WizardAttribute {
 	key: string;
@@ -116,8 +116,6 @@ export async function createItem(input: { name: string; imageUrl?: string | null
 		return created.id;
 	});
 }
-
-// Archive and "Set image" are shared with sets — see wizardVariants.ts.
 
 // docs/schema.md Work item: "'Set product' reassignment must keep attribute
 // values consistent" — one transaction: drop the old product's values,

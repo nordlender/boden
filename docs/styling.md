@@ -35,7 +35,8 @@ layout primitives built on them (`ui/Page.astro`, `ui/Card.astro`) live in
 | Disabled state | `disabled-bg`, `disabled-text` | `bg-disabled-bg`, `text-disabled-text` |
 | Modal/overlay backdrop | `overlay` | `bg-overlay` |
 | Brand/primary action | `accent`, `accent-hover`, `accent-subtle`, `accent-text` | `bg-accent`, `text-accent-text` |
-| "This is selected" (wizard rows, calendar days) | `selected`, `selected-subtle`, `selected-text` | `bg-selected`, `text-selected-text` |
+| "This is selected" (wizard rows) | `selected`, `selected-subtle`, `selected-text` | `bg-selected`, `text-selected-text` |
+| Calendar day/range selection (reservation, pickup-days) | `range`, `range-subtle`, `range-text` | `bg-range`, `bg-range-subtle` |
 | Success / in-stock | `success`, `success-subtle`, `success-border`, `success-text` | `bg-success-subtle`, `text-success-text` |
 | Availability scale (AvailabilityCalendar): units available that day, 0 … 4+ (semi-transparent; text on top stays `text-text`) | `availability-0` … `availability-4` | `bg-availability-2` |
 | Informational | `info`, `info-subtle`, `info-border`, `info-text` | `bg-info-subtle`, `text-info-text` |
@@ -65,7 +66,7 @@ changing what "this is selected" looks like.
    hardcoded defaults or reassigning raw palette colors.
 3. Pick the token family by *meaning*, not by what color it happens to
    render as today — e.g. an "available to pick up" tint is `success`, not
-   `green`; a selected calendar day or wizard row is `selected`, not `blue`.
+   `green`; a selected wizard row is `selected`, a picked calendar day is `range`, not `blue`.
 4. Known deferred gap: the `help` dialogue-box token is currently violet and
    is slated to change — don't treat its current hue as meaningful when
    reusing it.

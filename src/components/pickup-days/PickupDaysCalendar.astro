@@ -72,7 +72,6 @@ const dayKinds = Object.fromEntries(kindByDate);
 
 <style>
 	.pickup-days-calendar calendar-multi {
-		--color-accent: var(--ui-accent);
 		--color-text-on-accent: var(--color-text-inverted);
 		display: block;
 		width: 100%;
@@ -97,6 +96,10 @@ const dayKinds = Object.fromEntries(kindByDate);
 	}
 
 	.pickup-days-calendar calendar-multi calendar-month {
+		/* Cally's own calendar-month :host sets --color-accent: black, which
+		   fills keyboard-focused days; a value set on the host element from
+		   outside beats that. */
+		--color-accent: var(--ui-range);
 		width: 100%;
 	}
 
@@ -165,8 +168,12 @@ const dayKinds = Object.fromEntries(kindByDate);
 		color: var(--color-warning-text);
 	}
 
+	/* Each picked day is its own fully rounded box (days are independent
+	   picks, not a range); box-shadow: none drops the origin-kind border. */
 	.pickup-days-calendar calendar-multi::part(selected) {
-		background-color: var(--color-selected);
+		border-radius: 0.375rem;
+		box-shadow: none;
+		background-color: var(--color-range);
 		color: var(--color-text-inverted);
 	}
 </style>

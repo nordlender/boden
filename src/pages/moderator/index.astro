@@ -32,6 +32,20 @@ const MAX_PREVIEW_REQUESTS = 8;
 const pendingRequests = await getPendingRequestRows();
 const previewRequests = pendingRequests.slice(0, MAX_PREVIEW_REQUESTS);
 const messages = await listMessages();
+
+// The requests preview sits between the message board and the action tiles,
+// so the board's scroll cap (MessageTable `scrollable`) has to leave room for
+// it: gap to the block, its header row (2rem), gap under it, then the list.
+// Row heights are the compact OrdersTableRow card (4.5rem in one line from
+// `sm`, 8.5rem in the stacked mobile layout) plus 0.75rem between rows; the
+// empty state is one framed message (~7.5rem). With a full preview the board
+// just sits at its 10rem floor and the page scrolls.
+const requestsBlockReserve = (rowRem: number, emptyRem: number) => {
+	const n = previewRequests.length;
+	const listRem = n === 0 ? emptyRem : n * rowRem + (n - 1) * 0.75;
+	return `calc(var(--ui-space-region) + var(--ui-space-stack) + ${2 + listRem}rem)`;
+};
+const extraReserve = { base: requestsBlockReserve(8.5, 7.5), sm: requestsBlockReserve(4.5, 7.5) };
 const redirectTo = Astro.url.pathname;
 const error = Astro.url.searchParams.get('error');
 const modalId = 'add-message-modal';
@@ -46,7 +60,7 @@ const modalId = 'add-message-modal';
 				</Callout>
 			)
 		}
-		<MessageTable messages={messages} currentUserId={Astro.locals.user?.id ?? null} redirectTo={redirectTo}>
+		<MessageTable messages={messages} currentUserId={Astro.locals.user?.id ?? null} redirectTo={redirectTo} scrollable extraReserve={extraReserve}>
 			<TextMorphButton
 				slot="actions"
 				action="message"

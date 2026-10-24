@@ -2,6 +2,7 @@
 import { menuItemClasses } from '../../lib/layout-styles';
 import { DEV_MODE, DEV_USERS } from '../../lib/devMode';
 import AppIcon from '../icons/AppIcon.astro';
+import Dropdown from '../ui/Dropdown.astro';
 ---
 
 <!--
@@ -29,29 +30,36 @@ import AppIcon from '../icons/AppIcon.astro';
 			</button>
 		</li>
 	</ul>
-	<!-- Dev mode only (src/lib/devMode.ts): sign in as a fixed test user. -->
+	<!--
+		Dev mode only (src/lib/devMode.ts): sign in as a fixed test user.
+		[&>summary]:w-full because Dropdown's summary hugs its trigger (w-fit);
+		this row should span the menu like its siblings.
+	-->
 	{DEV_MODE && (
-		<details class="group/change-user mt-1 border-t border-border pt-1">
-			<summary class:list={[menuItemClasses, 'cursor-pointer list-none justify-between [&::-webkit-details-marker]:hidden']}>
-				Change user
-				<AppIcon name="chevronRight" size={16} class="transition-transform group-open/change-user:rotate-90" />
-			</summary>
-			<ul class="flex flex-col gap-1 pl-3">
-				{DEV_USERS.map((u) => (
-					<li>
-						<button type="button" data-dev-user={u.id} class:list={[menuItemClasses, 'justify-between aria-current:font-semibold aria-current:text-text']}>
-							{u.name}
-							<span class="text-xs text-text-muted">{u.role}</span>
-						</button>
-					</li>
-				))}
-			</ul>
-		</details>
+		<div class="mt-1 border-t border-border pt-1">
+			<Dropdown panelClass="mt-1 w-full" class="group/change-user w-full [&>summary]:w-full">
+				<span slot="trigger" class:list={[menuItemClasses, 'justify-between']}>
+					Change user
+					<AppIcon name="chevronRight" size={16} class="transition-transform group-open/change-user:rotate-90" />
+				</span>
+				<ul class="flex flex-col gap-1">
+					{DEV_USERS.map((u) => (
+						<li>
+							<button type="button" data-dev-user={u.id} class:list={[menuItemClasses, 'justify-between aria-current:font-semibold aria-current:text-text']}>
+								{u.name}
+								<span class="text-xs text-text-muted">{u.role}</span>
+							</button>
+						</li>
+					))}
+				</ul>
+			</Dropdown>
+		</div>
 	)}
 </div>
 
 <script>
 	import { signIn, signOut } from 'auth-astro/client';
+	import { DEV_PROVIDER_ID } from '../../lib/devMode';
 
 	async function loadSession() {
 		try {
@@ -96,7 +104,7 @@ import AppIcon from '../icons/AppIcon.astro';
 	document.querySelectorAll<HTMLButtonElement>('[data-dev-user]').forEach((button) => {
 		button.addEventListener('click', () => {
 			// Same next-auth/react type gap as signOut above.
-			void signIn('credentials', { userId: button.dataset.devUser, callbackUrl: location.href } as Parameters<typeof signIn>[1]);
+			void signIn(DEV_PROVIDER_ID, { userId: button.dataset.devUser, callbackUrl: location.href } as Parameters<typeof signIn>[1]);
 		});
 	});
 

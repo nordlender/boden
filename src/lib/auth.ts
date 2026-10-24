@@ -1,5 +1,5 @@
 import { getToken } from '@auth/core/jwt';
-import { findDevUser } from './devMode';
+import { findDevUser, isStaleDevUserId } from './devMode';
 
 export type Role = 'admin' | 'board' | 'moderator' | 'member';
 
@@ -58,6 +58,7 @@ export function getRole(userId: string): Role {
 export async function validateSession(request: Request): Promise<App.Locals['user']> {
   const token = await getToken({ req: request, secret: import.meta.env.AUTH_SECRET });
   if (!token?.sub || typeof token.email !== 'string') return null;
+  if (isStaleDevUserId(token.sub)) return null;
 
   const role = getRole(token.sub);
 

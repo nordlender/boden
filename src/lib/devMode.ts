@@ -39,6 +39,17 @@ export const ALL_DEV_USERS: readonly DevUser[] = [
 // tests goes through this, never ALL_DEV_USERS.
 export const DEV_USERS: readonly DevUser[] = DEV_MODE ? ALL_DEV_USERS : [];
 
+// Prefix every dev user id shares (bloc ids are purely numeric).
+const DEV_ID_PREFIX = 'dev-';
+
+// A session cookie for a dev user that this build doesn't know — e.g. signed
+// in as dev-amitda, then rebuilt without DEV_MODE but the same AUTH_SECRET.
+// validateSession() treats it as signed out instead of letting a fake
+// "Amitda" carry on as a member.
+export function isStaleDevUserId(userId: string, users: readonly DevUser[] = DEV_USERS): boolean {
+  return userId.startsWith(DEV_ID_PREFIX) && !findDevUser(userId, users);
+}
+
 // The dev user with this id, or undefined if it isn't one / dev mode is off.
 export function findDevUser(userId: unknown, users: readonly DevUser[] = DEV_USERS): DevUser | undefined {
   if (typeof userId !== 'string') return undefined;

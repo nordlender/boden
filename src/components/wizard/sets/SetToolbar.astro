@@ -25,7 +25,7 @@ const { variant, formId, products, redirectTo } = Astro.props;
 <div class="flex items-center gap-2 border-b border-border bg-bg-subtle px-3 py-2">
 	<div class="relative inline-block">
 	<AssignWarning variant={variant} reason="product_has_items">
-		Set is empty, or product is already assigned to other items
+		Product is already assigned to items
 	</AssignWarning>
 	<details class="assign-dropdown relative inline-block">
 		<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">

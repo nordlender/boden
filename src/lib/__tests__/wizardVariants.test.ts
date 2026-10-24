@@ -13,7 +13,8 @@ vi.mock('../../db/client', () => ({
 	},
 }));
 
-const { archiveVariants, setVariantsImage, variantRoute } = await import('../wizardVariants');
+const { updateVariants } = await import('../wizardVariants');
+const { variantRoute } = await import('../wizardRoutes');
 
 function seedRows(database: BetterSQLite3Database<typeof schema>) {
 	const item = database.insert(schema.items).values({ slug: 'item-1', name: 'Item 1' }).returning({ id: schema.items.id }).get();
@@ -26,24 +27,22 @@ describe('wizardVariants', () => {
 		testDb = createTestDb();
 	});
 
-	describe('archiveVariants', () => {
+	describe('updateVariants', () => {
 		it('archives only rows of the given kind', async () => {
 			const { itemId, setId } = seedRows(testDb);
 
-			await archiveVariants('set', [setId]);
+			await updateVariants('set', [setId], { archived: true });
 
 			const [set] = testDb.select({ archived: schema.sets.archived }).from(schema.sets).where(inArray(schema.sets.id, [setId])).all();
 			const [item] = testDb.select({ archived: schema.items.archived }).from(schema.items).where(inArray(schema.items.id, [itemId])).all();
 			expect(set.archived).toBe(true);
 			expect(item.archived).toBe(false);
 		});
-	});
 
-	describe('setVariantsImage', () => {
 		it('sets the image only on rows of the given kind', async () => {
 			const { itemId, setId } = seedRows(testDb);
 
-			await setVariantsImage('item', [itemId], '/img/a.jpg');
+			await updateVariants('item', [itemId], { imageUrl: '/img/a.jpg' });
 
 			const [item] = testDb.select({ imageUrl: schema.items.imageUrl }).from(schema.items).where(inArray(schema.items.id, [itemId])).all();
 			const [set] = testDb.select({ imageUrl: schema.sets.imageUrl }).from(schema.sets).where(inArray(schema.sets.id, [setId])).all();

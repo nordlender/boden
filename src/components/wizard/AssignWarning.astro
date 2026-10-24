@@ -49,13 +49,22 @@ const id = `assign-warning-${variant}`;
 	// Open the refusal warning (rendered only when the redirect carried one),
 	// then drop the one-shot query params so a reload doesn't show it again —
 	// same trick CartSidebar uses for `cartOpen`.
-	const warning = document.querySelector<HTMLElement>('[id^="assign-warning-"]');
-	if (warning) {
+	//
+	// Deferred to DOMContentLoaded: Astro emits this script where the first
+	// AssignWarning renders, which can be before any Popover.astro script (on
+	// /admin/items the unassigned toolbar's AssignWarning renders nothing yet
+	// still comes first). Opening right away would fire `beforetoggle` before
+	// Popover's positioning listeners exist, so the popover could paint at the
+	// browser's default spot. DOMContentLoaded only fires once every module
+	// script on the page has run.
+	document.addEventListener('DOMContentLoaded', () => {
+		const warning = document.querySelector<HTMLElement>('[id^="assign-warning-"]');
+		if (!warning) return;
 		warning.parentElement?.scrollIntoView({ block: 'center' });
 		warning.showPopover();
 		const url = new URL(location.href);
 		url.searchParams.delete('assignError');
 		url.searchParams.delete('assignPanel');
 		history.replaceState({}, '', url);
-	}
+	});
 </script>

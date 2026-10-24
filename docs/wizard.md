@@ -119,8 +119,10 @@ entirely:
   this doc's premise.
 
 Wired up to real data. `docs/schema.md`'s "Work notes" section's
-application-layer pieces are all implemented in `src/lib/wizard.ts` and
-`src/pages/api/wizard/*.ts`, and the wizard now lives at `/admin/items`
+application-layer pieces are all implemented in `src/lib/wizard.ts` (plus
+`src/lib/wizardVariants.ts` for archive/set-image, shared with sets) and
+`src/pages/api/wizard/**/*.ts` (archive, set-image and set-product under
+`[kind]/`, e.g. `/api/wizard/items/archive`), and the wizard now lives at `/admin/items`
 (`src/pages/admin/items.astro`), reading and writing the real database
 instead of mock data — the "Set product" reassignment transaction, fanning
 out new template fields to existing items, the red hint next to the
@@ -138,7 +140,7 @@ rather than DOM nesting, since ItemRow's own per-attribute edit forms
 already live inside the row list and HTML forms can't nest.
 
 Not done: no auth check on any of this yet (see the TODO comments in
-`src/pages/api/wizard/*.ts` and `src/pages/admin/items.astro` — the
+`src/pages/api/wizard/**/*.ts` and `src/pages/admin/items.astro` — the
 api-test worktree's `src/middleware/index.ts` already gates `/admin`
 routes by role, just not merged into this branch), "Set image" is still a
 visual-only stub, and the Add Item panel's "Add item" button links to the

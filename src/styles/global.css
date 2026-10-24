@@ -48,13 +48,6 @@
 	--ui-selected-border: light-dark(var(--color-blue-200), var(--color-blue-800));
 	--ui-selected-text: light-dark(var(--color-blue-700), var(--color-blue-300));
 
-	/* Calendar day/range selection (reservation, pickup-days). Its own hue so
-	 * a picked day never reads as the blue accent or as one of the
-	 * red/green/yellow availability tints it can sit on top of. */
-	--ui-range: light-dark(var(--color-fuchsia-600), var(--color-fuchsia-500));
-	--ui-range-subtle: light-dark(var(--color-fuchsia-100), color-mix(in oklab, var(--color-fuchsia-500) 30%, transparent));
-	--ui-range-text: light-dark(var(--color-fuchsia-900), var(--color-fuchsia-100));
-
 	--ui-success: light-dark(var(--color-emerald-600), var(--color-emerald-500));
 	--ui-success-subtle: light-dark(var(--color-emerald-50), var(--color-emerald-950));
 	--ui-success-border: light-dark(var(--color-emerald-200), var(--color-emerald-800));
@@ -136,10 +129,6 @@
 	--color-selected-subtle: var(--ui-selected-subtle);
 	--color-selected-border: var(--ui-selected-border);
 	--color-selected-text: var(--ui-selected-text);
-
-	--color-range: var(--ui-range);
-	--color-range-subtle: var(--ui-range-subtle);
-	--color-range-text: var(--ui-range-text);
 
 	--color-success: var(--ui-success);
 	--color-success-subtle: var(--ui-success-subtle);

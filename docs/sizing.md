@@ -85,7 +85,7 @@ color-token migration).
 
 - `src/components/wizard/ItemRow.astro`, `ProductTag.astro`,
   `SubCategoryTag.astro`, `WizardSearch.astro`, `ui/AddPanel.astro`,
-  `ButtonStrip.astro`, `Dropdown.astro` — each pass a hand-typed numeric
+  `ButtonStrip.astro`, `ui/Dropdown.astro` — each pass a hand-typed numeric
   `size` (13–18px) to `AppIcon`/`MorphIcon` rather than a token.
 - `src/components/orders/OrdersLayoutToggle.astro` — hand-rolled toggle
   buttons (fixed 36px boxes) with their own numeric icon size, not using

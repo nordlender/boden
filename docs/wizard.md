@@ -119,8 +119,10 @@ entirely:
   this doc's premise.
 
 Wired up to real data. `docs/schema.md`'s "Work notes" section's
-application-layer pieces are all implemented in `src/lib/wizard.ts` and
-`src/pages/api/wizard/*.ts`, and the wizard now lives at `/admin/items`
+application-layer pieces are all implemented in `src/lib/wizard.ts` (plus
+`src/lib/wizardVariants.ts` for archive/set-image, shared with sets) and
+`src/pages/api/wizard/**/*.ts` (archive, set-image and set-product under
+`[kind]/`, e.g. `/api/wizard/items/archive`), and the wizard now lives at `/admin/items`
 (`src/pages/admin/items.astro`), reading and writing the real database
 instead of mock data — the "Set product" reassignment transaction, fanning
 out new template fields to existing items, the red hint next to the
@@ -139,6 +141,6 @@ already live inside the row list and HTML forms can't nest.
 
 Auth: the whole of `/admin` and `/api/wizard` is gated to admins by `src/middleware/prefixes.ts`, and each endpoint also checks `requireAdmin`.
 
-Set image: the Set dropdown's "Set image" opens `ImageMenu.astro` — pick from the uploaded-files explorer, upload a new file (`POST /api/admin/images`), or paste a URL — and applies it to all selected items via `/api/wizard/set-image`.
+Set image: the Set dropdown's "Set image" opens `ImageMenu.astro` — pick from the uploaded-files explorer, upload a new file (`POST /api/admin/images`), or paste a URL — and applies it to all selected items via `/api/wizard/items/set-image`.
 
 Add item: the Add Item panel is a collapsible `ExpandBox`, collapsed by default; the button strip's "Add item" shortcut opens it and focuses the name field.

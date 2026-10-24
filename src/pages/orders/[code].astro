@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { db } from '../../db/client';
+import { getMemberOrder } from '../../lib/orders';
 import { getMaxRentalDays } from '../../lib/rental-policy';
 import OrderCodeHeader from '../../components/orders/OrderCodeHeader.astro';
 import OrderContents from '../../components/orders/OrderContents.astro';
@@ -14,16 +14,12 @@ import { cardFooterClasses } from '../../lib/layout-styles';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
 // reached only when logged in, so Astro.locals.user is non-null here.
-const { code } = Astro.params;
-const order = code
-  ? await db.query.orders.findFirst({
-      where: (t, { eq }) => eq(t.orderCode, code),
-      with: { orderItems: { with: { item: true } } },
-    })
-  : undefined;
+// getMemberOrder scopes the lookup to the signed-in user, so another member's
+// code resolves exactly like a nonexistent one — don't leak it by guessing or
+// enumerating order codes (never redirect differently for "not yours").
+const order = await getMemberOrder(Astro.params.code ?? '', Astro.locals.user?.id ?? '');
 
-// Don't leak another member's order by guessing/enumerating order codes.
-if (!order || order.userId !== Astro.locals.user?.id) {
+if (!order) {
   return Astro.redirect('/');
 }
 ---

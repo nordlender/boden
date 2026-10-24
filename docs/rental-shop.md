@@ -165,7 +165,7 @@ boden/
 │   │   ├── admin/                           # images.ts (upload), pickup-days/recurring/
 │   │   ├── messages/                        # add / delete (moderator), pin / unpin (admin)
 │   │   ├── products/                        # create / [id]/update — admin only
-│   │   ├── wizard/                          # items, sets, set-component-*, sets-*, units, attributes(/bulk), set-product, set-image, archive — admin only
+│   │   ├── wizard/                          # items, sets, [kind]/{archive,set-image,set-product}, set-component-*, sets-label, units, attributes(/bulk) — admin only
 │   │   └── debug/                           # bloc API exploration endpoints, see docs/bloc-api.md
 │   │
 │   ├── db/

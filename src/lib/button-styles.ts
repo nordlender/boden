@@ -87,11 +87,6 @@ export const actionLabels: Record<ActionIconKey, string> = {
 	unpin: 'Pinned',
 };
 
-// A <details> <summary> styled as a secondary `md` button — for dropdown
-// triggers that open a panel (the wizard toolbars' "Set"/"Assign" menus),
-// so they sit level with the real buttons beside them.
-export const summaryButtonClasses = `${baseClasses} ${sizeClasses.md} ${variantClasses.secondary} cursor-pointer list-none [&::-webkit-details-marker]:hidden`;
-
 // Pill-shaped toggle/filter (admin orders' status filter, ProductForm's
 // variant-key toggles). Selected-state colors are left to the caller, since
 // they key off different attributes (aria-current vs aria-pressed).

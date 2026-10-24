@@ -30,9 +30,14 @@ writeFileSync(
   })};\n`,
 );
 
-const result = spawnSync('npx', ['drizzle-kit', 'generate', '--config', configPath, '--name', 'drift'], {
+// Run drizzle-kit's own entry point with the current node binary (both
+// absolute paths) rather than `npx`, so nothing is looked up via PATH. The
+// child's PATH is pinned to fixed system directories for anything it spawns.
+const drizzleKitBin = path.join(rootDir, 'node_modules', 'drizzle-kit', 'bin.cjs');
+const result = spawnSync(process.execPath, [drizzleKitBin, 'generate', '--config', configPath, '--name', 'drift'], {
   cwd: rootDir,
   encoding: 'utf8',
+  env: { ...process.env, PATH: '/usr/bin:/bin' },
   // A rename makes drizzle-kit ask "created or renamed?"; closed stdin and a
   // timeout turn that into a failure instead of a hang.
   stdio: ['ignore', 'pipe', 'pipe'],

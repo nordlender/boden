@@ -15,55 +15,67 @@ import { fileURLToPath } from 'node:url';
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkgScripts = new Set(Object.keys(JSON.parse(readFileSync(path.join(rootDir, 'package.json'), 'utf8')).scripts));
 
-const files = [
-  'README.md',
-  'AGENTS.md',
-  'scripts/README.md',
-  ...readdirSync(path.join(rootDir, 'docs'))
-    .filter((f) => f.endsWith('.md'))
-    .map((f) => `docs/${f}`),
-].filter((f) => existsSync(path.join(rootDir, f)));
-
 const PATH_PREFIX = /^(src|docs|scripts|public|\.github)\//;
 const ROOT_FILES = new Set(['README.md', 'AGENTS.md', 'package.json', 'drizzle.config.ts', 'astro.config.mjs', '.env.example']);
 
-const problems = [];
-const report = (file, line, msg) => problems.push(`${file}:${line}: ${msg}`);
-
-for (const file of files) {
-  const lines = readFileSync(path.join(rootDir, file), 'utf8').split('\n');
-  let inFence = false;
-  lines.forEach((text, i) => {
-    const line = i + 1;
-    if (text.trimStart().startsWith('```')) {
-      inFence = !inFence;
-      return;
-    }
-    // Code blocks are examples (often abridged or illustrative), not claims.
-    if (inFence) return;
-
-    for (const [, target] of text.matchAll(/\]\(([^)\s]+)\)/g)) {
-      if (/^(https?:|mailto:|#)/.test(target)) continue;
-      const clean = target.split('#')[0];
-      if (clean && !existsSync(path.resolve(rootDir, path.dirname(file), clean))) {
-        report(file, line, `broken link target ${target}`);
-      }
-    }
-
-    for (const [, token] of text.matchAll(/`([^`]+)`/g)) {
-      if (/[*…\s]/.test(token)) continue;
-      // "src/foo.ts:12" and "src/dir/" forms.
-      const candidate = token.replace(/:\d+(-\d+)?$/, '').replace(/\/$/, '');
-      if (PATH_PREFIX.test(candidate) || ROOT_FILES.has(candidate)) {
-        if (!existsSync(path.join(rootDir, candidate))) report(file, line, `missing path ${token}`);
-      }
-    }
-
-    for (const [, name] of text.matchAll(/npm run (?:--[\w-]+ )*([\w:-]+)/g)) {
-      if (!pkgScripts.has(name)) report(file, line, `unknown npm script "${name}"`);
-    }
-  });
+function docFiles() {
+  const docs = readdirSync(path.join(rootDir, 'docs'))
+    .filter((f) => f.endsWith('.md'))
+    .map((f) => `docs/${f}`);
+  return ['README.md', 'AGENTS.md', 'scripts/README.md', ...docs].filter((f) => existsSync(path.join(rootDir, f)));
 }
+
+// Lines outside fenced code blocks, with their 1-based line numbers. Code
+// blocks are examples (often abridged or illustrative), not claims.
+function proseLines(text) {
+  const result = [];
+  let inFence = false;
+  text.split('\n').forEach((line, i) => {
+    if (line.trimStart().startsWith('```')) inFence = !inFence;
+    else if (!inFence) result.push({ line, number: i + 1 });
+  });
+  return result;
+}
+
+function brokenLinks(line, file) {
+  return [...line.matchAll(/\]\(([^)\s]+)\)/g)]
+    .map(([, target]) => target)
+    .filter((target) => !/^(https?:|mailto:|#)/.test(target))
+    .filter((target) => {
+      const clean = target.split('#')[0];
+      return clean && !existsSync(path.resolve(rootDir, path.dirname(file), clean));
+    })
+    .map((target) => `broken link target ${target}`);
+}
+
+// Strips the "src/foo.ts:12" and "src/dir/" forms down to a plain path.
+const toRepoPath = (token) => token.replace(/:\d+(-\d+)?$/, '').replace(/\/$/, '');
+const looksLikeRepoPath = (p) => PATH_PREFIX.test(p) || ROOT_FILES.has(p);
+
+function missingPaths(line) {
+  return [...line.matchAll(/`([^`]+)`/g)]
+    .map(([, token]) => token)
+    .filter((token) => !/[*…\s]/.test(token))
+    .filter((token) => looksLikeRepoPath(toRepoPath(token)) && !existsSync(path.join(rootDir, toRepoPath(token))))
+    .map((token) => `missing path ${token}`);
+}
+
+function unknownScripts(line) {
+  return [...line.matchAll(/npm run (?:--[\w-]+ )*([\w:-]+)/g)]
+    .map(([, name]) => name)
+    .filter((name) => !pkgScripts.has(name))
+    .map((name) => `unknown npm script "${name}"`);
+}
+
+function checkFile(file) {
+  const text = readFileSync(path.join(rootDir, file), 'utf8');
+  return proseLines(text).flatMap(({ line, number }) =>
+    [...brokenLinks(line, file), ...missingPaths(line), ...unknownScripts(line)].map((msg) => `${file}:${number}: ${msg}`),
+  );
+}
+
+const files = docFiles();
+const problems = files.flatMap(checkFile);
 
 if (problems.length > 0) {
   console.error(`${problems.length} stale doc reference(s):\n`);

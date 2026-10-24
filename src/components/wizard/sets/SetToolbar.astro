@@ -6,6 +6,10 @@
 // the same rename to ButtonStrip itself at some point, but that's an
 // /admin/items change, out of scope for this PR.
 import MorphIcon from 'morphicons/astro';
+import { summaryButtonClasses } from '../../../lib/button-styles';
+import { eyebrowClasses, floatingPanelClasses } from '../../../lib/layout-styles';
+import { hintClasses, inputSmClasses } from '../../../lib/form-styles';
+import { tableToolbarClasses } from '../../../lib/table-styles';
 import { dropdownChevron } from '../../../lib/icon-nodes';
 import AppIcon from '../../icons/AppIcon.astro';
 import Button from '../../ui/Button.astro';
@@ -22,37 +26,37 @@ interface Props {
 
 const { variant, formId, products, redirectTo } = Astro.props;
 ---
-<div class="flex items-center gap-2 border-b border-border bg-bg-subtle px-3 py-2">
+<div class={tableToolbarClasses}>
 	<div class="relative inline-block">
 	<AssignWarning variant={variant} reason="product_has_items">
 		Product is already assigned to items
 	</AssignWarning>
 	<details class="assign-dropdown relative inline-block">
-		<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
+		<summary class={summaryButtonClasses}>
 			<span>Assign</span>
 			<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
 		</summary>
-		<div class="absolute left-0 z-10 mt-1 w-80 rounded-md border border-border bg-surface p-3 shadow-lg">
+		<div class:list={['absolute left-0 z-10 mt-2 w-[min(24rem,calc(100vw-2rem))]', floatingPanelClasses]}>
 			<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
 			<input type="hidden" name="panel" value={variant} form={formId} />
-			<section class="border-b border-border pb-3">
-				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
-					<AppIcon name="image" size={13} /> Set image
+			<section class="border-b border-border pb-5">
+				<p class:list={[eyebrowClasses, 'mb-snug flex items-center gap-1.5']}>
+					<AppIcon name="image" size={14} /> Set image
 				</p>
 				<div class="flex items-center gap-2">
-					<input type="text" name="imageUrl" form={formId} placeholder="https://…" class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm" />
+					<input type="text" name="imageUrl" form={formId} placeholder="https://…" class:list={['min-w-0 flex-1', inputSmClasses]} />
 					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/sets/set-image" class="shrink-0">
 						Apply
 					</Button>
 				</div>
 			</section>
 
-			<section class="py-3">
-				<p class="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
-					<AppIcon name="product" size={13} /> Set product
+			<section class="pt-5">
+				<p class:list={[eyebrowClasses, 'mb-snug flex items-center gap-1.5']}>
+					<AppIcon name="product" size={14} /> Set product
 				</p>
 				<div class="flex items-center gap-2">
-					<select name="productId" form={formId} class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm">
+					<select name="productId" form={formId} class:list={['min-w-0 flex-1', inputSmClasses]}>
 						<option value="" disabled selected>Choose a product…</option>
 						{products.map((p) => (
 							<option value={p.id}>{p.title}</option>
@@ -62,7 +66,7 @@ const { variant, formId, products, redirectTo } = Astro.props;
 						Apply
 					</Button>
 				</div>
-				<p class="mt-1 text-xs text-text-muted">Also how you reassign an already-assigned set to a <em>different</em> product. Unlike items, there's no attribute template to fan out — the set's own <code>label</code> and components are untouched.</p>
+				<p class:list={['mt-2', hintClasses]}>Also how you reassign an already-assigned set to a <em>different</em> product. Unlike items, there's no attribute template to fan out — the set's own <code>label</code> and components are untouched.</p>
 			</section>
 		</div>
 	</details>

@@ -1,7 +1,7 @@
 # Dynamic wizard
 We want to rethink the admin wizard. Our idea is that the last one is too rigid, although it does offer some quality of life features that make it faster to assign some data to items, such as attributes and images.
 
-> Status: the components described below (table, panels, button strip, Add Item panel) are built — see `src/components/wizard/` and `src/pages/wizard-test.astro`. This doc has been updated to match what got built, and to flag what changed along the way from the original plan.
+> Status: the components described below (table, panels, button strip, Add Item panel) are built and live at `/admin/items` — see `src/components/wizard/` and `src/pages/admin/items.astro`. This doc has been updated to match what got built, and to flag what changed along the way from the original plan. Later additions not described in detail below: sets (`/admin/sets`, `src/components/wizard/sets/`), physical units (`/admin/items/[id]/units`), and the product create/edit pages (`/admin/products`).
 
 ## Semantic info
 Just some info before we start:
@@ -33,7 +33,7 @@ We want to allow bulk adding/editing details for different items, so we need to 
 ## What is the dynamic wizard?
 The dynamic wizard is going to rethink how we add products and items. Instead of starting with adding products, we start with adding items.
 
-First, the admins adds as many items as they want. They later create a product, which they then add items to. This product will have a field in the schema that somehow links to these items. We will get back to this later, but note that items do *not* link to products, it is (at least initially or upon creation) a one-way relationship.
+First, the admins adds as many items as they want. They later create a product, which they then add items to. In the schema the link is `items.productId` (nullable until the item is assigned); products never reference items — see `docs/schema.md`.
 
 When adding items, the admin will have two sections with several panels. The central main section and a sidebar on the right.
 
@@ -45,7 +45,7 @@ items whose own name contains the text. (Not implemented yet — noted for later
 
 Both of the panels will be very similar. The items will be displayed in a table format, with small images. We will make a table component, a header component, and then two components for each panel that each have this list component. We will also make a component for each item in the list.
 
-Items will be selectable, display an item id, a small image, and the item id will be generated incrementally. Thus, we need to go over how items are created. It will show how many are in stock, and how many the total stock is (the amount of items rented out is total_stock-in_stock) The look of each item will be:
+Items will be selectable, display an item id, a small image, and the item id will be generated incrementally. Thus, we need to go over how items are created. It will show how many are on the shelf right now, and how many the total stock is (the amount of items rented out is total_stock-in_stock). Total stock is the number of the item's active units, not a stored column — see `docs/schema.md`. The look of each item will be:
 | {select_icon} | Image | item id | item name | {subcategory_icon} sub-category | {product_icon} product | in_stock / total_stock | {details_icon} |
 
 (The sub-category and product cells only appear in the Assigned panel — an unassigned item has no product yet, so nothing to inherit. See "What's inherited from the product" below. The last column is untitled — see "Details button".)
@@ -139,10 +139,8 @@ tracking JS) associated with their panel's form via the `form=` attribute
 rather than DOM nesting, since ItemRow's own per-attribute edit forms
 already live inside the row list and HTML forms can't nest.
 
-Not done: no auth check on any of this yet (see the TODO comments in
-`src/pages/api/wizard/**/*.ts` and `src/pages/admin/items.astro` — the
-api-test worktree's `src/middleware/index.ts` already gates `/admin`
-routes by role, just not merged into this branch), "Set image" is still a
-visual-only stub, and the Add Item panel's "Add item" button links to the
-form instead of toggling it open/closed as the original spec describes
-(no framework state for that without more JS than seemed worth it here).
+Auth: the whole of `/admin` and `/api/wizard` is gated to admins by `src/middleware/prefixes.ts`, and each endpoint also checks `requireAdmin`.
+
+Set image: the Set dropdown's "Set image" opens `ImageMenu.astro` — pick from the uploaded-files explorer, upload a new file (`POST /api/admin/images`), or paste a URL — and applies it to all selected items via `/api/wizard/items/set-image`.
+
+Add item: the Add Item panel is a collapsible `ExpandBox`, collapsed by default; the button strip's "Add item" shortcut opens it and focuses the name field.

@@ -12,7 +12,7 @@ import AppIcon from '../icons/AppIcon.astro';
 import Badge from '../ui/Badge.astro';
 import { UNIT_STATUSES } from '../../db/schema';
 import { UNIT_STATUS_LABELS, UNIT_STATUS_TONES, type Unit } from '../../lib/units';
-import { inputClass, labelClass } from './unitTable';
+import { compactLabelClasses, inputClasses, textareaClasses } from '../../lib/form-styles';
 
 interface Props {
 	unit: Pick<Unit, 'id' | 'status'>;
@@ -30,7 +30,7 @@ const popoverId = `unit-${unit.id}-status`;
 				type="button"
 				popovertarget={popoverId}
 				aria-label={`Change status of unit #${unit.id}`}
-				class="rounded p-1 text-text-muted opacity-0 hover:bg-bg-subtle hover:text-text focus-visible:opacity-100 group-hover/status:opacity-100 [@media(hover:none)]:opacity-100"
+				class="rounded-md p-1.5 text-text-muted opacity-0 hover:bg-bg-subtle hover:text-text focus-visible:opacity-100 group-hover/status:opacity-100 [@media(hover:none)]:opacity-100"
 			>
 				<AppIcon name="edit" size={14} />
 			</button>
@@ -39,16 +39,16 @@ const popoverId = `unit-${unit.id}-status`;
 		<input type="hidden" name="unitId" value={unit.id} />
 		<input type="hidden" name="redirectTo" value={redirectTo} />
 		<div>
-			<label class={labelClass} for={`${popoverId}-select`}>Status</label>
-			<select id={`${popoverId}-select`} class={inputClass} name="status">
+			<label class={compactLabelClasses} for={`${popoverId}-select`}>Status</label>
+			<select id={`${popoverId}-select`} class:list={['w-full min-w-0', inputClasses]} name="status">
 				{UNIT_STATUSES.map((status) => (
 					<option value={status} selected={status === unit.status}>{UNIT_STATUS_LABELS[status]}</option>
 				))}
 			</select>
 		</div>
 		<div>
-			<label class={labelClass} for={`${popoverId}-reason`}>Reason (optional, posted as a note)</label>
-			<textarea id={`${popoverId}-reason`} class={inputClass} name="reason" rows="3" placeholder="e.g. Sling worn, sent for inspection"></textarea>
+			<label class={compactLabelClasses} for={`${popoverId}-reason`}>Reason (optional, posted as a note)</label>
+			<textarea id={`${popoverId}-reason`} class:list={['w-full min-w-0', textareaClasses]} name="reason" rows="3" placeholder="e.g. Sling worn, sent for inspection"></textarea>
 		</div>
 	</ActionPopover>
 </div>

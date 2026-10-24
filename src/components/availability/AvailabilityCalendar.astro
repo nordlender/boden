@@ -43,15 +43,15 @@ const days = daily.map((count, i) => {
 	return { date, count, label, today: i === 0 };
 });
 ---
-<div class:list={['flex flex-col gap-1.5', className]}>
-	<div class="grid grid-cols-7 gap-1 text-center text-xs text-text-muted" aria-hidden="true">
+<div class:list={['flex flex-col gap-2', className]}>
+	<div class="grid grid-cols-7 gap-1.5 text-center text-xs text-text-muted" aria-hidden="true">
 		{WEEKDAYS.map((day) => <span>{day}</span>)}
 	</div>
-	<ol class="grid grid-cols-7 gap-1" aria-label="Availability for the next four weeks">
+	<ol class="grid grid-cols-7 gap-1.5" aria-label="Availability for the next four weeks">
 		{Array.from({ length: leadingBlanks }, () => <li aria-hidden="true" />)}
 		{days.map((day) => (
 			<li
-				class:list={['flex h-8 items-center justify-center rounded text-sm font-medium tabular-nums text-text', tone(day.count), day.today && 'ring-2 ring-accent ring-offset-1 ring-offset-surface']}
+				class:list={['flex h-9 items-center justify-center rounded-md text-sm font-medium tabular-nums text-text', tone(day.count), day.today && 'ring-2 ring-accent ring-offset-1 ring-offset-surface']}
 				title={day.label}
 			>
 				<span aria-hidden="true">{day.count}</span>
@@ -59,7 +59,7 @@ const days = daily.map((count, i) => {
 			</li>
 		))}
 	</ol>
-	<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
+	<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 text-xs text-text-muted">
 		<p>Each day shows how many are available. Today is outlined.</p>
 		<p class="flex items-center gap-1" aria-hidden="true">
 			0

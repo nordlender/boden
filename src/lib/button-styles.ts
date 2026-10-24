@@ -27,23 +27,27 @@ export const variantClasses: Record<ButtonVariant, string> = {
 		'bg-error font-medium text-text-inverted hover:bg-error/90 disabled:bg-disabled-bg disabled:text-disabled-text',
 };
 
-// Padding/text-size for the two-sided (text, or text+icon) buttons. Heights
-// (~28/36/44px) are chosen to line up with iconOnlySizeClasses's box sizes
-// below.
+// Height/padding/text-size for the two-sided (text, or text+icon) buttons.
+// Heights are pinned with min-h (32/40/48px, see docs/spacing.md) rather
+// than derived from padding, so bordered variants (secondary, danger) and
+// filled ones (primary) come out exactly the same height — and line up with
+// iconOnlySizeClasses's boxes below and form-styles.ts's inputs. `sm` for
+// dense rows/tables, `md` the default, `lg` for a page's main call to
+// action. Horizontal padding is generous so labels don't feel boxed in.
 export const sizeClasses: Record<ButtonSize, string> = {
-	sm: 'px-2.5 py-1 text-sm gap-1.5',
-	md: 'px-3.5 py-2 text-sm gap-2',
-	lg: 'px-[18px] py-2.5 text-base gap-2.5',
+	sm: 'min-h-8 px-3 py-1 text-sm gap-1.5',
+	md: 'min-h-10 px-4 py-2 text-sm gap-2',
+	lg: 'min-h-12 px-6 py-2.5 text-base gap-2.5',
 };
 
-// Square padding + icon pixel size for icon-only buttons. Padding keeps the
-// icon at roughly half the box per docs/sizing.md's icon-to-container ratio
-// guidance: sm 28px box/16px icon, md 36px box/20px icon, lg 44px box/24px
+// Fixed square box for icon-only buttons, icon centred by baseClasses' flex.
+// Icon at roughly half the box per docs/sizing.md's icon-to-container ratio
+// guidance: sm 32px box/16px icon, md 40px box/20px icon, lg 48px box/24px
 // icon.
 export const iconOnlySizeClasses: Record<ButtonSize, string> = {
-	sm: 'p-1.5',
-	md: 'p-2',
-	lg: 'p-2.5',
+	sm: 'size-8 shrink-0',
+	md: 'size-10 shrink-0',
+	lg: 'size-12 shrink-0',
 };
 
 export const iconOnlyPixelSize: Record<ButtonSize, number> = {
@@ -56,7 +60,7 @@ export const iconOnlyPixelSize: Record<ButtonSize, number> = {
 // — smaller than iconOnlyPixelSize since these icons sit next to a label
 // rather than carrying the whole button on their own.
 export const textIconPixelSize: Record<ButtonSize, number> = {
-	sm: 14,
+	sm: 16,
 	md: 18,
 	lg: 20,
 };
@@ -82,3 +86,13 @@ export const actionLabels: Record<ActionIconKey, string> = {
 	pin: 'Pin',
 	unpin: 'Pinned',
 };
+
+// A <details> <summary> styled as a secondary `md` button — for dropdown
+// triggers that open a panel (the wizard toolbars' "Set"/"Assign" menus),
+// so they sit level with the real buttons beside them.
+export const summaryButtonClasses = `${baseClasses} ${sizeClasses.md} ${variantClasses.secondary} cursor-pointer list-none [&::-webkit-details-marker]:hidden`;
+
+// Pill-shaped toggle/filter (admin orders' status filter, ProductForm's
+// variant-key toggles). Selected-state colors are left to the caller, since
+// they key off different attributes (aria-current vs aria-pressed).
+export const chipBaseClasses = 'inline-flex min-h-8 items-center rounded-full border px-4 text-xs font-medium transition-colors';

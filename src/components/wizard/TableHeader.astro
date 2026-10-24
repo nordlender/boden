@@ -2,6 +2,7 @@
 // Column labels, sharing ItemRow's exact grid so SelectMenu lands directly
 // above every row's select icon.
 import SelectMenu from './SelectMenu.astro';
+import { gridTableHeaderClasses } from '../../lib/table-styles';
 import { DESKTOP_ONLY_CLASS, GRID_COLUMNS_CLASS, gridColumnsStyle, type PanelVariant } from './grid';
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
 const { variant, formId } = Astro.props;
 ---
 <div
-	class:list={['grid items-center gap-3 border-b border-border px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-text-muted', GRID_COLUMNS_CLASS]}
+	class:list={['grid', gridTableHeaderClasses, GRID_COLUMNS_CLASS]}
 	style={gridColumnsStyle(variant)}
 >
 	<SelectMenu formId={formId} />

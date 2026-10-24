@@ -2,6 +2,8 @@
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /moderator) —
 // reached only when logged in as at least a moderator (admins included).
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
+import Page from '../../components/ui/Page.astro';
+import { sectionTitleClasses } from '../../lib/layout-styles';
 import PickupDaysCalendar from '../../components/pickup-days/PickupDaysCalendar.astro';
 import SelectedPickupDaysForm from '../../components/pickup-days/SelectedPickupDaysForm.astro';
 import PickupDaysTable from '../../components/pickup-days/PickupDaysTable.astro';
@@ -19,32 +21,29 @@ const otherDays = pickupDays.filter((day) => day.kind === 'single' && day.userId
 ---
 
 <ModeratorLayout title="Pickup days — Moderator">
-	<div class="mx-auto flex max-w-3xl flex-col gap-8 p-6">
-		<div>
-			<h1 class="text-xl font-semibold text-text">Pickup days</h1>
-			<p class="mt-1 text-sm text-text-muted">
-				Select one or more days you're available to hand out orders. Other moderators (in yellow) and recurring
-				training days (in red) stay visible so you can avoid duplicate coverage.
-			</p>
-		</div>
+	<Page
+		width="medium"
+		title="Pickup days"
+		description="Select one or more days you're available to hand out orders. Other moderators (in yellow) and recurring training days (in red) stay visible so you can avoid duplicate coverage."
+	>
 
 		<PickupDaysCalendar rows={pickupDays} currentUserId={currentUserId} />
 
 		<SelectedPickupDaysForm />
 
-		<section class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-text">My pickup days</h2>
+		<section class="flex flex-col gap-stack">
+			<h2 class={sectionTitleClasses}>My pickup days</h2>
 			<PickupDaysTable rows={myDays} currentUserId={currentUserId} deletable emptyMessage="You haven't offered any pickup days yet." />
 		</section>
 
-		<section class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-text">Other pickup days</h2>
+		<section class="flex flex-col gap-stack">
+			<h2 class={sectionTitleClasses}>Other pickup days</h2>
 			<PickupDaysTable rows={otherDays} currentUserId={currentUserId} emptyMessage="No other moderator has offered a pickup day yet." />
 		</section>
 
-		<section class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-text">Recurring pickup days</h2>
+		<section class="flex flex-col gap-stack">
+			<h2 class={sectionTitleClasses}>Recurring pickup days</h2>
 			<RecurringPickupDaysTable rules={recurringRules} emptyMessage="No recurring training days set up yet." />
 		</section>
-	</div>
+	</Page>
 </ModeratorLayout>

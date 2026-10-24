@@ -89,6 +89,13 @@ export const productAttributeKeys = sqliteTable('product_attribute_keys', {
   productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
+  // Admin-chosen: this key is what a shopper picks between on the product
+  // page (rendered as buttons), and is left out of the displayed attribute
+  // list since the picked button already shows it. A flag per key rather
+  // than one product-level column so more than one variant key can be
+  // supported later without a schema change; the UI currently only lets
+  // the admin choose one.
+  isVariant: integer('is_variant', { mode: 'boolean' }).notNull().default(false),
 }, (table) => [
   uniqueIndex('product_attribute_keys_product_name_unique').on(table.productId, table.name),
   index('product_attribute_keys_product_id_idx').on(table.productId),

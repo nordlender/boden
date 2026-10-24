@@ -63,6 +63,20 @@ credentials, the OAuth redirect URI, a session secret, and a temporary
 comma-separated admin/board/moderator user-id allowlist (bloc has no role API
 yet).
 
+### Dev mode (optional)
+
+To try member/board/moderator/admin pages without bloc credentials, set
+`DEV_MODE=true` in `.env` and (re)start the dev server or rebuild. The user
+menu in the navbar then gets a **Change user** dropdown to sign in as one of
+four test users — Jane (member), Bob (board), Mandy (moderator) and Amitda
+(admin) — and `/auth/login` shows the same picker (plus a real bloc login)
+instead of redirecting straight to bloc.
+
+The flag is read at build time only: Astro bakes it into the build, so it
+can't be switched on in a running server, and any build made with it set —
+including `npm run build` — has the test users. Never set it for a
+production build.
+
 ### Scripts
 
 | Command | Action |

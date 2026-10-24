@@ -1,5 +1,7 @@
 ---
-import { menuItemClasses } from '../../lib/layout-styles';
+import { eyebrowClasses, menuItemClasses } from '../../lib/layout-styles';
+import { inputSmClasses } from '../../lib/form-styles';
+import { DEV_MODE, DEV_USERS } from '../../lib/devMode';
 ---
 
 <!--
@@ -27,10 +29,22 @@ import { menuItemClasses } from '../../lib/layout-styles';
 			</button>
 		</li>
 	</ul>
+	<!-- Dev mode only (src/lib/devMode.ts): sign in as a fixed test user. -->
+	{DEV_MODE && (
+		<label class="mt-1 flex flex-col gap-1.5 border-t border-border px-3 pb-1 pt-2.5">
+			<span class={eyebrowClasses}>Change user</span>
+			<select data-change-user class:list={['w-full', inputSmClasses]}>
+				<option value="" disabled selected>Choose a user…</option>
+				{DEV_USERS.map((u) => (
+					<option value={u.id}>{u.name} ({u.role})</option>
+				))}
+			</select>
+		</label>
+	)}
 </div>
 
 <script>
-	import { signOut } from 'auth-astro/client';
+	import { signIn, signOut } from 'auth-astro/client';
 
 	async function loadSession() {
 		try {
@@ -43,6 +57,10 @@ import { menuItemClasses } from '../../lib/layout-styles';
 			});
 			document.querySelectorAll<HTMLElement>('[data-signed-in]').forEach((el) => {
 				el.hidden = !signedIn;
+			});
+			document.querySelectorAll<HTMLSelectElement>('[data-change-user]').forEach((select) => {
+				const current = [...select.options].find((o) => o.value && o.value === session?.user?.id);
+				if (current) current.selected = true;
 			});
 			document.querySelectorAll<HTMLElement>('[data-user-email]').forEach((el) => {
 				if (signedIn && session.user?.email) {
@@ -63,6 +81,17 @@ import { menuItemClasses } from '../../lib/layout-styles';
 			// isn't installed as a dependency here (same gap login.astro's signIn
 			// call works around) — cast rather than pull in next-auth for types.
 			void signOut({ callbackUrl: '/' } as Parameters<typeof signOut>[0]);
+		});
+	});
+
+	// Dev mode only — the select isn't rendered otherwise. Signing in again
+	// replaces the current session, so no sign-out first; callbackUrl brings
+	// the user back to the page they were on, re-rendered as the new user.
+	document.querySelectorAll<HTMLSelectElement>('[data-change-user]').forEach((select) => {
+		select.addEventListener('change', () => {
+			if (!select.value) return;
+			// Same next-auth/react type gap as signOut above.
+			void signIn('credentials', { userId: select.value, callbackUrl: location.href } as Parameters<typeof signIn>[1]);
 		});
 	});
 

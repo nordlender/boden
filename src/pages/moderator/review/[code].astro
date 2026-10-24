@@ -9,6 +9,7 @@ import { textareaClasses } from '../../../lib/form-styles';
 import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro';
 import BackLink from '../../../components/ui/BackLink.astro';
 import Button from '../../../components/ui/Button.astro';
+import ActionPopover from '../../../components/ui/ActionPopover.astro';
 import TextMorphButton from '../../../components/ui/TextMorphButton.astro';
 import { getOrderDetailByCode } from '../../../lib/moderatorOrders';
 
@@ -46,30 +47,47 @@ const error = Astro.url.searchParams.get('error');
 							</Button>
 						)
 					) : (
-						<>
-							<form method="post" action={`/api/moderator/orders/${order.id}/accept`}>
-								<TextMorphButton action="accept" type="submit" variant="primary" size="lg" />
-							</form>
+						<div class="flex w-full flex-col gap-stack">
+							{
+								error === 'blank_reason' && (
+									<Callout variant="error">
+										<p>Please provide a reason for rejecting this order.</p>
+									</Callout>
+								)
+							}
+							{/* data-popover-container: the reason popover spans both buttons */}
+							<div data-popover-container class="grid grid-cols-2 gap-controls">
+								<form method="post" action={`/api/moderator/orders/${order.id}/accept`} class="contents">
+									<TextMorphButton action="accept" type="submit" variant="primary" size="lg" class="w-full" />
+								</form>
 
-							<form method="post" action={`/api/moderator/orders/${order.id}/reject`} class="flex w-full flex-col gap-3">
-								{
-									error === 'blank_reason' && (
-										<Callout variant="error">
-											<p>Please provide a reason for rejecting this order.</p>
-										</Callout>
-									)
-								}
-								<textarea
-									name="reason"
-									required
-									aria-label="Reason for rejecting this order"
-									rows={2}
-									placeholder="Reason for rejecting this order"
-									class:list={['w-full', textareaClasses]}
-								></textarea>
-								<TextMorphButton action="reject" type="submit" variant="danger" class="self-start" />
-							</form>
-						</>
+								<ActionPopover
+									id="reject-order-reason"
+									title="Reject this order?"
+									confirmLabel="Reject"
+									placement="fill-parent"
+									formAction={`/api/moderator/orders/${order.id}/reject`}
+								>
+									<Fragment slot="trigger">
+										<TextMorphButton
+											action="reject"
+											variant="danger"
+											size="lg"
+											class="w-full"
+											popovertarget="reject-order-reason"
+										/>
+									</Fragment>
+									<textarea
+										name="reason"
+										required
+										aria-label="Reason for rejecting this order"
+										rows={3}
+										placeholder="Reason for rejecting this order"
+										class:list={['w-full', textareaClasses]}
+									></textarea>
+								</ActionPopover>
+							</div>
+						</div>
 					)
 				}
 			</Fragment>

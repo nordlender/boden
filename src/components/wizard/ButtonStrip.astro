@@ -22,6 +22,7 @@ import Callout from '../ui/Callout.astro';
 import Popover from '../ui/Popover.astro';
 import ActionPopover from '../ui/ActionPopover.astro';
 import MorphButton from '../ui/MorphButton.astro';
+import AssignWarning from './AssignWarning.astro';
 import ImageMenu from './ImageMenu.astro';
 import type { PanelVariant } from './grid';
 
@@ -32,12 +33,16 @@ interface Props {
 	redirectTo: string;
 }
 
-const { formId, products, redirectTo } = Astro.props;
+const { variant, formId, products, redirectTo } = Astro.props;
 
 const archiveHintId = `archive-hint-${formId}`;
 const confirmId = `archive-confirm-${formId}`;
 ---
 <div class={tableToolbarClasses}>
+	<div class="relative inline-block">
+	<AssignWarning variant={variant} reason="product_has_sets">
+		Product can only be assigned items or sets.
+	</AssignWarning>
 	<details class="set-dropdown relative inline-block">
 		<summary class={summaryButtonClasses}>
 			<span>Set</span>
@@ -48,6 +53,7 @@ const confirmId = `archive-confirm-${formId}`;
 		    box caps and scrolls itself as folders expand. */}
 		<div class:list={['absolute left-0 z-10 mt-2 w-[min(28rem,calc(100vw-2rem))]', floatingPanelClasses]}>
 			<input type="hidden" name="redirectTo" value={redirectTo} form={formId} />
+			<input type="hidden" name="panel" value={variant} form={formId} />
 			<section class="border-b border-border pb-5">
 				<p class:list={[eyebrowClasses, 'mb-snug flex items-center gap-1.5']}>
 					<AppIcon name="image" size={14} /> Set image
@@ -66,7 +72,7 @@ const confirmId = `archive-confirm-${formId}`;
 							<option value={p.id}>{p.title}</option>
 						))}
 					</select>
-					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/set-product" class="shrink-0">
+					<Button type="submit" size="sm" form={formId} formaction="/api/wizard/items/set-product" class="shrink-0">
 						Apply
 					</Button>
 				</div>
@@ -74,6 +80,7 @@ const confirmId = `archive-confirm-${formId}`;
 			</section>
 		</div>
 	</details>
+	</div>
 
 	<div class="flex-1"></div>
 
@@ -100,7 +107,7 @@ const confirmId = `archive-confirm-${formId}`;
 {/* No `popovertarget` invoker element points at this — the archive button below
 	must stay a plain submit button (see the click handler) — so it's shown via
 	`showPopover()` and positioned manually in the click handler rather than by
-	Popover.astro's own trigger-lookup script. */}
+	lib/popover.ts's own trigger lookup. */}
 <Popover id={archiveHintId} placement="anchor" side="bottom" class="p-0 shadow-lg">
 	<Callout variant="warning">Select at least one item to delete.</Callout>
 </Popover>

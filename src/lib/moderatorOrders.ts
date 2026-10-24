@@ -360,7 +360,7 @@ export async function getFollowingRentalWorries(orderId: number): Promise<Follow
 
 	const warnings: FollowingRentalWarning[] = [];
 	for (const oi of order.orderItems) {
-		const candidates = await db
+		const candidates = db
 			.select({
 				orderId: orders.id,
 				orderCode: orders.orderCode,

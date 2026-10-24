@@ -17,7 +17,7 @@ export interface OrdersTableRow {
 	items: OrderRowItem[];
 }
 
-interface Props {
+export interface Props {
 	orders: OrdersTableRow[];
 	viewHref: (orderCode: string) => string;
 	emptyMessage?: string;

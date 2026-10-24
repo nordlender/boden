@@ -115,7 +115,7 @@ export async function upsertSignedInUser(db: UsersDb, user: SignInUser): Promise
   const name = user.name ?? null;
 
   try {
-    await db.transaction((tx) => {
+    db.transaction((tx) => {
       upsertUserRow(tx, user, name);
     });
     return;
@@ -142,7 +142,7 @@ export async function upsertSignedInUser(db: UsersDb, user: SignInUser): Promise
   // success. Not fixed here — left for the TODO above to resolve, since a
   // schema change removing the UNIQUE constraint would remove this whole
   // fallback (and the race) rather than patch it.
-  await db.transaction((tx) => {
+  db.transaction((tx) => {
     const staleRow = tx
       .select({ id: users.id })
       .from(users)

@@ -15,3 +15,7 @@ sqlite.pragma('journal_mode = WAL');
 sqlite.pragma('foreign_keys = ON');
 
 export const db = drizzle(sqlite, { schema });
+
+// The `tx` handed to a db.transaction() callback — for helpers that must run
+// inside the caller's transaction.
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];

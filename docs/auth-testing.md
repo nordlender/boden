@@ -24,12 +24,9 @@ By default Astro's dev server only binds to loopback. If bloc's redirect
 target is anything other than `localhost`/`127.0.0.1` (e.g. a docker-internal
 address), the server needs `--host 0.0.0.0` to actually be reachable there.
 
-> **Note:** `AGENTS.md`'s current dev-server instructions (`astro dev
-> --background`) don't include `--host 0.0.0.0` or a fixed port list — earlier
-> versions of this project's agent instructions did. If you need the bloc
-> callback to reach this server, pass `--host 0.0.0.0` explicitly as above
-> regardless of what `AGENTS.md` currently says; this looks like it may have
-> been dropped unintentionally and is worth confirming separately.
+> **Note:** `AGENTS.md` starts the dev server with `astro dev --background
+> --host 0.0.0.0 --port [port]` (usable ports 4321–4324). Whatever port you
+> pick must match the port in `REDIRECT_URL`.
 
 Check it's up: `npx astro dev status`. Stop with `npx astro dev stop`.
 
@@ -51,7 +48,7 @@ a multi-line payload, read the raw log directly instead:
 
 ## What to actually click through
 
-1. Visit `/auth/login` — optionally `/auth/login?next=/cart` to also check the
+1. Visit `/auth/login` — optionally `/auth/login?next=/orders` to also check the
    redirect-target is preserved through login.
 2. Click "Sign in with bloc" and complete the real login/consent on bloc's
    side.
@@ -62,12 +59,11 @@ a multi-line payload, read the raw log directly instead:
    `@auth/core/jwt`'s `getToken()` in `src/lib/auth.ts`); it only exposes
    `user.{id,name,email}` and `bloc.{mobile,...}` (fee/membership flags aren't in the session — they're fetched live on `/reservation`).
 5. To check the route gate itself: while logged out, visit a protected route
-   (`/cart`, `/reservation`, `/admin/items` — `/moderator/*` don't have pages
-   built yet, see `docs/rental-shop.md` §10, so they 404 regardless of login
-   state) and confirm the redirect to `/auth/login?next=...`; log in and
+   (`/reservation`, `/orders`, `/admin/items`, `/moderator/requests`) and confirm the redirect to `/auth/login?next=...`; log in and
    confirm it lands you back there. To check role gating specifically, test
    `/admin/items` with a non-admin account (should 403) and an account in
-   `ADMIN_USER_IDS` (should load).
+   `ADMIN_USER_IDS` (should load); likewise `/moderator/requests` with a
+   plain member (403) and an account in `MODERATOR_USER_IDS` (loads).
 
 ## Live-testing bloc REST endpoints directly
 
@@ -88,8 +84,9 @@ happens on an actual new sign-in, not on ordinary requests. So:
 - A fresh login still needs a clean cookie jar — clear the `authjs.*` cookies
   for the app's origin (session-token, csrf-token, callback-url, state) via
   DevTools, or just use a private/incognito window, then log in again.
-- There's no logout page built yet, so manual cookie-clearing / incognito is
-  the only way to end a session right now.
+- The user menu has a "Sign out" action (Auth.js `signOut`). If a retest
+  still looks like it kept old data, clear the `authjs.*` cookies or use
+  incognito as described above.
 
 ## Known, still-open items
 
@@ -107,7 +104,7 @@ happens on an actual new sign-in, not on ordinary requests. So:
   caused an observed failure, but nobody's checked bloc's own docs to confirm
   they're right rather than just working.
 - **`hasUnpaidFees`/`userIsMember`** used to come back `null` from every bloc
-  profile method (external API defect — see `docs/bloc-api.md`'s "Addendum").
+  profile method (external API defect — see `docs/bloc-api.md`'s "Addendum" and its "Update").
   They're now fetched live from `GetMemberFeeStatus` on `/reservation`; use
   `/api/debug/getmemberfeestatus` to inspect the raw response, and check the
   dev server log for `[bloc] GetMemberFeeStatus` warnings if the form shows

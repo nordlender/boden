@@ -38,7 +38,7 @@ const toneClasses = {
 const { action, label = actionLabels[action], tone = 'neutral', type = 'button', disabled = false, class: className, ...rest } = Astro.props;
 
 const classes = [
-	'morph-action relative inline-grid size-5 shrink-0 place-items-center rounded text-text-muted transition-colors',
+	'morph-action relative inline-grid size-5 shrink-0 place-items-center rounded-md text-text-muted transition-colors',
 	// Invisible ::after reaching 2px past each edge: a 24×24px tap target
 	// (WCAG 2.5.8 minimum) while the button still looks and lays out as 20×20px.
 	'after:absolute after:-inset-0.5',

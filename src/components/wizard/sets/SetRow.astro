@@ -6,6 +6,9 @@
 // (read-only, derived â€” SetIncludesDisplay) instead of/alongside an
 // editable "Components" section (the actual setItems rows).
 import SelectIcon from '../SelectIcon.astro';
+import { gridTableRowClasses } from '../../../lib/table-styles';
+import { eyebrowClasses } from '../../../lib/layout-styles';
+import { inputSmClasses } from '../../../lib/form-styles';
 import Thumbnail from '../../ui/Thumbnail.astro';
 import ProductTag from '../ProductTag.astro';
 import StockIndicator from '../StockIndicator.astro';
@@ -59,7 +62,7 @@ const warningLabel = components.length === 0 ? 'This set has no components yet â
 ---
 <div class="set-row border-b border-border last:border-b-0" data-details-row>
 	<div
-		class:list={["grid items-center gap-3 px-3 py-2 hover:bg-bg-subtle", selected && 'bg-selected-subtle/60 hover:bg-selected-subtle']}
+		class:list={['grid hover:bg-bg-subtle', gridTableRowClasses, selected && 'bg-selected-subtle/60 hover:bg-selected-subtle']}
 		style={`grid-template-columns: ${SET_GRID_TEMPLATE[variant]}`}
 	>
 		<SelectIcon itemId={setId} formId={formId} checked={selected} label={`Select ${name}`} name="setIds" />
@@ -71,12 +74,12 @@ const warningLabel = components.length === 0 ? 'This set has no components yet â
 		<details class="label-cell group/edit">
 			<summary class="flex cursor-pointer list-none items-center gap-1 text-sm text-text [&::-webkit-details-marker]:hidden">
 				<span class="truncate">{label || <span class="italic text-text-muted">â€”</span>}</span>
-				<AppIcon name="edit" size={12} class="shrink-0 text-disabled-text group-hover/edit:text-text-muted" />
+				<AppIcon name="edit" size={14} class="shrink-0 text-disabled-text group-hover/edit:text-text-muted" />
 			</summary>
-			<form method="post" action="/api/wizard/sets-label" class="mt-1 flex items-center gap-1.5">
+			<form method="post" action="/api/wizard/sets-label" class="mt-2 flex items-center gap-2">
 				<input type="hidden" name="setId" value={setId} />
 				<input type="hidden" name="redirectTo" value={redirectTo} />
-				<input type="text" name="label" value={label ?? ''} placeholder="e.g. M" class="w-16 rounded border border-border-interactive px-1.5 py-1 text-sm" />
+				<input type="text" name="label" value={label ?? ''} placeholder="e.g. M" class:list={['w-16', inputSmClasses]} />
 				<TextMorphButton type="submit" action="save" size="sm" />
 			</form>
 		</details>
@@ -84,23 +87,23 @@ const warningLabel = components.length === 0 ? 'This set has no components yet â
 		<StockIndicator inStock={inStock} total={totalStock} />
 		<DetailsToggle label={`Show details for ${name}`} warning={needsAttention} warningLabel={warningLabel} />
 	</div>
-	<div class="set-details hidden border-t border-border bg-bg-subtle/60 px-4 py-4" data-details-panel>
-		<div class="flex gap-4">
+	<div class="set-details hidden border-t border-border bg-bg-subtle/60 px-card py-5" data-details-panel>
+		<div class="flex gap-6">
 			<Thumbnail src={image} alt={name} size={112} />
 			<div class="min-w-0 flex-1">
-				<div class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
+				<div class:list={[eyebrowClasses, 'flex items-center gap-1.5']}>
 					<AppIcon name="set" size={14} />
 					Attributes
 				</div>
-				<div class="mt-1">
+				<div class="mt-snug">
 					<SetIncludesDisplay display={includes} />
 				</div>
 
-				<div class="mt-4 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
+				<div class:list={[eyebrowClasses, 'mt-stack flex items-center gap-1.5']}>
 					<AppIcon name="attribute" size={14} />
 					Components
 				</div>
-				<div class="mt-1">
+				<div class="mt-snug">
 					<SetComponentList setId={setId} components={components} redirectTo={redirectTo} />
 					<SetComponentPicker setId={setId} items={componentItemOptions} redirectTo={redirectTo} />
 				</div>

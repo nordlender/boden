@@ -9,37 +9,36 @@
 // src/lib/pickupDays.ts's createRecurringRule/datesForWeekday.
 import Button from '../ui/Button.astro';
 import { WEEKDAY_NAMES } from '../../lib/pickupDays';
-
-const fieldClasses = 'rounded border border-border-interactive bg-surface px-2 py-1.5 text-sm text-text';
-const labelClasses = 'mb-1 block text-xs text-text-muted';
+import { cardClasses } from '../../lib/layout-styles';
+import { compactLabelClasses, inlineErrorClasses, inputClasses } from '../../lib/form-styles';
 ---
 
-<form data-recurring-pickup-day-form class="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-3 text-sm">
+<form data-recurring-pickup-day-form class:list={[cardClasses, 'flex flex-wrap items-end gap-stack p-card text-sm']}>
 	<div>
-		<label class={labelClasses} for="recurring-weekday">Every</label>
-		<select id="recurring-weekday" name="weekday" required class={fieldClasses}>
+		<label class={compactLabelClasses} for="recurring-weekday">Every</label>
+		<select id="recurring-weekday" name="weekday" required class={inputClasses}>
 			{WEEKDAY_NAMES.map((name, index) => <option value={index}>{name}</option>)}
 		</select>
 	</div>
 	<div>
-		<label class={labelClasses} for="recurring-start-time">From</label>
+		<label class={compactLabelClasses} for="recurring-start-time">From</label>
 		{/* lang="en-GB" forces the native time picker to 24h — a bare type="time" instead follows the browser/OS locale, which shows AM/PM on a US-locale Chrome. */}
-		<input id="recurring-start-time" name="startTime" type="time" lang="en-GB" required class={fieldClasses} />
+		<input id="recurring-start-time" name="startTime" type="time" lang="en-GB" required class={inputClasses} />
 	</div>
 	<div>
-		<label class={labelClasses} for="recurring-end-time">To</label>
-		<input id="recurring-end-time" name="endTime" type="time" lang="en-GB" required class={fieldClasses} />
+		<label class={compactLabelClasses} for="recurring-end-time">To</label>
+		<input id="recurring-end-time" name="endTime" type="time" lang="en-GB" required class={inputClasses} />
 	</div>
 	<div>
-		<label class={labelClasses} for="recurring-start-date">Between</label>
-		<input id="recurring-start-date" name="startDate" type="date" required class={fieldClasses} />
+		<label class={compactLabelClasses} for="recurring-start-date">Between</label>
+		<input id="recurring-start-date" name="startDate" type="date" required class={inputClasses} />
 	</div>
 	<div>
-		<label class={labelClasses} for="recurring-end-date">and</label>
-		<input id="recurring-end-date" name="endDate" type="date" required class={fieldClasses} />
+		<label class={compactLabelClasses} for="recurring-end-date">and</label>
+		<input id="recurring-end-date" name="endDate" type="date" required class={inputClasses} />
 	</div>
 	<Button type="submit" variant="primary">Add recurring day</Button>
-	<p data-recurring-pickup-day-error hidden class="w-full text-sm text-error-text"></p>
+	<p data-recurring-pickup-day-error hidden class:list={['w-full', inlineErrorClasses]}></p>
 </form>
 
 <script>

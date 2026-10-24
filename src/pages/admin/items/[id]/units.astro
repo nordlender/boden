@@ -8,14 +8,14 @@ export const prerender = false;
 // panel for its fields (both via /api/wizard/units) — see UnitRow.astro.
 // Retired units are listed in a separate table below the units in use.
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
-import BackLink from '../../../../components/moderator/BackLink.astro';
+import Page from '../../../../components/ui/Page.astro';
+import BackLink from '../../../../components/ui/BackLink.astro';
 import Callout from '../../../../components/ui/Callout.astro';
-import ExpandBox from '../../../../components/ui/ExpandBox.astro';
-import TextMorphButton from '../../../../components/ui/TextMorphButton.astro';
-import AppIcon from '../../../../components/icons/AppIcon.astro';
+import AddPanel from '../../../../components/ui/AddPanel.astro';
 import UnitTable from '../../../../components/units/UnitTable.astro';
 import OptsFields from '../../../../components/units/OptsFields.astro';
-import { UNIT_FORM_FIELDS, inputClass, labelClass } from '../../../../components/units/unitTable';
+import { UNIT_FORM_FIELDS } from '../../../../components/units/unitTable';
+import { compactLabelClasses, hintClasses, inputClasses } from '../../../../lib/form-styles';
 import type { UnitStatus } from '../../../../db/schema';
 import { compareUnitsByStatus, getUnitsPageItem, listUnitsForItem } from '../../../../lib/units';
 import { listUnitNotes } from '../../../../lib/messages';
@@ -47,26 +47,24 @@ const tableProps = { notesByUnit, currentUserId, isAdmin, today, redirectTo };
 ---
 
 <AdminLayout title={`Units · ${item.name}`}>
-	<div class="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-8">
-		<BackLink href="/admin/items">Back to items</BackLink>
-
-		<div>
-			<h1 class="text-xl font-semibold text-text">{item.name}</h1>
-			<p class="mt-1 text-sm text-text-muted">
+	<Page width="wide" title={item.name}>
+		<BackLink slot="before-title" href="/admin/items">Back to items</BackLink>
+		<Fragment slot="subtitle">
+			<p class="text-sm text-text-muted">
 				{item.product?.title ?? 'Unassigned'} · #{item.id}{item.archived && ' · archived'}
 			</p>
-			<p class="mt-2 text-sm text-text">
+			<p class="text-sm text-text">
 				<strong>{count('active')}</strong> active (stock)
 				<span class="text-text-muted"> · {count('out_of_service')} out of service · {count('retired')} retired</span>
 			</p>
-		</div>
+		</Fragment>
 
 		{overbooked.length > 0 && (
 			<Callout variant="warning" title="Stock no longer covers existing bookings">
 				<p>
 					With {count('active')} active unit{count('active') === 1 ? '' : 's'}, these orders overlap days where this item is overbooked. Contact the members or put a unit back in service.
 				</p>
-				<ul class="mt-2 list-disc pl-5">
+				<ul class="mt-3 flex list-disc flex-col gap-1 pl-5">
 					{overbooked.map((order) => (
 						<li>
 							<a class="underline" href={`/moderator/retrieve/${order.orderId}`}>{order.orderCode}</a> — {order.fromDate} → {order.toDate} ({order.status})
@@ -76,48 +74,36 @@ const tableProps = { notesByUnit, currentUserId, isAdmin, today, redirectTo };
 			</Callout>
 		)}
 
-		<div class="rounded-lg border border-border bg-warning-subtle/60">
-			<ExpandBox id="add-units-panel" triggerClass="px-3 py-3">
-				<span slot="trigger" class="flex items-center gap-2">
-					<AppIcon name="product" size={16} class="text-text-muted" />
-					Add units
-				</span>
-				<form method="post" action="/api/wizard/units" class="flex flex-col gap-3 px-3 pb-3">
-					<input type="hidden" name="action" value="create" />
-					<input type="hidden" name="itemId" value={item.id} />
-					<input type="hidden" name="redirectTo" value={redirectTo} />
-					<div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
-						<div>
-							<label class={labelClass} for="add-units-count">How many</label>
-							<input id="add-units-count" class={inputClass} type="number" name="count" min="1" max="100" value="1" required />
-						</div>
-						{UNIT_FORM_FIELDS.map((field) => (
-							<div>
-								<label class={labelClass} for={`add-units-${field.name}`}>{field.label}</label>
-								<input
-									id={`add-units-${field.name}`}
-									class={inputClass}
-									type={field.type}
-									name={field.name}
-									placeholder={field.placeholder}
-									max={field.type === 'date' ? today : undefined}
-								/>
-							</div>
-						))}
+		<AddPanel id="add-units-panel" label="Add units" icon="product" action="/api/wizard/units" submitLabel="Add units">
+			<input type="hidden" name="action" value="create" />
+			<input type="hidden" name="itemId" value={item.id} />
+			<input type="hidden" name="redirectTo" value={redirectTo} />
+			<div class="grid grid-cols-1 gap-stack sm:grid-cols-4">
+				<div>
+					<label class={compactLabelClasses} for="add-units-count">How many</label>
+					<input id="add-units-count" class:list={['w-full min-w-0', inputClasses]} type="number" name="count" min="1" max="100" value="1" required />
+				</div>
+				{UNIT_FORM_FIELDS.map((field) => (
+					<div>
+						<label class={compactLabelClasses} for={`add-units-${field.name}`}>{field.label}</label>
+						<input
+							id={`add-units-${field.name}`}
+							class:list={['w-full min-w-0', inputClasses]}
+							type={field.type}
+							name={field.name}
+							placeholder={field.placeholder}
+							max={field.type === 'date' ? today : undefined}
+						/>
 					</div>
-					<OptsFields />
-					<p class="text-xs text-text-muted">Every unit in the batch gets these values; adjust markings and serials per unit afterwards.</p>
-					<div class="flex justify-end gap-2">
-						<TextMorphButton type="reset" action="cancel" />
-						<TextMorphButton type="submit" action="save" variant="primary">Add units</TextMorphButton>
-					</div>
-				</form>
-			</ExpandBox>
-		</div>
+				))}
+			</div>
+			<OptsFields />
+			<p class={hintClasses}>Every unit in the batch gets these values; adjust markings and serials per unit afterwards.</p>
+		</AddPanel>
 
 		<UnitTable title="Units" units={unitsInUse} emptyText="No units in use, so this item has no stock." {...tableProps} />
 		{retiredUnits.length > 0 && <UnitTable title="Retired units" units={retiredUnits} emptyText="" {...tableProps} />}
-	</div>
+	</Page>
 </AdminLayout>
 
 <script>

@@ -2,6 +2,7 @@
 import OrdersTableRow from './OrdersTableRow.astro';
 import OrdersTableRowDetailed from './OrdersTableRowDetailed.astro';
 import type { OrderRow } from '../../lib/orders';
+import { emptyStateFramedClasses } from '../../lib/layout-styles';
 
 interface Props {
 	orders: OrderRow[];
@@ -12,13 +13,13 @@ interface Props {
 const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 ---
 
-<div class="orders-table flex flex-col gap-2" data-orders-table>
+<div class="orders-table flex flex-col gap-3" data-orders-table>
 	{
 		orders.length === 0 ? (
-			<p class="text-sm text-text-muted">{emptyMessage}</p>
+			<p class={emptyStateFramedClasses}>{emptyMessage}</p>
 		) : (
 			<>
-				<div class="flex flex-col gap-2" data-orders-layout="compact">
+				<div class="flex flex-col gap-3" data-orders-layout="compact">
 					{orders.map((order: OrderRow) => (
 						<OrdersTableRow
 							orderCode={order.orderCode}
@@ -30,7 +31,7 @@ const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 						/>
 					))}
 				</div>
-				<div class="flex flex-col gap-2" data-orders-layout="detailed" hidden>
+				<div class="flex flex-col gap-3" data-orders-layout="detailed" hidden>
 					{orders.map((order: OrderRow) => (
 						<OrdersTableRowDetailed
 							orderCode={order.orderCode}

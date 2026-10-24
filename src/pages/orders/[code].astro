@@ -7,6 +7,10 @@ import OrderContents from '../../components/orders/OrderContents.astro';
 import SubmittedContactDetails from '../../components/orders/SubmittedContactDetails.astro';
 import DeleteOrderButton from '../../components/orders/DeleteOrderButton.astro';
 import ChangeOrderLink from '../../components/orders/ChangeOrderLink.astro';
+import Page from '../../components/ui/Page.astro';
+import Card from '../../components/ui/Card.astro';
+import BackLink from '../../components/ui/BackLink.astro';
+import { cardFooterClasses } from '../../lib/layout-styles';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
 // reached only when logged in, so Astro.locals.user is non-null here.
@@ -21,10 +25,10 @@ if (!order) {
 ---
 
 <BaseLayout title={`Order #${order.orderCode}`}>
-	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
-		<a href="/" class="self-start text-sm font-medium text-text-muted hover:text-text">&larr; Back to shop</a>
+	<Page width="narrow">
+		<BackLink slot="before-title" href="/">Back to shop</BackLink>
 
-		<div class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6">
+		<Card as="div">
 			<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
 			<OrderContents
 				items={order.orderItems.map((oi) => ({
@@ -34,10 +38,10 @@ if (!order) {
 				note={order.note}
 			/>
 			<SubmittedContactDetails contactName={order.contactName} />
-			<div class="flex flex-wrap gap-2 border-t border-border pt-4">
+			<div class={cardFooterClasses}>
 				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} />
 				<DeleteOrderButton orderCode={order.orderCode} status={order.status} />
 			</div>
-		</div>
-	</div>
+		</Card>
+	</Page>
 </BaseLayout>

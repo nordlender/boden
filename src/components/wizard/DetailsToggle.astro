@@ -27,7 +27,7 @@ interface Props {
 
 const { label, warning = false, warningLabel = 'This product has no attribute template yet' } = Astro.props;
 ---
-<button type="button" class:list={['details-toggle-button relative grid place-items-center justify-self-center rounded text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]} aria-expanded="false" aria-label={label}>
+<button type="button" class:list={['details-toggle-button relative grid place-items-center justify-self-center rounded-md text-text-muted hover:bg-bg-subtle hover:text-text', triggerBoxClasses.sm]} aria-expanded="false" aria-label={label}>
 	<MorphIcon icon={detailsToggle.closed} size={triggerIconPixelSize.sm} class="details-toggle-icon" />
 	{warning && (
 		// TODO: Style later — bg-warning only clears ~2.9:1 against the

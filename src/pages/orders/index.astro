@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
 import OrdersLayoutToggle from '../../components/orders/OrdersLayoutToggle.astro';
+import Page from '../../components/ui/Page.astro';
 import { getMemberOrderRows } from '../../lib/orders';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
@@ -10,12 +11,9 @@ const rows = await getMemberOrderRows(Astro.locals.user?.id ?? '');
 ---
 
 <BaseLayout title="My orders">
-	<div class="mx-auto flex max-w-3xl flex-col gap-6 p-6">
-		<div class="flex flex-wrap items-center justify-between gap-2">
-			<h1 class="text-2xl font-semibold tracking-tight text-text">My orders</h1>
-			<OrdersLayoutToggle />
-		</div>
+	<Page width="medium" title="My orders">
+		<OrdersLayoutToggle slot="actions" />
 
 		<OrdersTable orders={rows} viewHref={(code: string) => `/orders/${code}`} emptyMessage="You haven't placed any orders yet." />
-	</div>
+	</Page>
 </BaseLayout>

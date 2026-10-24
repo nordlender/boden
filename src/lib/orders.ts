@@ -1,4 +1,4 @@
-import { db } from '../db/client';
+import { db, type Tx } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
@@ -98,7 +98,7 @@ export type CreateOrderResult =
   | { ok: false; error: 'user_not_found' };
 
 function insertOrder(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: Tx,
   input: {
     userId: string;
     role: Role;

@@ -2,6 +2,8 @@
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin) —
 // reached only when logged in with role === 'admin'.
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import Page from '../../components/ui/Page.astro';
+import { sectionTitleClasses } from '../../lib/layout-styles';
 import PickupDaysCalendar from '../../components/pickup-days/PickupDaysCalendar.astro';
 import SelectedPickupDaysForm from '../../components/pickup-days/SelectedPickupDaysForm.astro';
 import PickupDaysTable from '../../components/pickup-days/PickupDaysTable.astro';
@@ -23,33 +25,30 @@ const [pickupDays, recurringRules] = await Promise.all([listUpcomingPickupDays(t
 const singleDays = pickupDays.filter((day) => day.kind === 'single');
 ---
 <AdminLayout title="Pickup days">
-	<div class="mx-auto flex max-w-3xl flex-col gap-8 p-8">
-		<div>
-			<h1 class="text-xl font-semibold text-text">Pickup days</h1>
-			<p class="mt-1 text-sm text-text-muted">
-				Set up recurring training days below, or select individual days on the calendar the same way a moderator
-				would.
-			</p>
-		</div>
+	<Page
+		width="medium"
+		title="Pickup days"
+		description="Set up recurring training days below, or select individual days on the calendar the same way a moderator would."
+	>
 
 		<PickupDaysCalendar rows={pickupDays} currentUserId={currentUserId} />
 
 		<SelectedPickupDaysForm />
 
-		<section class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-text">All pickup days</h2>
+		<section class="flex flex-col gap-stack">
+			<h2 class={sectionTitleClasses}>All pickup days</h2>
 			<PickupDaysTable rows={pickupDays} currentUserId={currentUserId} emptyMessage="No upcoming pickup days yet." />
 		</section>
 
-		<section class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-text">Recurring pickup days</h2>
+		<section class="flex flex-col gap-stack">
+			<h2 class={sectionTitleClasses}>Recurring pickup days</h2>
 			<RecurringPickupDayForm />
 			<RecurringPickupDaysTable rules={recurringRules} deletable emptyMessage="No recurring training days set up yet." />
 		</section>
 
-		<section class="flex flex-col gap-2">
-			<h2 class="text-sm font-semibold text-text">Single pickup days</h2>
+		<section class="flex flex-col gap-stack">
+			<h2 class={sectionTitleClasses}>Single pickup days</h2>
 			<PickupDaysTable rows={singleDays} currentUserId={currentUserId} emptyMessage="No moderator has offered a pickup day yet." />
 		</section>
-	</div>
+	</Page>
 </AdminLayout>

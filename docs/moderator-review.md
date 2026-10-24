@@ -1,16 +1,18 @@
-# Moderator order review page — starting notes
+# Moderator order review page
 
-Not built yet. This is a lightweight starting point for whoever picks up the
-moderator order-review page, to be organized/expanded later.
+Built: `/moderator/review/[code]` (`src/pages/moderator/review/[code].astro`),
+fed by the `/moderator/requests` queue. Logic in `src/lib/moderatorOrders.ts`
+(`acceptOrder` / `rejectOrder`); the buttons POST to
+`src/pages/api/moderator/orders/[id]/accept.ts` and `.../reject.ts`.
 
 ## Purpose
 
 A moderator-facing page to **accept or deny a requested order before
-retrieval**. Distinct from the existing retrieve/confirm flow in
-`docs/rental-shop.md` §9 (`/moderator/retrieve` → `/moderator/orders/[id]` →
-`/moderator/confirm/[id]`), which is about entering an order number and
-recording actual quantities retrieved. Retrieval will be its own, separate
-page — this review step happens earlier.
+retrieval**. Distinct from the retrieve/confirm flow in `docs/rental-shop.md`
+§10 (order hub → blind count → `active`), which records the quantities
+actually handed out. This review step happens earlier: accept sets
+`status: scheduled` and stamps `acceptedAt`; reject sets `status: rejected`
+and records a required `rejectedReason`.
 
 Design goal: very user-friendly, scannable at a glance. Good/bad values are
 indicated with color, not just raw text.
@@ -47,35 +49,22 @@ the `orders` columns:
   - **Yes → green, No → red.** (Opposite polarity from `hasUnpaidFees` —
     green/red both mean "good/bad for this field," not "true/false.")
 
-More fields (order contents, requested quantities, member name/contact,
-accept/deny controls themselves, etc.) still need to be listed out here.
+The page also shows the order contents and requested quantities, the
+member's submitted contact name (from the `orders.contactName` snapshot;
+`contactEmail` / `contactMobile` are stored but not shown yet), the accept/reject controls, and whether
+the member accepted the liability disclaimer (`orders.disclaimerAcceptedAt`).
 
-## Open questions — not resolved, flagging for whoever builds this
+## Resolved questions
 
-1. **Route/page not named yet** — presumably something like
-   `/moderator/review/[id]`, ahead of `/moderator/retrieve` in the flow, but
-   not decided.
-2. **Order persistence itself doesn't exist yet** — placing an order isn't
-   wired up at all (see the scope note in `CheckoutForm.astro`), so there's no
-   `orders`/`order_items` insert path for `hasUnpaidFees`/`userIsMember` (or
-   anything else on the form) to land in yet. Whoever builds real order
-   persistence needs to add columns for these two on `orders` and read them
-   from the submitted form, per the decision above — not re-derive them from
-   a live bloc session at review time.
+- **Route**: `/moderator/review/[code]`, keyed by order code. A bare
+  `/moderator/review` redirects to `/moderator/requests`.
+- **Persistence**: `/api/orders/create` writes `hasUnpaidFees` and
+  `userIsMember` (plus the contact snapshot) onto the `orders` row — columns
+  exist in `src/db/schema.ts`, per the decision above.
 
-## Correspondence check against docs/rental-shop.md
+## Cross-references
 
-- Fixed (2026-09-11): `docs/rental-shop.md`'s "Order lifecycle" diagram now has
-  its own earlier review step (`moderator reviews order on Review Order page
-  (before retrieval)`, ending in `clicks "Accept" or "Reject"`) ahead of the
-  retrieve/confirm flow, instead of conflating accept/reject with the
-  *Confirm Order* step. Accept sets `status: scheduled` (retrieval still sets
-  `active` at Confirm); reject sets `status: rejected`.
-- The schema already supports a reject outcome: `orders.status` includes
-  `'rejected'`, and `rejectedAt` / `rejectedReason` columns already exist in
-  `src/db/schema.ts` (added ahead of `docs/schema-legacy-fixes.md` item #9's original
-  "TODO-only" instruction — already decided to leave as-is). Good news: this
-  page's "deny" action has schema support today.
-- `docs/rental-shop.md`'s page-structure listing (§2) doesn't have an entry for
-  this review page yet — only the three existing retrieve/confirm pages are
-  documented.
+- `docs/rental-shop.md`'s "Order lifecycle" diagram and §10 describe this
+  step ahead of retrieval.
+- `rejectedAt` / `rejectedReason` come from `docs/schema-legacy-fixes.md`
+  item #9 (originally a TODO-only instruction, since added).

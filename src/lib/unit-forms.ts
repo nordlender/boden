@@ -4,6 +4,8 @@
 // validation error (e.g. a future purchase date, a duplicate extra field)
 // it shows the API's message inline at the bottom of the form instead of
 // navigating to a bare error page, so nothing the admin typed is lost.
+import { inlineErrorClasses } from './form-styles';
+
 const ERROR_SELECTOR = '[data-unit-form-error]';
 
 function showError(form: HTMLFormElement, message: string | null): void {
@@ -16,7 +18,7 @@ function showError(form: HTMLFormElement, message: string | null): void {
 		el = document.createElement('p');
 		el.dataset.unitFormError = '';
 		el.setAttribute('role', 'alert');
-		el.className = 'text-sm text-error-text';
+		el.className = inlineErrorClasses;
 		form.append(el);
 	}
 	el.textContent = message;

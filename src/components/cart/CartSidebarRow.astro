@@ -3,6 +3,7 @@ import ItemLine from '../ui/ItemLine.astro';
 import Badge from '../ui/Badge.astro';
 import SetChildrenList from './SetChildrenList.astro';
 import type { CartLine } from '../../lib/cart';
+import { inputSmClasses } from '../../lib/form-styles';
 
 interface Props {
 	item: CartLine;
@@ -16,7 +17,7 @@ const isSet = 'setId' in item;
 const inputKey = isSet ? `set_${item.setId}` : String(item.itemId);
 ---
 
-<div data-cart-row class="py-3">
+<div data-cart-row class="py-stack">
 	<ItemLine
 		imageUrl={item.imageUrl}
 		name={item.productTitle}
@@ -26,7 +27,7 @@ const inputKey = isSet ? `set_${item.setId}` : String(item.itemId);
 		thumbnailSize={48}
 		class="flex-wrap"
 	>
-		{isSet && <Badge class="mt-0.5 inline-block">Set</Badge>}
+		{isSet && <Badge class="mt-0.5 self-start">Set</Badge>}
 		<Fragment slot="action">
 			<label class="sr-only" for={`sidebar-quantity-${inputKey}`}>
 				Quantity for {item.productTitle} (0 removes it)
@@ -38,9 +39,9 @@ const inputKey = isSet ? `set_${item.setId}` : String(item.itemId);
 				value={item.quantity}
 				min="0"
 				data-cart-quantity
-				class="h-6 w-14 shrink-0 rounded-md border border-border-interactive px-2 py-0 text-xs"
+				class:list={['w-16 shrink-0', inputSmClasses]}
 			/>
 		</Fragment>
+		{isSet && <SetChildrenList slot="below" components={item.children} quantity={item.quantity} />}
 	</ItemLine>
-	{isSet && <SetChildrenList components={item.children} quantity={item.quantity} class="ml-[3.75rem]" />}
 </div>

@@ -1,0 +1,34 @@
+---
+// The image / auto id / name field row shared by AddItemPanel.astro and
+// sets/AddSetPanel.astro — the two panels differ only in which noun they
+// add, so the fields live here once and can't drift apart.
+//
+// Field ids are `add-<noun>-image` / `add-<noun>-name`: ButtonStrip.astro
+// and SetToolbar.astro link straight to `#add-<noun>-name`.
+//
+// The id box says "auto" rather than guessing a number: the schema's
+// autoincrement PK only advances on a committed INSERT, so there's no safe
+// way to preview the exact id in advance.
+import { compactLabelClasses, inputClasses } from '../../lib/form-styles';
+
+interface Props {
+	noun: 'item' | 'set';
+}
+
+const { noun } = Astro.props;
+const Noun = noun === 'item' ? 'Item' : 'Set';
+---
+<div class="grid grid-cols-1 gap-stack sm:grid-cols-[10rem_5rem_1fr] sm:items-end">
+	<div>
+		<label class={compactLabelClasses} for={`add-${noun}-image`}>Image (optional)</label>
+		<input id={`add-${noun}-image`} name="imageUrl" type="text" placeholder="https://…" class:list={['w-full', inputClasses]} />
+	</div>
+	<div>
+		<span class={compactLabelClasses}>{Noun} ID</span>
+		<p class="flex min-h-10 items-center rounded-md border border-dashed border-border-strong bg-surface px-3 font-mono text-xs text-text-muted">auto</p>
+	</div>
+	<div>
+		<label class={compactLabelClasses} for={`add-${noun}-name`}>{Noun} name</label>
+		<input id={`add-${noun}-name`} name="name" type="text" required class:list={['w-full', inputClasses]} />
+	</div>
+</div>

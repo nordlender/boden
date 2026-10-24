@@ -3,8 +3,11 @@
 // src/middleware/prefixes.ts (ROUTE_RULES via /moderator) — reached only
 // when logged in with role 'moderator' or 'admin'.
 import ModeratorLayout from '../../../layouts/ModeratorLayout.astro';
+import Page from '../../../components/ui/Page.astro';
+import Callout from '../../../components/ui/Callout.astro';
+import { textareaClasses } from '../../../lib/form-styles';
 import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro';
-import BackLink from '../../../components/moderator/BackLink.astro';
+import BackLink from '../../../components/ui/BackLink.astro';
 import Button from '../../../components/ui/Button.astro';
 import TextMorphButton from '../../../components/ui/TextMorphButton.astro';
 import { getOrderDetailByCode } from '../../../lib/moderatorOrders';
@@ -26,8 +29,8 @@ const error = Astro.url.searchParams.get('error');
 ---
 
 <ModeratorLayout title={`Review order #${order.orderCode} — Moderator`}>
-	<div class="mx-auto flex max-w-xl flex-col gap-4 p-6">
-		<BackLink href="/moderator/requests">Back to requests</BackLink>
+	<Page width="narrow">
+		<BackLink slot="before-title" href="/moderator/requests">Back to requests</BackLink>
 
 		<OrderDetailCard order={order} showAvailability={true}>
 			<Fragment slot="actions">
@@ -48,12 +51,12 @@ const error = Astro.url.searchParams.get('error');
 								<TextMorphButton action="accept" type="submit" variant="primary" size="lg" />
 							</form>
 
-							<form method="post" action={`/api/moderator/orders/${order.id}/reject`} class="flex w-full flex-col gap-2">
+							<form method="post" action={`/api/moderator/orders/${order.id}/reject`} class="flex w-full flex-col gap-3">
 								{
 									error === 'blank_reason' && (
-										<p class="rounded-md border border-error-border bg-error-subtle p-2 text-sm text-error-text">
-											Please provide a reason for rejecting this order.
-										</p>
+										<Callout variant="error">
+											<p>Please provide a reason for rejecting this order.</p>
+										</Callout>
 									)
 								}
 								<textarea
@@ -62,7 +65,7 @@ const error = Astro.url.searchParams.get('error');
 									aria-label="Reason for rejecting this order"
 									rows={2}
 									placeholder="Reason for rejecting this order"
-									class="w-full rounded-md border border-border-interactive bg-bg px-2 py-1.5 text-sm text-text"
+									class:list={['w-full', textareaClasses]}
 								></textarea>
 								<TextMorphButton action="reject" type="submit" variant="danger" class="self-start" />
 							</form>
@@ -71,5 +74,5 @@ const error = Astro.url.searchParams.get('error');
 				}
 			</Fragment>
 		</OrderDetailCard>
-	</div>
+	</Page>
 </ModeratorLayout>

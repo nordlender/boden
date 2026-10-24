@@ -36,8 +36,8 @@ const { availablePickupDates = [], value, maxRangeDays } = Astro.props;
 const todayIso = todayIsoInOslo();
 ---
 
-<div class="reservation-calendar rounded-lg border border-border bg-surface p-3">
-	<ul class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
+<div class="reservation-calendar rounded-xl border border-border bg-surface p-card">
+	<ul class="mb-stack flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-text-muted">
 		<li class="flex items-center gap-1.5">
 			<span class="h-3 w-3 rounded-full bg-success-subtle ring-1 ring-inset ring-success-border" aria-hidden="true"></span>
 			Pick up available
@@ -67,7 +67,7 @@ const todayIso = todayIsoInOslo();
 		<calendar-month offset={1}></calendar-month>
 	</calendar-range>
 
-	<p class="mt-2 text-sm text-text-muted">
+	<p class="mt-stack text-sm text-text-muted">
 		<span data-range-summary>Select a pick-up and return date.</span>
 	</p>
 </div>
@@ -107,7 +107,7 @@ const todayIso = todayIsoInOslo();
 	.reservation-calendar calendar-range::part(months) {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 2rem;
 		width: 100%;
 	}
 

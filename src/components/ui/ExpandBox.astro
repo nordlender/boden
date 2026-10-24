@@ -21,7 +21,7 @@
 // open        (default false) initial open/closed state, rendered
 //             server-side so there's no flash-of-wrong-state on load.
 // class       extra classes on the content wrapper (e.g. padding — see
-//             AddItemPanel.astro, which puts px-3 pb-3 here since the
+//             ui/AddPanel.astro, which pads its form instead since the
 //             built-in trigger already carries its own horizontal padding).
 // triggerClass extra classes on the built-in trigger button (only relevant
 //             when the `trigger` slot is used — see below). ExpandBox
@@ -36,7 +36,7 @@
 //    that toggles the panel. This is the common case — an "Add item" /
 //    "New message" style header the whole box collapses under.
 //
-//      <ExpandBox id="add-item-panel" triggerClass="px-3 py-3">
+//      <ExpandBox id="add-item-panel" triggerClass="px-card py-4">
 //        <span slot="trigger">Add item</span>
 //        <form>...</form>
 //      </ExpandBox>
@@ -94,7 +94,7 @@ const hasTrigger = Astro.slots.has('trigger');
 			data-expand-target={id}
 		>
 			<slot name="trigger" />
-			<MorphIcon icon={open ? dropdownChevron.open : dropdownChevron.closed} size={17} class="expand-box-chevron shrink-0 text-text-muted" />
+			<MorphIcon icon={open ? dropdownChevron.open : dropdownChevron.closed} size={16} class="expand-box-chevron shrink-0 text-text-muted" />
 		</button>
 	)
 }

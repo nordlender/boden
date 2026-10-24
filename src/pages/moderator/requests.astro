@@ -4,6 +4,7 @@
 // OrdersTable pattern this mirrors. Gated by src/middleware/prefixes.ts
 // (ROUTE_RULES via /moderator).
 import ModeratorLayout from '../../layouts/ModeratorLayout.astro';
+import Page from '../../components/ui/Page.astro';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
 import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
 import { getPendingRequestRows } from '../../lib/moderatorOrders';
@@ -21,16 +22,12 @@ const rows: OrdersTableRow[] = pendingRequests.map((order) => ({
 ---
 
 <ModeratorLayout title="Order requests — Moderator">
-	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-		<div>
-			<h1 class="text-xl font-semibold text-text">Order requests</h1>
-			<p class="mt-1 text-sm text-text-muted">Orders waiting for review, earliest submitted first.</p>
-		</div>
+	<Page width="wide" title="Order requests" description="Orders waiting for review, earliest submitted first.">
 
 		<OrdersTable
 			orders={rows}
 			viewHref={(code: string) => `/moderator/review/${code}`}
 			emptyMessage="No orders are waiting for review."
 		/>
-	</div>
+	</Page>
 </ModeratorLayout>

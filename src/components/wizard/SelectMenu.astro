@@ -7,6 +7,7 @@
 // a `change` event so SelectIcon's own listener keeps each icon in sync,
 // rather than duplicating that logic here.
 import AppIcon from '../icons/AppIcon.astro';
+import { menuItemClasses, menuPanelClasses } from '../../lib/layout-styles';
 import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 
 interface Props {
@@ -22,12 +23,12 @@ const options = [
 ];
 ---
 <details class="relative">
-	<summary class:list={['grid cursor-pointer list-none place-items-center rounded text-text-muted hover:bg-bg-subtle hover:text-text [&::-webkit-details-marker]:hidden', triggerBoxClasses.sm]} aria-label="Select items">
+	<summary class:list={['grid cursor-pointer list-none place-items-center rounded-md text-text-muted hover:bg-bg-subtle hover:text-text [&::-webkit-details-marker]:hidden', triggerBoxClasses.sm]} aria-label="Select items">
 		<AppIcon name="selectMenu" size={triggerIconPixelSize.sm} />
 	</summary>
-	<div class="select-menu absolute left-0 z-10 mt-1 min-w-[8rem] rounded-md border border-border bg-surface py-1 shadow-lg" data-form-id={formId}>
+	<div class:list={['select-menu absolute left-0 z-10 mt-2 min-w-[10rem]', menuPanelClasses]} data-form-id={formId}>
 		{options.map((option) => (
-			<button type="button" class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-text hover:bg-bg-subtle" data-select-action={option.action}>
+			<button type="button" class={menuItemClasses} data-select-action={option.action}>
 				<AppIcon name={option.icon} size={16} class="text-text-muted" />
 				<span>{option.label}</span>
 			</button>

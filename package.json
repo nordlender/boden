@@ -18,6 +18,11 @@
     "test:watch": "vitest",
     "typecheck": "astro check",
     "lint": "eslint .",
+    "docs:schema": "node scripts/sync-schema-doc.mjs",
+    "docs:schema:check": "node scripts/sync-schema-doc.mjs --check",
+    "docs:check": "node scripts/check-doc-refs.mjs",
+    "db:check": "node scripts/check-db-drift.mjs",
+    "db:seed": "node scripts/seed-example-catalog.mjs && node scripts/seed-example-orders.mjs",
     "prepare": "husky"
   },
   "dependencies": {

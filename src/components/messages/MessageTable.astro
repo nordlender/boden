@@ -93,6 +93,34 @@ const scrollStyle = scrollable && extraReserve ? `--board-extra:${extraReserve.b
 		}
 	}
 
+	/*
+	 * Scroll shadows: a soft edge shadow on whichever side has more messages
+	 * beyond it. Pure CSS — the two surface-coloured "cover" gradients are
+	 * `local` (they scroll with the content and hide the shadow once that
+	 * edge is reached), the two shadow gradients are `scroll` (fixed to the
+	 * box). Colours come from theme tokens so it works in light and dark.
+	 */
+	.message-board-scroll {
+		--board-shadow: color-mix(in srgb, var(--color-text) 16%, transparent);
+		background-image:
+			linear-gradient(var(--color-surface) 30%, transparent),
+			linear-gradient(transparent, var(--color-surface) 70%),
+			radial-gradient(farthest-side at 50% 0, var(--board-shadow), transparent),
+			radial-gradient(farthest-side at 50% 100%, var(--board-shadow), transparent);
+		background-position:
+			0 0,
+			0 100%,
+			0 0,
+			0 100%;
+		background-size:
+			100% 2.5rem,
+			100% 2.5rem,
+			100% 0.75rem,
+			100% 0.75rem;
+		background-repeat: no-repeat;
+		background-attachment: local, local, scroll, scroll;
+	}
+
 	.message-board-scroll:focus-visible {
 		outline: 2px solid var(--color-border-interactive);
 		outline-offset: 1px;

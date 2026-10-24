@@ -37,6 +37,8 @@ import type { SetComponentDisplay } from '../../lib/sets';
 import Button from '../ui/Button.astro';
 import AppIcon from '../icons/AppIcon.astro';
 import { formatAttributes } from '../../lib/attributes';
+import { tableClasses, tbodyRowClasses, tdClasses, theadRowClasses, thClasses } from '../../lib/table-styles';
+import { labelClasses } from '../../lib/form-styles';
 
 interface Props {
 	items: ShopItem[];
@@ -80,7 +82,7 @@ function optionLabel(variant: Variant): string {
 }
 ---
 
-<form action="/api/cart/add" method="post" class="flex flex-col gap-4 border-t border-border pt-4">
+<form action="/api/cart/add" method="post" class="flex flex-col gap-6 border-t border-border pt-6">
 	<input type="hidden" name="redirectTo" value={`/products/${productSlug}`} />
 	<!--
 		Exactly one of these is ever actually submitted — a disabled input is
@@ -106,10 +108,10 @@ function optionLabel(variant: Variant): string {
 	{
 		variants.length > 1 && (
 			<fieldset>
-				<legend class="mb-2 text-sm font-medium text-text">
+				<legend class:list={['mb-3', labelClasses]}>
 					{variantKind === 'item' && hasVariantKeys ? variantKeys.join(' / ') : 'Choose a variant'}
 				</legend>
-				<div data-variant-options class="flex flex-wrap gap-2">
+				<div data-variant-options class="flex flex-wrap gap-controls">
 					{variants.map((variant) => {
 						const label = optionLabel(variant);
 						const selected = variant.kind === initialVariant?.kind && variant.id === initialVariant?.id;
@@ -124,7 +126,7 @@ function optionLabel(variant: Variant): string {
 								data-stock={variant.inStock}
 								data-attributes={variant.kind === 'item' ? JSON.stringify(variant.attributes) : '[]'}
 								data-component-display={variant.kind === 'set' ? JSON.stringify(variant.componentDisplay) : '[]'}
-								class={`rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-pressed:border-selected-border aria-pressed:bg-selected-subtle aria-pressed:font-medium aria-pressed:hover:bg-selected-subtle aria-pressed:text-selected-text ${variant.inStock > 0 ? 'border-border-interactive text-text' : 'border-border-interactive text-disabled-text line-through'}`}
+								class={`min-h-10 min-w-12 rounded-md border px-4 py-2 text-sm transition-colors hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-pressed:border-selected-border aria-pressed:bg-selected-subtle aria-pressed:font-medium aria-pressed:hover:bg-selected-subtle aria-pressed:text-selected-text ${variant.inStock > 0 ? 'border-border-interactive text-text' : 'border-border-interactive text-disabled-text line-through'}`}
 							>
 								{variant.kind === 'set' ? `Set — ${label}` : label}
 								{variant.inStock <= 0 && <span class="sr-only"> (out of stock)</span>}
@@ -137,7 +139,7 @@ function optionLabel(variant: Variant): string {
 	}
 
 	{variantKind === 'item' && displayedKeyCount > 0 && (
-		<dl data-item-attributes class="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-sm">
+		<dl data-item-attributes class="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-border pt-6 text-sm">
 			{(initialVariant?.kind === 'item' ? initialVariant.attributes : []).map((attribute) => (
 				<div class="contents">
 					<dt class="text-text-muted">{attribute.key}</dt>
@@ -147,29 +149,29 @@ function optionLabel(variant: Variant): string {
 		</dl>
 	)}
 
-	<div data-set-includes hidden={variantKind !== 'set'} class="border-t border-border pt-4 text-sm">
-		<p class="mb-2 font-medium text-text">Attributes</p>
-		<div data-set-includes-content class="flex flex-col gap-3">
+	<div data-set-includes hidden={variantKind !== 'set'} class="border-t border-border pt-6 text-sm">
+		<p class:list={['mb-3', labelClasses]}>Attributes</p>
+		<div data-set-includes-content class="flex flex-col gap-4">
 			{(initialVariant?.kind === 'set' ? initialVariant.componentDisplay : []).map((group) =>
 				group.kind === 'table' ? (
-					<table class="w-full border-collapse text-xs">
+					<table class={tableClasses.dense}>
 						<thead>
-							<tr class="border-b border-border text-left text-text-muted">
-								<th class="py-1 pr-3 font-medium">Component</th>
+							<tr class={theadRowClasses.dense}>
+								<th class={thClasses.dense}>Component</th>
 								{group.keys.map((key) => (
-									<th class="py-1 pr-3 font-medium">{key}</th>
+									<th class={thClasses.dense}>{key}</th>
 								))}
 							</tr>
 						</thead>
 						<tbody>
 							{group.rows.map((row) => (
-								<tr class="border-b border-border last:border-0">
-									<td class="py-1 pr-3 text-text">
+								<tr class={tbodyRowClasses}>
+									<td class:list={[tdClasses.dense, 'text-text']}>
 										{row.productTitle}
 										{row.quantity > 1 && ` (×${row.quantity})`}
 									</td>
 									{row.values.map((value) => (
-										<td class="py-1 pr-3 text-text-muted">{value ?? '—'}</td>
+										<td class:list={[tdClasses.dense, 'text-text-muted']}>{value ?? '—'}</td>
 									))}
 								</tr>
 							))}
@@ -194,22 +196,22 @@ function optionLabel(variant: Variant): string {
 		{(initialVariant?.inStock ?? 0) > 0 ? `${initialVariant?.inStock} in stock` : 'Out of stock'}
 	</p>
 
-	<div class="flex items-center gap-3">
-		{/* Stepper's height (h-11) and count text (text-base) are pinned to
+	<div class="flex items-center gap-controls">
+		{/* Stepper's height (h-12) and count text (text-base) are pinned to
 			Button's `lg` size (see sizeClasses in lib/button-styles.ts) rather
 			than derived from it, since a plain <input type="number"> can't be
 			styled with the spinner removed consistently across browsers. */}
-		<div class="inline-flex h-11 divide-x divide-border-interactive overflow-hidden rounded-md border border-border-interactive">
+		<div class="inline-flex h-12 divide-x divide-border-interactive overflow-hidden rounded-md border border-border-interactive">
 			<button
 				type="button"
 				aria-label="Decrease quantity"
 				data-quantity-decrement
 				disabled
-				class="flex h-11 w-11 items-center justify-center bg-bg-subtle text-text-muted transition-colors hover:text-text active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-disabled-text disabled:active:bg-bg-subtle"
+				class="flex h-12 w-12 items-center justify-center bg-bg-subtle text-text-muted transition-colors hover:text-text active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-disabled-text disabled:active:bg-bg-subtle"
 			>
 				<AppIcon name="decrement" size={20} />
 			</button>
-			<span data-quantity-display class="flex h-11 min-w-[3rem] items-center justify-center text-base font-semibold text-text">
+			<span data-quantity-display class="flex h-12 min-w-[3.5rem] items-center justify-center text-base font-semibold text-text">
 				1
 			</span>
 			<button
@@ -217,7 +219,7 @@ function optionLabel(variant: Variant): string {
 				aria-label="Increase quantity"
 				data-quantity-increment
 				disabled={initialMax <= 1}
-				class="flex h-11 w-11 items-center justify-center bg-bg-subtle text-text-muted transition-colors hover:text-text active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-disabled-text disabled:active:bg-bg-subtle"
+				class="flex h-12 w-12 items-center justify-center bg-bg-subtle text-text-muted transition-colors hover:text-text active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-disabled-text disabled:active:bg-bg-subtle"
 			>
 				<AppIcon name="increment" size={20} />
 			</button>
@@ -233,6 +235,8 @@ function optionLabel(variant: Variant): string {
 	// Keeps the image, stock message, quantity cap, attribute list, and
 	// "Includes" breakdown in sync with whichever variant is selected —
 	// including a `?item=<id>`/`?set=<id>` preselect from an ItemCard link.
+	import { tableClasses, tbodyRowClasses, tdClasses, theadRowClasses, thClasses } from '../../lib/table-styles';
+
 	interface SetComponentTableRow {
 		productTitle: string;
 		quantity: number;
@@ -308,18 +312,18 @@ function optionLabel(variant: Variant): string {
 
 	function renderComponentTable(group: SetComponentTable): HTMLTableElement {
 		const table = document.createElement('table');
-		table.className = 'w-full border-collapse text-xs';
+		table.className = tableClasses.dense;
 
 		const thead = document.createElement('thead');
 		const headRow = document.createElement('tr');
-		headRow.className = 'border-b border-border text-left text-text-muted';
+		headRow.className = theadRowClasses.dense;
 		const componentHeader = document.createElement('th');
-		componentHeader.className = 'py-1 pr-3 font-medium';
+		componentHeader.className = thClasses.dense;
 		componentHeader.textContent = 'Component';
 		headRow.appendChild(componentHeader);
 		for (const key of group.keys) {
 			const th = document.createElement('th');
-			th.className = 'py-1 pr-3 font-medium';
+			th.className = thClasses.dense;
 			th.textContent = key;
 			headRow.appendChild(th);
 		}
@@ -329,16 +333,16 @@ function optionLabel(variant: Variant): string {
 		const tbody = document.createElement('tbody');
 		for (const row of group.rows) {
 			const tr = document.createElement('tr');
-			tr.className = 'border-b border-border last:border-0';
+			tr.className = tbodyRowClasses;
 
 			const nameCell = document.createElement('td');
-			nameCell.className = 'py-1 pr-3 text-text';
+			nameCell.className = `${tdClasses.dense} text-text`;
 			nameCell.textContent = row.quantity > 1 ? `${row.productTitle} (×${row.quantity})` : row.productTitle;
 			tr.appendChild(nameCell);
 
 			for (const value of row.values) {
 				const td = document.createElement('td');
-				td.className = 'py-1 pr-3 text-text-muted';
+				td.className = `${tdClasses.dense} text-text-muted`;
 				td.textContent = value ?? '—';
 				tr.appendChild(td);
 			}

@@ -21,7 +21,7 @@ interface Props {
 const { orderCode, status, fromDate, toDate, note, items, showImages = false } = Astro.props;
 ---
 
-<section class="order-summary flex flex-col gap-4">
+<section class="order-summary flex flex-col gap-6">
 	<OrderCodeHeader orderCode={orderCode} status={status} fromDate={fromDate} toDate={toDate} />
 	<OrderContents items={items} note={note} showImages={showImages} />
 </section>

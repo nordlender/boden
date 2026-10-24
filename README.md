@@ -53,7 +53,8 @@ npm run dev-setup
 
 This copies `.env` from the main checkout, runs pending Drizzle migrations
 (creating `data/` if needed), and seeds the example catalog via
-`scripts/seed-example-catalog.mjs`. See `scripts/dev-setup.sh` for details.
+`scripts/seed-example-catalog.mjs`, followed by example orders, pick-up days and
+messages via `scripts/seed-example-orders.mjs`. See `scripts/dev-setup.sh` for details.
 
 ### Environment variables
 

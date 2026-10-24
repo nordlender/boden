@@ -3,6 +3,8 @@
 // no client-side JS beyond animating its own chevron. Backs the Set (Set
 // image / Set product) button.
 import AppIcon from '../icons/AppIcon.astro';
+import { summaryButtonClasses } from '../../lib/button-styles';
+import { menuItemClasses, menuPanelClasses } from '../../lib/layout-styles';
 import MorphIcon from 'morphicons/astro';
 import type { IconName } from '../../lib/icons';
 import { dropdownChevron } from '../../lib/icon-nodes';
@@ -22,14 +24,14 @@ interface Props {
 const { triggerLabel, triggerIcon, items, align = 'left' } = Astro.props;
 ---
 <details class="relative inline-block">
-	<summary class="flex cursor-pointer list-none items-center gap-1 rounded border border-border-strong px-2.5 py-1.5 text-sm text-text hover:bg-bg-subtle [&::-webkit-details-marker]:hidden">
+	<summary class={summaryButtonClasses}>
 		{triggerIcon && <AppIcon name={triggerIcon} size={16} />}
 		{triggerLabel && <span>{triggerLabel}</span>}
 		<MorphIcon icon={dropdownChevron.closed} size={14} class="dropdown-chevron text-text-muted" />
 	</summary>
-	<div class:list={["absolute z-10 mt-1 min-w-[10rem] rounded-md border border-border bg-surface py-1 shadow-lg", align === 'right' ? 'right-0' : 'left-0']}>
+	<div class:list={['absolute z-10 mt-2 min-w-[12rem]', menuPanelClasses, align === 'right' ? 'right-0' : 'left-0']}>
 		{items.map((item) => (
-			<button type="button" class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-text hover:bg-bg-subtle">
+			<button type="button" class={menuItemClasses}>
 				{item.icon && <AppIcon name={item.icon} size={16} class="text-text-muted" />}
 				<span>{item.label}</span>
 			</button>

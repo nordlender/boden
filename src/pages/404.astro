@@ -5,12 +5,13 @@ export const prerender = true;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Button from '../components/ui/Button.astro';
+import Page from '../components/ui/Page.astro';
 ---
 
 <BaseLayout title="Page not found">
-	<div class="mx-auto flex max-w-xl flex-col items-start gap-4 px-4 py-16">
-		<h1 class="text-2xl font-semibold tracking-tight text-text">Page not found</h1>
-		<p class="text-sm text-text-muted">This page doesn't exist, or the product is no longer available.</p>
-		<Button href="/" variant="primary">Browse gear</Button>
-	</div>
+	<Page width="narrow" title="Page not found" description="This page doesn't exist, or the product is no longer available." class="sm:py-24">
+		<div>
+			<Button href="/" variant="primary" size="lg">Browse gear</Button>
+		</div>
+	</Page>
 </BaseLayout>

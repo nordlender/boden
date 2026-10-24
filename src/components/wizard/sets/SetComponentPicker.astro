@@ -25,6 +25,8 @@
 // `absolute` positioning here would get clipped by that ancestor
 // regardless of z-index.
 import AppIcon from '../../icons/AppIcon.astro';
+import { inputSmClasses } from '../../../lib/form-styles';
+import { menuPanelClasses } from '../../../lib/layout-styles';
 import TextMorphButton from '../../ui/TextMorphButton.astro';
 
 interface Props {
@@ -40,7 +42,7 @@ const searchableItems = items.map((item) => ({ id: item.id, label: item.productT
 <form
 	method="post"
 	action="/api/wizard/set-component-add"
-	class="set-component-picker mt-1.5 flex items-center gap-2"
+	class="set-component-picker mt-2.5 flex items-center gap-2"
 	data-items={JSON.stringify(searchableItems)}
 >
 	<input type="hidden" name="setId" value={setId} />
@@ -49,16 +51,16 @@ const searchableItems = items.map((item) => ({ id: item.id, label: item.productT
 	<input type="hidden" name="quantity" value="1" />
 
 	<div class="relative min-w-0 flex-1">
-		<AppIcon name="search" size={14} class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+		<AppIcon name="search" size={14} class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
 		<input
 			type="text"
 			placeholder="Search for a component item…"
 			autocomplete="off"
-			class="w-full rounded border border-border-interactive py-1 pl-7 pr-2 text-sm"
+			class:list={[inputSmClasses, 'w-full pl-8']}
 			data-component-search
 		/>
 		<ul
-			class="fixed z-20 max-h-56 overflow-y-auto rounded-md border border-border bg-surface py-1 text-sm shadow-lg"
+			class:list={['fixed z-20 max-h-56 overflow-y-auto text-sm', menuPanelClasses]}
 			data-component-results
 			hidden
 		>
@@ -120,7 +122,7 @@ const searchableItems = items.map((item) => ({ id: item.id, label: item.productT
 				const li = document.createElement('li');
 				const button = document.createElement('button');
 				button.type = 'button';
-				button.className = 'block w-full truncate px-2.5 py-1.5 text-left text-text hover:bg-bg-subtle';
+				button.className = 'block w-full truncate rounded-md px-3 py-2 text-left text-text hover:bg-bg-subtle';
 				button.textContent = item.label;
 				button.addEventListener('click', () => {
 					if (searchInput) searchInput.value = item.label;

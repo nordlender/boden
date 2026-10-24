@@ -3,7 +3,8 @@
 # the main checkout (worktrees don't inherit untracked files), runs pending
 # Drizzle migrations, then seeds the example catalog (including the units
 # behind every item, since an item's stock is its number of active units)
-# and example orders, pick-up days and messages.
+# and example orders, pick-up days and messages. Only runs with DEV_MODE=true
+# (in .env or exported), the same flag that enables dev mode in the app.
 #
 # Usage: npm run dev-setup
 set -euo pipefail
@@ -30,6 +31,18 @@ elif [[ ! -f "$main_root/.env" ]]; then
 else
   cp "$main_root/.env" "$root_dir/.env"
   echo "Copied .env from $main_root"
+fi
+
+# Example data is for dev mode only (src/lib/devMode.ts) — refuse to seed a
+# db that a non-dev-mode build would serve. Same precedence as Astro's env
+# loading: an exported DEV_MODE wins over .env.
+dev_mode="${DEV_MODE-}"
+if [[ -z "$dev_mode" && -f "$root_dir/.env" ]]; then
+  dev_mode="$(grep -E '^[[:space:]]*DEV_MODE=' "$root_dir/.env" | tail -n 1 | cut -d= -f2- | tr -d "\"'[:space:]" || true)"
+fi
+if [[ "$dev_mode" != "true" ]]; then
+  echo "dev-setup only runs in dev mode. Set DEV_MODE=true in .env (see README's \"Dev mode\") and re-run." >&2
+  exit 1
 fi
 
 echo "Running pending migrations..."

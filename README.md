@@ -55,6 +55,8 @@ This copies `.env` from the main checkout, runs pending Drizzle migrations
 (creating `data/` if needed), and seeds the example catalog via
 `scripts/seed-example-catalog.mjs`, followed by example orders, pick-up days and
 messages via `scripts/seed-example-orders.mjs`. See `scripts/dev-setup.sh` for details.
+It only runs with dev mode enabled (`DEV_MODE=true` in `.env`, see "Dev mode"
+below) and exits before migrating or seeding otherwise.
 
 ### Environment variables
 

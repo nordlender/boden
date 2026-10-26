@@ -360,6 +360,8 @@ export async function getFollowingRentalWorries(orderId: number): Promise<Follow
 
 	const warnings: FollowingRentalWarning[] = [];
 	for (const oi of order.orderItems) {
+		// No `await`: better-sqlite3 runs `.all()` synchronously. If the driver is
+		// ever swapped for an async one, this must become `await` again.
 		const candidates = db
 			.select({
 				orderId: orders.id,

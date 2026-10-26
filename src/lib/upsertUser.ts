@@ -111,6 +111,10 @@ function upsertUserRow(tx: UsersTx, user: SignInUser, name: string | null): void
     .run();
 }
 
+// Stays `async` although better-sqlite3 makes the body synchronous: callers
+// (src/auth.ts, tests) use the Promise contract — errors must surface as a
+// rejection ("fails closed"), not a synchronous throw — and an async driver
+// would not change the signature.
 export async function upsertSignedInUser(db: UsersDb, user: SignInUser): Promise<void> {
   const name = user.name ?? null;
 

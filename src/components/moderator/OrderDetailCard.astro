@@ -28,7 +28,7 @@ interface Props {
 const { order, showAvailability = false, adjustableTargets = false, followingRentalWarnings = [], formId } = Astro.props;
 ---
 
-<Card as="div">
+<Card tag="div">
 	<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
 
 	<div class="flex flex-wrap gap-x-6 gap-y-2">

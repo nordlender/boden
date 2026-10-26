@@ -9,8 +9,10 @@
 // own row padding.
 import { cardClasses, sectionTitleClasses } from '../../lib/layout-styles';
 
-export interface Props {
-	as?: 'section' | 'div' | 'article';
+interface Props {
+	// Not named `as`: a prop called `as` makes the Astro language tools report
+	// `Props` as unused (ts 6196).
+	tag?: 'section' | 'div' | 'article';
 	title?: string;
 	padding?: 'card' | 'none';
 	class?: string;
@@ -18,7 +20,7 @@ export interface Props {
 	'aria-labelledby'?: string;
 }
 
-const { as: Tag = 'section', title, padding = 'card', class: className, ...rest } = Astro.props;
+const { tag: Tag = 'section', title, padding = 'card', class: className, ...rest } = Astro.props;
 const hasHeader = Boolean(title) || Astro.slots.has('actions');
 ---
 

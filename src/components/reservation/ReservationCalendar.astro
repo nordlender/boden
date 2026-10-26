@@ -21,7 +21,7 @@ interface Props {
 	availablePickupDates?: string[];
 	// Time + place windows per pick-up date; the selected pick-up day's are
 	// listed under the range summary. Unset (reschedule modal) shows none.
-	pickupWindows?: Record<string, Array<{ startTime: string; endTime: string; where: string | null }>>;
+	pickupWindows?: Record<string, PickupWindowDisplay[]>;
 	// Preselects an existing range — "YYYY-MM-DD/YYYY-MM-DD", same shape as
 	// this component's own `change` event value. Used by the reschedule flow
 	// (ChangeOrderLink.astro) to open the calendar already showing the
@@ -37,6 +37,7 @@ interface Props {
 import { todayIsoInOslo } from '../../lib/dates';
 import CallyLegend from '../ui/CallyLegend.astro';
 import CallyNavIcons from '../ui/CallyNavIcons.astro';
+import type { PickupWindowDisplay } from '../../lib/pickupWindowFormat';
 
 const { availablePickupDates = [], pickupWindows = {}, value, maxRangeDays } = Astro.props;
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
@@ -196,6 +197,8 @@ const todayIso = todayIsoInOslo();
 		if (summary && initialFrom && initialTo) {
 			summary.textContent = `Pick-up ${formatDateDisplay(initialFrom)} · Return ${formatDateDisplay(initialTo)}`;
 		}
+		// Back-navigation from /reservation/confirm can restore the range.
+		renderPickupWindows(initialFrom && initialTo ? initialFrom : undefined);
 	}
 
 	calendar?.addEventListener('change', () => {

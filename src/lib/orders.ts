@@ -329,7 +329,12 @@ export async function getMemberOrder(orderCode: string, userId: string) {
   if (!orderCode || !userId) return undefined;
   return db.query.orders.findFirst({
     where: (t, { eq: eqCol }) => and(eqCol(t.orderCode, orderCode), eqCol(t.userId, userId)),
-    with: { orderItems: { with: { item: true } } },
+    // product + attributeValues feed toOrderItemView (src/lib/orderItemView.ts).
+    with: {
+      orderItems: {
+        with: { item: { with: { product: true, attributeValues: { with: { attribute: true } } } } },
+      },
+    },
   });
 }
 

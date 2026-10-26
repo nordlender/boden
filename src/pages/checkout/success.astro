@@ -5,7 +5,8 @@ import Button from '../../components/ui/Button.astro';
 import PickupInfo from '../../components/orders/PickupInfo.astro';
 import Card from '../../components/ui/Card.astro';
 import { getMemberOrder } from '../../lib/orders';
-import { getPickupWindowsForDate } from '../../lib/pickupDays';
+import { getOrderPickupWindows } from '../../lib/pickupDays';
+import { toOrderItemView } from '../../lib/orderItemView';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /checkout) —
 // reached only when logged in, so Astro.locals.user is non-null here.
@@ -19,7 +20,7 @@ if (!order) {
   return Astro.redirect('/orders');
 }
 
-const pickupWindows = await getPickupWindowsForDate(order.fromDate);
+const pickupWindows = await getOrderPickupWindows(order);
 ---
 
 <ConfirmationLayout title="Order placed" heading="Order placed">
@@ -37,14 +38,10 @@ const pickupWindows = await getPickupWindowsForDate(order.fromDate);
 			fromDate={order.fromDate}
 			toDate={order.toDate}
 			note={order.note}
-			items={order.orderItems.map((oi) => ({
-				itemName: oi.item.name,
-				requestedQuantity: oi.requestedQuantity,
-				itemImageUrl: oi.item.imageUrl,
-			}))}
+			items={order.orderItems.map(toOrderItemView)}
 			showImages
 		/>
-		<PickupInfo windows={pickupWindows} />
+		<PickupInfo windows={pickupWindows} emptyText="A moderator will confirm the time and place." />
 		<Button variant="primary" size="lg" href={`/orders/${order.orderCode}`} class="self-start">
 			View or manage this order
 		</Button>

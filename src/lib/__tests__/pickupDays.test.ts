@@ -13,6 +13,7 @@ const {
 	getUpcomingAvailablePickupDates,
 	getUpcomingPickupWindows,
 	getPickupWindowsForDate,
+	getOrderPickupWindows,
 	listUpcomingPickupDays,
 	createSingleDays,
 	deleteSingleDay,
@@ -121,6 +122,8 @@ describe('single pickup days', () => {
 		// Exact-date lookup (for order pages) isn't floored to upcoming.
 		expect(await getPickupWindowsForDate('2026-09-01')).toEqual([{ startTime: '09:00', endTime: '10:00', where: null }]);
 		expect(await getPickupWindowsForDate('2026-09-02')).toEqual([]);
+		// Order pages: the order's pick-up date windows until #367 adds pickupDayId.
+		expect(await getOrderPickupWindows({ fromDate: '2026-09-01' })).toEqual([{ startTime: '09:00', endTime: '10:00', where: null }]);
 	});
 
 	it('a moderator can only delete their own single day', async () => {

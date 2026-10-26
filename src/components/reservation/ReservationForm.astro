@@ -37,13 +37,23 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 	<section class="flex flex-col gap-stack">
 		<h2 class={sectionTitleClasses}>2. Your items</h2>
 
-		<div data-unavailable-warning hidden>
-			<Callout variant="warning">
-				<p>Some items are not available in this timeframe. Remove them from your cart below, or choose different dates.</p>
-			</Callout>
+		{/* One polite live region around the loading/warning/error boxes so
+		    their text is announced when it changes; the Callouts inside are
+		    not live themselves, to avoid nested live regions.
+		    reservationFormState.ts fills in the text (#262). */}
+		<div aria-live="polite" class="flex flex-col gap-stack">
+			<p data-availability-loading hidden class="text-sm text-text-muted">Checking availability…</p>
+			<div data-unavailable-warning hidden>
+				<Callout variant="warning" live={false}>
+					<p data-unavailable-warning-text></p>
+				</Callout>
+			</div>
+			<div data-availability-error hidden>
+				<Callout variant="error" live={false}>
+					<p data-availability-error-text></p>
+				</Callout>
+			</div>
 		</div>
-
-		<p data-availability-loading hidden class="text-sm text-text-muted">Checking availability…</p>
 
 		<div class="divide-y divide-border border-y border-border">
 			{
@@ -78,7 +88,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 	<section class="flex flex-col gap-stack">
 		<h2 class={sectionTitleClasses}>3. Your details</h2>
 		<CheckoutForm name={name} email={email} mobile={mobile} hasUnpaidFees={hasUnpaidFees} userIsMember={userIsMember} />
-		<p data-submit-hint class="text-sm text-text-muted">Select your pick-up and return dates above to continue.</p>
+		<p data-submit-hint aria-live="polite" class="text-sm text-text-muted">Select your pick-up and return dates above to continue.</p>
 	</section>
 </div>
 

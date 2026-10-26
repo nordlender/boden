@@ -11,12 +11,9 @@
 import { todayIsoInOslo } from '../../lib/dates';
 import CallyLegend from '../ui/CallyLegend.astro';
 import CallyNavIcons from '../ui/CallyNavIcons.astro';
+import { buildPickupDayKinds, type PickupDayKindRow } from '../../lib/pickupDayKinds';
 
-export interface PickupDaysCalendarEntry {
-	date: string;
-	kind: 'single' | 'recurring';
-	userId: string;
-}
+export type PickupDaysCalendarEntry = PickupDayKindRow;
 
 interface Props {
 	rows: PickupDaysCalendarEntry[];
@@ -26,20 +23,9 @@ interface Props {
 const { rows, currentUserId } = Astro.props;
 const todayIso = todayIsoInOslo();
 
-// One kind per date, highest-precedence wins when more than one row lands
-// on the same date (e.g. a recurring training day a moderator also offered
-// themselves) — recurring (red) reads as the more load-bearing fact of the
-// two, then "is this mine".
-const PRECEDENCE = { recurring: 2, mine: 1, other: 0 } as const;
-const kindByDate = new Map<string, keyof typeof PRECEDENCE>();
-for (const row of rows) {
-	const kind = row.kind === 'recurring' ? 'recurring' : row.userId === currentUserId ? 'mine' : 'other';
-	const existing = kindByDate.get(row.date);
-	if (!existing || PRECEDENCE[kind] > PRECEDENCE[existing]) {
-		kindByDate.set(row.date, kind);
-	}
-}
-const dayKinds = Object.fromEntries(kindByDate);
+// One kind per date: recurring (red) wins over "mine", which wins over
+// "other". See buildPickupDayKinds.
+const dayKinds = buildPickupDayKinds(rows, currentUserId);
 ---
 
 <div class="pickup-days-calendar cally-theme cally-narrow-single rounded-xl border border-border bg-surface p-card">
@@ -96,7 +82,7 @@ const dayKinds = Object.fromEntries(kindByDate);
 
 <script>
 	import 'cally';
-	import { dateToIsoInOslo } from '../../lib/dates';
+	import { pickupDayPartsFor, type PickupDayCalendarKind } from '../../lib/pickupDayKinds';
 
 	type MultiCalendar = HTMLElement & {
 		value?: string;
@@ -105,14 +91,16 @@ const dayKinds = Object.fromEntries(kindByDate);
 
 	const calendar = document.querySelector<MultiCalendar>('[data-pickup-days-calendar]');
 	if (calendar) {
-		let dayKinds: Record<string, 'mine' | 'other' | 'recurring'>;
+		let dayKinds: Record<string, PickupDayCalendarKind>;
 		try {
 			dayKinds = JSON.parse(calendar.dataset.dayKinds ?? '{}');
 		} catch {
 			dayKinds = {};
 		}
 
-		calendar.getDayParts = (date) => dayKinds[dateToIsoInOslo(date)] ?? '';
+		// Assigning after Cally has upgraded is fine: getDayParts is a reactive
+		// prop, so the months re-render with the kinds as parts.
+		calendar.getDayParts = pickupDayPartsFor(dayKinds);
 		// Every day stays pickable, including one already showing "mine" — a
 		// moderator can offer more than one time window on the same day (e.g.
 		// 12:00-14:00 and 18:00-20:00), so re-selecting a day they've already

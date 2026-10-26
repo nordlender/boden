@@ -3,10 +3,9 @@ export const prerender = false;
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin) —
 // reached only when logged in with role === 'admin'. Mirrors admin/items.astro.
-import '../../styles/global.css';
-import ThemeInit from '../../components/ThemeInit.astro';
-import AdminNavbar from '../../components/AdminNavbar.astro';
-import WizardHeader from '../../components/wizard/WizardHeader.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Page from '../../components/ui/Page.astro';
+import WizardSearch from '../../components/wizard/WizardSearch.astro';
 import AddSetPanel from '../../components/wizard/sets/AddSetPanel.astro';
 import SetPanel from '../../components/wizard/sets/SetPanel.astro';
 import { getWizardSets, listComponentItemOptions } from '../../lib/setWizard';
@@ -32,17 +31,9 @@ const toSetView = (set: Awaited<ReturnType<typeof getWizardSets>>['unassigned'][
 	needsAttention: set.components.length === 0 || set.hasArchivedComponent,
 });
 ---
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<title>Sets</title>
-		<ThemeInit />
-	</head>
-	<body class="min-h-screen bg-bg-subtle">
-		<AdminNavbar />
-		<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-			<WizardHeader title="Sets" />
+<AdminLayout title="Sets">
+		<Page width="wide" title="Sets">
+			<WizardSearch slot="actions" placeholder="Search sets…" />
 
 			<AddSetPanel redirectTo={redirectTo} />
 
@@ -62,6 +53,5 @@ const toSetView = (set: Awaited<ReturnType<typeof getWizardSets>>['unassigned'][
 				componentItemOptions={componentItemOptions}
 				redirectTo={redirectTo}
 			/>
-		</div>
-	</body>
-</html>
+		</Page>
+</AdminLayout>

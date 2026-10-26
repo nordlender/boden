@@ -6,6 +6,7 @@
 // OrderItemsList so one line's look can be tuned without touching the
 // list/loop logic around it.
 import ItemLine from '../ui/ItemLine.astro';
+import { inputSmClasses } from '../../lib/form-styles';
 import Badge from '../ui/Badge.astro';
 
 interface Props {
@@ -48,11 +49,11 @@ const {
 const unavailable = archived || doubleBooked;
 ---
 
-<li class="py-2">
+<li class="py-3">
 	<ItemLine imageUrl={itemImageUrl} name={itemName} quantity={requestedQuantity} quantityStyle="inline">
 		{
 			showAvailability && unavailable && (
-				<span class="flex flex-wrap gap-2 pt-0.5 text-xs">
+				<span class="flex flex-wrap gap-2 pt-1 text-xs">
 					{archived && <Badge tone="warning">Archived / unpublished</Badge>}
 					{doubleBooked && <Badge tone="warning">Fully booked elsewhere</Badge>}
 				</span>
@@ -63,7 +64,7 @@ const unavailable = archived || doubleBooked;
 			{
 				adjustableTargets &&
 					(unavailable ? (
-						<label class="flex flex-col items-end gap-0.5 text-xs text-text-muted">
+						<label class="flex flex-col items-end gap-1 text-xs text-text-muted">
 							Target qty
 							<input
 								type="number"
@@ -73,7 +74,7 @@ const unavailable = archived || doubleBooked;
 								max={requestedQuantity}
 								required
 								form={formId}
-								class="w-16 rounded border border-border-strong px-2 py-1 text-sm text-text"
+								class:list={['w-16', inputSmClasses]}
 							/>
 						</label>
 					) : (

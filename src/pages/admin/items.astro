@@ -2,7 +2,8 @@
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin) —
 // reached only when logged in with role === 'admin'.
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import WizardHeader from '../../components/wizard/WizardHeader.astro';
+import Page from '../../components/ui/Page.astro';
+import WizardSearch from '../../components/wizard/WizardSearch.astro';
 import ItemPanel from '../../components/wizard/ItemPanel.astro';
 import AddItemPanel from '../../components/wizard/AddItemPanel.astro';
 import { getWizardItems, listProductOptions } from '../../lib/wizard';
@@ -30,8 +31,8 @@ const toItemView = (item: Awaited<ReturnType<typeof getWizardItems>>['unassigned
 });
 ---
 <AdminLayout title="Items">
-	<div class="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-		<WizardHeader title="Items" />
+	<Page width="wide" title="Items">
+		<WizardSearch slot="actions" placeholder="Search items…" />
 
 		<AddItemPanel redirectTo={redirectTo} />
 
@@ -49,5 +50,5 @@ const toItemView = (item: Awaited<ReturnType<typeof getWizardItems>>['unassigned
 			products={products}
 			redirectTo={redirectTo}
 		/>
-	</div>
+	</Page>
 </AdminLayout>

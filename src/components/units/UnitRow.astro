@@ -11,6 +11,7 @@
 // ("red and white tape"), shown as an ordinary column — not as the unit's
 // title. A unit has no name; it's identified by its #id.
 import TextMorphButton from '../ui/TextMorphButton.astro';
+import { eyebrowClasses } from '../../lib/layout-styles';
 import DetailsToggle from '../wizard/DetailsToggle.astro';
 import OptsFields from './OptsFields.astro';
 import UnitNoteList from './UnitNoteList.astro';
@@ -19,7 +20,9 @@ import UnitStatusControl from './UnitStatusControl.astro';
 import type { Unit, UnitItemRef } from '../../lib/units';
 import type { MessageRow } from '../../lib/messages';
 import { formatIsoDateDdMmYy } from '../../lib/dates';
-import { DESKTOP_ONLY_CLASS, UNIT_FORM_FIELDS, UNIT_GRID_CLASS, UNIT_GRID_STYLE, inputClass, labelClass } from './unitTable';
+import { DESKTOP_ONLY_CLASS, UNIT_FORM_FIELDS, UNIT_GRID_CLASS, UNIT_GRID_STYLE } from './unitTable';
+import { compactLabelClasses, inputClasses } from '../../lib/form-styles';
+import { actionRowClasses } from '../../lib/layout-styles';
 
 interface Props {
 	unit: Unit;
@@ -40,7 +43,7 @@ const brandModel = [unit.brand, unit.model].filter(Boolean).join(' ');
 const opts = Object.entries(unit.opts);
 ---
 <div class="border-b border-border last:border-b-0" data-details-row>
-	<div class:list={[UNIT_GRID_CLASS, 'py-2 hover:bg-bg-subtle']} style={UNIT_GRID_STYLE}>
+	<div class:list={[UNIT_GRID_CLASS, 'py-3 hover:bg-bg-subtle']} style={UNIT_GRID_STYLE}>
 		<span class="font-mono text-xs text-text-muted">#{unit.id}</span>
 		<div class="min-w-0">
 			{item && (
@@ -63,7 +66,7 @@ const opts = Object.entries(unit.opts);
 			{opts.length || '—'}
 		</span>
 		<UnitStatusControl unit={unit} redirectTo={redirectTo} />
-		<div class="flex items-center justify-end gap-1">
+		<div class="flex items-center justify-end gap-2">
 			<NewUnitNoteButton unitId={unit.id} redirectTo={redirectTo} />
 			<DetailsToggle label={`Edit details of unit #${unit.id}`} />
 		</div>
@@ -71,23 +74,23 @@ const opts = Object.entries(unit.opts);
 
 	{notes.length > 0 && <UnitNoteList notes={notes} currentUserId={currentUserId} isAdmin={isAdmin} redirectTo={redirectTo} />}
 
-	<div class="hidden border-t border-border bg-bg-subtle/60 px-4 py-4" data-details-panel>
-		<p class="mb-3 text-xs text-text-muted sm:hidden">
+	<div class="hidden border-t border-border bg-bg-subtle/60 px-card py-5" data-details-panel>
+		<p class="mb-4 text-xs text-text-muted sm:hidden">
 			Made {unit.manufacturedAt ? formatIsoDateDdMmYy(unit.manufacturedAt) : '—'} · Bought {unit.purchasedAt ? formatIsoDateDdMmYy(unit.purchasedAt) : '—'} · {opts.length} extra field{opts.length === 1 ? '' : 's'}
 		</p>
-		<div class="flex flex-col gap-4">
-			<form method="post" action="/api/wizard/units" class="flex flex-col gap-3">
+		<div class="flex flex-col gap-6">
+			<form method="post" action="/api/wizard/units" class="flex flex-col gap-stack">
 				<input type="hidden" name="action" value="update" />
 				<input type="hidden" name="unitId" value={unit.id} />
 				<input type="hidden" name="redirectTo" value={redirectTo} />
-				<p class="text-xs font-medium uppercase tracking-wide text-text-muted">Edit details</p>
-				<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+				<p class={eyebrowClasses}>Edit details</p>
+				<div class="grid grid-cols-1 gap-stack sm:grid-cols-3">
 					{UNIT_FORM_FIELDS.map((field) => (
 						<div>
-							<label class={labelClass} for={`unit-${unit.id}-${field.name}`}>{field.label}</label>
+							<label class={compactLabelClasses} for={`unit-${unit.id}-${field.name}`}>{field.label}</label>
 							<input
 								id={`unit-${unit.id}-${field.name}`}
-								class={inputClass}
+								class:list={['w-full min-w-0', inputClasses]}
 								type={field.type}
 								name={field.name}
 								value={unit[field.name] ?? ''}
@@ -98,7 +101,10 @@ const opts = Object.entries(unit.opts);
 					))}
 				</div>
 				<OptsFields opts={unit.opts} />
-				<TextMorphButton type="submit" action="save" variant="primary" size="sm" class="self-start">Save details</TextMorphButton>
+				<div class={actionRowClasses}>
+					<TextMorphButton type="reset" action="cancel" />
+					<TextMorphButton type="submit" action="save" variant="primary">Save details</TextMorphButton>
+				</div>
 			</form>
 		</div>
 	</div>

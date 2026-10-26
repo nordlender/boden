@@ -3,6 +3,7 @@ export const prerender = false;
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin).
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import Page from '../../../../components/ui/Page.astro';
 import ProductForm from '../../../../components/wizard/ProductForm.astro';
 import { listCategoryOptions, listSubcategoryOptions, getProductForEdit } from '../../../../lib/products';
 
@@ -20,12 +21,8 @@ const [categories, subcategories] = await Promise.all([listCategoryOptions(), li
 ---
 
 <AdminLayout title={`Edit ${product.title}`}>
-	<div class="mx-auto flex max-w-2xl flex-col gap-6 p-8">
-		<div>
-			<h1 class="text-xl font-semibold text-text">Edit product</h1>
-			<p class="mt-1 text-sm text-text-muted">/{product.slug}</p>
-		</div>
+	<Page width="medium" title="Edit product" description={`/${product.slug}`}>
 
 		<ProductForm mode="edit" product={product} categories={categories} subcategories={subcategories} redirectTo="/admin/products" />
-	</div>
+	</Page>
 </AdminLayout>

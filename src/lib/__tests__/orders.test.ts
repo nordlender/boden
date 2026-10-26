@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { createOrder, deleteOrder, generateOrderCode, rescheduleOrder } from '../orders';
+import { createOrder, deleteOrder, generateOrderCode, getMemberOrder, getMemberOrderRows, rescheduleOrder } from '../orders';
 import type { CartEntry } from '../cart';
 
 // rescheduleOrder calls isValidDateRange (src/lib/reservation.ts), which
@@ -109,6 +109,12 @@ async function markOrderActive(orderId: number) {
 	const { db } = await import('../../db/client');
 	const schema = await import('../../db/schema');
 	await db.update(schema.orders).set({ status: 'active' }).where(eq(schema.orders.id, orderId));
+}
+
+async function markOrderAccepted(orderId: number) {
+	const { db } = await import('../../db/client');
+	const schema = await import('../../db/schema');
+	await db.update(schema.orders).set({ acceptedAt: new Date() }).where(eq(schema.orders.id, orderId));
 }
 
 describe('createOrder', () => {
@@ -257,6 +263,17 @@ describe('deleteOrder', () => {
 		expect(result).toEqual({ ok: false, error: 'not_found' });
 	});
 
+	it('allows deleting an accepted (scheduled) order', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-20', '2026-05-21');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		await markOrderAccepted(created.orderId);
+
+		expect(await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({ ok: true });
+		expect(await findOrderByCode(created.orderCode)).toBeUndefined();
+	});
+
 	it('rejects deleting an order that has moved past "requested"', async () => {
 		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-10', '2026-05-11');
 		expect(created.ok).toBe(true);
@@ -330,9 +347,66 @@ describe('rescheduleOrder', () => {
 		expect(result).toEqual({ ok: false, error: 'not_modifiable', status: 'active' });
 	});
 
+	it('rejects rescheduling an order a moderator has accepted (scheduled)', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-11-15', '2026-11-16');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		await markOrderAccepted(created.orderId);
+
+		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-20', toDate: '2026-11-21' });
+		expect(result).toEqual({ ok: false, error: 'not_modifiable', status: 'scheduled' });
+		expect((await findOrderByCode(created.orderCode))?.fromDate).toBe('2026-11-15');
+	});
+
 	it('rejects rescheduling an order owned by someone else, without revealing whether it exists', async () => {
 		const result = await rescheduleOrder({ orderCode: 'AAAAAA', userId: 'member-1', fromDate: '2026-12-01', toDate: '2026-12-02' });
 		expect(result).toEqual({ ok: false, error: 'not_found' });
+	});
+});
+
+describe('getMemberOrder', () => {
+	it("returns the member's own order with its items", async () => {
+		const result = await placeOrder([{ itemId: ITEM_B_ID, quantity: 2 }], '2026-09-01', '2026-09-02');
+		if (!result.ok) throw new Error('expected order to be created');
+
+		const order = await getMemberOrder(result.orderCode, 'member-1');
+		expect(order?.orderCode).toBe(result.orderCode);
+		expect(order?.orderItems.map((oi) => [oi.item.name, oi.requestedQuantity])).toEqual([['Item B', 2]]);
+	});
+
+	it("returns undefined for another member's order, same as a nonexistent one", async () => {
+		expect(await getMemberOrder('AAAAAA', 'member-1')).toBeUndefined();
+		expect(await getMemberOrder('NOPE1', 'member-1')).toBeUndefined();
+		expect(await getMemberOrder('', 'member-1')).toBeUndefined();
+	});
+});
+
+describe('getMemberOrderRows', () => {
+	it("lists only the member's own orders, named by the checkout contact snapshot", async () => {
+		// users.name ('Member') deliberately differs from the contact name, so a
+		// row that picked up the account name would fail the customerName check.
+		const result = await createOrder({
+			userId: 'member-1',
+			note: null,
+			cartEntries: [{ itemId: ITEM_B_ID, quantity: 1 }],
+			fromDate: '2026-12-10',
+			toDate: '2026-12-11',
+			...CONTACT,
+			contactName: 'Checkout Name',
+		});
+		if (!result.ok) throw new Error('expected order to be created');
+
+		const rows = await getMemberOrderRows('member-1');
+		expect(rows.find((r) => r.orderCode === result.orderCode)).toMatchObject({
+			customerName: 'Checkout Name',
+			items: [{ itemName: 'Item B', requestedQuantity: 1 }],
+		});
+		expect(rows.map((r) => r.orderCode)).not.toContain('AAAAAA');
+	});
+
+	it('returns an empty list for a member with no orders', async () => {
+		expect(await getMemberOrderRows('')).toEqual([]);
 	});
 });
 

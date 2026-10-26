@@ -6,6 +6,7 @@
 // pin/delete any message; moderators may delete only their own — see issue
 // #225 and MessageTableRow.astro).
 import MessageTableRow from './MessageTableRow.astro';
+import { cardClasses, emptyStateClasses, sectionTitleClasses } from '../../lib/layout-styles';
 import type { MessageRow } from '../../lib/messages';
 
 interface Props {
@@ -13,21 +14,39 @@ interface Props {
 	currentUserId?: string | null;
 	isAdmin?: boolean;
 	redirectTo?: string;
+	/**
+	 * Cap the list's height to the viewport and scroll inside it (hub pages),
+	 * leaving room for the page chrome and the hub's action tiles below.
+	 */
+	scrollable?: boolean;
+	/**
+	 * Extra height (CSS length) the page puts between the board and the action
+	 * tiles, subtracted from the cap — `base` below `sm`, `sm` from `sm` up.
+	 */
+	extraReserve?: { base: string; sm: string };
 }
 
-const { messages, currentUserId = null, isAdmin = false, redirectTo } = Astro.props;
+const { messages, currentUserId = null, isAdmin = false, redirectTo, scrollable = false, extraReserve } = Astro.props;
+
+const scrollStyle = scrollable && extraReserve ? `--board-extra:${extraReserve.base};--board-extra-sm:${extraReserve.sm}` : undefined;
 ---
 
-<div class="flex flex-col gap-3">
-	<div class="flex items-center justify-between gap-3">
-		<h2 class="text-lg font-semibold text-text">Messages</h2>
+<div class="flex flex-col gap-stack">
+	<div class="flex items-center justify-between gap-stack">
+		<h2 class={sectionTitleClasses}>Messages</h2>
 		<slot name="actions" />
 	</div>
 
-	<div class="rounded-lg border border-border bg-surface">
+	<div
+		class:list={[cardClasses, scrollable && 'message-board-scroll']}
+		style={scrollStyle}
+		tabindex={scrollable ? 0 : undefined}
+		role={scrollable ? 'region' : undefined}
+		aria-label={scrollable ? 'Messages' : undefined}
+	>
 		{
 			messages.length === 0 ? (
-				<p class="p-4 text-sm text-text-muted">No messages right now.</p>
+				<p class={emptyStateClasses}>No messages right now.</p>
 			) : (
 				<ul class="divide-y divide-border">
 					{messages.map((message) => (
@@ -38,3 +57,72 @@ const { messages, currentUserId = null, isAdmin = false, redirectTo } = Astro.pr
 		}
 	</div>
 </div>
+
+<style>
+	/*
+	 * Viewport minus everything else on a hub page, from the spacing tokens in
+	 * global.css plus the fixed heights of the parts that don't use them:
+	 * navbar 4.5rem, page title 2rem, this board's header row 2.5rem, the
+	 * action tiles (tallest case, descriptions wrapped) 13rem stacked / 13.5rem
+	 * in a row. Token terms: page top + title gap + page bottom (3 × section),
+	 * header row gap (stack) and the gap to the tiles (region). Below `sm` only
+	 * one tile is kept in view; from `sm` all three. The 10rem floor keeps the
+	 * board usable on very short viewports.
+	 */
+	.message-board-scroll {
+		overflow-y: auto;
+		max-height: max(
+			10rem,
+			calc(
+				100dvh - 22rem - 3 * var(--ui-space-section) - var(--ui-space-stack) - var(--ui-space-region) -
+					var(--board-extra, 0rem)
+			)
+		);
+	}
+
+	/* Same breakpoint as the spacing tokens' wider values (40rem = Tailwind's `sm`). */
+	@media (min-width: 40rem) {
+		.message-board-scroll {
+			max-height: max(
+				10rem,
+				calc(
+					100dvh - 22.5rem - 3 * var(--ui-space-section) - var(--ui-space-stack) - var(--ui-space-region) -
+						var(--board-extra-sm, 0rem)
+				)
+			);
+		}
+	}
+
+	/*
+	 * Scroll shadows: a soft edge shadow on whichever side has more messages
+	 * beyond it. Pure CSS — the two surface-coloured "cover" gradients are
+	 * `local` (they scroll with the content and hide the shadow once that
+	 * edge is reached), the two shadow gradients are `scroll` (fixed to the
+	 * box). Colours come from theme tokens so it works in light and dark.
+	 */
+	.message-board-scroll {
+		--board-shadow: color-mix(in srgb, var(--color-text) 16%, transparent);
+		background-image:
+			linear-gradient(var(--color-surface) 30%, transparent),
+			linear-gradient(transparent, var(--color-surface) 70%),
+			radial-gradient(farthest-side at 50% 0, var(--board-shadow), transparent),
+			radial-gradient(farthest-side at 50% 100%, var(--board-shadow), transparent);
+		background-position:
+			0 0,
+			0 100%,
+			0 0,
+			0 100%;
+		background-size:
+			100% 2.5rem,
+			100% 2.5rem,
+			100% 0.75rem,
+			100% 0.75rem;
+		background-repeat: no-repeat;
+		background-attachment: local, local, scroll, scroll;
+	}
+
+	.message-board-scroll:focus-visible {
+		outline: 2px solid var(--color-border-interactive);
+		outline-offset: 1px;
+	}
+</style>

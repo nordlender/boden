@@ -87,7 +87,7 @@ const iconName = typeof entry === 'string' ? entry : entry[variant as keyof type
 | `{select_menu_icon}` | table header's select-all control | `tabler:square-chevron-down` | fixed dropdown trigger, not a tri-state indicator — supersedes the old `{select_header_icon}` idea. Opens None/All/Invert, which moved here from the button strip |
 | `{select_none_icon}` | "None" option in the select menu | `tabler:circle-dashed` | |
 | `{select_all_icon}` | "All" option in the select menu | `tabler:circle-asterisk` | |
-| `{select_invert_icon}` | "Invert" option in the select menu | `tabler:circle-half-2` | |
+| `{select_invert_icon}` | "Invert" option in the select menu | `tabler:percentage-50` | |
 | `{dropdown_icon}` | generic dropdown trigger chevron | `chevron-down` (closed) / `chevron-up` (open) | reused by the Set dropdown. Animated with morphicons, not `<AppIcon>` — see "Morphing the dynamic icons" |
 | *(not a wizard-doc placeholder)* | trash / "Delete n item(s)" button | `tabler:trash` | `icons.ts`'s `trash` key |
 | *(not a wizard-doc placeholder)* | inline edit trigger next to an attribute's value in the details box | `tabler:pencil` | `icons.ts`'s `edit` key |
@@ -131,20 +131,20 @@ swap with an actual morph animation between the two icon shapes.
   needs `IconNode` data (`[tag, attrs][]`, the same structural format
   Lucide's vanilla data package uses). Tabler's own `@tabler/icons` npm
   package ships this exact format in `tabler-nodes-outline.json`, so rather
-  than pull in that 11MB package as a runtime dependency for four icons, we
-  hand-picked the entries we need (chevron-down/up, square/square-check)
-  out of it once and committed them as plain constants. The file's header
+  than pull in that 11MB package as a runtime dependency for a handful of icons, we
+  hand-picked the entries we need (originally chevron-down/up and
+  square/square-check; more morph pairs have been added since) out of it once and committed them as plain constants. The file's header
   comment explains how to pull more icons the same way if we add more morph
   pairs later.
 
 Wired into the two components that actually flagged "dynamic":
 
-- **`Dropdown.astro`** — the trigger chevron is now `<MorphIcon>`. A single
+- **`ui/Dropdown.astro`** (moved from `wizard/`) — the trigger chevron is now `<MorphIcon>`. A single
   delegated `document.addEventListener('toggle', ..., true)` (capture phase,
   since `toggle` doesn't bubble) watches every `<details>` this component
   renders and morphs its chevron between `dropdownChevron.closed`/`.open` on
   open/close. One script, works for every Dropdown instance on the page
-  (the Set button, the Add Item panel's Type field), because Astro only
+  (the Set button, and any other `Dropdown` on the page), because Astro only
   emits a component's inline `<script>` once per page regardless of how
   many times the component is used.
 - **`SelectIcon.astro`** — the per-row checkbox is now `<MorphIcon>` and
@@ -164,13 +164,10 @@ Wired into the two components that actually flagged "dynamic":
 left alone: per "Resolved" above it's a fixed dropdown trigger, not a
 two-state icon, so there's nothing to morph.
 
-Verified by SSR-rendering `wizard-test.astro` and confirming: (a) `astro
-check` reports no new type errors, (b) every `<morph-icon>` element is
-present (19 across the mock data — one per row's checkbox, plus the Add
-Item panel's Type dropdown chevrons), and (c) rows with `selected: true` in
-the mock data render the checked-icon path, unselected rows render the
-unchecked path. Actually clicking/toggling in a browser wasn't checked here
-— that's a visual, in-browser thing for you to confirm.
+Originally verified by SSR-rendering a throwaway mock-data page (since
+deleted; the components now run at `/admin/items`) and checking that every
+`<morph-icon>` rendered with the right checked/unchecked path. Click
+behavior in a browser is a visual check.
 
 ## Open questions
 
@@ -193,4 +190,6 @@ unchecked path. Actually clicking/toggling in a browser wasn't checked here
 
 `AppIcon.astro`, `src/lib/icons.ts`, `src/lib/icon-nodes.ts`, and the
 item-table/wizard components described in `docs/wizard.md` are built —
-see `src/components/wizard/` and `src/pages/wizard-test.astro`.
+see `src/components/wizard/` and `src/pages/admin/items.astro`. `icons.ts`
+and `icon-nodes.ts` have since grown past the wizard (nav, orders table,
+units, action buttons, ...); read them for the current list.

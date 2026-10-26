@@ -3,6 +3,8 @@
 // orders.contactName/contactEmail/contactMobile). Only the name is shown
 // here — email/mobile are persisted on the order for future admin/moderator
 // visibility but are intentionally omitted from this page for privacy.
+import { eyebrowClasses } from '../../lib/layout-styles';
+
 interface Props {
 	contactName: string;
 }
@@ -10,7 +12,7 @@ interface Props {
 const { contactName } = Astro.props;
 ---
 
-<section class="flex flex-col gap-1">
-	<h2 class="text-sm font-semibold tracking-wide text-text-muted uppercase">Submitted by</h2>
+<section class="flex flex-col gap-snug">
+	<h2 class={eyebrowClasses}>Submitted by</h2>
 	<p class="text-sm text-text">{contactName}</p>
 </section>

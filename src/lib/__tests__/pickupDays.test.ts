@@ -10,7 +10,6 @@ const { users } = await import('../../db/schema');
 const {
 	isValidDateString,
 	isValidTimeString,
-	getUpcomingAvailablePickupDates,
 	getUpcomingPickupWindows,
 	getPickupWindowsForDate,
 	getOrderPickupWindows,
@@ -21,6 +20,11 @@ const {
 	createRecurringRule,
 	deleteRecurringRule,
 } = await import('../pickupDays');
+
+// Dates that have at least one not-yet-ended window — what colours the calendar.
+async function upcomingDates(date: string): Promise<string[]> {
+	return Object.keys(await getUpcomingPickupWindows({ date, time: '00:00' }));
+}
 
 const MODERATOR_A = 'moderator-a';
 const MODERATOR_B = 'moderator-b';
@@ -63,13 +67,13 @@ describe('single pickup days', () => {
 			{ date: '2026-09-20', startTime: '10:00', endTime: '12:00', where: 'At Vulkan' },
 			{ date: '2026-09-10', startTime: '09:00', endTime: '10:00', where: null },
 		]);
-		const dates = await getUpcomingAvailablePickupDates('2026-01-01');
+		const dates = await upcomingDates('2026-01-01');
 		expect(dates).toEqual(['2026-09-10', '2026-09-20']);
 	});
 
 	it('silently drops a malformed date rather than throwing', async () => {
 		await expect(createSingleDays(MODERATOR_A, [{ date: 'not-a-date', startTime: '09:00', endTime: '10:00', where: null }])).resolves.toBeUndefined();
-		expect(await getUpcomingAvailablePickupDates('2026-01-01')).toEqual([]);
+		expect(await upcomingDates('2026-01-01')).toEqual([]);
 	});
 
 	it('re-submitting the exact same date and time for the same moderator does not duplicate', async () => {
@@ -97,12 +101,12 @@ describe('single pickup days', () => {
 		expect(rows).toHaveLength(2);
 	});
 
-	it('getUpcomingAvailablePickupDates excludes dates before the given floor', async () => {
+	it('upcoming pickup windows excludes dates before the given floor', async () => {
 		await createSingleDays(MODERATOR_A, [
 			{ date: '2026-09-01', startTime: '09:00', endTime: '10:00', where: null },
 			{ date: '2026-09-15', startTime: '09:00', endTime: '10:00', where: null },
 		]);
-		expect(await getUpcomingAvailablePickupDates('2026-09-10')).toEqual(['2026-09-15']);
+		expect(await upcomingDates('2026-09-10')).toEqual(['2026-09-15']);
 	});
 
 	it('pickup windows carry time and place, are deduplicated, and sorted by start time', async () => {
@@ -113,7 +117,7 @@ describe('single pickup days', () => {
 		]);
 		await createSingleDays(MODERATOR_B, [{ date: '2026-09-10', startTime: '18:00', endTime: '20:00', where: 'At Vulkan' }]);
 
-		expect(await getUpcomingPickupWindows('2026-09-10')).toEqual({
+		expect(await getUpcomingPickupWindows({ date: '2026-09-10', time: '00:00' })).toEqual({
 			'2026-09-10': [
 				{ startTime: '12:00', endTime: '14:00', where: null },
 				{ startTime: '18:00', endTime: '20:00', where: 'At Vulkan' },
@@ -124,6 +128,20 @@ describe('single pickup days', () => {
 		expect(await getPickupWindowsForDate('2026-09-02')).toEqual([]);
 		// Order pages: the order's pick-up date windows until #367 adds pickupDayId.
 		expect(await getOrderPickupWindows({ fromDate: '2026-09-01' })).toEqual([{ startTime: '09:00', endTime: '10:00', where: null }]);
+	});
+
+	it('upcoming pickup windows drop today\'s windows that have already ended', async () => {
+		await createSingleDays(MODERATOR_A, [
+			{ date: '2026-09-10', startTime: '12:00', endTime: '14:00', where: null },
+			{ date: '2026-09-10', startTime: '18:00', endTime: '20:00', where: null },
+			{ date: '2026-09-11', startTime: '09:00', endTime: '10:00', where: null },
+		]);
+		expect(await getUpcomingPickupWindows({ date: '2026-09-10', time: '14:00' })).toEqual({
+			'2026-09-10': [{ startTime: '18:00', endTime: '20:00', where: null }],
+			'2026-09-11': [{ startTime: '09:00', endTime: '10:00', where: null }],
+		});
+		// Once the last window of today has ended, today no longer colours.
+		expect(Object.keys(await getUpcomingPickupWindows({ date: '2026-09-10', time: '20:00' }))).toEqual(['2026-09-11']);
 	});
 
 	it('a moderator can only delete their own single day', async () => {
@@ -191,7 +209,7 @@ describe('recurring pickup days', () => {
 });
 
 describe('single and recurring days union for the reservation calendar', () => {
-	it('getUpcomingAvailablePickupDates includes both kinds, deduplicated', async () => {
+	it('upcoming pickup windows includes both kinds, deduplicated', async () => {
 		await createSingleDays(MODERATOR_A, [{ date: '2026-09-07', startTime: '09:00', endTime: '10:00', where: null }]);
 		await createRecurringRule({
 			createdByUserId: ADMIN,
@@ -201,6 +219,6 @@ describe('single and recurring days union for the reservation calendar', () => {
 			startDate: '2026-09-07',
 			endDate: '2026-09-07',
 		});
-		expect(await getUpcomingAvailablePickupDates('2026-01-01')).toEqual(['2026-09-07']);
+		expect(await upcomingDates('2026-01-01')).toEqual(['2026-09-07']);
 	});
 });

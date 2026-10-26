@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getMemberOrder } from '../../lib/orders';
+import { toOrderItemView } from '../../lib/orderItemView';
 import { getOrderPickupWindows } from '../../lib/pickupDays';
 import PickupInfo from '../../components/orders/PickupInfo.astro';
 import { getMaxRentalDays } from '../../lib/rental-policy';
@@ -25,7 +26,10 @@ if (!order) {
   return Astro.redirect('/');
 }
 
-const pickupWindows = await getOrderPickupWindows(order);
+// Only while the pick-up is still ahead: a rejected order never gets one, and
+// an active/returned order has already been picked up.
+const showPickup = order.status === 'requested' || order.status === 'scheduled';
+const pickupWindows = showPickup ? await getOrderPickupWindows(order) : [];
 ---
 
 <BaseLayout title={`Order #${order.orderCode}`}>
@@ -34,14 +38,8 @@ const pickupWindows = await getOrderPickupWindows(order);
 
 		<Card as="div">
 			<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
-			<PickupInfo windows={pickupWindows} emptyText="A moderator will confirm the time and place." />
-			<OrderContents
-				items={order.orderItems.map((oi) => ({
-					itemName: oi.item.name,
-					requestedQuantity: oi.requestedQuantity,
-				}))}
-				note={order.note}
-			/>
+			{showPickup && <PickupInfo windows={pickupWindows} emptyText="A moderator will confirm the time and place." />}
+			<OrderContents items={order.orderItems.map(toOrderItemView)} note={order.note} />
 			<SubmittedContactDetails contactName={order.contactName} />
 			<div class={cardFooterClasses}>
 				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} />

@@ -7,7 +7,7 @@ import { emptyStateFramedClasses } from '../../lib/layout-styles';
 import { getCartLines } from '../../lib/cart';
 import { getUpcomingPickupWindows } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
-import { todayIsoInOslo } from '../../lib/dates';
+import { nowInOslo } from '../../lib/dates';
 import { getSession } from 'auth-astro/server';
 import { fetchOwnMemberFeeStatus } from '../../lib/blocFeeStatus';
 
@@ -22,9 +22,8 @@ const [session, feeStatus] = await Promise.all([
 	cartLines.length > 0 ? fetchOwnMemberFeeStatus(Astro.request) : Promise.resolve({ hasUnpaidFees: null, userIsMember: null }),
 ]);
 
-// Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
-const todayIso = todayIsoInOslo();
-const pickupWindows = await getUpcomingPickupWindows(todayIso);
+// Europe/Oslo's clock, not the server host's — see src/lib/dates.ts.
+const pickupWindows = await getUpcomingPickupWindows(nowInOslo());
 
 // Surfaces the error redirects /api/orders/create (and /reservation/confirm)
 // can send back here — see the keys of errorMessages below. Without this the

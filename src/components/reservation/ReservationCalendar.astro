@@ -14,13 +14,12 @@
 // never upgrades. The <script> block is compiled as a real client module,
 // which is where the registration needs to happen.
 interface Props {
-	// Pick-up days (first day of the range — see src/db/schema.ts's
-	// orders.fromDate) with a moderator confirmed available to hand out
-	// orders, per src/lib/pickupDays.ts. Colored green in the calendar;
-	// everything else is left at the default "request pick up" styling.
-	availablePickupDates?: string[];
-	// Time + place windows per pick-up date; the selected pick-up day's are
-	// listed under the range summary. Unset (reschedule modal) shows none.
+	// Time + place windows per pick-up date (see src/lib/pickupDays.ts). Every
+	// date that has one is a pick-up day (first day of the range — see
+	// src/db/schema.ts's orders.fromDate) and is colored green; everything
+	// else keeps the default "request pick up" styling. The selected pick-up
+	// day's windows are listed under the range summary. Unset (reschedule
+	// modal) colors and shows none.
 	pickupWindows?: Record<string, PickupWindowDisplay[]>;
 	// Preselects an existing range — "YYYY-MM-DD/YYYY-MM-DD", same shape as
 	// this component's own `change` event value. Used by the reschedule flow
@@ -39,7 +38,7 @@ import CallyLegend from '../ui/CallyLegend.astro';
 import CallyNavIcons from '../ui/CallyNavIcons.astro';
 import type { PickupWindowDisplay } from '../../lib/pickupWindowFormat';
 
-const { availablePickupDates = [], pickupWindows = {}, value, maxRangeDays } = Astro.props;
+const { pickupWindows = {}, value, maxRangeDays } = Astro.props;
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
 const todayIso = todayIsoInOslo();
 ---
@@ -58,7 +57,6 @@ const todayIso = todayIsoInOslo();
 		page-by="single"
 		min={todayIso}
 		value={value}
-		data-available-pickup-dates={JSON.stringify(availablePickupDates)}
 		data-pickup-windows={JSON.stringify(pickupWindows)}
 		data-max-range-days={maxRangeDays}
 	>
@@ -151,28 +149,24 @@ const todayIso = todayIsoInOslo();
 	const windowsList = document.querySelector<HTMLElement>('[data-pickup-windows-list]');
 	const maxRangeDays = calendar ? Number(calendar.dataset.maxRangeDays || '') || undefined : undefined;
 
-	if (calendar) {
-		let availableDates: Set<string>;
-		try {
-			availableDates = new Set(JSON.parse(calendar.dataset.availablePickupDates ?? '[]'));
-		} catch {
-			availableDates = new Set();
-		}
-
-		// Cally hands `getDayParts` a local-midnight Date for each rendered
-		// cell — deriving its date string via toISOString() (UTC) shifted the
-		// match by a day for CET/CEST viewers (#50). dateToIsoInOslo reads the
-		// wall-clock date in Europe/Oslo instead, matching availablePickupDates
-		// (also Oslo-anchored — see src/lib/pickupDays.ts) regardless of the
-		// viewer's own device timezone.
-		calendar.getDayParts = (date) => (availableDates.has(dateToIsoInOslo(date)) ? 'pickup-available' : '');
-	}
-
 	let pickupWindows: Record<string, PickupWindowDisplay[]> = {};
 	try {
 		pickupWindows = JSON.parse(calendar?.dataset.pickupWindows ?? '{}');
 	} catch {
 		// No windows listed — the summary still works without them.
+	}
+
+	if (calendar) {
+		// Every date with a window is a pick-up day.
+		const availableDates = new Set(Object.keys(pickupWindows));
+
+		// Cally hands `getDayParts` a local-midnight Date for each rendered
+		// cell — deriving its date string via toISOString() (UTC) shifted the
+		// match by a day for CET/CEST viewers (#50). dateToIsoInOslo reads the
+		// wall-clock date in Europe/Oslo instead, matching the pickupWindows
+		// keys (also Oslo-anchored — see src/lib/pickupDays.ts) regardless of
+		// the viewer's own device timezone.
+		calendar.getDayParts = (date) => (availableDates.has(dateToIsoInOslo(date)) ? 'pickup-available' : '');
 	}
 
 	// Lists the time + place of the selected pick-up day's windows under the

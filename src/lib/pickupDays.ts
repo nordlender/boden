@@ -1,4 +1,4 @@
-import { and, asc, eq, gte } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, or, type SQL } from 'drizzle-orm';
 import { db } from '../db/client';
 import { addDaysIso, isIsoDate } from './dates';
 import { pickupDays, pickupRecurringRules } from '../db/schema';
@@ -42,19 +42,6 @@ export interface PickupRecurringRuleRow {
 	endDate: string;
 }
 
-// Every pick-up day from `fromDate` onward, of either kind — used by the
-// /reservation page to color the calendar. Same contract as the old
-// pickupAvailableDays-backed version (distinct sorted dates, no time/who):
-// existence of a date here is the only signal a member's calendar reads.
-export async function getUpcomingAvailablePickupDates(fromDate: string): Promise<string[]> {
-	const rows = await db
-		.selectDistinct({ date: pickupDays.date })
-		.from(pickupDays)
-		.where(gte(pickupDays.date, fromDate))
-		.orderBy(asc(pickupDays.date));
-	return rows.map((row) => row.date);
-}
-
 // Time + place only — what members see. Same shape the client-side
 // formatter (pickupWindowFormat.ts) takes.
 export type PickupWindow = PickupWindowDisplay;
@@ -73,15 +60,24 @@ function groupWindowsByDate(rows: Array<PickupWindow & { date: string }>): Map<s
 	return byDate;
 }
 
-// Time + place of every pick-up window from `fromDate` onward, keyed by date
-// — the /reservation page lists the selected day's windows under the
-// calendar summary. Same date set as getUpcomingAvailablePickupDates.
-export async function getUpcomingPickupWindows(fromDate: string): Promise<Record<string, PickupWindow[]>> {
-	const rows = await db
+async function selectWindows(where: SQL | undefined) {
+	return db
 		.select({ date: pickupDays.date, startTime: pickupDays.startTime, endTime: pickupDays.endTime, where: pickupDays.where })
 		.from(pickupDays)
-		.where(gte(pickupDays.date, fromDate))
+		.where(where)
 		.orderBy(asc(pickupDays.date), asc(pickupDays.startTime), asc(pickupDays.endTime));
+}
+
+// Time + place of every pick-up window that hasn't ended yet, keyed by date.
+// `now` is the Oslo wall clock (see nowInOslo): a window earlier today whose
+// end time has passed is left out, so it neither lists nor colours today.
+// The /reservation page colours the calendar from the keys (the only signal
+// a member's calendar reads) and lists the selected day's windows under the
+// calendar summary.
+export async function getUpcomingPickupWindows(now: { date: string; time: string }): Promise<Record<string, PickupWindow[]>> {
+	const rows = await selectWindows(
+		or(gt(pickupDays.date, now.date), and(eq(pickupDays.date, now.date), gt(pickupDays.endTime, now.time))),
+	);
 	return Object.fromEntries(groupWindowsByDate(rows));
 }
 
@@ -89,11 +85,7 @@ export async function getUpcomingPickupWindows(fromDate: string): Promise<Record
 // keeps showing its time/place on the order pages, and the
 // /reservation/confirm overview lists the chosen day's windows.
 export async function getPickupWindowsForDate(date: string): Promise<PickupWindow[]> {
-	const rows = await db
-		.select({ date: pickupDays.date, startTime: pickupDays.startTime, endTime: pickupDays.endTime, where: pickupDays.where })
-		.from(pickupDays)
-		.where(eq(pickupDays.date, date))
-		.orderBy(asc(pickupDays.startTime), asc(pickupDays.endTime));
+	const rows = await selectWindows(eq(pickupDays.date, date));
 	return groupWindowsByDate(rows).get(date) ?? [];
 }
 

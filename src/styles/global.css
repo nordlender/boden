@@ -305,8 +305,11 @@ body {
 
 /* Cally fixes day buttons at 2.25rem, but the table stretches to the card, so
    cells are wider than their buttons and a selected range shows gaps between
-   dates. Fill the cell (rows have no spacing, so cells touch). */
-:root .cally-theme calendar-month::part(button) {
+   dates. Fill the cell (rows have no spacing, so cells touch).
+   Deliberately low specificity (`:where`): Astro scopes component styles with
+   `:where()` too, so a `:root`-prefixed rule here would out-rank the
+   components' day-state radius/colour (range band, tints, selection). */
+:where(:root .cally-theme) calendar-month::part(button) {
 	inline-size: 100%;
 	border-radius: 0.375rem;
 	color: var(--color-text-muted);

@@ -5,10 +5,16 @@
 // Orders are never split (#247), so the member either gets every line or
 // fixes the cart/dates: any unavailable line blocks submit.
 
-export type ReservationStatus = 'no-dates' | 'loading' | 'error' | 'all-available' | 'some-unavailable' | 'none-available';
+export type ReservationStatus = 'no-dates' | 'too-long' | 'loading' | 'error' | 'all-available' | 'some-unavailable' | 'none-available';
 
 export interface ReservationStatusInput {
 	hasDates: boolean;
+	// Length of the selected range in days (inclusive) and the longest rental
+	// allowed (src/lib/rental-policy.ts). A longer range is rejected by the
+	// availability API, so it gets its own message instead of the generic
+	// fetch error. Omit both to skip the check.
+	rentalDays?: number;
+	maxRentalDays?: number;
 	// null while the check is in flight; 'error' when it failed.
 	availabilities: Array<{ available: boolean }> | 'error' | null;
 }
@@ -27,10 +33,18 @@ export interface ReservationStatusView {
 
 const NO_DATES_HINT = 'Select your pick-up and return dates above to continue.';
 
-export function deriveReservationStatus({ hasDates, availabilities }: ReservationStatusInput): ReservationStatusView {
+export function deriveReservationStatus({ hasDates, availabilities, rentalDays, maxRentalDays }: ReservationStatusInput): ReservationStatusView {
 	const base = { submitEnabled: false, warning: null, error: null, loading: false };
 	if (!hasDates) {
 		return { ...base, status: 'no-dates', hint: NO_DATES_HINT };
+	}
+	if (rentalDays !== undefined && maxRentalDays !== undefined && rentalDays > maxRentalDays) {
+		return {
+			...base,
+			status: 'too-long',
+			hint: 'Choose a shorter rental period to continue.',
+			warning: `The maximum rental period is ${maxRentalDays} days, and you selected ${rentalDays}. Choose a shorter period.`,
+		};
 	}
 	if (availabilities === null) {
 		return { ...base, status: 'loading', hint: 'Checking availability for your dates…', loading: true };

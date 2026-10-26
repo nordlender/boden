@@ -12,6 +12,7 @@ import { sectionTitleClasses } from '../../lib/layout-styles';
 interface Props {
 	cartLines: CartLine[];
 	pickupWindows: Record<string, PickupWindowDisplay[]>;
+	maxRentalDays: number;
 	name: string | null;
 	email: string | null;
 	mobile: string | null;
@@ -19,7 +20,7 @@ interface Props {
 	userIsMember: boolean | null;
 }
 
-const { cartLines, pickupWindows, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
+const { cartLines, pickupWindows, maxRentalDays, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
 
 const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 	'setId' in line
@@ -28,7 +29,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 );
 ---
 
-<div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} class="flex flex-col gap-region">
+<div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} data-max-rental-days={maxRentalDays} class="flex flex-col gap-region">
 	<section class="flex flex-col gap-stack">
 		<h2 class={sectionTitleClasses}>1. Pick-up &amp; return dates</h2>
 		<ReservationCalendar pickupWindows={pickupWindows} />
@@ -103,5 +104,5 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 
 	const form = document.querySelector<HTMLElement>('[data-reservation-form]');
 	const cartLines: ReservationCartLineRef[] = JSON.parse(form?.dataset.cartLines ?? '[]');
-	initReservationForm(cartLines);
+	initReservationForm(cartLines, Number(form?.dataset.maxRentalDays));
 </script>

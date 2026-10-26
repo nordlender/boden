@@ -11,6 +11,15 @@ describe('deriveReservationStatus', () => {
 		expect(view.hint).toMatch(/Select your pick-up and return dates/);
 	});
 
+	it('has its own too-long state, not the fetch error, when the range exceeds the max rental period', () => {
+		const view = deriveReservationStatus({ hasDates: true, availabilities: null, rentalDays: 20, maxRentalDays: 14 });
+		expect(view).toMatchObject({ status: 'too-long', submitEnabled: false, error: null, loading: false });
+		expect(view.warning).toMatch(/maximum rental period is 14 days.*selected 20/);
+		expect(view.hint).toMatch(/shorter rental period/);
+		// Exactly the max is fine.
+		expect(deriveReservationStatus({ hasDates: true, availabilities: null, rentalDays: 14, maxRentalDays: 14 }).status).toBe('loading');
+	});
+
 	it('keeps submit disabled while the check is in flight', () => {
 		expect(deriveReservationStatus({ hasDates: true, availabilities: null })).toMatchObject({ status: 'loading', submitEnabled: false, loading: true });
 	});

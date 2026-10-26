@@ -57,6 +57,7 @@ const errorMessage = error ? (errorMessages[error] ?? null) : null;
 		{cartLines.length > 0 && <ReservationForm
 			cartLines={cartLines}
 			pickupWindows={pickupWindows}
+			maxRentalDays={getMaxRentalDays()}
 			name={session?.user?.name ?? null}
 			email={session?.user?.email ?? null}
 			mobile={session?.bloc?.mobile ?? null}

@@ -12,6 +12,7 @@
 // enable/disable). Pure DOM painting lives in reservationFormRender.ts — this
 // module decides *what* to render and calls those functions with the result.
 import { hideRow, renderRow, setSubmitEnabled, setSubmitHint, type LineAvailability } from './reservationFormRender';
+import { daysInclusive } from '../../lib/dates';
 import { deriveReservationStatus, type ReservationStatusInput } from '../../lib/reservationStatus';
 
 // A cart line's reservation-relevant shape — `key` is cart.ts's entryKey
@@ -22,7 +23,7 @@ export type ReservationCartLineRef =
 	| { key: string; itemId: number; quantity: number }
 	| { key: string; setId: number; quantity: number };
 
-export function initReservationForm(initialCartLines: ReservationCartLineRef[]): void {
+export function initReservationForm(initialCartLines: ReservationCartLineRef[], maxRentalDays: number): void {
 	// Mutable: removing an unavailable line drops it from here so later
 	// availability checks only cover what's still in the cart.
 	let cartLines = [...initialCartLines];
@@ -73,6 +74,15 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 
 		if (!from || !to) {
 			applyStatus({ hasDates: false, availabilities: null });
+			getRows().forEach((row) => hideRow(row));
+			return;
+		}
+
+		// Over the max rental period the API would reject the request, so say
+		// so here rather than letting it surface as a failed availability check.
+		const rentalDays = daysInclusive(from, to);
+		if (rentalDays > maxRentalDays) {
+			applyStatus({ hasDates: true, availabilities: null, rentalDays, maxRentalDays });
 			getRows().forEach((row) => hideRow(row));
 			return;
 		}

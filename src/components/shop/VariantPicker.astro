@@ -2,11 +2,13 @@
 // Owns the "choose a variant, add to cart" form on the product page: the
 // variant buttons (when the product has more than one), the resulting
 // attribute list (items only), a set's automatically-derived "Includes"
-// breakdown, stock message, quantity cap, and add-to-cart button — plus the
-// client-side script that keeps all of those (and the product image
-// rendered by the page above this form) in sync as the selected variant
-// changes, including a `?item=<id>`/`?set=<id>` preselect from an ItemCard
-// link.
+// breakdown, stock message, quantity cap, and add-to-cart button. Each
+// variant's attribute list/"Includes" breakdown and stock message is
+// server-rendered as its own panel; the client-side script only shows the
+// selected variant's panel and keeps the quantity cap, form inputs, and the
+// product image (rendered by the page above this form) in sync as the
+// selection changes, including a `?item=<id>`/`?set=<id>` preselect from an
+// ItemCard link.
 //
 // A product's variant slot is an item OR a set (src/db/schema.ts's `sets`
 // comment), and the two are assumed mutually exclusive per product — a
@@ -120,6 +122,7 @@ function optionLabel(variant: Variant): string {
 								aria-pressed={selected ? 'true' : 'false'}
 								data-variant-option
 								data-kind={variant.kind}
+								data-variant-key={variantKey(variant.kind, variant.id)}
 								data-id={variant.id}
 								data-image={variant.imageUrl ?? thumbnailImageUrl ?? ''}
 								data-stock={variant.inStock}
@@ -301,12 +304,14 @@ function optionLabel(variant: Variant): string {
 			setIdInput.value = kind === 'set' ? id : '';
 		}
 
-		const key = `${kind}-${id}`;
+		// Rendered server-side by variantKey(), so the panel and calendar keys
+		// never depend on this script repeating that format.
+		const key = option.dataset.variantKey ?? '';
 		for (const panel of panels) panel.hidden = panel.dataset.variantPanel !== key;
 
 		// Shows this variant's availability calendar (ProductAvailability.astro).
 		const variantScope = document.querySelector<HTMLElement>('[data-selected-variant]');
-		if (variantScope && kind && id) variantScope.dataset.selectedVariant = key;
+		if (variantScope && key) variantScope.dataset.selectedVariant = key;
 	}
 
 	if (options.length > 0) {

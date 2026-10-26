@@ -9,6 +9,8 @@
 // picks up the resulting `change` events and renders the hidden "Selected
 // days" table underneath.
 import { todayIsoInOslo } from '../../lib/dates';
+import CallyLegend from '../ui/CallyLegend.astro';
+import CallyNavIcons from '../ui/CallyNavIcons.astro';
 
 export interface PickupDaysCalendarEntry {
 	date: string;
@@ -40,29 +42,17 @@ for (const row of rows) {
 const dayKinds = Object.fromEntries(kindByDate);
 ---
 
-<div class="pickup-days-calendar rounded-xl border border-border bg-surface p-card">
-	<ul class="mb-stack flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-text-muted">
-		<li class="flex items-center gap-1.5">
-			<span class="h-3 w-3 rounded-full border border-error-border bg-error-subtle" aria-hidden="true"></span>
-			Training
-		</li>
-		<li class="flex items-center gap-1.5">
-			<span class="h-3 w-3 rounded-full border border-success-border bg-success-subtle" aria-hidden="true"></span>
-			Me
-		</li>
-		<li class="flex items-center gap-1.5">
-			<span class="h-3 w-3 rounded-full border border-warning-border bg-warning-subtle" aria-hidden="true"></span>
-			Other
-		</li>
-	</ul>
+<div class="pickup-days-calendar cally-theme cally-narrow-single rounded-xl border border-border bg-surface p-card">
+	<CallyLegend
+		items={[
+			{ label: 'Training', swatch: 'border border-error-border bg-error-subtle' },
+			{ label: 'Me', swatch: 'border border-success-border bg-success-subtle' },
+			{ label: 'Other', swatch: 'border border-warning-border bg-warning-subtle' },
+		]}
+	/>
 
 	<calendar-multi data-pickup-days-calendar months={2} page-by="single" min={todayIso} data-day-kinds={JSON.stringify(dayKinds)}>
-		<svg slot="previous" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M15 6l-6 6l6 6" />
-		</svg>
-		<svg slot="next" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M9 6l6 6l-6 6" />
-		</svg>
+		<CallyNavIcons />
 		<calendar-month></calendar-month>
 		<calendar-month offset={1}></calendar-month>
 	</calendar-multi>
@@ -71,80 +61,6 @@ const dayKinds = Object.fromEntries(kindByDate);
 </div>
 
 <style>
-	.pickup-days-calendar calendar-multi {
-		--color-accent: var(--ui-accent);
-		--color-text-on-accent: var(--color-text-inverted);
-		display: block;
-		width: 100%;
-		font-family: inherit;
-		font-size: 0.875rem;
-	}
-
-	.pickup-days-calendar {
-		container-type: inline-size;
-	}
-
-	.pickup-days-calendar calendar-multi::part(container),
-	.pickup-days-calendar calendar-multi::part(header) {
-		width: 100%;
-	}
-
-	.pickup-days-calendar calendar-multi::part(months) {
-		display: flex;
-		flex-direction: column;
-		gap: 2rem;
-		width: 100%;
-	}
-
-	.pickup-days-calendar calendar-multi calendar-month {
-		width: 100%;
-	}
-
-	/* Narrow containers (phones) show one month at a time; the second
-	   <calendar-month> only appears once there's room to put it beside the
-	   first (see the container query below). */
-	.pickup-days-calendar calendar-multi calendar-month:nth-of-type(2) {
-		display: none;
-	}
-
-	@container (min-width: 30rem) {
-		.pickup-days-calendar calendar-multi::part(months) {
-			flex-direction: row;
-		}
-
-		.pickup-days-calendar calendar-multi calendar-month {
-			width: auto;
-			min-width: 0;
-			flex: 1 1 0%;
-		}
-
-		.pickup-days-calendar calendar-multi calendar-month:nth-of-type(2) {
-			display: block;
-		}
-	}
-
-	.pickup-days-calendar calendar-multi::part(button) {
-		border-radius: 0.375rem;
-		color: var(--color-text-muted);
-	}
-
-	.pickup-days-calendar calendar-multi::part(button):hover {
-		background-color: var(--color-bg-subtle);
-	}
-
-	.pickup-days-calendar calendar-multi::part(head) {
-		font-weight: 600;
-		color: var(--color-text);
-	}
-
-	.pickup-days-calendar calendar-multi::part(day) {
-		border-radius: 0.375rem;
-	}
-
-	.pickup-days-calendar calendar-multi::part(today) {
-		font-weight: 700;
-	}
-
 	/* Declared before ::part(selected) so an actual selection always visually
 	   wins over the origin-kind tint underneath it. */
 	.pickup-days-calendar calendar-multi::part(recurring) {

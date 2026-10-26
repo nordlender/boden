@@ -74,7 +74,6 @@ const todayIso = todayIsoInOslo();
 
 <style>
 	.reservation-calendar calendar-range {
-		--color-text-on-accent: var(--color-text-inverted);
 		display: block;
 		width: 100%;
 		font-family: inherit;
@@ -115,6 +114,7 @@ const todayIso = todayIsoInOslo();
 		   fills keyboard-focused days; a value set on the host element from
 		   outside beats that. */
 		--color-accent: var(--ui-accent);
+		--color-text-on-accent: var(--color-text-inverted);
 		width: 100%;
 	}
 
@@ -156,6 +156,7 @@ const todayIso = todayIsoInOslo();
 	.reservation-calendar calendar-range calendar-month::part(button) {
 		inline-size: 100%;
 		border-radius: 0.375rem;
+		color: var(--color-text-muted);
 	}
 
 	.reservation-calendar calendar-range calendar-month::part(today) {
@@ -214,8 +215,7 @@ const todayIso = todayIsoInOslo();
 
 	.reservation-calendar calendar-range calendar-month::part(range-start day-0),
 	.reservation-calendar calendar-range calendar-month::part(range-end day-1),
-	.reservation-calendar calendar-range calendar-month::part(range-start range-end),
-	.reservation-calendar calendar-range calendar-month::part(range-start range-open) {
+	.reservation-calendar calendar-range calendar-month::part(range-start range-end) {
 		border-radius: 0.375rem;
 	}
 </style>
@@ -248,14 +248,7 @@ const todayIso = todayIsoInOslo();
 		// wall-clock date in Europe/Oslo instead, matching availablePickupDates
 		// (also Oslo-anchored — see src/lib/pickupDays.ts) regardless of the
 		// viewer's own device timezone.
-		// 'range-open' marks the lone start day while the second click is
-		// still pending ("YYYY-MM-DD/" or no end yet), so the CSS can round
-		// it fully instead of leaving a half-rounded band end.
-		calendar.getDayParts = (date) => {
-			const iso = dateToIsoInOslo(date);
-			const [from, to] = (calendar.value ?? '').split('/');
-			return `${availableDates.has(iso) ? 'pickup-available' : ''} ${from === iso && !to ? 'range-open' : ''}`;
-		};
+		calendar.getDayParts = (date) => (availableDates.has(dateToIsoInOslo(date)) ? 'pickup-available' : '');
 	}
 
 	// Fires once the calendar first upgrades even with a preselected `value`

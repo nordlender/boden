@@ -223,12 +223,16 @@ body {
  * the card is embedded both full-width and in a ~28rem modal, so it must size
  * off its own inline size. Add `cally-narrow-single` to also hide the second
  * <calendar-month> until that row layout kicks in (one month on phones).
+ *
+ * Every selector is prefixed with `:root` so these rules out-rank the
+ * components' scoped `::part()` rules (same selector shape otherwise) no
+ * matter which stylesheet the bundler emits first.
  */
-.cally-theme {
+:root .cally-theme {
 	container-type: inline-size;
 }
 
-.cally-theme :is(calendar-range, calendar-multi) {
+:root .cally-theme :is(calendar-range, calendar-multi) {
 	--color-accent: var(--ui-accent);
 	--color-text-on-accent: var(--color-text-inverted);
 	display: block;
@@ -239,61 +243,61 @@ body {
 
 /* Cally's ::part(container) and ::part(months) default to content-fit
    widths; stretch them to the card. */
-.cally-theme :is(calendar-range, calendar-multi)::part(container),
-.cally-theme :is(calendar-range, calendar-multi)::part(header) {
+:root .cally-theme :is(calendar-range, calendar-multi)::part(container),
+:root .cally-theme :is(calendar-range, calendar-multi)::part(header) {
 	width: 100%;
 }
 
-.cally-theme :is(calendar-range, calendar-multi)::part(months) {
+:root .cally-theme :is(calendar-range, calendar-multi)::part(months) {
 	display: flex;
 	flex-direction: column;
 	gap: 2rem;
 	width: 100%;
 }
 
-.cally-theme calendar-month {
+:root .cally-theme calendar-month {
 	width: 100%;
 }
 
-.cally-theme.cally-narrow-single calendar-month:nth-of-type(2) {
+:root .cally-theme.cally-narrow-single calendar-month:nth-of-type(2) {
 	display: none;
 }
 
 /* Two months side by side need roughly 30rem of card width to stay legible. */
 @container (min-width: 30rem) {
-	.cally-theme :is(calendar-range, calendar-multi)::part(months) {
+	:root .cally-theme :is(calendar-range, calendar-multi)::part(months) {
 		flex-direction: row;
 	}
 
-	.cally-theme calendar-month {
+	:root .cally-theme calendar-month {
 		width: auto;
 		min-width: 0;
 		flex: 1 1 0%;
 	}
 
-	.cally-theme.cally-narrow-single calendar-month:nth-of-type(2) {
+	:root .cally-theme.cally-narrow-single calendar-month:nth-of-type(2) {
 		display: block;
 	}
 }
 
-.cally-theme :is(calendar-range, calendar-multi)::part(button) {
+:root .cally-theme :is(calendar-range, calendar-multi)::part(button) {
 	border-radius: 0.375rem;
 	color: var(--color-text-muted);
 }
 
-.cally-theme :is(calendar-range, calendar-multi)::part(button):hover {
+:root .cally-theme :is(calendar-range, calendar-multi)::part(button):hover {
 	background-color: var(--color-bg-subtle);
 }
 
-.cally-theme :is(calendar-range, calendar-multi)::part(head) {
+:root .cally-theme :is(calendar-range, calendar-multi)::part(head) {
 	font-weight: 600;
 	color: var(--color-text);
 }
 
-.cally-theme :is(calendar-range, calendar-multi)::part(day) {
+:root .cally-theme :is(calendar-range, calendar-multi)::part(day) {
 	border-radius: 0.375rem;
 }
 
-.cally-theme :is(calendar-range, calendar-multi)::part(today) {
+:root .cally-theme :is(calendar-range, calendar-multi)::part(today) {
 	font-weight: 700;
 }

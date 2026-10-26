@@ -1,9 +1,10 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getMemberOrder } from '../../lib/orders';
+import { toOrderItemView } from '../../lib/orderItemView';
+import { getOrderPickupWindows } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
-import OrderCodeHeader from '../../components/orders/OrderCodeHeader.astro';
-import OrderContents from '../../components/orders/OrderContents.astro';
+import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import SubmittedContactDetails from '../../components/orders/SubmittedContactDetails.astro';
 import DeleteOrderButton from '../../components/orders/DeleteOrderButton.astro';
 import ChangeOrderLink from '../../components/orders/ChangeOrderLink.astro';
@@ -22,6 +23,8 @@ const order = await getMemberOrder(Astro.params.code ?? '', Astro.locals.user?.i
 if (!order) {
   return Astro.redirect('/');
 }
+
+const pickupWindows = await getOrderPickupWindows(order);
 ---
 
 <BaseLayout title={`Order #${order.orderCode}`}>
@@ -29,13 +32,15 @@ if (!order) {
 		<BackLink slot="before-title" href="/">Back to shop</BackLink>
 
 		<Card as="div">
-			<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
-			<OrderContents
-				items={order.orderItems.map((oi) => ({
-					itemName: oi.item.name,
-					requestedQuantity: oi.requestedQuantity,
-				}))}
+			<UserOrderSummary
+				orderCode={order.orderCode}
+				status={order.status}
+				fromDate={order.fromDate}
+				toDate={order.toDate}
 				note={order.note}
+				items={order.orderItems.map(toOrderItemView)}
+				showImages
+				pickupWindows={pickupWindows}
 			/>
 			<SubmittedContactDetails contactName={order.contactName} />
 			<div class={cardFooterClasses}>

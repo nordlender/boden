@@ -4,6 +4,8 @@ import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import Button from '../../components/ui/Button.astro';
 import Card from '../../components/ui/Card.astro';
 import { getMemberOrder } from '../../lib/orders';
+import { getOrderPickupWindows } from '../../lib/pickupDays';
+import { toOrderItemView } from '../../lib/orderItemView';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /checkout) —
 // reached only when logged in, so Astro.locals.user is non-null here.
@@ -16,6 +18,8 @@ const order = await getMemberOrder(Astro.url.searchParams.get('order') ?? '', As
 if (!order) {
   return Astro.redirect('/orders');
 }
+
+const pickupWindows = await getOrderPickupWindows(order);
 ---
 
 <ConfirmationLayout title="Order placed" heading="Order placed">
@@ -33,12 +37,9 @@ if (!order) {
 			fromDate={order.fromDate}
 			toDate={order.toDate}
 			note={order.note}
-			items={order.orderItems.map((oi) => ({
-				itemName: oi.item.name,
-				requestedQuantity: oi.requestedQuantity,
-				itemImageUrl: oi.item.imageUrl,
-			}))}
+			items={order.orderItems.map(toOrderItemView)}
 			showImages
+			pickupWindows={pickupWindows}
 		/>
 		<Button variant="primary" size="lg" href={`/orders/${order.orderCode}`} class="self-start">
 			View or manage this order

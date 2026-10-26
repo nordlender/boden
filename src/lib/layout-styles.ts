@@ -73,7 +73,7 @@ export const menuPanelClasses = 'rounded-xl border border-border bg-surface p-1.
 
 // One row in a menuPanelClasses panel — roomy enough to be an easy target.
 export const menuItemClasses =
-	'flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm text-text-muted hover:bg-bg-subtle hover:text-text';
+	'flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm text-text-muted hover:bg-bg-subtle hover:text-text focus-visible:bg-bg-subtle focus-visible:text-text';
 
 // Floating panel holding a small form or content (a <details> dropdown with
 // fields, Popover.astro's default chrome) — roomier than menuPanelClasses,

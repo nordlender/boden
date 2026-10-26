@@ -3,7 +3,9 @@
 // (https://github.com/WickyNilliams/cally) ships a <calendar-range> custom
 // element with no imposed styling — the `::part()` rules below are what
 // make it look like the rest of the site (same semantic theme tokens,
-// rounded corners, same font as everything else).
+// rounded corners, same font as everything else). The shared part of that
+// theme lives in global.css under `.cally-theme`; only this calendar's own
+// availability/selection colors are below.
 //
 // `import 'cally'` (which registers the custom elements) lives in the
 // <script> block below, NOT in this frontmatter — Astro's frontmatter runs
@@ -30,23 +32,21 @@ interface Props {
 }
 
 import { todayIsoInOslo } from '../../lib/dates';
+import CallyLegend from '../ui/CallyLegend.astro';
+import CallyNavIcons from '../ui/CallyNavIcons.astro';
 
 const { availablePickupDates = [], value, maxRangeDays } = Astro.props;
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
 const todayIso = todayIsoInOslo();
 ---
 
-<div class="reservation-calendar rounded-xl border border-border bg-surface p-card">
-	<ul class="mb-stack flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-text-muted">
-		<li class="flex items-center gap-1.5">
-			<span class="h-3 w-3 rounded-full bg-success-subtle ring-1 ring-inset ring-success-border" aria-hidden="true"></span>
-			Pick up available
-		</li>
-		<li class="flex items-center gap-1.5">
-			<span class="h-3 w-3 rounded-full border border-border-strong" aria-hidden="true"></span>
-			Request pick up
-		</li>
-	</ul>
+<div class="reservation-calendar cally-theme rounded-xl border border-border bg-surface p-card">
+	<CallyLegend
+		items={[
+			{ label: 'Pick up available', swatch: 'bg-success-subtle ring-1 ring-inset ring-success-border' },
+			{ label: 'Request pick up', swatch: 'border border-border-strong' },
+		]}
+	/>
 
 	<calendar-range
 		data-reservation-calendar
@@ -57,12 +57,7 @@ const todayIso = todayIsoInOslo();
 		data-available-pickup-dates={JSON.stringify(availablePickupDates)}
 		data-max-range-days={maxRangeDays}
 	>
-		<svg slot="previous" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M15 6l-6 6l6 6" />
-		</svg>
-		<svg slot="next" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M9 6l6 6l-6 6" />
-		</svg>
+		<CallyNavIcons />
 		<calendar-month></calendar-month>
 		<calendar-month offset={1}></calendar-month>
 	</calendar-range>
@@ -73,95 +68,9 @@ const todayIso = todayIsoInOslo();
 </div>
 
 <style>
-	.reservation-calendar calendar-range {
-		display: block;
-		width: 100%;
-		font-family: inherit;
-		font-size: 0.875rem;
-	}
-
-	/* Cally's shadow DOM renders ::part(container) (column flex: the
-	   header — prev/next/heading — above ::part(months), the <slot> the two
-	   <calendar-month> children below land in) and both parts default to a
-	   content-fit width, not a stretched one. Widen everything to fill this
-	   card, and only flip ::part(months) to a row once there's room — the
-	   header always stays above regardless of layout.
-	   A container query (not a viewport media query) drives that switch:
-	   this card is embedded both in the full-width /reservation page and in
-	   ChangeOrderLink.astro's ~28rem modal, so sizing off the viewport made
-	   the two-month row kick in inside the narrow modal too — squeezing both
-	   months into a card far narrower than the row layout needs and
-	   misaligning the grid. Querying this card's own inline size instead
-	   keeps the modal on the single-column layout it actually has room for. */
-	.reservation-calendar {
-		container-type: inline-size;
-	}
-
-	.reservation-calendar calendar-range::part(container),
-	.reservation-calendar calendar-range::part(header) {
-		width: 100%;
-	}
-
-	.reservation-calendar calendar-range::part(months) {
-		display: flex;
-		flex-direction: column;
-		gap: 2rem;
-		width: 100%;
-	}
-
-	.reservation-calendar calendar-range calendar-month {
-		/* Cally's own calendar-month :host sets --color-accent: black, which
-		   fills keyboard-focused days; a value set on the host element from
-		   outside beats that. */
-		--color-accent: var(--ui-accent);
-		--color-text-on-accent: var(--color-text-inverted);
-		width: 100%;
-	}
-
-	/* Two months side by side need roughly 30rem+ of card width to stay
-	   legible — narrower than that (e.g. the reschedule modal) stays
-	   single-column, scrolled or stacked, regardless of viewport size. */
-	@container (min-width: 30rem) {
-		.reservation-calendar calendar-range::part(months) {
-			flex-direction: row;
-		}
-
-		.reservation-calendar calendar-range calendar-month {
-			width: auto;
-			min-width: 0;
-			flex: 1 1 0%;
-		}
-	}
-
-	.reservation-calendar calendar-range::part(button) {
-		border-radius: 0.375rem;
-		color: var(--color-text-muted);
-	}
-
-	.reservation-calendar calendar-range::part(button):hover {
-		background-color: var(--color-bg-subtle);
-	}
-
-	.reservation-calendar calendar-range calendar-month::part(head) {
-		font-weight: 600;
-		color: var(--color-text);
-	}
-
-	/* Cally fixes day buttons at 2.25rem, but the table stretches to the card,
-	   so cells are wider than their buttons and a selected band shows gaps.
-	   Fill the cell instead (rows have no spacing, so cells touch). Day buttons
-	   only (calendar-month::part, not calendar-range::part, which would hit the
-	   prev/next header buttons) — calendar-month is light DOM, so its parts are
-	   styled directly. */
-	.reservation-calendar calendar-range calendar-month::part(button) {
-		inline-size: 100%;
-		border-radius: 0.375rem;
-		color: var(--color-text-muted);
-	}
-
-	.reservation-calendar calendar-range calendar-month::part(today) {
-		font-weight: 700;
-	}
+	/* Day-level parts live on <calendar-month> (light DOM, no exportparts), so
+	   they are targeted there — `calendar-range::part()` only reaches the
+	   header and prev/next buttons. Base day styling is in global.css. */
 
 	/* Availability tint — declared before range-start/range-end/range-inner
 	   below so an actual selection always visually wins over it. */
@@ -173,11 +82,11 @@ const todayIso = todayIsoInOslo();
 
 	/* Selected range: one continuous band. Start/end are solid and rounded on
 	   their outer side only, inner days are a square tint, so adjacent cells
-	   join with no gaps (cells are flush — no table spacing). A one-day or
-	   half-picked range (start and end the same cell, or no end yet) is a
-	   fully rounded box. Where the band wraps at a week boundary (Monday =
-	   day-1 is the first column, Sunday = day-0 the last) the cell on the
-	   wrap is rounded too, so each row's segment has finished ends.
+	   join with no gaps (day buttons fill their cell — see global.css). A
+	   one-day or half-picked range (start and end the same cell) is a fully
+	   rounded box. Where the band wraps at a week boundary (Monday = day-1 is
+	   the first column, Sunday = day-0 the last) the cell on the wrap is
+	   rounded too, so each row's segment has finished ends.
 	   box-shadow: none drops the availability tint's inset border. */
 	.reservation-calendar calendar-range calendar-month::part(range-inner),
 	.reservation-calendar calendar-range calendar-month::part(range-start),

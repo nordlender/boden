@@ -3,20 +3,15 @@ import ConfirmationLayout from '../../layouts/ConfirmationLayout.astro';
 import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import Button from '../../components/ui/Button.astro';
 import Card from '../../components/ui/Card.astro';
-import { db } from '../../db/client';
+import { getMemberOrder } from '../../lib/orders';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /checkout) —
 // reached only when logged in, so Astro.locals.user is non-null here.
 //
-// `order` is the order code. The lookup is scoped to the signed-in user, so
-// guessing another member's code just redirects away rather than leaking it.
-const orderCode = Astro.url.searchParams.get('order') ?? '';
-const order = orderCode
-  ? await db.query.orders.findFirst({
-      where: (t, { and, eq }) => and(eq(t.orderCode, orderCode), eq(t.userId, Astro.locals.user!.id)),
-      with: { orderItems: { with: { item: true } } },
-    })
-  : undefined;
+// `order` is the order code. getMemberOrder scopes the lookup to the signed-in
+// user, so guessing another member's code just redirects away rather than
+// leaking it (an empty code or missing user likewise resolves to undefined).
+const order = await getMemberOrder(Astro.url.searchParams.get('order') ?? '', Astro.locals.user?.id ?? '');
 
 if (!order) {
   return Astro.redirect('/orders');

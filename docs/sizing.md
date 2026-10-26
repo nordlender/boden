@@ -85,7 +85,7 @@ color-token migration).
 
 - `src/components/wizard/ItemRow.astro`, `ProductTag.astro`,
   `SubCategoryTag.astro`, `WizardSearch.astro`, `ui/AddPanel.astro`,
-  `ButtonStrip.astro`, `Dropdown.astro` — each pass a hand-typed numeric
+  `ButtonStrip.astro`, `ui/Dropdown.astro` — each pass a hand-typed numeric
   `size` (13–18px) to `AppIcon`/`MorphIcon` rather than a token.
 - `src/components/orders/OrdersLayoutToggle.astro` — hand-rolled toggle
   buttons (fixed 36px boxes) with their own numeric icon size, not using
@@ -96,7 +96,7 @@ color-token migration).
   standalone status-icon inline `<svg>`s at a fixed 20px, independent of
   either scale. Whether these become `AppIcon` calls (and thus pick up a
   token) is tracked in the inline-SVG conversion issue, not here.
-- `src/components/wizard/Thumbnail.astro`, `src/components/shop/
+- `src/components/ui/Thumbnail.astro`, `src/components/shop/
   ImagePlaceholder.astro` — these intentionally keep a numeric `size` prop
   (not a token) since callers need arbitrary sizes (a table cell vs. an
   expanded detail view); `Thumbnail`'s placeholder icon already derives its

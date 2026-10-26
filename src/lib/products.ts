@@ -1,4 +1,4 @@
-import { db } from '../db/client';
+import { db, type Tx } from '../db/client';
 import { categories, subcategories, products, productLinks, productAttributeKeys, items, itemAttributeValues } from '../db/schema';
 import { eq, max } from 'drizzle-orm';
 
@@ -40,8 +40,6 @@ function slugify(input: string): string {
 		.join('-');
 	return base || 'product';
 }
-
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // Same collision-avoidance shape as wizard.ts's uniqueItemSlug/setWizard.ts's
 // equivalent. Runs on the caller's transaction so the check and the write

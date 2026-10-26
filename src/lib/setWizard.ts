@@ -1,13 +1,16 @@
 // Admin authoring layer for the /admin/sets wizard (issue #214) — mirrors
-// wizard.ts's shape (list/create/archive/bulk-assign) for the `sets` table.
+// wizard.ts's shape (list/create/bulk-assign) for the `sets` table; archive
+// and "Set image" are shared with items in wizardVariants.ts.
 // Kept separate from sets.ts: that file is the schema-level "resolve a set
 // to its components" API shared by cart/orders/reservation/shop, not the
 // admin-authoring surface.
 import { db } from '../db/client';
 import { sets, setItems } from '../db/schema';
 import { eq, and, inArray, sql } from 'drizzle-orm';
-import { reservedQuantitiesByItem } from './stock';
+import { getHandedOut } from './availability';
+import { itemStockExtras } from './units';
 import { computeSetAvailability, getSetComponentDisplayBulk, type SetComponentDisplay } from './sets';
+import { assertProductAcceptsKind } from './wizardVariants';
 
 export interface WizardSet {
 	id: number;
@@ -16,6 +19,8 @@ export interface WizardSet {
 	imageUrl: string | null;
 	productId: number | null;
 	productTitle?: string;
+	// Real availability: whole sets that could be assembled from what's on
+	// the shelf right now — see src/lib/availability.ts.
 	inStock: number;
 	totalStock: number;
 	components: WizardSetComponent[];
@@ -62,18 +67,19 @@ export async function getWizardSets(): Promise<{ unassigned: WizardSet[]; assign
 		orderBy: (t, { asc }) => asc(t.id),
 		with: {
 			product: true,
-			setItems: { with: { item: { with: { product: true } } } },
+			setItems: { with: { item: { extras: itemStockExtras, with: { product: true } } } },
 		},
 	});
 
 	const componentItemIds = rows.flatMap((row) => row.setItems.map((setItem) => setItem.itemId));
-	const reserved = await reservedQuantitiesByItem(componentItemIds);
+	// Real availability (on the shelf now) — see src/lib/availability.ts.
+	const handedOut = getHandedOut(componentItemIds);
 	const includesBySet = await getSetComponentDisplayBulk(rows.map((row) => row.id));
 
 	const wizardSets: WizardSet[] = rows.map((row) => {
 		const { stockCount, inStock } = computeSetAvailability(
 			row.setItems.map((setItem) => ({ itemId: setItem.itemId, quantity: setItem.quantity, stockCount: setItem.item.stockCount })),
-			reserved,
+			handedOut,
 		);
 		return {
 			id: row.id,
@@ -125,43 +131,16 @@ export async function createSet(input: { name: string; imageUrl?: string | null 
 	return created.id;
 }
 
-export async function archiveSets(setIds: number[]): Promise<void> {
-	if (setIds.length === 0) return;
-	await db.update(sets).set({ archived: true }).where(inArray(sets.id, setIds));
-}
-
-export async function setSetsImage(setIds: number[], imageUrl: string): Promise<void> {
-	if (setIds.length === 0) return;
-	await db.update(sets).set({ imageUrl }).where(inArray(sets.id, setIds));
-}
-
-// Thrown by setSetsProduct when the target product already has items — a
-// distinct type so the route can show the admin that specific reason (a
-// warning popover) rather than a generic "could not assign" 400.
-export class ProductHasItemsError extends Error {
-	constructor() {
-		super('This product already has items assigned — a product cannot mix item and set variants.');
-		this.name = 'ProductHasItemsError';
-	}
-}
-
 // No attribute fan-out to worry about on reassignment (unlike
-// wizard.ts's setItemsProduct) — sets don't own attribute values.
+// wizard.ts's setItemsProduct) — sets don't own attribute values. Same
+// no-mixing guard as setItemsProduct, from the other side.
 export async function setSetsProduct(setIds: number[], productId: number): Promise<void> {
 	if (setIds.length === 0) return;
 
-	// Mirrors wizard.ts's setItemsProduct's own guard — a product's variants
-	// are assumed all items or all sets, never a mix (see
-	// src/components/shop/VariantPicker.astro's comment). Enforced on both
-	// write paths so the invalid state can't be created from either side.
-	const existingItem = await db.query.items.findFirst({
-		where: (t, { eq: eqCol, and: andCol }) => andCol(eqCol(t.productId, productId), eqCol(t.archived, false)),
+	db.transaction((tx) => {
+		assertProductAcceptsKind(tx, productId, 'set');
+		tx.update(sets).set({ productId }).where(inArray(sets.id, setIds)).run();
 	});
-	if (existingItem) {
-		throw new ProductHasItemsError();
-	}
-
-	await db.update(sets).set({ productId }).where(inArray(sets.id, setIds));
 }
 
 export async function setSetLabel(setId: number, label: string): Promise<void> {

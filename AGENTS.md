@@ -1,9 +1,10 @@
 ## Terminology
 
-This project is being reworked around two distinct concepts — use these terms consistently, don't substitute "product" and "item" for each other:
+This project is being reworked around these distinct concepts — use these terms consistently, don't substitute "product", "item" and "unit" for each other:
 
 - **Product**: a category-level listing an admin creates (e.g. "Edelrid Harness"). Holds shared info (title, description, category) and the option rows (e.g. Size, Color) that define its variants.
 - **Item**: one specific permutation of a product's options (e.g. "Edelrid Harness, Green, M"). Items are what actually get rented — orders/rentals always reference items, never products. Products exist only to categorize and display items in the web shop.
+- **Unit**: one physical object of an item (e.g. the Dragon Cam #2 bought in 2023 with serial 0042). Admin-only: an item's stock is the number of its active units, and units carry the per-object details (brand, model, marking, serial, dates, status, opts) and a history of notes (messages with `unitId` set). Rentals never reference units — a moderator hands out an item, not a particular unit.
 
 See `docs/schema.md` for the full schema and design rationale.
 
@@ -33,7 +34,9 @@ Consult these guides before working on related tasks:
 
 ### Styling
 
-This project uses a semantic theme-token system (`--ui-*`/`--color-*` in `src/styles/global.css`) for all colors, with light/dark mode support. Never use raw Tailwind palette classes (`bg-slate-100`, `text-gray-500`, literal `white`/`black`, etc.) in components or pages — use the semantic utilities (`bg-surface`, `text-text-muted`, `border-selected-border`, ...) instead. See `docs/styling.md` for the full token reference and rules.
+This project uses a semantic theme-token system (`--ui-*`/`--color-*` in `src/styles/global.css`) for all colors, with light/dark mode support. Never use raw Tailwind palette classes (`bg-slate-100`, `text-gray-500`, literal `white`/`black`, etc.) in components or pages — use the semantic utilities (`bg-surface`, `text-text-muted`, `border-border-strong`, ...) instead. See `docs/styling.md` for the full token reference and rules.
+
+Spacing works the same way: semantic spacing tokens (`p-card`, `gap-region`, `gap-stack`, `px-gutter`, ...) plus shared primitives — wrap pages in `ui/Page.astro`, panels in `ui/Card.astro`, alerts in `ui/Callout.astro`, and take field/table/menu classes from `src/lib/form-styles.ts`, `table-styles.ts` and `layout-styles.ts` instead of hand-rolling padding. The default is roomy; only the shop grid and small elements stay dense. See `docs/spacing.md`.
 
 ## Workflow
 ### Tasks

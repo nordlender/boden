@@ -1,23 +1,17 @@
 # Schema v3
 
-> Schema block re-synced 2026-09-25 against `src/db/schema.ts`: replaced
-> `pickupAvailableDays` (a bare date-PK table, admin-only, no time or "who")
-> with `pickupDays`/`pickupRecurringRules` — see that section below for why.
-> Everything else in this re-sync note is unchanged from the 2026-09-11 pass:
-> `orders.fromDate`/`toDate` (the reservation flow, built
-> after this doc was originally written) and the CHECK constraints real code
-> now has; `orderItems.reservedFrom`/`reservedTo`, which never existed in
-> real code, stay dropped — reservation dates live on `orders`, one range per
-> order, not per line item.
+> The schema block below is generated from `src/db/schema.ts` — never edit
+> it by hand. After changing the schema run `npm run docs:schema`; CI fails
+> (`npm run docs:schema:check`) if the block is out of date. The prose around
+> it is hand-written and must be kept current separately.
 
 This supersedes `schema_v2.md` and `schemav2.ts` (both deleted). Schema v2
 was designed around an admin wizard that generated items as systematic
 permutations of product option values (Size × Color, etc.), driven by an
 Options → Attributes → Specifications → Display-options flow. That wizard no
 longer exists — see `docs/wizard.md` for the wizard that replaced it,
-which was already partly built (`src/components/wizard/`,
-`src/pages/wizard-test.astro`) by the time this schema was designed against
-it.
+which was already partly built (`src/components/wizard/`) by the time this
+schema was designed against it.
 
 Terminology (product/item) is unchanged from `AGENTS.md` — a product is a
 category-level listing; an item is one specific thing that gets rented.
@@ -26,7 +20,7 @@ What's new here relative to that terminology note:
 - **Sub-category**: a product can additionally be classified one level below
   its category, e.g. category "Protection" → sub-category "Cams".
 - Under the dynamic wizard, an admin creates items freeform first (just a
-  name, an optional image, a stock count) and assigns them to a product
+  name, and an optional image; stock is derived from its units) and assigns them to a product
   afterward — or never. Everything classification/description-shaped about
   an item — category, sub-category, description, attributes — is inherited
   from whichever product it's assigned to, not set on the item itself.
@@ -34,6 +28,7 @@ What's new here relative to that terminology note:
 
 ## Schema
 
+<!-- schema:start (generated from src/db/schema.ts by scripts/sync-schema-doc.mjs — do not edit by hand) -->
 ```ts
 import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
@@ -69,13 +64,12 @@ export const subcategories = sqliteTable('subcategories', {
 
 // ---------------------------------------------------------------------------
 // Products — the category-level listing. Deliberately never references
-// `items` (carried forward from v2's resolved design): the only
-// items->product lookups this app needs are admin/moderator-side, and the
-// customer-facing direction only ever needs product->items, which is
-// queried directly (`where items.productId = X`) rather than through a
-// column on products. A product keeps both categoryId and subcategoryId,
-// so it can be classified broadly (just "Protection") or precisely
-// ("Protection" -> "Cams").
+// `items`: the only items->product lookups this app needs are
+// admin/moderator-side, and the customer-facing direction only ever needs
+// product->items, queried directly (`where items.productId = X`) rather
+// than through a column on products. A product keeps both categoryId and
+// subcategoryId, so it can be classified broadly (just "Protection") or
+// precisely ("Protection" -> "Cams").
 // ---------------------------------------------------------------------------
 
 export const products = sqliteTable('products', {
@@ -85,12 +79,11 @@ export const products = sqliteTable('products', {
   description: text('description'),
   categoryId: integer('category_id').references(() => categories.id),
   subcategoryId: integer('subcategory_id').references(() => subcategories.id),
-  // Renamed from v2's draft/published. "Hidden" is a deliberate, permanent
-  // admin choice — the product stays fully visible/manageable in the
-  // admin and moderator views, it just isn't shown in the web shop. Unlike
-  // v2's "draft", it does not imply an incomplete or abandoned product.
-  // See "Open question" below re: what this means for the old
-  // draft-expiry sweep.
+  // "Hidden" is a deliberate, permanent admin choice — the product stays
+  // fully visible/manageable in admin/moderator views, it just isn't shown
+  // in the web shop. It does not imply an incomplete or abandoned product
+  // (see docs/schema.md's "Open question" re: the old draft-expiry sweep,
+  // deliberately not ported here).
   status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden'),
   thumbnailImageUrl: text('thumbnail_image_url'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -101,7 +94,9 @@ export const products = sqliteTable('products', {
   index('products_status_idx').on(table.status),
 ]);
 
-// External links per product (e.g. manufacturer page, manual PDF) — unchanged from v2.
+// External links per product (e.g. manufacturer page, manual PDF). Moved
+// here from item-level (v1/v2's item_links) — a link like "manufacturer
+// page" describes the product, not one specific item permutation of it.
 export const productLinks = sqliteTable('product_links', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
@@ -126,6 +121,13 @@ export const productAttributeKeys = sqliteTable('product_attribute_keys', {
   productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
+  // Admin-chosen: this key is what a shopper picks between on the product
+  // page (rendered as buttons), and is left out of the displayed attribute
+  // list since the picked button already shows it. A flag per key rather
+  // than one product-level column so more than one variant key can be
+  // supported later without a schema change; the UI currently only lets
+  // the admin choose one.
+  isVariant: integer('is_variant', { mode: 'boolean' }).notNull().default(false),
 }, (table) => [
   uniqueIndex('product_attribute_keys_product_name_unique').on(table.productId, table.name),
   index('product_attribute_keys_product_id_idx').on(table.productId),
@@ -133,10 +135,9 @@ export const productAttributeKeys = sqliteTable('product_attribute_keys', {
 
 // ---------------------------------------------------------------------------
 // Items — created freeform by an admin (name, optional image, stock),
-// optionally assigned to a product afterward via "Set product". Nothing
-// here is generated from option permutations anymore (v2's
-// productOptionGroups/productOptionValues/itemOptionSelections and the
-// bitmask permutation-uniqueness check are all dropped — see below).
+// optionally assigned to a product afterward via "Set product". Category,
+// sub-category, description, and attribute keys all come from the assigned
+// product, not stored here.
 // ---------------------------------------------------------------------------
 
 export const items = sqliteTable('items', {
@@ -144,9 +145,7 @@ export const items = sqliteTable('items', {
   // Nullable: an item can exist unassigned — the wizard's whole premise is
   // creating items before (or instead of) assigning them to a product.
   // onDelete is 'set null', not 'cascade': deleting a product must never
-  // delete items. Unlike v2 (where items only existed as a product's
-  // generated permutations and had no independent value), items here are
-  // real inventory that may already be referenced by past orders.
+  // delete items, since they may already be referenced by past orders.
   productId: integer('product_id').references(() => products.id, { onDelete: 'set null' }),
   slug: text('slug').notNull().unique(),
   // Internal/admin-only label (e.g. "Blue Rain Jacket, size M") — never
@@ -155,12 +154,11 @@ export const items = sqliteTable('items', {
   // from this field.
   name: text('name').notNull(),
   imageUrl: text('image_url'),
-  // Total owned. "In stock right now" is never stored — it's always
-  // computed as stockCount minus quantities on currently active/requested
-  // rentals, same derivation already established for the old `available`
-  // boolean (see the original docs/schema-legacy-fixes.md decision, carried forward
-  // unchanged): a stored second number can only drift out of sync.
-  stockCount: integer('stock_count').notNull().default(1),
+  // No stock column: how many of an item exist is the number of its
+  // `units` with status 'active' (src/lib/units.ts's activeUnitCount), and
+  // availability is derived per day from the orders occupying the item on
+  // that day (src/lib/availability.ts). A stored count could only drift out
+  // of sync with the units table.
   // Soft delete: items referenced by orderItems can't be hard-deleted.
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -170,18 +168,17 @@ export const items = sqliteTable('items', {
 
 // ---------------------------------------------------------------------------
 // Attribute values — items own these directly (plain FKs; no cross-product
-// enforcement trick — see "Resolved" below for why one was considered and
-// dropped). unique(itemId, attributeId) guarantees one value per key per
-// item, and attributeId must reference a real productAttributeKeys row, so
-// an item can never accumulate more distinct values than its assigned
-// product currently has keys. Rows are never shared between items — itemId
-// is a plain FK, so two items under the same product each get their own
-// private row for "Weight", even though the key is shared via the template.
+// enforcement at the DB level — see docs/schema.md's "Resolved" section for
+// why one was drafted and then dropped in favor of application-level
+// consistency, see the Work notes there). unique(itemId, attributeId)
+// guarantees one value per key per item, and attributeId must reference a
+// real productAttributeKeys row, so an item can never accumulate more
+// distinct values than its assigned product currently has keys.
 //
 // Not DB-enforced: that a row's attributeId belongs to the same product the
 // item is *currently* assigned to. If an item is reassigned, its old rows
-// (tied to the old product's keys) go stale unless the reassignment logic
-// explicitly clears them first — see Work notes below.
+// go stale unless the reassignment logic explicitly clears them first —
+// see src/lib/wizard.ts's setItemProduct.
 // ---------------------------------------------------------------------------
 
 export const itemAttributeValues = sqliteTable('item_attribute_values', {
@@ -196,37 +193,196 @@ export const itemAttributeValues = sqliteTable('item_attribute_values', {
 ]);
 
 // ---------------------------------------------------------------------------
-// Users, orders, order items — unchanged from v1/v2. Rentals always
-// reference items, never products.
+// Units — one physical object of an item (e.g. one specific Dragon Cam #2,
+// bought and manufactured at its own time), tracked individually because
+// this is safety equipment: service, retirement and its lifetime history
+// belong to the physical object, not to the item as a whole. Admin-only —
+// rentals never see units: orderItems keep referencing items, and a
+// moderator hands out "a Dragon Cam #2", not a particular unit (see #276).
+//
+// An item's stock is derived from these rows: count(status = 'active').
+// Taking a unit out of service or retiring it shrinks availability with no
+// other bookkeeping. Units are never hard-deleted — a retired unit stays as
+// the record of what happened to it.
+//
+// A unit's lifetime log (inspections, damage, status changes) is ordinary
+// `messages` rows with messages.unitId set — see that table.
 // ---------------------------------------------------------------------------
+
+export const UNIT_STATUSES = ['active', 'out_of_service', 'retired'] as const;
+export type UnitStatus = (typeof UNIT_STATUSES)[number];
+
+export const units = sqliteTable('units', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  // No onDelete: an item can't be hard-deleted out from under its units
+  // (items are soft-deleted via `archived` anyway).
+  itemId: integer('item_id').notNull().references(() => items.id),
+  brand: text('brand'),
+  model: text('model'),
+  // Physical marking on the unit itself (engraving, tape, tag number) — how
+  // an admin holding it in their hand finds its row.
+  marking: text('marking'),
+  serialNumber: text('serial_number'),
+  manufacturedAt: text('manufactured_at'), // YYYY-MM-DD
+  purchasedAt: text('purchased_at'), // YYYY-MM-DD
+  status: text('status', { enum: UNIT_STATUSES }).notNull().default('active'),
+  // Optional per-unit key/value facts that only some units have (e.g. a
+  // rope cut down to `{ "length": "58 m" }`). Normally empty.
+  opts: text('opts', { mode: 'json' }).$type<Record<string, string>>().notNull().default(sql`'{}'`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  // Covers the itemId FK too (leftmost column), and is exactly the shape of
+  // the stock-count subquery: where item_id = ? and status = 'active'.
+  index('units_item_id_status_idx').on(table.itemId, table.status),
+  index('units_serial_number_idx').on(table.serialNumber),
+  // Drizzle's text enum is TypeScript-only; this makes SQLite enforce it too.
+  check('units_status_valid', sql`${table.status} IN ('active', 'out_of_service', 'retired')`),
+  check('units_opts_is_object', sql`json_valid(${table.opts}) AND json_type(${table.opts}) = 'object'`),
+]);
+
+// ---------------------------------------------------------------------------
+// Sets — an alternative to `items` for a product's variant slot. A product
+// points to an item OR a set for each of its variants (schema-v3 already
+// lets a product have several items as its variants, e.g. Size/Color; a set
+// is the same idea, except that variant resolves to a *bundle* of items
+// rather than one physical item — e.g. "Indoor Rope Climbing Set" comes in
+// S/M/L, each a `sets` row, each resolving via `setItems` to a harness of
+// that size plus a chalk bag and a belay device). Mirrors `items` in shape
+// (productId, slug, name, imageUrl, archived) so the two behave the same way
+// everywhere a product lists its variants.
+// ---------------------------------------------------------------------------
+
+export const sets = sqliteTable('sets', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  // Nullable/set-null, same rationale as items.productId: a set can exist
+  // unassigned, and deleting a product must never delete (or orphan the
+  // meaning of) a set that past orders' resolved items still reference.
+  productId: integer('product_id').references(() => products.id, { onDelete: 'set null' }),
+  slug: text('slug').notNull().unique(),
+  // Internal/admin-only label, same as items.name — never shown to customers.
+  name: text('name').notNull(),
+  // Short customer-facing text distinguishing this set from its siblings
+  // under the same product (e.g. "S"/"M"/"L") — typed directly by the admin
+  // when creating the set, same as any other manually-entered field. There
+  // is deliberately no attribute-key/value template for sets (unlike items'
+  // productAttributeKeys/itemAttributeValues split): a set's *contents* are
+  // shown automatically, derived from its components' own attribute values
+  // (see src/lib/sets.ts's getSetComponentDisplayBulk), but a set's own
+  // identity/label is not derived — the admin creates each variant by hand.
+  label: text('label'),
+  imageUrl: text('image_url'),
+  // Soft delete: a set that's ever been ordered has its resolved items
+  // living on in orderItems, independent of this row — same rationale as
+  // items.archived.
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index('sets_product_id_idx').on(table.productId),
+]);
+
+// ---------------------------------------------------------------------------
+// Set items — the bundle a set resolves into. A rental/order never
+// references a set directly (see orderItems above); at the moment an order
+// is placed, each cart line for a set is expanded into its setItems rows
+// (quantity multiplied by however many of the set were requested) and
+// inserted as ordinary orderItems rows. Kept here purely so a set's
+// composition — and therefore its availability, computed from its
+// components' stock same as any other item — can be looked up.
+// ---------------------------------------------------------------------------
+
+export const setItems = sqliteTable('set_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  setId: integer('set_id').notNull().references(() => sets.id, { onDelete: 'cascade' }),
+  // No onDelete: a component item can't be hard-deleted out from under a
+  // set that still resolves to it — same convention as orderItems.itemId.
+  itemId: integer('item_id').notNull().references(() => items.id),
+  quantity: integer('quantity').notNull().default(1),
+}, (table) => [
+  uniqueIndex('set_items_set_item_unique').on(table.setId, table.itemId),
+  index('set_items_set_id_idx').on(table.setId),
+  index('set_items_item_id_idx').on(table.itemId),
+  check('set_items_quantity_positive', sql`${table.quantity} > 0`),
+]);
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(), // ID from external OAuth provider
+  // WARNING: this UNIQUE constraint assumes bloc never reports the same
+  // email for two different, both-currently-valid userIds. bloc's own API
+  // does not document or enforce that (checked its OpenAPI spec — `email`
+  // is a plain nullable string with no uniqueness guarantee); not observed
+  // across this org's real 288-member roster as of 2026-09-06, but not
+  // ruled out either. If it happens, the two accounts will perpetually
+  // overwrite each other's email on alternating sign-ins — see the
+  // TODO(investigate) above upsertSignedInUser in src/lib/upsertUser.ts,
+  // and the tracking GitHub issue.
   email: text('email').notNull().unique(),
   name: text('name'),
+  // Role is NOT stored here — it is fetched live from the external API on every request
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
+// No `sessions` table: Auth.js (src/auth.ts) manages its own signed JWT
+// session cookie and does not use a database-backed session.
+
+// One order = one rental request, potentially covering multiple items
 export const orders = sqliteTable('orders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  // `NNAAX` format — two digits, two free letters, then a letter flagging
+  // the creating member's role: A=admin, B=board member, I=instructor
+  // (moderator), M=member — always one of these four — see
+  // src/lib/orders.ts's generateOrderCode. This is what members read aloud
+  // to moderators and what appears in the retrieve-order URL.
   orderCode: text('order_code').notNull().unique(),
   userId: text('user_id').notNull().references(() => users.id),
   status: text('status', {
-    enum: ['requested', 'active', 'returned', 'rejected'],
+    enum: ['requested', 'scheduled', 'active', 'returned', 'rejected'],
   }).notNull().default('requested'),
-  // Reservation date range (YYYY-MM-DD, inclusive both ends) chosen on
-  // /reservation — the whole order (all its orderItems) shares one range.
-  // fromDate is the pick-up day, toDate the return day.
+  // Reservation date range (YYYY-MM-DD, inclusive on both ends) chosen on the
+  // /reservation page — the whole order (all its orderItems) shares one
+  // range. fromDate is the pick-up day, toDate the return day (see
+  // pickupDays below for which pick-up days have a moderator confirmed
+  // available to hand out the order). Availability for a range is
+  // computed from other requested/active orders whose range overlaps this
+  // one — see src/lib/reservation.ts.
   fromDate: text('from_date').notNull(),
   toDate: text('to_date').notNull(),
-  note: text('note'),
+  note: text('note'), // optional note from member at checkout
+  // Snapshot of the checkout form's contact fields at submission time — not
+  // kept in sync with the member's live profile. contactEmail/contactMobile
+  // are intentionally not shown on the member-facing order page (privacy);
+  // they exist for future admin/moderator visibility only.
+  contactName: text('contact_name').notNull().default(''),
+  contactEmail: text('contact_email').notNull().default(''),
+  contactMobile: text('contact_mobile'),
+  // Snapshot of bloc's fee/membership status at submission time (see
+  // docs/moderator-review.md) — not re-fetched live from bloc at review time.
+  // Nullable boolean rather than a text tri-state enum: "Unknown" isn't a real
+  // business state, it's the absence of data (bloc call failed/timed out), so
+  // NULL is the correct representation, same as the underlying value's real
+  // type. Fetched server-side in src/pages/api/orders/create.ts, never taken
+  // from the posted form.
+  hasUnpaidFees: integer('has_unpaid_fees', { mode: 'boolean' }),
+  userIsMember: integer('user_is_member', { mode: 'boolean' }),
+  // Moderator accountability: who confirmed retrieval / processed the return
   confirmedByUserId: text('confirmed_by_user_id').references(() => users.id),
   returnedByUserId: text('returned_by_user_id').references(() => users.id),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-  activatedAt: integer('activated_at', { mode: 'timestamp' }),
-  returnedAt: integer('returned_at', { mode: 'timestamp' }),
-  rejectedAt: integer('rejected_at', { mode: 'timestamp' }),
-  rejectedReason: text('rejected_reason'),
+  // Set when a moderator accepts the order on the review step, ahead of
+  // retrieval — accept also moves `status` to 'scheduled' (see
+  // src/lib/moderatorOrders.ts's acceptOrder), so acceptedAt is redundant
+  // with that for gating purposes but kept as the accountability timestamp.
+  acceptedAt: integer('accepted_at', { mode: 'timestamp' }),
+  activatedAt: integer('activated_at', { mode: 'timestamp' }), // set when moderator confirms
+  returnedAt: integer('returned_at', { mode: 'timestamp' }), // set when moderator marks returned
+  rejectedAt: integer('rejected_at', { mode: 'timestamp' }), // set when moderator rejects
+  rejectedReason: text('rejected_reason'), // set when moderator rejects
+  // Set when the checkout submitter (the renting user) accepted the liability
+  // disclaimer (OSI is not liable for injury, etc — see #134). Required at
+  // checkout, shown to moderators on the order detail. A timestamp (not a
+  // plain boolean) so there's a record of *when*, same pattern as acceptedAt
+  // above. Nullable only for orders created before the disclaimer existed.
+  disclaimerAcceptedAt: integer('disclaimer_accepted_at', { mode: 'timestamp' }),
+  // TODO: dueAt (rental due date) — not yet confirmed, see docs/schema-legacy-fixes.md #9
 }, (table) => [
   index('orders_user_id_idx').on(table.userId),
   index('orders_status_idx').on(table.status),
@@ -234,11 +390,13 @@ export const orders = sqliteTable('orders', {
   check('order_date_range_valid', sql`${table.toDate} >= ${table.fromDate}`),
 ]);
 
+// Line items: one row per item in an order
 export const orderItems = sqliteTable('order_items', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
   itemId: integer('item_id').notNull().references(() => items.id),
   requestedQuantity: integer('requested_quantity').notNull().default(1),
+  // Set by moderator at confirm step — may differ from requested if stock was short
   retrievedQuantity: integer('retrieved_quantity'),
 }, (table) => [
   uniqueIndex('order_items_order_item_unique').on(table.orderId, table.itemId),
@@ -247,16 +405,20 @@ export const orderItems = sqliteTable('order_items', {
   check('retrieved_quantity_non_negative', sql`${table.retrievedQuantity} IS NULL OR ${table.retrievedQuantity} >= 0`),
 ]);
 
-// A recurring rule an admin sets up (/admin/pickup-days): "every Monday,
-// 18:00-20:00, between these two dates". Exists purely for display — the
-// admin UI collapses every date it generated back into one line ("21/09 -
-// 10/12 | Monday | 18:00 - 20:00") rather than listing each date. The rule
-// is never re-evaluated at read time; its dates are generated once, up
-// front, as ordinary rows in `pickupDays` (kind: 'recurring').
+// A recurring rule an admin sets up (see /admin/pickup-days): "every
+// Monday, 18:00-20:00, between these two dates". This row exists purely for
+// display (docs/schema.md / the admin UI collapse every date the rule
+// generated back into one line, e.g. "21/09 - 10/12 | Monday | 18:00 -
+// 20:00") — the rule is never re-evaluated at read time. The individual
+// dates it covers are generated once, up front, as ordinary rows in
+// `pickupDays` below (kind: 'recurring', recurringRuleId: this row's id).
+// Deleting a rule cascades to those generated rows (onDelete: 'cascade' on
+// pickupDays.recurringRuleId).
 export const pickupRecurringRules = sqliteTable('pickup_recurring_rules', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
-  weekday: integer('weekday').notNull(), // 0 (Sunday) - 6 (Saturday), matches JS Date#getDay()
+  // 0 (Sunday) - 6 (Saturday), matching JS Date#getDay().
+  weekday: integer('weekday').notNull(),
   startTime: text('start_time').notNull(), // HH:MM, 24h
   endTime: text('end_time').notNull(), // HH:MM, 24h
   startDate: text('start_date').notNull(), // YYYY-MM-DD, inclusive
@@ -268,28 +430,39 @@ export const pickupRecurringRules = sqliteTable('pickup_recurring_rules', {
   check('pickup_recurring_rules_date_range_valid', sql`${table.endDate} >= ${table.startDate}`),
 ]);
 
-// One row per individual pick-up day — replaces `pickupAvailableDays`
-// (bare date PK, admin-only, no time or "who"). Two origins share this one
-// table rather than living in separate ones (the abandoned PR #112's
-// approach): 'single' rows are a moderator's (or admin's) own ad-hoc
-// availability, submitted via the calendar on /moderator/pickup-days or
-// /admin/pickup-days — userId is whoever submitted it. 'recurring' rows are
-// one of the dates generated from a `pickupRecurringRules` row — userId is
-// that rule's creator, recurringRuleId points back to it. Existence of a
-// row (of either kind) is still the only "available" signal /reservation's
-// calendar reads — see getUpcomingAvailablePickupDates in
-// src/lib/pickupDays.ts, which unions both kinds unchanged from the old
-// single-table contract.
+// One row per individual pick-up day, of either origin:
+//
+// - 'single': a moderator (or admin) registering their own ad-hoc
+//   availability via the calendar on /moderator/pickup-days or
+//   /admin/pickup-days — userId is whoever submitted it, recurringRuleId is
+//   null. Deletable only by its owner (see deleteSingleDay in
+//   src/lib/pickupDays.ts, which enforces that in the WHERE clause itself,
+//   not just a check before calling — a lesson carried over from the
+//   ownership bug flagged in the abandoned PR #112).
+// - 'recurring': one of the individual dates generated from a
+//   pickupRecurringRules row at creation time — userId is that rule's
+//   creator (an admin), recurringRuleId points back to it.
+//
+// Every row (of either kind) is a real pick-up day: /reservation reads the
+// union of both to color its calendar, exactly like the old
+// pickupAvailableDays table's rows did — see getUpcomingAvailablePickupDates.
 export const pickupDays = sqliteTable('pickup_days', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   date: text('date').notNull(), // YYYY-MM-DD
-  // NOT NULL — every real caller already requires a window, and the
-  // pickup_days_single_user_date_time_unique index below needs both
-  // non-null to actually dedup (SQLite unique indexes treat NULL as
-  // distinct from NULL).
-  startTime: text('start_time').notNull(), // HH:MM, 24h
-  endTime: text('end_time').notNull(), // HH:MM, 24h
-  where: text('where'), // free-text meeting point — moderator single-day submissions only
+  // HH:MM, 24h — NOT NULL: every real caller already requires a window
+  // (the moderator API validates it before calling createSingleDays;
+  // createRecurringRule always copies it from the rule). Kept NOT NULL
+  // deliberately, not just by convention: pickup_days_single_user_date_time_unique
+  // below is scoped to (date, startTime, endTime), and SQLite treats NULL as
+  // distinct from NULL in a unique index — nullable columns here would have
+  // silently let two null-time single days for the same user/date past that
+  // constraint.
+  startTime: text('start_time').notNull(),
+  endTime: text('end_time').notNull(),
+  // Free-text meeting point ("At Vulkan", "In the reception at SiO Athletica
+  // Blindern") — moderator-submitted single days only; recurring rows leave
+  // this null (the recurring form never collects one).
+  where: text('where'),
   userId: text('user_id').notNull().references(() => users.id),
   kind: text('kind', { enum: ['single', 'recurring'] }).notNull().default('single'),
   recurringRuleId: integer('recurring_rule_id').references(() => pickupRecurringRules.id, { onDelete: 'cascade' }),
@@ -298,20 +471,201 @@ export const pickupDays = sqliteTable('pickup_days', {
   index('pickup_days_date_idx').on(table.date),
   index('pickup_days_user_id_idx').on(table.userId),
   index('pickup_days_recurring_rule_id_idx').on(table.recurringRuleId),
-  // A moderator can offer more than one time window on the same day (e.g.
-  // 12:00-14:00 and 18:00-20:00) — scoped to (date, startTime, endTime), not
-  // just (date), so only an exact duplicate window is rejected. Also scoped
-  // to kind = 'single' only: two different recurring rules may legitimately
-  // generate the same date for the same admin.
+  // A moderator can offer more than one window on the same day (e.g.
+  // 12:00-14:00 and 18:00-20:00) — so uniqueness is scoped to a distinct
+  // (date, startTime, endTime) per moderator, not just (date), and only
+  // blocks submitting the exact same window twice. Overlapping-but-not-
+  // identical windows on the same day aren't rejected — not asked for, and
+  // detecting real overlap would need interval comparison this doesn't do.
+  // Scoped to kind = 'single' only: a recurring rule may legitimately
+  // generate the same date twice if two separate rules overlap (e.g. two
+  // different training rules both landing on the same Monday).
   uniqueIndex('pickup_days_single_user_date_time_unique')
     .on(table.userId, table.date, table.startTime, table.endTime)
     .where(sql`${table.kind} = 'single'`),
   check('pickup_days_kind_recurring_rule_consistent', sql`(${table.kind} = 'recurring') = (${table.recurringRuleId} IS NOT NULL)`),
 ]);
 
-// relations() intentionally omitted here for brevity — see the Relations
-// section below for the one/many pattern to follow per FK above.
+// Admin- or moderator-authored messages shown on the moderator hub (see
+// src/components/messages/MessageTable.astro) — shift notes, stock issues,
+// closures, etc. A plain feed (newest first), no expiry or read-receipts:
+// those were open questions on issue #151, deliberately deferred rather than
+// guessed at. There's no editing (see issue #225) — a correction is just a
+// new message — so there's no updatedAt to track. authorName is a snapshot
+// of the posting user's display name at write time, same reasoning as
+// orders.contactName — there's no local users table to join against (see
+// src/lib/auth.ts), only bloc user ids. authorId is that bloc user id
+// (locals.user.id), kept alongside the display-name snapshot so who wrote a
+// message is recorded reliably even if two users share a display name (see
+// issue #225) — it's nullable because rows written before that column
+// existed have no id to backfill. pinnedAt: null means not
+// pinned; a timestamp both flags a message as pinned and orders the pinned
+// group (most recently pinned first) without a separate boolean + sort
+// column.
+//
+// unitId: null is a hub-board message; set, the message is a note in that
+// unit's lifetime log (admin-only, shown on /admin/items/[id]/units, never
+// on the hub board). One table rather than a separate unit_notes table so
+// both share the same code and components (src/lib/messages.ts,
+// MessageTable.astro). Messages can't be edited, and only admins can delete
+// them — that matters most for unit notes, which are a safety record.
+export const messages = sqliteTable('messages', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  content: text('content').notNull(),
+  authorName: text('author_name').notNull(),
+  authorId: text('author_id'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  pinnedAt: integer('pinned_at', { mode: 'timestamp' }),
+  // No onDelete: units are never hard-deleted (see `units`).
+  unitId: integer('unit_id').references(() => units.id),
+}, (table) => [
+  index('messages_unit_id_idx').on(table.unitId),
+]);
+
+export const categoriesRelations = relations(categories, ({ many }) => ({
+  subcategories: many(subcategories),
+  products: many(products),
+}));
+
+export const subcategoriesRelations = relations(subcategories, ({ one, many }) => ({
+  category: one(categories, {
+    fields: [subcategories.categoryId],
+    references: [categories.id],
+  }),
+  products: many(products),
+}));
+
+export const productsRelations = relations(products, ({ one, many }) => ({
+  category: one(categories, {
+    fields: [products.categoryId],
+    references: [categories.id],
+  }),
+  subcategory: one(subcategories, {
+    fields: [products.subcategoryId],
+    references: [subcategories.id],
+  }),
+  links: many(productLinks),
+  attributeKeys: many(productAttributeKeys),
+  // Convenience relation only — no real FK column on `products` (same
+  // pattern as usersRelations' `many(orders)` below).
+  items: many(items),
+  sets: many(sets),
+}));
+
+export const productLinksRelations = relations(productLinks, ({ one }) => ({
+  product: one(products, {
+    fields: [productLinks.productId],
+    references: [products.id],
+  }),
+}));
+
+export const productAttributeKeysRelations = relations(productAttributeKeys, ({ one, many }) => ({
+  product: one(products, {
+    fields: [productAttributeKeys.productId],
+    references: [products.id],
+  }),
+  values: many(itemAttributeValues),
+}));
+
+export const itemsRelations = relations(items, ({ one, many }) => ({
+  product: one(products, {
+    fields: [items.productId],
+    references: [products.id],
+  }),
+  attributeValues: many(itemAttributeValues),
+  orderItems: many(orderItems),
+  setItems: many(setItems),
+  units: many(units),
+}));
+
+export const unitsRelations = relations(units, ({ one, many }) => ({
+  item: one(items, {
+    fields: [units.itemId],
+    references: [items.id],
+  }),
+  notes: many(messages),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  unit: one(units, {
+    fields: [messages.unitId],
+    references: [units.id],
+  }),
+}));
+
+export const itemAttributeValuesRelations = relations(itemAttributeValues, ({ one }) => ({
+  item: one(items, {
+    fields: [itemAttributeValues.itemId],
+    references: [items.id],
+  }),
+  attribute: one(productAttributeKeys, {
+    fields: [itemAttributeValues.attributeId],
+    references: [productAttributeKeys.id],
+  }),
+}));
+
+export const setsRelations = relations(sets, ({ one, many }) => ({
+  product: one(products, {
+    fields: [sets.productId],
+    references: [products.id],
+  }),
+  setItems: many(setItems),
+}));
+
+export const setItemsRelations = relations(setItems, ({ one }) => ({
+  set: one(sets, {
+    fields: [setItems.setId],
+    references: [sets.id],
+  }),
+  item: one(items, {
+    fields: [setItems.itemId],
+    references: [items.id],
+  }),
+}));
+
+export const usersRelations = relations(users, ({ many }) => ({
+  orders: many(orders),
+}));
+
+export const ordersRelations = relations(orders, ({ one, many }) => ({
+  user: one(users, {
+    fields: [orders.userId],
+    references: [users.id],
+  }),
+  orderItems: many(orderItems),
+}));
+
+export const orderItemsRelations = relations(orderItems, ({ one }) => ({
+  order: one(orders, {
+    fields: [orderItems.orderId],
+    references: [orders.id],
+  }),
+  item: one(items, {
+    fields: [orderItems.itemId],
+    references: [items.id],
+  }),
+}));
+
+export const pickupRecurringRulesRelations = relations(pickupRecurringRules, ({ one, many }) => ({
+  createdBy: one(users, {
+    fields: [pickupRecurringRules.createdByUserId],
+    references: [users.id],
+  }),
+  generatedDays: many(pickupDays),
+}));
+
+export const pickupDaysRelations = relations(pickupDays, ({ one }) => ({
+  user: one(users, {
+    fields: [pickupDays.userId],
+    references: [users.id],
+  }),
+  recurringRule: one(pickupRecurringRules, {
+    fields: [pickupDays.recurringRuleId],
+    references: [pickupRecurringRules.id],
+  }),
+}));
 ```
+<!-- schema:end -->
 
 ### Dropped entirely (relative to `schemav2.ts`)
 
@@ -333,12 +687,16 @@ don't resurrect this.
 - `categoriesRelations`: many `subcategories`, many `products`
 - `subcategoriesRelations`: one `category`, many `products`
 - `productsRelations`: one `category`, one `subcategory`, many `productLinks`,
-  many `productAttributeKeys`, and — a Drizzle-only convenience relation,
+  many `productAttributeKeys`, many `sets`, and — a Drizzle-only convenience relation,
   with no real FK column on `products`, same pattern as `usersRelations`'
   `many(orders)` — many `items`
 - `productLinksRelations`: one `product`
 - `productAttributeKeysRelations`: one `product`, many `itemAttributeValues`
-- `itemsRelations`: one `product`, many `itemAttributeValues`, many `orderItems`
+- `itemsRelations`: one `product`, many `itemAttributeValues`, many `orderItems`,
+  many `setItems`, many `units`
+- `unitsRelations`: one `item`, many `messages` (as `notes`)
+- `messagesRelations`: one `unit` (nullable)
+- `setsRelations`: one `product`, many `setItems`; `setItemsRelations`: one `set`, one `item`
 - `itemAttributeValuesRelations`: one `item`, one `attribute` (→ `productAttributeKeys`)
 - `usersRelations`, `ordersRelations`, `orderItemsRelations`: unchanged from v2
 - `pickupRecurringRulesRelations`: one `createdBy` (→ `users`), many `generatedDays` (→ `pickupDays`)
@@ -392,7 +750,7 @@ wizard (e.g. a product created but never given a title), that's a different
 check than "hidden," and would need its own definition.
 
 # Work notes
-Agents: only append new entries below this line. Do not edit or remove anything above it.
+Agents: append new work notes below this line. Everything above is the current design — update it when the design changes (the schema block is generated, see the top of this file).
 
 ## Work item: "Set product" reassignment must keep attribute values consistent
 Assigning or reassigning an item to a product (the wizard's "Set product"
@@ -495,3 +853,37 @@ design), so it effectively reads "in stock if any item in the group is
 available." `ItemGrid.astro`/`ItemCard.astro` take product-level props now;
 `ItemCard.astro` no longer renders a per-variant attribute label, since a
 tile can represent several variants at once.
+
+## Schema addition: units (physical objects behind an item) — #276
+`items.stockCount` is gone. A new `units` table (see `src/db/schema.ts`) has
+one row per physical object of an item: `itemId`, `brand`, `model`,
+`marking`, `serialNumber`, `manufacturedAt`, `purchasedAt`, `status`
+(`active` / `out_of_service` / `retired`) and `opts` (JSON object of
+optional key/value facts, normally empty, e.g. `{ "length": "58 m" }` for a
+rope that was cut).
+
+- **Stock is derived**: an item's stock is `count(units where status =
+  'active')`, via `activeUnitCount` / `itemStockExtras` in
+  `src/lib/units.ts`. Taking a unit out of service or retiring it lowers
+  availability immediately, with no extra bookkeeping. Every former reader of
+  `items.stockCount` goes through it.
+- **Rentals are unchanged**: `orderItems` still reference items. Units are
+  admin-only bookkeeping (`/admin/items/[id]/units`).
+- **Never hard-deleted**: retired units stay as the record of what happened
+  to them (same reasoning as `items.archived`).
+- **Overbooking is a warning, not a block**: when stock drops below what's
+  already booked, the units page lists the affected orders
+  (`getOverbookedOrders` in `src/lib/availability.ts`). The admin decides what
+  to do; nothing is cancelled automatically.
+- **Notes are messages**: a unit's lifetime log is `messages` rows with
+  `messages.unitId` set (`unitId` null = hub-board message), so it reuses
+  `src/lib/messages.ts` and `MessageTable.astro`. Status changes post a note
+  ("Status: Active → Out of service — reason"). Notes follow exactly the
+  hub-message rules: dated by when they were posted, never edited, deletable
+  by an admin or their own author. On the units page each unit shows its
+  three newest notes as compact one-line entries ("John A. 20/09/26 <note>",
+  scrolling for more), a new-note popover, a status popover on its status
+  pill and a details panel for its fields.
+- **Separate from reports**: unit notes hold admin-written history only.
+  Member/moderator damage reports will be their own table later, assignable
+  to a unit.

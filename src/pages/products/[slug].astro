@@ -6,7 +6,13 @@
 // "/items/..." would be the wrong noun here. See this PR's description.
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ImagePlaceholder from '../../components/shop/ImagePlaceholder.astro';
+import Page from '../../components/ui/Page.astro';
+import Callout from '../../components/ui/Callout.astro';
+import { eyebrowClasses, pageTitleClasses } from '../../lib/layout-styles';
 import VariantPicker from '../../components/shop/VariantPicker.astro';
+import ProductAvailability from '../../components/availability/ProductAvailability.astro';
+import AvailabilityCalendarSkeleton from '../../components/availability/AvailabilityCalendarSkeleton.astro';
+import { variantKey } from '../../lib/availabilityCalendar';
 import { getShopProductBySlug } from '../../lib/shop';
 
 const { slug } = Astro.params;
@@ -23,11 +29,15 @@ if (!product) {
 // VariantPicker's script; server-side, just default to the first item, or
 // the first set if the product has no items.
 const initialImageUrl = (product.items[0]?.imageUrl ?? product.sets[0]?.imageUrl) ?? product.thumbnailImageUrl ?? null;
+// Which variant's availability calendar shows (see ProductAvailability.astro);
+// VariantPicker's script keeps it in sync with the selection.
+const initialVariantKey = product.items[0] ? variantKey('item', product.items[0].id) : product.sets[0] ? variantKey('set', product.sets[0].id) : '';
 ---
 
 <BaseLayout title={product.title}>
-	<div class="mx-auto grid max-w-4xl gap-8 px-4 py-12 sm:grid-cols-2">
-		<div class="aspect-square overflow-hidden rounded-lg bg-bg-subtle">
+	<Page width="wide">
+	<div class="grid gap-section sm:grid-cols-2">
+		<div class="aspect-square overflow-hidden rounded-xl bg-bg-subtle">
 			<!--
 				Both the image and its placeholder are always in the DOM (rather
 				than picking one at render time) so the variant-select script can
@@ -51,17 +61,17 @@ const initialImageUrl = (product.items[0]?.imageUrl ?? product.sets[0]?.imageUrl
 			</div>
 		</div>
 
-		<div class="flex flex-col gap-4">
-			<div>
-				{product.subcategoryName && <p class="text-xs uppercase tracking-wide text-text-muted">{product.subcategoryName}</p>}
-				<h1 class="text-2xl font-semibold tracking-tight text-text">{product.title}</h1>
+		<div class="flex flex-col gap-6" data-selected-variant={initialVariantKey}>
+			<div class="flex flex-col gap-snug">
+				{product.subcategoryName && <p class={eyebrowClasses}>{product.subcategoryName}</p>}
+				<h1 class={pageTitleClasses}>{product.title}</h1>
 			</div>
 
-			{product.description && <p class="text-sm text-text-muted">{product.description}</p>}
+			{product.description && <p class="text-base leading-relaxed text-text-muted">{product.description}</p>}
 
 			{
 				product.items.length === 0 && product.sets.length === 0 ? (
-					<p class="text-sm text-error-text">No items available for this product yet.</p>
+					<Callout variant="error" live={false}><p>No items available for this product yet.</p></Callout>
 				) : (
 					<VariantPicker
 						items={product.items}
@@ -69,13 +79,22 @@ const initialImageUrl = (product.items[0]?.imageUrl ?? product.sets[0]?.imageUrl
 						productSlug={product.slug}
 						thumbnailImageUrl={product.thumbnailImageUrl}
 						attributeKeyOrder={product.attributeKeyOrder}
+						variantKeys={product.variantKeys}
 					/>
 				)
 			}
 
 			{
+				initialVariantKey && (
+					<ProductAvailability server:defer productId={product.id}>
+						<AvailabilityCalendarSkeleton slot="fallback" />
+					</ProductAvailability>
+				)
+			}
+
+			{
 				product.links.length > 0 && (
-					<ul class="flex flex-col gap-1 border-t border-border pt-4 text-sm">
+					<ul class="flex flex-col gap-2 border-t border-border pt-6 text-sm">
 						{product.links.map((link) => (
 							<li>
 								<a href={link.url} target="_blank" rel="noopener noreferrer" class="text-text-muted underline hover:text-text">
@@ -88,4 +107,5 @@ const initialImageUrl = (product.items[0]?.imageUrl ?? product.sets[0]?.imageUrl
 			}
 		</div>
 	</div>
+	</Page>
 </BaseLayout>

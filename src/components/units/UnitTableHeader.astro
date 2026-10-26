@@ -1,0 +1,17 @@
+---
+// Column labels for UnitRow, sharing its exact grid (see unitTable.ts).
+import { DESKTOP_ONLY_CLASS, UNIT_GRID_CLASS, UNIT_GRID_STYLE } from './unitTable';
+---
+<div
+	class:list={[UNIT_GRID_CLASS, 'border-b border-border bg-bg-subtle py-3 text-xs font-medium uppercase tracking-wide text-text-muted']}
+	style={UNIT_GRID_STYLE}
+>
+	<span>#</span>
+	<span>Unit</span>
+	<span class={DESKTOP_ONLY_CLASS}>Marking</span>
+	<span class={DESKTOP_ONLY_CLASS}>Made</span>
+	<span class={DESKTOP_ONLY_CLASS}>Bought</span>
+	<span class={DESKTOP_ONLY_CLASS} title="Number of extra fields — view and add them under the unit's details">Extra</span>
+	<span>Status</span>
+	<span></span>
+</div>

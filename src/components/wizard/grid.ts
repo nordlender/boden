@@ -9,4 +9,20 @@ export const GRID_TEMPLATE = {
 	unassigned: '2.5rem 2.75rem 1fr 6rem 3rem',
 } as const;
 
+// Below the `sm` breakpoint the sub-category and product columns are hidden
+// (ItemRow shows the product under the item name instead), so every variant
+// shares the unassigned layout and fits a phone screen.
+const MOBILE_GRID_TEMPLATE = GRID_TEMPLATE.unassigned;
+
 export type PanelVariant = keyof typeof GRID_TEMPLATE;
+
+// An inline style can't be responsive, so the two templates are passed as
+// CSS variables and picked by GRID_COLUMNS_CLASS.
+export function gridColumnsStyle(variant: PanelVariant): string {
+	return `--grid-cols: ${MOBILE_GRID_TEMPLATE}; --grid-cols-sm: ${GRID_TEMPLATE[variant]}`;
+}
+
+export const GRID_COLUMNS_CLASS = 'grid-cols-(--grid-cols) sm:grid-cols-(--grid-cols-sm)';
+
+// For cells that only exist in the sm+ layout.
+export const DESKTOP_ONLY_CLASS = 'hidden sm:block';

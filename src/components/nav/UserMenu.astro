@@ -1,17 +1,13 @@
 ---
 import UserMenuLinks from './UserMenuLinks.astro';
 import AppIcon from '../icons/AppIcon.astro';
+import Dropdown from '../ui/Dropdown.astro';
 import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 ---
 
-<details class="group relative">
-	<summary
-		class:list={['flex cursor-pointer list-none items-center justify-center rounded-full border border-border-strong text-text-muted hover:bg-bg-subtle [&::-webkit-details-marker]:hidden', triggerBoxClasses.md]}
-		aria-label="Account"
-	>
+<Dropdown align="right" ariaLabel="Account" panelClass="mt-3 w-60" class="group">
+	<span slot="trigger" class:list={['flex items-center justify-center rounded-full border border-border-strong text-text-muted hover:bg-bg-subtle', triggerBoxClasses.md]}>
 		<AppIcon name="user" size={triggerIconPixelSize.md} />
-	</summary>
-	<div class="absolute right-0 z-10 mt-2 w-48 rounded-md border border-border bg-surface p-2 shadow-lg">
-		<UserMenuLinks />
-	</div>
-</details>
+	</span>
+	<UserMenuLinks />
+</Dropdown>

@@ -1,5 +1,8 @@
 ---
 import SelectIcon from './SelectIcon.astro';
+import { gridTableRowClasses } from '../../lib/table-styles';
+import { eyebrowClasses } from '../../lib/layout-styles';
+import { inputSmClasses } from '../../lib/form-styles';
 import Thumbnail from '../ui/Thumbnail.astro';
 import SubCategoryTag from './SubCategoryTag.astro';
 import ProductTag from './ProductTag.astro';
@@ -7,7 +10,8 @@ import StockIndicator from './StockIndicator.astro';
 import DetailsToggle from './DetailsToggle.astro';
 import AppIcon from '../icons/AppIcon.astro';
 import TextMorphButton from '../ui/TextMorphButton.astro';
-import { GRID_TEMPLATE, type PanelVariant } from './grid';
+import AvailabilityCalendar from '../availability/AvailabilityCalendar.astro';
+import { DESKTOP_ONLY_CLASS, GRID_COLUMNS_CLASS, gridColumnsStyle, type PanelVariant } from './grid';
 
 interface AttributeEntry {
 	key: string;
@@ -31,6 +35,8 @@ interface Props {
 	description?: string | null;
 	attributes?: AttributeEntry[];
 	missingAttributeTemplate?: boolean;
+	// Per-day availability for the next four weeks (src/lib/availability.ts).
+	availability?: { start: string; daily: number[] };
 }
 
 const {
@@ -47,26 +53,29 @@ const {
 	description,
 	attributes = [],
 	missingAttributeTemplate = false,
+	availability,
 } = Astro.props;
 ---
 <div class="item-row border-b border-border last:border-b-0" data-details-row>
 	<div
-		class:list={["grid items-center gap-3 px-3 py-2 hover:bg-bg-subtle", selected && 'bg-selected-subtle/60 hover:bg-selected-subtle']}
-		style={`grid-template-columns: ${GRID_TEMPLATE[variant]}`}
+		class:list={['grid hover:bg-bg-subtle', gridTableRowClasses, GRID_COLUMNS_CLASS, selected && 'bg-selected-subtle/60 hover:bg-selected-subtle']}
+		style={gridColumnsStyle(variant)}
 	>
 		<SelectIcon itemId={itemId} formId={formId} checked={selected} label={`Select ${name}`} />
 		<Thumbnail src={image} alt={name} />
 		<div class="min-w-0">
 			<p class="truncate text-sm font-medium text-text">{name}</p>
 			<p class="font-mono text-xs text-text-muted">#{itemId}</p>
+			{/* The product column is hidden below sm — show the product here instead. */}
+			{variant === 'assigned' && product && <p class="truncate text-xs text-text-muted sm:hidden">{product}</p>}
 		</div>
-		{variant === 'assigned' && (subCategory ? <SubCategoryTag name={subCategory} /> : <span></span>)}
-		{variant === 'assigned' && product && <ProductTag name={product} />}
+		{variant === 'assigned' && <div class:list={[DESKTOP_ONLY_CLASS, 'min-w-0']}>{subCategory && <SubCategoryTag name={subCategory} />}</div>}
+		{variant === 'assigned' && <div class:list={[DESKTOP_ONLY_CLASS, 'min-w-0']}>{product && <ProductTag name={product} />}</div>}
 		<StockIndicator inStock={inStock} total={totalStock} />
 		<DetailsToggle label={`Show details for ${name}`} warning={missingAttributeTemplate} />
 	</div>
-	<div class="item-details hidden border-t border-border bg-bg-subtle/60 px-4 py-4" data-details-panel>
-		<div class="flex gap-4">
+	<div class="item-details hidden border-t border-border bg-bg-subtle/60 px-card py-5" data-details-panel>
+		<div class="flex gap-6">
 			<Thumbnail src={image} alt={name} size={112} />
 			<div class="min-w-0 flex-1">
 				{description ? (
@@ -74,20 +83,20 @@ const {
 				) : (
 					<p class="text-sm italic text-text-muted">No description yet — inherited from the assigned product.</p>
 				)}
-				<div class="mt-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-muted">
+				<div class:list={[eyebrowClasses, 'mt-stack flex items-center gap-1.5']}>
 					<AppIcon name="attribute" size={14} />
 					Attributes
 				</div>
 				{variant === 'assigned' ? (
-					<div class="mt-1 flex flex-col gap-1">
+					<div class="mt-snug flex flex-col gap-1.5">
 						{attributes.map((attribute) => (
 							<details class="attribute-row group/edit">
-								<summary class="flex cursor-pointer list-none items-center gap-3 py-0.5 text-sm [&::-webkit-details-marker]:hidden">
+								<summary class="flex cursor-pointer list-none items-center gap-3 py-1 text-sm [&::-webkit-details-marker]:hidden">
 									<span class="w-28 shrink-0 text-text-muted">{attribute.key}</span>
 									<span class="min-w-0 flex-1 truncate text-text">{attribute.value || '—'}</span>
-									<AppIcon name="edit" size={13} class="shrink-0 text-disabled-text group-hover/edit:text-text-muted" />
+									<AppIcon name="edit" size={14} class="shrink-0 text-disabled-text group-hover/edit:text-text-muted" />
 								</summary>
-								<form method="post" action="/api/wizard/attributes" class="ml-[7.75rem] mt-1 flex items-center gap-2">
+								<form method="post" action="/api/wizard/attributes" class="ml-[7.75rem] mt-2 flex items-center gap-2">
 									<input type="hidden" name="itemId" value={itemId} />
 									<input type="hidden" name="key" value={attribute.key} />
 									<input type="hidden" name="redirectTo" value={Astro.url.pathname} />
@@ -95,32 +104,46 @@ const {
 										type="text"
 										name="value"
 										value={attribute.value}
-										class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm"
+										class:list={['min-w-0 flex-1', inputSmClasses]}
 									/>
 									<TextMorphButton type="submit" action="save" size="sm" />
 								</form>
 							</details>
 						))}
-						<form method="post" action="/api/wizard/attributes" class="mt-1 flex items-center gap-2">
+						<form method="post" action="/api/wizard/attributes" class="mt-2 flex items-center gap-2">
 							<input type="hidden" name="itemId" value={itemId} />
 							<input type="hidden" name="redirectTo" value={Astro.url.pathname} />
 							<input
 								type="text"
 								name="key"
 								placeholder="New attribute"
-								class="w-28 shrink-0 rounded border border-border-interactive px-2 py-1 text-sm"
+								class:list={['w-28 shrink-0', inputSmClasses]}
 							/>
 							<input
 								type="text"
 								name="value"
 								placeholder="Value"
-								class="min-w-0 flex-1 rounded border border-border-interactive px-2 py-1 text-sm"
+								class:list={['min-w-0 flex-1', inputSmClasses]}
 							/>
 							<TextMorphButton type="submit" action="add" size="sm" />
 						</form>
 					</div>
 				) : (
-					<p class="mt-1 text-sm italic text-text-muted">No attributes yet — inherited from the assigned product.</p>
+					<p class="mt-snug text-sm italic text-text-muted">No attributes yet — inherited from the assigned product.</p>
+				)}
+				<p class="mt-stack text-sm">
+					<a href={`/admin/items/${itemId}/units`} class="text-text underline hover:text-text-muted">
+						Manage units ({totalStock} active)
+					</a>
+					<span class="text-xs text-text-muted"> — the physical objects behind this item: service, retirement, history</span>
+				</p>
+				{availability && (
+					<>
+						{/* Scheduled availability (every claiming order counts), unlike the
+						    row's "On shelf" figure, which is real availability. */}
+						<p class:list={[eyebrowClasses, 'mt-stack mb-snug']} title="Counts every requested, scheduled and active order on each day — what members can still book">Scheduled availability</p>
+						<AvailabilityCalendar start={availability.start} daily={availability.daily.map((n) => Math.max(0, n))} total={totalStock} class="max-w-sm" />
+					</>
 				)}
 			</div>
 		</div>

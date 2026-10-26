@@ -1,5 +1,7 @@
 ---
 import CartActionsBar from './CartActionsBar.astro';
+import { emptyStateClasses, sectionTitleClasses } from '../../lib/layout-styles';
+import MorphButton from '../ui/MorphButton.astro';
 ---
 
 <div data-cart-backdrop class="fixed inset-0 z-40 hidden bg-overlay"></div>
@@ -7,23 +9,21 @@ import CartActionsBar from './CartActionsBar.astro';
 <aside
 	id="cart-sidebar"
 	data-cart-sidebar
-	class="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm translate-x-full flex-col bg-surface shadow-xl transition-transform duration-200"
-	aria-hidden="true"
+	class="fixed inset-y-0 right-0 z-50 flex w-full max-w-md translate-x-full flex-col bg-surface shadow-xl transition-transform duration-200"
+	inert
 >
-	<div class="flex items-center justify-between border-b border-border px-4 py-3">
-		<h2 class="text-sm font-semibold text-text">Cart</h2>
-		<button type="button" data-cart-close aria-label="Close cart" class="text-lg leading-none text-text-muted hover:text-text">
-			&times;
-		</button>
+	<div class="flex items-center justify-between border-b border-border px-card py-4">
+		<h2 class={sectionTitleClasses}>Cart</h2>
+		<MorphButton action="cancel" label="Close cart" data-cart-close />
 	</div>
 
-	<div data-cart-list class="flex-1 overflow-y-auto px-4">
-		<p data-cart-empty class="py-6 text-sm text-text-muted">Your cart is empty.</p>
+	<div data-cart-list class="flex-1 overflow-y-auto px-card">
+		<p data-cart-empty class={emptyStateClasses}>Your cart is empty.</p>
 		<div data-cart-rows class="divide-y divide-border"></div>
 	</div>
 
-	<div class="border-t border-border p-4">
-		<CartActionsBar primaryHref="/cart" primaryLabel="Review order" clearHidden withUpdate />
+	<div class="border-t border-border p-card">
+		<CartActionsBar primaryHref="/reservation" primaryLabel="Continue to reservation" clearHidden withUpdate />
 	</div>
 </aside>
 
@@ -87,12 +87,21 @@ import CartActionsBar from './CartActionsBar.astro';
 			loadCart();
 		});
 
+		let lastFocused: HTMLElement | null = null;
+
 		function setOpen(open: boolean) {
+			const wasOpen = isOpen();
 			sidebar!.classList.toggle('translate-x-full', !open);
-			sidebar!.setAttribute('aria-hidden', String(!open));
+			sidebar!.inert = !open;
 			backdrop!.classList.toggle('hidden', !open);
 			toggleButtons.forEach((button) => button.setAttribute('aria-expanded', String(open)));
-			if (open) loadCart();
+			if (open) {
+				if (!wasOpen) lastFocused = document.activeElement as HTMLElement | null;
+				sidebar!.querySelector<HTMLElement>('[data-cart-close]')?.focus();
+				loadCart();
+			} else if (wasOpen) {
+				lastFocused?.focus();
+			}
 		}
 
 		toggleButtons.forEach((button) => {

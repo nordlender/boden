@@ -3,24 +3,20 @@ import ConfirmationLayout from '../../layouts/ConfirmationLayout.astro';
 import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import Button from '../../components/ui/Button.astro';
 import PickupInfo from '../../components/orders/PickupInfo.astro';
-import { db } from '../../db/client';
+import Card from '../../components/ui/Card.astro';
+import { getMemberOrder } from '../../lib/orders';
 import { getPickupWindowsForDate } from '../../lib/pickupDays';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /checkout) —
 // reached only when logged in, so Astro.locals.user is non-null here.
 //
-// `order` is the order code. The lookup is scoped to the signed-in user, so
-// guessing another member's code just redirects away rather than leaking it.
-const orderCode = Astro.url.searchParams.get('order') ?? '';
-const order = orderCode
-  ? await db.query.orders.findFirst({
-      where: (t, { and, eq }) => and(eq(t.orderCode, orderCode), eq(t.userId, Astro.locals.user!.id)),
-      with: { orderItems: { with: { item: true } } },
-    })
-  : undefined;
+// `order` is the order code. getMemberOrder scopes the lookup to the signed-in
+// user, so guessing another member's code just redirects away rather than
+// leaking it (an empty code or missing user likewise resolves to undefined).
+const order = await getMemberOrder(Astro.url.searchParams.get('order') ?? '', Astro.locals.user?.id ?? '');
 
 if (!order) {
-  return Astro.redirect('/cart');
+  return Astro.redirect('/orders');
 }
 
 const pickupWindows = await getPickupWindowsForDate(order.fromDate);
@@ -34,7 +30,7 @@ const pickupWindows = await getPickupWindowsForDate(order.fromDate);
 		</p>
 	</Fragment>
 
-	<div class="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
+	<Card as="div">
 		<UserOrderSummary
 			orderCode={order.orderCode}
 			status={order.status}
@@ -52,7 +48,7 @@ const pickupWindows = await getPickupWindowsForDate(order.fromDate);
 		<Button variant="primary" size="lg" href={`/orders/${order.orderCode}`} class="self-start">
 			View or manage this order
 		</Button>
-	</div>
+	</Card>
 
 	<a href="/" class="self-center text-sm font-medium text-accent-text hover:underline">
 		Continue shopping

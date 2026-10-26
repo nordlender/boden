@@ -1,0 +1,53 @@
+---
+export const prerender = false;
+
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin).
+// Every physical unit (src/db/schema.ts's `units`) of every item, by id, in
+// the same UnitTable/UnitRow tables as an item's own units page
+// (/admin/items/[id]/units) — notes, status and details all work here too —
+// with each row also showing and linking to its item. Retired units are
+// listed in a separate table below the units in use.
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Page from '../../components/ui/Page.astro';
+import UnitTable from '../../components/units/UnitTable.astro';
+import { listAllUnits, type UnitItemRef } from '../../lib/units';
+import { listUnitNotes } from '../../lib/messages';
+import { todayIsoInOslo } from '../../lib/dates';
+import { hasRole } from '../../lib/auth';
+
+const rows = await listAllUnits();
+const allUnits = rows.map((row) => row.unit);
+const itemsById = new Map<number, UnitItemRef>(rows.map((row) => [row.item.id, row.item]));
+const notesByUnit = await listUnitNotes(allUnits.map((unit) => unit.id));
+const unitsInUse = allUnits.filter((unit) => unit.status !== 'retired');
+const retiredUnits = allUnits.filter((unit) => unit.status === 'retired');
+
+const tableProps = {
+	notesByUnit,
+	itemsById,
+	// Message rules for unit notes, same as the hub board (MessageTableRow.astro).
+	currentUserId: Astro.locals.user?.id ?? null,
+	isAdmin: hasRole(Astro.locals.user?.role, 'admin'),
+	today: todayIsoInOslo(),
+	redirectTo: Astro.url.pathname,
+};
+---
+
+<AdminLayout title="Units">
+	<Page
+		width="wide"
+		title="Units"
+		description="Every physical unit of every item, by id. Add units from an item's own units page, linked from each unit."
+	>
+
+		<UnitTable title="Units" units={unitsInUse} emptyText="No units in use yet." {...tableProps} />
+		{retiredUnits.length > 0 && <UnitTable title="Retired units" units={retiredUnits} emptyText="" {...tableProps} />}
+	</Page>
+</AdminLayout>
+
+<script>
+	// Unit forms submit in place and show validation errors inline.
+	import { wireUnitForms } from '../../lib/unit-forms';
+
+	wireUnitForms();
+</script>

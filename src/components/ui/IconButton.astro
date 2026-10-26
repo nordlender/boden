@@ -21,6 +21,8 @@ interface Props {
 	class?: string;
 	form?: string;
 	formaction?: string;
+	// Native Popover API trigger — e.g. as ActionPopover's `trigger` slot.
+	popovertarget?: string;
 }
 
 const { label, icon, variant = 'secondary', size = 'md', type = 'button', href, disabled = false, class: className, ...rest } = Astro.props;
@@ -29,7 +31,7 @@ const classes = [baseClasses, iconOnlySizeClasses[size], variantClasses[variant]
 ---
 {
 	href ? (
-		<a href={href} aria-label={label} class={classes} aria-disabled={disabled || undefined} {...rest}>
+		<a href={disabled ? undefined : href} aria-label={label} class={classes} aria-disabled={disabled || undefined} {...rest}>
 			{icon ? <AppIcon name={icon} size={iconOnlyPixelSize[size]} /> : <slot />}
 		</a>
 	) : (

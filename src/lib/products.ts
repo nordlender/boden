@@ -1,4 +1,4 @@
-import { db } from '../db/client';
+import { db, type Tx } from '../db/client';
 import { categories, subcategories, products, productLinks, productAttributeKeys, items, itemAttributeValues } from '../db/schema';
 import { eq, max } from 'drizzle-orm';
 
@@ -40,8 +40,6 @@ function slugify(input: string): string {
 		.join('-');
 	return base || 'product';
 }
-
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // Same collision-avoidance shape as wizard.ts's uniqueItemSlug/setWizard.ts's
 // equivalent. Runs on the caller's transaction so the check and the write
@@ -88,6 +86,11 @@ export interface ProductInput {
 	// Attribute-key template rows, by name — see docs/schema.md's
 	// productAttributeKeys. Order given here becomes sortOrder.
 	attributeKeys: string[];
+	// Names of the attribute keys the shopper picks between (see schema.ts's
+	// productAttributeKeys.isVariant). May name existing or newly-added keys;
+	// names matching no key are ignored. Optional so callers that don't care
+	// leave the current selection untouched.
+	variantAttributeKeys?: string[];
 }
 
 export async function createProduct(input: ProductInput): Promise<number> {
@@ -112,6 +115,7 @@ export async function createProduct(input: ProductInput): Promise<number> {
 
 		insertLinks(tx, created.id, input.links);
 		insertAttributeKeys(tx, created.id, attributeKeyNames);
+		applyVariantKeys(tx, created.id, input.variantAttributeKeys);
 
 		return created.id;
 	});
@@ -154,7 +158,19 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
 		const existingNames = new Set(existingKeys.map((k) => k.name));
 		const newNames = attributeKeyNames.filter((name) => !existingNames.has(name));
 		insertAttributeKeys(tx, id, newNames);
+		applyVariantKeys(tx, id, input.variantAttributeKeys);
 	});
+}
+
+// Unlike adding keys, flagging is freely reversible (no item data is
+// touched), so this runs on edit too: exactly the named keys end up flagged.
+function applyVariantKeys(tx: Tx, productId: number, names: string[] | undefined): void {
+	if (!names) return;
+	const wanted = new Set(names.map((name) => name.trim()).filter(Boolean));
+	const keys = tx.select({ id: productAttributeKeys.id, name: productAttributeKeys.name }).from(productAttributeKeys).where(eq(productAttributeKeys.productId, productId)).all();
+	for (const key of keys) {
+		tx.update(productAttributeKeys).set({ isVariant: wanted.has(key.name) }).where(eq(productAttributeKeys.id, key.id)).run();
+	}
 }
 
 function dedupeKeyNames(names: string[]): string[] {
@@ -218,7 +234,7 @@ export interface ProductForEdit {
 	status: 'hidden' | 'published';
 	thumbnailImageUrl: string | null;
 	links: { id: number; label: string; url: string }[];
-	attributeKeys: { id: number; name: string }[];
+	attributeKeys: { id: number; name: string; isVariant: boolean }[];
 }
 
 export async function getProductForEdit(id: number): Promise<ProductForEdit | null> {
@@ -241,7 +257,7 @@ export async function getProductForEdit(id: number): Promise<ProductForEdit | nu
 		status: product.status,
 		thumbnailImageUrl: product.thumbnailImageUrl,
 		links: product.links.map((link) => ({ id: link.id, label: link.label, url: link.url })),
-		attributeKeys: product.attributeKeys.map((key) => ({ id: key.id, name: key.name })),
+		attributeKeys: product.attributeKeys.map((key) => ({ id: key.id, name: key.name, isVariant: key.isVariant })),
 	};
 }
 

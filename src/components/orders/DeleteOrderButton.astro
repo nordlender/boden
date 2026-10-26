@@ -1,5 +1,6 @@
 ---
 import ActionPopover from '../ui/ActionPopover.astro';
+import { inlineErrorClasses } from '../../lib/form-styles';
 
 interface Props {
 	orderCode: string;
@@ -23,7 +24,7 @@ const popoverId = `delete-order-${orderCode}-confirm`;
 			>
 				<p class="text-sm text-text-muted">This cannot be undone.</p>
 			</ActionPopover>
-			<p data-delete-order-error hidden class="mt-2 text-sm text-error-text" />
+			<p data-delete-order-error hidden class:list={['mt-2', inlineErrorClasses]} />
 		</div>
 	)
 }

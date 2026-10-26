@@ -1,9 +1,9 @@
 # Astro + SQLite rental shop — setup guide
 
 > This is the original project spec, kept up to date with what's actually
-> built (last full pass: 2026-09-11). For the authoritative schema
-> rationale see [`docs/schema.md`](schema.md); for the planned
-> moderator-review page see [`docs/moderator-review.md`](moderator-review.md).
+> built (last full pass: 2026-10-19). For the authoritative schema
+> rationale see [`docs/schema.md`](schema.md); for the moderator
+> order-review step see [`docs/moderator-review.md`](moderator-review.md).
 > Where something below is planned but not yet built, it's marked
 > **(planned)**.
 
@@ -18,6 +18,12 @@
   reference items, never products directly. An item can also exist
   unassigned (no product yet) while an admin is still building it out in
   the wizard.
+- **Set** — a rentable bundle of items with quantities, offered as a
+  product's variant instead of a single item. Resolved into its component
+  items at checkout, so orders still only reference items.
+- **Unit** — one physical object behind an item. An item's stock is the
+  number of its active units. Admin-only bookkeeping; rentals never see units.
+  See `docs/schema.md`.
 
 ## Stack overview
 
@@ -28,7 +34,7 @@
 | Database | SQLite via `better-sqlite3` | Zero-config, file-based, perfect for low traffic |
 | ORM | Drizzle ORM | Type-safe, lightweight, works great with SQLite |
 | Auth | `auth-astro` + `@auth/core`, custom bloc OAuth provider | Login and membership status come from [bloc](https://bloc.net) (osiklatring.no's membership backend), not a separate account system — see §7 |
-| Image storage | Referenced by URL only — no upload endpoint yet | Admin pastes an image URL in the wizard; `/public/uploads` currently holds manually-seeded fixture images, not app uploads (see §12) |
+| Image storage | Local disk (`data/uploads/`), served at `/media/*` | Admin uploads through the wizard's image menu (see §12) |
 | Deployment | Single VPS (e.g. Hetzner, DigitalOcean) with Node adapter | SQLite needs a persistent filesystem — no serverless |
 
 ---
@@ -40,12 +46,13 @@
 | Role | What they can do |
 |---|---|
 | `member` | Browse catalogue, manage cart, choose reservation dates, place orders, view own order history |
-| `moderator` | Everything a member can do + review/accept-reject, retrieve, confirm handoff, and mark returns **(in progress — order-code retrieve is built, the rest is still planned, see §10)** |
-| `admin` | Everything a moderator can do + manage products/items via the wizard (`/admin/items`), set pickup-day availability (`/admin/pickup-days`) |
+| `moderator` | Everything a member can do + review/accept-reject, retrieve, confirm handoff, and mark returns (§10), and register their own pick-up days (`/moderator/pickup-days`) |
+| `board` | Ranks between moderator and admin in `ROLE_RANK`; no route is gated on it yet — it only affects the order-code role letter (§6) |
+| `admin` | Everything a moderator can do + manage products, items, sets and units (`/admin/products`, `/admin/items`, `/admin/sets`, `/admin/units`), view all orders, and set recurring pick-up days (`/admin/pickup-days`) |
 
 Role assignment itself is **not** an in-app admin feature today: it's a
 temporary comma-separated bloc-user-id allowlist in env vars
-(`ADMIN_USER_IDS` / `MODERATOR_USER_IDS`, see §8) until bloc ships a real
+(`ADMIN_USER_IDS` / `BOARD_USER_IDS` / `MODERATOR_USER_IDS`, see §8) until bloc ships a real
 role endpoint.
 
 ### Order lifecycle
@@ -63,29 +70,31 @@ member goes to /reservation, picks pick-up/return dates
   → order code (NNAAX format, read aloud at pick-up) generated
   → redirected to /checkout/success?order=<orderCode>
 
-moderator reviews order on Review Order page (before retrieval) (planned)
-  → sees member bio, hasUnpaidFees / userIsMember flags, requested items
+moderator opens the request queue (/moderator/requests) or enters the order
+code at /moderator/retrieve, which lands on the order hub
+  → Review page (/moderator/review/[code]): member bio, hasUnpaidFees /
+    userIsMember flags (snapshotted on the order), requested items
   → clicks "Accept" or "Reject"
-  → status: scheduled (accept — proceeds to retrieval below)
+  → status: scheduled (accept — acceptedAt stamped, proceeds to retrieval below)
   → status: rejected  (reject — moved to archive, rejectedReason recorded)
 
-moderator enters order number into Retrieve Order form (built, see §10)
-  → sees Moderator Order Summary (items, quantities, user bio) (planned)
-  → clicks "Go to confirm"
-
-moderator fetches items from storage (planned)
-  → Confirm Order page: enters actual quantity retrieved per item
-  → clicks "Confirm"
-  → status: active  (rental is now live)
+moderator fetches items from storage, then on the hub clicks "Confirm"
+  → blind-count page (/moderator/retrieve/[id]/count): enters actual
+    quantity handed out per item
+  → status: active  (rental is now live; activatedAt + confirmedByUserId stamped)
 
 member returns items on-site
-  → moderator marks order as returned (planned)
-  → status: returned  (moved to archive)
+  → moderator blind-counts them at /moderator/return/[id]
+  → status: returned  (returnedAt + returnedByUserId stamped, moved to archive)
 ```
 
-Cart → reservation → order-creation is implemented today
-(`src/lib/orders.ts`, `src/pages/api/orders/create.ts`). The review,
-retrieve, and confirm steps are design-only — see §10.
+A member can also reschedule (`PATCH /api/orders/[code]/reschedule`, blocked
+once a moderator has accepted) or delete (`DELETE /api/orders/[code]`) their
+own order from `/orders`.
+
+Every step above is implemented — cart → reservation → order creation
+(`src/lib/orders.ts`, `src/pages/api/orders/create.ts`) and the moderator
+steps (`src/lib/moderatorOrders.ts`, §10).
 
 ---
 
@@ -118,34 +127,45 @@ boden/
 │   ├── auth.ts                              # bloc OAuth provider config (auth-astro) — §7
 │   ├── env.d.ts
 │   ├── pages/
-│   │   ├── index.astro                      # Catalogue — static, home page
-│   │   ├── products/
-│   │   │   └── [slug].astro                 # Product detail: variant select, image, attributes, links — static
-│   │   ├── cart.astro                       # Cart review — SSR
-│   │   ├── reservation.astro                # Pick-up/return dates, availability, remove unavailable items — SSR
-│   │   ├── checkout/
-│   │   │   └── success.astro                # Order receipt after placing — SSR
-│   │   ├── admin/
-│   │   │   ├── items.astro                  # Product/item wizard — SSR, admin only
-│   │   │   └── pickup-days.astro            # Set which pick-up dates have moderator coverage — SSR, admin only
-│   │   ├── moderator/
-│   │   │   └── retrieve.astro                # Order-code lookup, redirects to the hub — SSR, moderator only (rest of §10 still planned)
-│   │   └── auth/
-│   │       └── login.astro                  # Redirect to bloc
+│   │   ├── index.astro                      # Catalogue — prerendered shell + deferred live grid
+│   │   ├── products/[slug].astro            # Product detail: variant buttons, image, attributes, links, availability
+│   │   ├── reservation/
+│   │   │   ├── index.astro                  # Pick-up/return dates, availability, remove unavailable items — SSR
+│   │   │   └── confirm.astro                # Read-only order overview before placing — SSR
+│   │   ├── checkout/success.astro           # Order receipt after placing — SSR
+│   │   ├── orders/
+│   │   │   ├── index.astro                  # The member's own orders
+│   │   │   └── [code].astro                 # One of the member's orders (reschedule / delete)
+│   │   ├── admin/                           # Admin only
+│   │   │   ├── index.astro                  # Hub with the message board
+│   │   │   ├── products.astro, products/new.astro, products/[id]/edit.astro
+│   │   │   ├── items.astro                  # Product/item wizard
+│   │   │   ├── items/[id]/units.astro       # Physical units behind one item
+│   │   │   ├── units.astro                  # Every unit of every item
+│   │   │   ├── sets.astro                   # Rentable bundles of items
+│   │   │   ├── orders.astro                 # All orders
+│   │   │   └── pickup-days.astro            # Single + recurring pick-up days
+│   │   ├── moderator/                       # Moderator and up
+│   │   │   ├── index.astro                  # Hub with the message board
+│   │   │   ├── requests.astro               # Orders awaiting review
+│   │   │   ├── retrieve.astro               # Order-code lookup, redirects to the order hub
+│   │   │   ├── retrieve/[id].astro          # Order hub: next action for the order's state
+│   │   │   ├── retrieve/[id]/count.astro    # Blind count when handing out
+│   │   │   ├── review/[code].astro          # Accept / reject
+│   │   │   ├── return/[id].astro            # Blind count on return
+│   │   │   └── pickup-days.astro            # Own single pick-up days
+│   │   ├── media/[...path].ts               # Serves admin-uploaded images from data/uploads
+│   │   └── auth/login.astro                 # Redirect to bloc
 │   │
 │   ├── pages/api/
-│   │   ├── cart/
-│   │   │   ├── add.ts                       # POST — add item to cookie cart
-│   │   │   ├── remove.ts                    # POST — remove item
-│   │   │   └── update.ts                    # POST — set a line's quantity
-│   │   ├── orders/
-│   │   │   └── create.ts                    # POST — member places order(s), see §6
-│   │   ├── reservation/
-│   │   │   └── availability.ts              # POST — live availability preview for chosen dates
-│   │   ├── pickup-days/
-│   │   │   ├── add.ts                       # POST — admin only
-│   │   │   └── remove.ts                    # POST — admin only
-│   │   ├── wizard/                          # archive / attributes / attributes/bulk / items / set-product — admin only
+│   │   ├── cart.ts, cart/                   # add / remove / update / update-all / clear — cookie cart
+│   │   ├── orders/                          # create.ts; [code].ts (DELETE); [code]/reschedule.ts (PATCH)
+│   │   ├── reservation/availability.ts      # POST — live availability preview for chosen dates
+│   │   ├── moderator/                       # retrieve.ts, orders/[id]/{accept,reject,confirm,return}.ts, pickup-days/
+│   │   ├── admin/                           # images.ts (upload), pickup-days/recurring/
+│   │   ├── messages/                        # add / delete (moderator), pin / unpin (admin)
+│   │   ├── products/                        # create / [id]/update — admin only
+│   │   ├── wizard/                          # items, sets, [kind]/{archive,set-image,set-product}, set-component-*, sets-label, units, attributes(/bulk) — admin only
 │   │   └── debug/                           # bloc API exploration endpoints, see docs/bloc-api.md
 │   │
 │   ├── db/
@@ -153,37 +173,23 @@ boden/
 │   │   ├── schema.ts                        # Drizzle schema — §4, full rationale in docs/schema.md
 │   │   └── migrations/                      # Generated by drizzle-kit
 │   │
-│   ├── lib/
-│   │   ├── auth.ts                          # Role gate: getRole/validateSession — §8
-│   │   ├── cart.ts                          # Cart read/write (cookie-based) — §5
-│   │   ├── orders.ts                        # createOrder — §6
-│   │   ├── reservation.ts                   # Date-range validation + availability queries
-│   │   ├── shop.ts                          # Customer-facing catalogue/product queries
-│   │   ├── stock.ts                         # reservedQuantitiesByItem — "in stock now" derivation
-│   │   ├── pickupDays.ts, wizard.ts, http.ts, upsertUser.ts, icons.ts, ...
-│   │
+│   ├── lib/                                 # auth, cart, orders, moderatorOrders, reservation, availability,
+│   │                                        # shop, products, wizard, sets, units, pickupDays, messages, uploads, http, ...
 │   ├── middleware/
 │   │   ├── index.ts                         # Auth + role gate — §9
 │   │   └── prefixes.ts                      # Route-prefix tables, unit-testable in isolation
 │   │
-│   ├── components/
-│   │   ├── shop/                            # ItemCard, ItemGrid, ImagePlaceholder
-│   │   ├── cart/                            # CartSidebar, CheckoutForm
-│   │   ├── reservation/                     # ReservationForm, ReservationCalendar, ReservationItemRow
-│   │   ├── orders/                          # UserOrderSummary
-│   │   ├── nav/                             # Logo, NavLinks, CartButton, UserMenu, ThemeToggle
-│   │   ├── wizard/                          # Admin product/item wizard, see docs/wizard.md
-│   │   ├── icons/                           # AppIcon
-│   │   └── ui/                              # Button family, Modal, Callout, CalloutPopover, ExpandBox
-│   │
-│   └── layouts/
-│       └── BaseLayout.astro                 # HTML shell, Navbar, Tailwind, slot
+│   ├── components/                          # shop, cart, reservation, orders, moderator, admin, wizard, units,
+│   │                                        # availability, pickup-days, messages, nav, icons, ui (Button family,
+│   │                                        # Modal, Callout, popovers, ExpandBox, ...)
+│   └── layouts/                             # BaseLayout, AdminLayout, ModeratorLayout, ConfirmationLayout, HtmlShell
 │
 ├── public/
-│   ├── uploads/                             # Manually-seeded fixture item images (no upload endpoint — §12)
-│   └── product/                             # Manually-seeded fixture product images
+│   ├── product/                             # Manually-seeded fixture product images
+│   └── uploads/                             # Manually-seeded fixture item images
 ├── data/
-│   └── rental.db                            # SQLite database file
+│   ├── rental.db                            # SQLite database file
+│   └── uploads/                             # Admin-uploaded images (gitignored) — §12
 ├── drizzle.config.ts
 └── astro.config.mjs
 ```
@@ -220,143 +226,12 @@ export default defineConfig({
 
 ## 4. Database schema
 
-Full rationale for every design decision lives in
-[`docs/schema.md`](schema.md); this is a condensed, current mirror of
-`src/db/schema.ts`.
+The schema lives in `src/db/schema.ts`; [`docs/schema.md`](schema.md) embeds
+a generated copy of it (kept in sync by `npm run docs:schema`) plus the
+design rationale for every decision. Not duplicated here, so it can't drift.
 
 ```ts
-// src/db/schema.ts (condensed — see docs/schema.md for the full rationale)
-import { sql, relations } from 'drizzle-orm';
-import { sqliteTable, text, integer, index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
-
-export const categories = sqliteTable('categories', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  name: text('name').notNull().unique(),
-  slug: text('slug').notNull().unique(),
-});
-
-export const subcategories = sqliteTable('subcategories', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  categoryId: integer('category_id').notNull().references(() => categories.id),
-  name: text('name').notNull(),
-  slug: text('slug').notNull(),        // unique per-category, not global
-  sortOrder: integer('sort_order').notNull().default(0),
-});
-
-// The category-level listing. Never references items — the customer-facing
-// direction is always queried as product -> items, not a column here.
-export const products = sqliteTable('products', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  slug: text('slug').notNull().unique(),
-  title: text('title').notNull(),
-  description: text('description'),
-  categoryId: integer('category_id').references(() => categories.id),
-  subcategoryId: integer('subcategory_id').references(() => subcategories.id),
-  status: text('status', { enum: ['hidden', 'published'] }).notNull().default('hidden'),
-  thumbnailImageUrl: text('thumbnail_image_url'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
-
-// External links per product (manufacturer page, manual PDF, ...)
-export const productLinks = sqliteTable('product_links', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
-  label: text('label').notNull(),
-  url: text('url').notNull(),
-});
-
-// The attribute-key TEMPLATE (e.g. "Size", "Weight") — every item under a
-// product shares these keys, but not the values (see itemAttributeValues).
-export const productAttributeKeys = sqliteTable('product_attribute_keys', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  sortOrder: integer('sort_order').notNull().default(0),
-});
-
-// Created freeform by an admin, optionally assigned to a product afterward
-// ("Set product" in the wizard). productId is nullable and onDelete:
-// 'set null' — deleting a product must never delete items already
-// referenced by past orders.
-export const items = sqliteTable('items', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  productId: integer('product_id').references(() => products.id, { onDelete: 'set null' }),
-  slug: text('slug').notNull().unique(),
-  name: text('name').notNull(),        // internal/admin-only label — never shown to customers
-  imageUrl: text('image_url'),
-  stockCount: integer('stock_count').notNull().default(1),
-  // "In stock right now" is never stored — always computed as stockCount
-  // minus quantities on currently requested/active orders (src/lib/stock.ts).
-  archived: integer('archived', { mode: 'boolean' }).notNull().default(false), // soft delete
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
-
-// One value per (item, attributeId); attributeId must reference a real
-// productAttributeKeys row, so an item can't accumulate more distinct
-// values than its assigned product currently has keys.
-export const itemAttributeValues = sqliteTable('item_attribute_values', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  itemId: integer('item_id').notNull().references(() => items.id, { onDelete: 'cascade' }),
-  attributeId: integer('attribute_id').notNull().references(() => productAttributeKeys.id, { onDelete: 'cascade' }),
-  value: text('value').notNull().default(''),
-});
-
-export const users = sqliteTable('users', {
-  id: text('id').primaryKey(),          // bloc user id
-  email: text('email').notNull().unique(),
-  name: text('name'),
-  // Role is NOT stored here — see §8's temporary allowlist gate.
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
-
-// No `sessions` table: Auth.js manages its own signed JWT session cookie.
-
-// One order = one rental request, potentially covering multiple items.
-export const orders = sqliteTable('orders', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  orderCode: text('order_code').notNull().unique(),      // NNAAX format, read aloud at pick-up
-  userId: text('user_id').notNull().references(() => users.id),
-  status: text('status', { enum: ['requested', 'active', 'returned', 'rejected'] }).notNull().default('requested'),
-  fromDate: text('from_date').notNull(),                  // YYYY-MM-DD, pick-up day
-  toDate: text('to_date').notNull(),                      // YYYY-MM-DD, return day
-  note: text('note'),
-  confirmedByUserId: text('confirmed_by_user_id').references(() => users.id),
-  returnedByUserId: text('returned_by_user_id').references(() => users.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-  activatedAt: integer('activated_at', { mode: 'timestamp' }),
-  returnedAt: integer('returned_at', { mode: 'timestamp' }),
-  rejectedAt: integer('rejected_at', { mode: 'timestamp' }),
-  rejectedReason: text('rejected_reason'),
-}, (table) => [
-  check('order_date_range_valid', sql`${table.toDate} >= ${table.fromDate}`),
-]);
-
-export const orderItems = sqliteTable('order_items', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
-  itemId: integer('item_id').notNull().references(() => items.id),
-  requestedQuantity: integer('requested_quantity').notNull().default(1),
-  retrievedQuantity: integer('retrieved_quantity'),        // set by moderator at confirm step
-}, (table) => [
-  check('requested_quantity_positive', sql`${table.requestedQuantity} > 0`),
-]);
-
-// Which pick-up dates (orders.fromDate) have a moderator confirmed
-// available. Existence of a row is the only signal — no row just means
-// nobody's confirmed a moderator for that date yet.
-export const pickupAvailableDays = sqliteTable('pickup_available_days', {
-  date: text('date').primaryKey(),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
-
-// relations() are defined for every table above — see src/db/schema.ts for
-// the full set (categories<->subcategories<->products<->items<->
-// itemAttributeValues, users<->orders<->orderItems).
-```
-
-```ts
-// src/db/client.ts
+// src/db/client.ts (abridged — also creates data/ if missing)
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
@@ -377,6 +252,7 @@ export default defineConfig({
   out: './src/db/migrations',
   dialect: 'sqlite',
   dbCredentials: { url: './data/rental.db' },
+  migrations: { prefix: 'timestamp' }, // parallel branches don't collide on a sequence number
 });
 ```
 
@@ -391,42 +267,46 @@ npx drizzle-kit migrate
 
 ## 5. Cart (cookie-based, no database)
 
-The cart cookie stores only `{ itemId, quantity }[]` — no database row is created until checkout. `src/lib/cart.ts` joins that against `items`/`products` on read to build a display shape (`CartItem`: product title/slug, image, attribute values, `stockCount` vs. `inStock` — the latter accounting for other requested/active orders via `src/lib/stock.ts`). Entries pointing at an item that no longer exists, is archived, or whose product is unpublished are silently dropped when reading the cart for display.
+The cart cookie stores only entry refs and quantities — no database row is created until checkout. An entry is either a plain item or a set. `src/lib/cart.ts` joins them against `items`/`sets`/`products` on read to build display lines (`CartLine`: product title/slug, image, attribute values, `stockCount` — the item's active units, see `docs/schema.md` — vs. `inStock`, what's available today, via `src/lib/availability.ts`). Entries pointing at an item or set that no longer exists, is archived, or whose product is unpublished are silently dropped when reading the cart for display.
 
 ```ts
 // src/lib/cart.ts (core shape)
-export type CartEntry = { itemId: number; quantity: number };
+export type CartEntry = { itemId: number; quantity: number } | { setId: number; quantity: number };
 
 export function getCart(cookies: AstroCookies): CartEntry[] { /* JSON.parse the 'cart' cookie, [] on failure */ }
 export function setCart(cookies: AstroCookies, cart: CartEntry[]) { /* httpOnly, sameSite=lax, 1 week */ }
-export function addToCart(cookies, itemId, quantity = 1) { /* adds to existing quantity */ }
-export function updateCartQuantity(cookies, itemId, quantity) { /* sets outright; <= 0 removes the line */ }
-export function removeFromCart(cookies, itemId) { /* ... */ }
-export async function getCartItems(cookies): Promise<CartItem[]> { /* joins against items/products for display */ }
+export function addToCart(cookies, entry: CartEntry) { /* adds to existing quantity */ }
+export function updateCartQuantity(cookies, ref, quantity) { /* sets outright; <= 0 removes the line */ }
+export function removeFromCart(cookies, ref) { /* ... */ }
+export function clearCart(cookies) { /* ... */ }
+export async function getCartLines(cookies): Promise<CartLine[]> { /* joins against items/sets/products for display */ }
 ```
 
 ---
 
 ## 6. Reservation & checkout (implemented)
 
-Placing an order is a three-step flow, not a single "place order" action:
+Placing an order is a four-step flow, not a single "place order" action:
 
-1. **`/cart`** — review cart lines, adjust quantity, remove. Links to `/reservation`.
-2. **`/reservation`** — pick a pick-up (`fromDate`) and return (`toDate`) date. A live `POST /api/reservation/availability` preview flags any cart line that's unavailable for the chosen range; submit stays blocked while any item is unavailable, and the member either changes dates or removes the unavailable items from the cart (`POST /api/cart/remove`) — there are no split orders; one checkout is always one order. The form also displays (read-only, from the bloc session) name/email/mobile and the `hasUnpaidFees`/`userIsMember` flags.
-3. **`POST /api/orders/create`** — re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently). Generates an `NNAAX`-format `orderCode` (last letter always flags the creating member's role — A/B/I/M for admin/board member/instructor(moderator)/member), then redirects to `/checkout/success?order=<orderCode>`.
+1. **Cart sidebar** — review cart lines, adjust quantity (0 removes). Its primary action links to `/reservation`; there is no separate `/cart` page.
+2. **`/reservation`** — pick a pick-up (`fromDate`) and return (`toDate`) date. A live `POST /api/reservation/availability` preview flags any cart line that's unavailable for the chosen range; submit stays blocked while any item is unavailable, and the member either changes dates or removes the unavailable items from the cart (`POST /api/cart/remove`) — there are no split orders; one checkout is always one order. The form also displays (read-only, from the bloc session) name/email/mobile, and the `hasUnpaidFees`/`userIsMember` flags fetched live from bloc's `GetMemberFeeStatus` (`src/lib/blocFeeStatus.ts`).
+3. **`/reservation/confirm`** — the form's submit POSTs here (not to the API). Read-only overview of the order: pick-up/return dates, the pick-up window(s) for the pick-up date, the items (an `OrdersTableRow` preview), contact details and note. Carries the form values forward as hidden fields, including the liability-disclaimer checkbox (required); its "Confirm order" button posts to `/api/orders/create`. "Back" returns to `/reservation`.
+4. **`POST /api/orders/create`** — re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently). Expands any set lines into their component items, snapshots the contact fields, `disclaimerAcceptedAt` and (re-fetched server-side, never taken from the form) the bloc fee/membership flags onto the order, and generates an `NNAAX`-format `orderCode` (last letter always flags the creating member's role — A/B/I/M for admin/board member/instructor(moderator)/member), then redirects to `/checkout/success?order=<orderCode>`.
 
 ```ts
-// src/lib/orders.ts (signatures)
+// src/lib/orders.ts (signatures, abridged — see CreateOrderInput for the contact/fee/disclaimer snapshot fields)
 export async function createOrder(input: {
-  userId: string; note: string | null; cartEntries: CartEntry[]; fromDate: string; toDate: string;
+  userId: string; role: Role; note: string | null; cartEntries: CartEntry[]; fromDate: string; toDate: string;
+  /* ...contactName, contactEmail, contactMobile, hasUnpaidFees, userIsMember, disclaimerAccepted */
 }): Promise<
   | { ok: true; orderId: number; orderCode: string }
   | { ok: false; error: 'empty_cart' }
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
+  | { ok: false; error: 'user_not_found' }
 >;
 ```
 
-`/checkout/success?order=<orderCode>` looks the order up by code, scoped to the signed-in user in the query itself (no enumerating another member's orders by guessing codes — a miss redirects to `/cart`).
+`/checkout/success?order=<orderCode>` looks the order up by code, scoped to the signed-in user in the query itself (no enumerating another member's orders by guessing codes — a miss redirects to `/orders`).
 
 ---
 
@@ -464,7 +344,7 @@ export default defineConfig({
 });
 ```
 
-No `sessions` table — Auth.js manages its own signed JWT cookie. `session.bloc.*` (mobile, `hasUnpaidFees`, `userIsMember`) is snapshotted onto the checkout form so a moderator can review it later even after the member's live session ends (see `docs/moderator-review.md`) — as of 2026-09-02, `hasUnpaidFees`/`userIsMember` currently always come back `null` from bloc (an external API defect, see `docs/bloc-api.md`), and orders don't yet persist these fields (they're read at checkout but not written to the `orders` row — the moderator-review page doesn't exist to consume them yet).
+No `sessions` table — Auth.js manages its own signed JWT cookie. `hasUnpaidFees`/`userIsMember` are **not** in the session: they come from bloc's dedicated `GetMemberFeeStatus` method, fetched live on every `/reservation` visit and re-fetched server-side by `/api/orders/create`, which snapshots them onto the `orders` row so a moderator can review them later (see `docs/moderator-review.md`, `docs/bloc-api.md`). `null` means the live call failed.
 
 See `docs/auth-testing.md` for the manual test guide.
 
@@ -526,7 +406,6 @@ export const ROUTE_RULES: RouteRule[] = [
   { prefix: '/api/moderator', minRole: 'moderator' },
   { prefix: '/api/messages/add', minRole: 'moderator' },
   { prefix: '/api/messages/delete', minRole: 'moderator' },
-  { prefix: '/cart', minRole: 'member' },
   { prefix: '/checkout', minRole: 'member' },
   { prefix: '/orders', minRole: 'member' },
   { prefix: '/reservation', minRole: 'member' },
@@ -578,41 +457,37 @@ declare namespace App {
 
 ---
 
-## 10. Moderator flow — page by page (in progress)
+## 10. Moderator flow — page by page (built)
 
-`src/pages/moderator/retrieve.astro` (Step 1 below) is built; the rest of this section documents the intended design for the still-planned steps — see `docs/moderator-review.md` for the review step's open questions (exact route not named yet, order persistence for `hasUnpaidFees`/`userIsMember` not wired).
+Business logic lives in `src/lib/moderatorOrders.ts`; the POST routes under `src/pages/api/moderator/` are thin wrappers gated by `requireModerator`. See `docs/moderator-review.md` for the review step's data rules.
 
-### Step 0 — Review order (`/moderator/review/[id]`, route not finalized)
+### Request queue (`/moderator/requests`)
 
-Accept or reject a requested order **before** retrieval — see the lifecycle diagram above and `docs/moderator-review.md`. Accept sets `status: scheduled`; reject sets `status: rejected` and records `rejectedReason`.
+Every order still `requested`, earliest submitted first. `/moderator/review` with no code redirects here.
 
-### Step 1 — Retrieve order (`/moderator/retrieve`) — built
+### Retrieve order (`/moderator/retrieve`)
 
-The moderator types in an order code. The form POSTs to `src/pages/api/moderator/retrieve.ts`, which looks up `orders.orderCode` and redirects to the hub at `/moderator/retrieve/[id]` (or back to the form with `?error=not_found`).
+The moderator types in an order code (an optional leading `#` is stripped). The form POSTs to `src/pages/api/moderator/retrieve.ts`, which looks up `orders.orderCode` and redirects to the order hub (or back to the form with `?error=not_found`). This is the entry point for both review and retrieval.
 
-### Step 2 — Order summary (`/moderator/retrieve/[id]`, planned)
+### Order hub (`/moderator/retrieve/[id]`)
 
-Shows the full order: member details, requested items with quantities. Button links to confirm page.
+Shows the full order — member details, fee/membership flags, requested items with quantities, availability warnings — and offers the next action for the order's state: review (`requested`), confirm (`scheduled`, with a warning if a late return would break the following rental), or return (`active`).
 
-### Step 3 — Confirm retrieval (`/moderator/confirm/[id]`)
+### Review (`/moderator/review/[code]`)
 
-Moderator enters the actual quantity retrieved per line item (may be less than requested if stock ran short), then confirms. The API route sets `status: 'active'` and stamps `activatedAt`.
+Accept or reject a `requested` order **before** retrieval. `POST /api/moderator/orders/[id]/accept` sets `status: scheduled` and stamps `acceptedAt`; `.../reject` sets `status: rejected` and records a required `rejectedReason`.
 
-```ts
-// src/pages/api/orders/confirm.ts (planned)
-export const POST: APIRoute = async ({ request, locals }) => {
-  if (!locals.user || locals.user.role === 'member') return new Response('Forbidden', { status: 403 });
-  // update each order_items.retrievedQuantity, then orders.status = 'active', activatedAt = now
-};
-```
+### Confirm retrieval (`/moderator/retrieve/[id]/count`)
 
-```ts
-// src/pages/api/orders/return.ts (planned)
-export const POST: APIRoute = async ({ request, locals }) => {
-  if (!locals.user || locals.user.role === 'member') return new Response('Forbidden', { status: 403 });
-  // orders.status = 'returned', returnedAt = now
-};
-```
+A **blind count**: one numeric input per line, never pre-filled with the target. A count that doesn't match the target (the requested quantity, or a reduced target the moderator set for an unavailable line) bounces back with a "Retrieve N more" / "Put back N" correction. When every line matches, `.../confirm` writes `orderItems.retrievedQuantity`, sets `status: active` and stamps `activatedAt` and `confirmedByUserId`.
+
+### Return (`/moderator/return/[id]`)
+
+A single blind-count page for an `active` order, with each line's `retrievedQuantity` as the target. `.../return` sets `status: returned` and stamps `returnedAt` and `returnedByUserId`.
+
+### Pick-up days (`/moderator/pickup-days`)
+
+A moderator registers their own single pick-up days (date, time window, optional meeting point). Admins additionally create recurring rules at `/admin/pickup-days`. See `docs/schema.md` (`pickupDays`).
 
 ---
 
@@ -629,7 +504,8 @@ import { getShopProductBySlug } from '../../lib/shop';
 const product = await getShopProductBySlug(Astro.params.slug!);
 if (!product) return new Response(null, { status: 404 }); // serves 404.astro
 ---
-<!-- variant <select> (one option per item, disabled when inStock <= 0),
+<!-- variant buttons (one per item, labelled by the admin-flagged variant
+     attribute key(s); dimmed when inStock <= 0),
      image + ImagePlaceholder fallback, attribute list, quantity input
      capped at inStock, "Add to cart" POSTing to /api/cart/add.
      A client-side <script> keeps image/stock/attributes/quantity-cap in
@@ -641,7 +517,7 @@ if (!product) return new Response(null, { status: 404 }); // serves 404.astro
 
 ## 12. Item images
 
-There is currently **no upload endpoint**. The wizard's "Add item" panel takes a plain `imageUrl` text field (and products have a `thumbnailImageUrl` the same way) — an admin pastes a URL rather than uploading a file. `/public/uploads` and `/public/product` hold manually-seeded fixture images checked into the repo, not anything the app wrote. A real upload flow (`saveUploadedImage`-style, writing into `/public/uploads` with a generated filename) is a known gap, not yet built.
+Admins upload images through the wizard's image menu (`ImageMenu.astro`), which POSTs a multipart `file` to `POST /api/admin/images` (`src/lib/uploads.ts`: size-capped, saved to `data/uploads/` under a generated filename). Uploads are served at `/media/*` by `src/pages/media/[...path].ts` — from `data/`, not `public/`, so they work without a rebuild. A pasted external image URL also still works. `/public/uploads` and `/public/product` hold manually-seeded fixture images checked into the repo, not anything the app wrote.
 
 ---
 
@@ -654,6 +530,7 @@ OAUTH_CLIENT_SECRET=        # bloc OAuth app client secret
 REDIRECT_URL=http://localhost:4321/   # app's own base URL; joined with the fixed bloc callback path
 AUTH_SECRET=                 # auth-astro session encryption key — openssl rand -base64 32
 ADMIN_USER_IDS=              # comma-separated bloc user ids — temporary role allowlist, see §8
+BOARD_USER_IDS=              # comma-separated bloc user ids
 MODERATOR_USER_IDS=          # comma-separated bloc user ids
 ```
 
@@ -697,7 +574,7 @@ Daily database backup:
 0 3 * * * sqlite3 /path/to/data/rental.db ".backup /backups/rental-$(date +\%F).db"
 ```
 
-Admin-uploaded images live in `data/uploads/` (served at `/media/*`, not from `public/`, so they work without a rebuild). Back that directory up alongside the database, e.g. `rsync -a /path/to/data/uploads/ /backups/uploads/`.
+Admin-uploaded images live in `data/uploads/` (§12). Back that directory up alongside the database, e.g. `rsync -a /path/to/data/uploads/ /backups/uploads/`.
 
 ---
 
@@ -711,9 +588,8 @@ Unlike a generic named Auth.js provider, bloc isn't swappable by changing an imp
 
 - [ ] Set `BLOC_APPID`, `OAUTH_CLIENT_SECRET`, `REDIRECT_URL`, `AUTH_SECRET` in production env
 - [ ] Register the production callback URL (`<REDIRECT_URL>api/auth/callback/bloc`) with bloc
-- [ ] Set `ADMIN_USER_IDS` / `MODERATOR_USER_IDS` for the real production bloc user ids
+- [ ] Set `ADMIN_USER_IDS` / `BOARD_USER_IDS` / `MODERATOR_USER_IDS` for the real production bloc user ids
 - [ ] Ensure `data/` is writable by the Node process
 - [ ] Set up daily SQLite backups
 - [ ] Enable HTTPS via Certbot
-- [ ] Build the moderator review/retrieve/confirm/return pages (§10) before relying on the full order lifecycle in production — today only cart → reservation → order creation is implemented
 - [ ] Test on mobile at 375px: catalogue grid, product detail, cart, reservation form, checkout form

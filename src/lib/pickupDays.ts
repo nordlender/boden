@@ -108,6 +108,13 @@ export async function listUpcomingPickupDays(fromDate: string): Promise<PickupDa
 		.orderBy(asc(pickupDays.date), asc(pickupDays.startTime));
 }
 
+// Pick-up windows offered on one date (any kind, any moderator), earliest
+// first — shown on the /reservation/confirm overview.
+export async function listPickupDaysOn(date: string): Promise<PickupDayRow[]> {
+	const rows = await db.select().from(pickupDays).where(eq(pickupDays.date, date)).orderBy(asc(pickupDays.startTime));
+	return rows;
+}
+
 export interface NewSingleDay {
 	date: string;
 	startTime: string;

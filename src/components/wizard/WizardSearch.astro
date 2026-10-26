@@ -1,0 +1,17 @@
+---
+// Search box for the wizard list pages (/admin/items, /admin/sets), placed
+// in ui/Page.astro's `actions` slot beside the page title so these pages
+// share the same header as every other page.
+import AppIcon from '../icons/AppIcon.astro';
+import { inputClasses } from '../../lib/form-styles';
+
+interface Props {
+	placeholder: string;
+}
+
+const { placeholder } = Astro.props;
+---
+<div class="relative w-full sm:w-80">
+	<AppIcon name="search" size={16} class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+	<input type="search" placeholder={placeholder} aria-label={placeholder} class:list={[inputClasses, 'w-full pl-9']} />
+</div>

@@ -1,0 +1,48 @@
+---
+// One titled table of units. /admin/items/[id]/units renders two for one
+// item — the units in use (active, then out of service) and, below it,
+// retired units, kept apart so a retired unit can't be mistaken for stock.
+// /admin/units renders the same two tables for every item's units, passing
+// `itemsById` so each row also shows (and links to) its item.
+import UnitTableHeader from './UnitTableHeader.astro';
+import { cardClasses, cardHeaderClasses, emptyStateClasses } from '../../lib/layout-styles';
+import UnitRow from './UnitRow.astro';
+import type { Unit, UnitItemRef } from '../../lib/units';
+import type { MessageRow } from '../../lib/messages';
+
+interface Props {
+	title: string;
+	units: Unit[];
+	emptyText: string;
+	notesByUnit: Map<number, MessageRow[]>;
+	// Keyed by item id. Only for listings that mix units of several items.
+	itemsById?: Map<number, UnitItemRef>;
+	currentUserId: string | null;
+	isAdmin: boolean;
+	today: string;
+	redirectTo: string;
+}
+
+const { title, units, emptyText, notesByUnit, itemsById, currentUserId, isAdmin, today, redirectTo } = Astro.props;
+---
+<section class={cardClasses}>
+	<h2 class={cardHeaderClasses}>{title}</h2>
+	<UnitTableHeader />
+	{units.length === 0 ? (
+		<p class={emptyStateClasses}>{emptyText}</p>
+	) : (
+		<div class="overflow-hidden rounded-b-xl">
+			{units.map((unit) => (
+				<UnitRow
+					unit={unit}
+					item={itemsById?.get(unit.itemId)}
+					notes={notesByUnit.get(unit.id) ?? []}
+					currentUserId={currentUserId}
+					isAdmin={isAdmin}
+					today={today}
+					redirectTo={redirectTo}
+				/>
+			))}
+		</div>
+	)}
+</section>

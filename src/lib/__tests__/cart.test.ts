@@ -10,7 +10,7 @@ import { getCart, setCart, addToCart, updateCartQuantity, removeFromCart, getCar
 // first time the mocked module is imported — before any outer-scope `let`
 // declared later in this file would be initialized.
 vi.mock('../../db/client', async () => {
-  const { createTestDb } = await import('../../db/testDb');
+  const { createTestDb, insertItems } = await import('../../db/testDb');
   const schema = await import('../../db/schema');
 
   const db = createTestDb();
@@ -34,15 +34,9 @@ vi.mock('../../db/client', async () => {
   // Deterministic ids: these are the only rows ever inserted into `items` in
   // this fixture, and sqlite autoincrement counters start at 1 per table —
   // item60.id === 1, item70.id === 2, archivedItem.id === 3.
-  await db
-    .insert(schema.items)
-    .values({ productId: product.id, slug: 'test-rope-60m', name: 'Test Rope 60m (internal)', imageUrl: '/rope-60.jpg', stockCount: 5 })
-    .returning();
-  await db
-    .insert(schema.items)
-    .values({ productId: product.id, slug: 'test-rope-70m', name: 'Test Rope 70m (internal)', stockCount: 2 })
-    .returning();
-  await db.insert(schema.items).values({ slug: 'archived-rope', name: 'Archived Rope', stockCount: 3, archived: true }).returning();
+  await insertItems(db, { productId: product.id, slug: 'test-rope-60m', name: 'Test Rope 60m (internal)', imageUrl: '/rope-60.jpg', stockCount: 5 });
+  await insertItems(db, { productId: product.id, slug: 'test-rope-70m', name: 'Test Rope 70m (internal)', stockCount: 2 });
+  await insertItems(db, { slug: 'archived-rope', name: 'Archived Rope', stockCount: 3, archived: true });
 
   // item4.id === 4 — tied to a 'hidden' product, for asserting getCartLines
   // drops items whose product has been unpublished (not just archived items).
@@ -50,7 +44,7 @@ vi.mock('../../db/client', async () => {
     .insert(schema.products)
     .values({ slug: 'hidden-rope', title: 'Hidden Rope', categoryId: category.id, status: 'hidden' })
     .returning();
-  await db.insert(schema.items).values({ productId: hiddenProduct.id, slug: 'hidden-rope-item', name: 'Hidden Rope Item', stockCount: 4 }).returning();
+  await insertItems(db, { productId: hiddenProduct.id, slug: 'hidden-rope-item', name: 'Hidden Rope Item', stockCount: 4 });
 
   // item5.id === 5 — two attributes whose sortOrder (Length=0, Color=1) is
   // the reverse of insertion order below, for asserting getCartLines sorts
@@ -60,10 +54,7 @@ vi.mock('../../db/client', async () => {
     .insert(schema.productAttributeKeys)
     .values({ productId: product.id, name: 'Color', sortOrder: 1 })
     .returning();
-  await db
-    .insert(schema.items)
-    .values({ productId: product.id, slug: 'test-rope-80m', name: 'Test Rope 80m (internal)', stockCount: 6 })
-    .returning();
+  await insertItems(db, { productId: product.id, slug: 'test-rope-80m', name: 'Test Rope 80m (internal)', stockCount: 6 });
 
   await db.insert(schema.itemAttributeValues).values([
     { itemId: 1, attributeId: lengthKey.id, value: '60m' },

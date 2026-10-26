@@ -32,7 +32,7 @@ if (!order || order.userId !== Astro.locals.user?.id) {
 	<Page width="narrow">
 		<BackLink slot="before-title" href="/">Back to shop</BackLink>
 
-		<Card tag="div">
+		<Card as="div">
 			<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
 			<OrderContents
 				items={order.orderItems.map((oi) => ({

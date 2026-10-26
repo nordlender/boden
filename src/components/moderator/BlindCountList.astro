@@ -33,7 +33,7 @@ interface Props {
 const { title, description, action, mismatch = false, lines, submitLabel = 'Complete' } = Astro.props;
 ---
 
-<Card tag="div">
+<Card as="div">
 	<div class="flex flex-col gap-snug">
 		<h1 class={cardTitleClasses}>{title}</h1>
 		<p class="text-sm leading-relaxed text-text-muted">{description}</p>

@@ -127,7 +127,11 @@ describe('single pickup days', () => {
 		expect(await getPickupWindowsForDate('2026-09-01')).toEqual([{ startTime: '09:00', endTime: '10:00', where: null }]);
 		expect(await getPickupWindowsForDate('2026-09-02')).toEqual([]);
 		// Order pages: the order's pick-up date windows until #367 adds pickupDayId.
-		expect(await getOrderPickupWindows({ fromDate: '2026-09-01' })).toEqual([{ startTime: '09:00', endTime: '10:00', where: null }]);
+		expect(await getOrderPickupWindows({ fromDate: '2026-09-01', status: 'scheduled' })).toEqual([{ startTime: '09:00', endTime: '10:00', where: null }]);
+		// Not shown once the pick-up is no longer ahead.
+		for (const status of ['active', 'returned', 'rejected']) {
+			expect(await getOrderPickupWindows({ fromDate: '2026-09-01', status })).toBeUndefined();
+		}
 	});
 
 	it('upcoming pickup windows drop today\'s windows that have already ended', async () => {

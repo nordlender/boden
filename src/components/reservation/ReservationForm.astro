@@ -4,14 +4,14 @@ import ReservationItemRow from './ReservationItemRow.astro';
 import CheckoutForm from '../cart/CheckoutForm.astro';
 import { entryKey, type CartLine } from '../../lib/cart';
 import { formatAttributes } from '../../lib/attributes';
-import type { PickupWindow } from '../../lib/pickupDays';
+import type { PickupWindowDisplay } from '../../lib/pickupWindowFormat';
 import type { ReservationCartLineRef } from './reservationFormState';
 import Callout from '../ui/Callout.astro';
 import { sectionTitleClasses } from '../../lib/layout-styles';
 
 interface Props {
 	cartLines: CartLine[];
-	pickupWindows: Record<string, PickupWindow[]>;
+	pickupWindows: Record<string, PickupWindowDisplay[]>;
 	name: string | null;
 	email: string | null;
 	mobile: string | null;

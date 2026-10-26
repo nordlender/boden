@@ -2,6 +2,7 @@ import { and, asc, eq, gt, gte, or, type SQL } from 'drizzle-orm';
 import { db } from '../db/client';
 import { addDaysIso, isIsoDate } from './dates';
 import { pickupDays, pickupRecurringRules } from '../db/schema';
+import { isPickupPending } from './orderStatus';
 import type { PickupWindowDisplay } from './pickupWindowFormat';
 
 const TIME_FORMAT = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -42,20 +43,16 @@ export interface PickupRecurringRuleRow {
 	endDate: string;
 }
 
-// Time + place only — what members see. Same shape the client-side
-// formatter (pickupWindowFormat.ts) takes.
-export type PickupWindow = PickupWindowDisplay;
-
-function groupWindowsByDate(rows: Array<PickupWindow & { date: string }>): Map<string, PickupWindow[]> {
-	const byDate = new Map<string, PickupWindow[]>();
+function groupWindowsByDate(rows: Array<PickupWindowDisplay & { date: string }>): Map<string, PickupWindowDisplay[]> {
+	const byDate = new Map<string, PickupWindowDisplay[]>();
+	const seen = new Set<string>();
 	for (const { date, startTime, endTime, where } of rows) {
-		const windows = byDate.get(date) ?? [];
 		// Two moderators (or overlapping recurring rules) can offer the exact
 		// same window — members only need to see it once.
-		if (!windows.some((w) => w.startTime === startTime && w.endTime === endTime && w.where === where)) {
-			windows.push({ startTime, endTime, where });
-		}
-		byDate.set(date, windows);
+		const key = JSON.stringify([date, startTime, endTime, where]);
+		if (seen.has(key)) continue;
+		seen.add(key);
+		byDate.set(date, [...(byDate.get(date) ?? []), { startTime, endTime, where }]);
 	}
 	return byDate;
 }
@@ -74,7 +71,7 @@ async function selectWindows(where: SQL | undefined) {
 // The /reservation page colours the calendar from the keys (the only signal
 // a member's calendar reads) and lists the selected day's windows under the
 // calendar summary.
-export async function getUpcomingPickupWindows(now: { date: string; time: string }): Promise<Record<string, PickupWindow[]>> {
+export async function getUpcomingPickupWindows(now: { date: string; time: string }): Promise<Record<string, PickupWindowDisplay[]>> {
 	const rows = await selectWindows(
 		or(gt(pickupDays.date, now.date), and(eq(pickupDays.date, now.date), gt(pickupDays.endTime, now.time))),
 	);
@@ -84,17 +81,20 @@ export async function getUpcomingPickupWindows(now: { date: string; time: string
 // Windows for one exact date, past or future — an order's pick-up day
 // keeps showing its time/place on the order pages, and the
 // /reservation/confirm overview lists the chosen day's windows.
-export async function getPickupWindowsForDate(date: string): Promise<PickupWindow[]> {
+export async function getPickupWindowsForDate(date: string): Promise<PickupWindowDisplay[]> {
 	const rows = await selectWindows(eq(pickupDays.date, date));
 	return groupWindowsByDate(rows).get(date) ?? [];
 }
 
 // The pick-up window(s) to show a member for their order (/orders/[code],
-// /checkout/success). For now every window on orders.fromDate; once #367/#343
-// add orders.pickupDayId, this returns just that confirmed row (falling back
-// to the date's windows while unconfirmed), and a returnDayId counterpart
-// joins it — callers and PickupInfo.astro stay unchanged.
-export async function getOrderPickupWindows(order: { fromDate: string }): Promise<PickupWindow[]> {
+// /checkout/success), or undefined when the pick-up is no longer ahead (see
+// isPickupPending) so the block is left out. For now every window on
+// orders.fromDate; once #367/#343 add orders.pickupDayId, this returns just
+// that confirmed row (falling back to the date's windows while unconfirmed),
+// and a returnDayId counterpart joins it — callers and PickupInfo.astro stay
+// unchanged.
+export async function getOrderPickupWindows(order: { fromDate: string; status: string }): Promise<PickupWindowDisplay[] | undefined> {
+	if (!isPickupPending(order.status)) return undefined;
 	return getPickupWindowsForDate(order.fromDate);
 }
 

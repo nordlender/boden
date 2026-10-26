@@ -2,7 +2,6 @@
 import ConfirmationLayout from '../../layouts/ConfirmationLayout.astro';
 import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import Button from '../../components/ui/Button.astro';
-import PickupInfo from '../../components/orders/PickupInfo.astro';
 import Card from '../../components/ui/Card.astro';
 import { getMemberOrder } from '../../lib/orders';
 import { getOrderPickupWindows } from '../../lib/pickupDays';
@@ -40,8 +39,8 @@ const pickupWindows = await getOrderPickupWindows(order);
 			note={order.note}
 			items={order.orderItems.map(toOrderItemView)}
 			showImages
+			pickupWindows={pickupWindows}
 		/>
-		<PickupInfo windows={pickupWindows} emptyText="A moderator will confirm the time and place." />
 		<Button variant="primary" size="lg" href={`/orders/${order.orderCode}`} class="self-start">
 			View or manage this order
 		</Button>

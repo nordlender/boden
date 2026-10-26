@@ -3,10 +3,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getMemberOrder } from '../../lib/orders';
 import { toOrderItemView } from '../../lib/orderItemView';
 import { getOrderPickupWindows } from '../../lib/pickupDays';
-import PickupInfo from '../../components/orders/PickupInfo.astro';
 import { getMaxRentalDays } from '../../lib/rental-policy';
-import OrderCodeHeader from '../../components/orders/OrderCodeHeader.astro';
-import OrderContents from '../../components/orders/OrderContents.astro';
+import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import SubmittedContactDetails from '../../components/orders/SubmittedContactDetails.astro';
 import DeleteOrderButton from '../../components/orders/DeleteOrderButton.astro';
 import ChangeOrderLink from '../../components/orders/ChangeOrderLink.astro';
@@ -26,10 +24,7 @@ if (!order) {
   return Astro.redirect('/');
 }
 
-// Only while the pick-up is still ahead: a rejected order never gets one, and
-// an active/returned order has already been picked up.
-const showPickup = order.status === 'requested' || order.status === 'scheduled';
-const pickupWindows = showPickup ? await getOrderPickupWindows(order) : [];
+const pickupWindows = await getOrderPickupWindows(order);
 ---
 
 <BaseLayout title={`Order #${order.orderCode}`}>
@@ -37,9 +32,16 @@ const pickupWindows = showPickup ? await getOrderPickupWindows(order) : [];
 		<BackLink slot="before-title" href="/">Back to shop</BackLink>
 
 		<Card as="div">
-			<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
-			{showPickup && <PickupInfo windows={pickupWindows} emptyText="A moderator will confirm the time and place." />}
-			<OrderContents items={order.orderItems.map(toOrderItemView)} note={order.note} />
+			<UserOrderSummary
+				orderCode={order.orderCode}
+				status={order.status}
+				fromDate={order.fromDate}
+				toDate={order.toDate}
+				note={order.note}
+				items={order.orderItems.map(toOrderItemView)}
+				showImages
+				pickupWindows={pickupWindows}
+			/>
 			<SubmittedContactDetails contactName={order.contactName} />
 			<div class={cardFooterClasses}>
 				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} />

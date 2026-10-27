@@ -222,15 +222,17 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 	// input holds its name; empty means none). Clicking the pressed key unsets
 	// it. Keys added in this same save have no pill yet — set the variant
 	// after saving.
+	// Scoped to the owning form so a second form on the page is unaffected.
 	const variantInput = document.querySelector<HTMLInputElement>('[data-variant-input]');
+	const variantForm = variantInput?.form;
 
-	document.addEventListener('click', (event) => {
+	variantForm?.addEventListener('click', (event) => {
 		const target = event.target;
 		if (!(target instanceof Element) || !variantInput) return;
 		const toggle = target.closest<HTMLElement>('[data-variant-toggle]');
 		if (!toggle) return;
 		const wasPressed = toggle.getAttribute('aria-pressed') === 'true';
-		document.querySelectorAll('[data-variant-toggle]').forEach((other) => other.setAttribute('aria-pressed', 'false'));
+		variantForm.querySelectorAll('[data-variant-toggle]').forEach((other) => other.setAttribute('aria-pressed', 'false'));
 		toggle.setAttribute('aria-pressed', String(!wasPressed));
 		variantInput.value = wasPressed ? '' : (toggle.dataset.name ?? '');
 	});

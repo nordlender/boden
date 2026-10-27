@@ -147,7 +147,7 @@ describe('unit fields', () => {
 		const rows = await listAllUnits();
 		const ids = rows.map((row) => row.unit.id);
 		expect(ids).toEqual([...ids].sort((a, b) => a - b));
-		expect(ids).toHaveLength((await db.select().from(units).all()).length);
+		expect(ids).toHaveLength(db.select().from(units).all().length);
 		expect(new Set(rows.map((row) => row.item.name))).toEqual(new Set(['Dragon Cam #2', 'Ice Axe', 'Rope', 'Harness']));
 		// Full unit rows (what UnitRow renders), each paired with its own item.
 		const unit3 = rows.find((row) => row.unit.id === 3);

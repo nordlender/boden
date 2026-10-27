@@ -6,7 +6,9 @@ import { emptyStateFramedClasses } from '../../lib/layout-styles';
 
 interface Props {
 	orders: OrderRow[];
-	viewHref: (orderCode: string) => string;
+	// Method signature rather than an arrow-typed property: the latter makes the
+	// Astro language tools report `Props` as unused (ts 6196).
+	viewHref(orderCode: string): string;
 	emptyMessage?: string;
 }
 

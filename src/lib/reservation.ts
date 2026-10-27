@@ -1,7 +1,6 @@
 import { db } from '../db/client';
 import { getAvailableForRange, getStockCounts, type QueryExecutor } from './availability';
-import { getMaxRentalDays } from './rental-policy';
-import { daysInclusive, isIsoDate, todayIsoInOslo } from './dates';
+import { isIsoDate, todayIsoInOslo } from './dates';
 
 // Reservation page backend (docs/TASKS.md "Reservation"). Orders carry a
 // date range (src/db/schema.ts's orders.fromDate/toDate, both YYYY-MM-DD,
@@ -35,11 +34,10 @@ export function isValidDateRange(range: Partial<ReservationDateRange>): range is
 	// src/lib/dates.ts.
 	const todayIso = todayIsoInOslo();
 	if (range.from < todayIso) return false;
-	if (range.from > range.to) return false;
-	// Single gate shared by order creation, the
-	// reservation-availability preview, and reschedule — so the max rental
-	// duration cap (src/lib/rental-policy.ts) applies everywhere at once.
-	return daysInclusive(range.from, range.to) <= getMaxRentalDays();
+	// No max-length check: a range over the max rental period
+	// (src/lib/rental-policy.ts) is still a valid request, flagged for the
+	// moderator instead of rejected (#391).
+	return range.from <= range.to;
 }
 
 // For each requested item: is `quantity` free on every day of [from, to]?

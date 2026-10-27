@@ -44,6 +44,11 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 		    reservationFormState.ts fills in the text (#262). */}
 		<div aria-live="polite" class="flex flex-col gap-stack">
 			<p data-availability-loading hidden class="text-sm text-text-muted">Checking availability…</p>
+			<div data-over-max-warning hidden>
+				<Callout variant="warning" title="Longer than the maximum rental period" live={false}>
+					<p data-over-max-warning-text></p>
+				</Callout>
+			</div>
 			<div data-unavailable-warning hidden>
 				<Callout variant="warning" live={false}>
 					<p data-unavailable-warning-text></p>

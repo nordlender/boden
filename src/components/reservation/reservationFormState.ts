@@ -34,6 +34,8 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[], 
 	const warningText = document.querySelector<HTMLElement>('[data-unavailable-warning-text]');
 	const errorBox = document.querySelector<HTMLElement>('[data-availability-error]');
 	const errorText = document.querySelector<HTMLElement>('[data-availability-error-text]');
+	const overMaxWarning = document.querySelector<HTMLElement>('[data-over-max-warning]');
+	const overMaxWarningText = document.querySelector<HTMLElement>('[data-over-max-warning-text]');
 	const loadingIndicator = document.querySelector<HTMLElement>('[data-availability-loading]');
 	const submitHint = document.querySelector('[data-submit-hint]');
 	const checkoutForm = document.querySelector('.checkout-form');
@@ -60,6 +62,8 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[], 
 		if (warningText) warningText.textContent = view.warning ?? '';
 		if (errorBox) errorBox.hidden = view.error === null;
 		if (errorText) errorText.textContent = view.error ?? '';
+		if (overMaxWarning) overMaxWarning.hidden = view.overMaxWarning === null;
+		if (overMaxWarningText) overMaxWarningText.textContent = view.overMaxWarning ?? '';
 	}
 
 	setSubmitEnabled(submitButton, false);
@@ -78,17 +82,12 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[], 
 			return;
 		}
 
-		// Over the max rental period the API would reject the request, so say
-		// so here rather than letting it surface as a failed availability check.
-		const rentalDays = daysInclusive(from, to);
-		if (rentalDays > maxRentalDays) {
-			applyStatus({ hasDates: true, availabilities: null, rentalDays, maxRentalDays });
-			getRows().forEach((row) => hideRow(row));
-			return;
-		}
+		// Over the max rental period is still requestable (#391) — it only adds
+		// a warning, so every applyStatus below carries the range length.
+		const range = { rentalDays: daysInclusive(from, to), maxRentalDays };
 
 		// Loading: submit stays disabled until this check answers.
-		applyStatus({ hasDates: true, availabilities: null });
+		applyStatus({ hasDates: true, availabilities: null, ...range });
 
 		let availabilities: LineAvailability[];
 		try {
@@ -104,12 +103,12 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[], 
 			if (!Array.isArray(availabilities)) throw new Error('availability check returned no lines');
 		} catch {
 			if (token !== requestToken) return;
-			applyStatus({ hasDates: true, availabilities: 'error' });
+			applyStatus({ hasDates: true, availabilities: 'error', ...range });
 			getRows().forEach((row) => hideRow(row));
 			return;
 		}
 
-		applyStatus({ hasDates: true, availabilities });
+		applyStatus({ hasDates: true, availabilities, ...range });
 
 		const byKey = new Map(availabilities.map((a) => [a.key, a]));
 		getRows().forEach((row) => {

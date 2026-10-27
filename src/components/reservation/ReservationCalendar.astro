@@ -26,11 +26,6 @@ interface Props {
 	// (ChangeOrderLink.astro) to open the calendar already showing the
 	// order's current dates; unset for a fresh pick (the /reservation page).
 	value?: string;
-	// Caps how far a second click can land after the first — see the
-	// `change` listener below. Unset (the /reservation page's current
-	// usage) leaves selection unbounded client-side; the server-side cap in
-	// isValidDateRange (src/lib/reservation.ts) always applies regardless.
-	maxRangeDays?: number;
 }
 
 import { todayIsoInOslo } from '../../lib/dates';
@@ -38,7 +33,7 @@ import CallyLegend from '../ui/CallyLegend.astro';
 import CallyNavIcons from '../ui/CallyNavIcons.astro';
 import type { PickupWindowDisplay } from '../../lib/pickupWindowFormat';
 
-const { pickupWindows = {}, value, maxRangeDays } = Astro.props;
+const { pickupWindows = {}, value } = Astro.props;
 // Europe/Oslo's today, not the server host's — see src/lib/dates.ts.
 const todayIso = todayIsoInOslo();
 ---
@@ -58,7 +53,6 @@ const todayIso = todayIsoInOslo();
 		min={todayIso}
 		value={value}
 		data-pickup-windows={JSON.stringify(pickupWindows)}
-		data-max-range-days={maxRangeDays}
 	>
 		<CallyNavIcons />
 		<calendar-month></calendar-month>
@@ -135,19 +129,17 @@ const todayIso = todayIsoInOslo();
 
 <script>
 	import 'cally';
-	import { formatDateDisplay, dateToIsoInOslo, addDaysIso } from '../../lib/dates';
+	import { formatDateDisplay, dateToIsoInOslo } from '../../lib/dates';
 	import { formatPickupWindow, type PickupWindowDisplay } from '../../lib/pickupWindowFormat';
 
 	type RangeCalendar = HTMLElement & {
 		value?: string;
-		max?: string;
 		getDayParts?: (date: Date) => string;
 	};
 
 	const calendar = document.querySelector<RangeCalendar>('[data-reservation-calendar]');
 	const summary = document.querySelector<HTMLElement>('[data-range-summary]');
 	const windowsList = document.querySelector<HTMLElement>('[data-pickup-windows-list]');
-	const maxRangeDays = calendar ? Number(calendar.dataset.maxRangeDays || '') || undefined : undefined;
 
 	let pickupWindows: Record<string, PickupWindowDisplay[]> = {};
 	try {
@@ -206,18 +198,6 @@ const todayIso = todayIsoInOslo();
 		// /api/reservation/availability.
 		const value = calendar.value ?? '';
 		const [from, to] = value.split('/').filter(Boolean);
-
-		// A `from` picked without a `to` yet is the first click of a fresh
-		// selection — cap how far the second click can land. Reset once a
-		// full range lands (or the selection clears) so a later fresh pick
-		// isn't left capped from a stale prior computation.
-		// Inclusive range: a 1-day cap means from===to, hence `- 1`. addDaysIso
-		// is plain UTC day arithmetic (see src/lib/dates.ts), not Oslo-anchored.
-		if (maxRangeDays && from && !to) {
-			calendar.max = addDaysIso(from, maxRangeDays - 1);
-		} else if (!from) {
-			calendar.max = '';
-		}
 
 		if (summary) {
 			summary.textContent = from && to ? `Pick-up ${formatDateDisplay(from)} · Return ${formatDateDisplay(to)}` : 'Select a pick-up and return date.';

@@ -4,6 +4,7 @@ import Button from '../ui/Button.astro';
 import ReservationCalendar from '../reservation/ReservationCalendar.astro';
 import { actionRowClasses, sectionTitleClasses } from '../../lib/layout-styles';
 import { inlineErrorClasses } from '../../lib/form-styles';
+import Callout from '../ui/Callout.astro';
 
 interface Props {
 	orderCode: string;
@@ -12,6 +13,8 @@ interface Props {
 	acceptedAt?: Date | null;
 	fromDate: string;
 	toDate: string;
+	// Advisory only (#391): a longer range can still be requested, with a
+	// warning that it's unlikely to be accepted.
 	maxRentalDays: number;
 }
 
@@ -22,7 +25,7 @@ const titleId = `${modalId}-title`;
 
 {
 	status === 'requested' && !acceptedAt && (
-		<div data-change-order={orderCode}>
+		<div data-change-order={orderCode} data-max-rental-days={maxRentalDays}>
 			<Button type="button" data-modal-open data-modal-target={modalId}>
 				Change order
 			</Button>
@@ -31,7 +34,15 @@ const titleId = `${modalId}-title`;
 				<h2 id={titleId} class={sectionTitleClasses}>
 					Change pick-up &amp; return dates
 				</h2>
-				<ReservationCalendar value={`${fromDate}/${toDate}`} maxRangeDays={maxRentalDays} />
+				<ReservationCalendar value={`${fromDate}/${toDate}`} />
+				<div data-change-order-over-max hidden>
+					<Callout variant="warning" title="Longer than the maximum rental period">
+						<p>
+							The maximum rental period is {maxRentalDays} days. You can still change to these dates, but the request is
+							unlikely to be accepted.
+						</p>
+					</Callout>
+				</div>
 				<p data-change-order-error hidden class={inlineErrorClasses} />
 				<div class={actionRowClasses}>
 					<Button type="button" data-modal-close>Cancel</Button>
@@ -45,10 +56,14 @@ const titleId = `${modalId}-title`;
 }
 
 <script>
+	import { daysInclusive } from '../../lib/dates';
+
 	document.querySelectorAll<HTMLElement>('[data-change-order]').forEach((container) => {
 		const orderCode = container.dataset.changeOrder;
 		const confirmButton = container.querySelector<HTMLButtonElement>('[data-change-order-confirm]');
 		const errorEl = container.querySelector<HTMLElement>('[data-change-order-error]');
+		const overMaxEl = container.querySelector<HTMLElement>('[data-change-order-over-max]');
+		const maxRentalDays = Number(container.dataset.maxRentalDays);
 
 		let pending: { from: string; to: string } | null = null;
 
@@ -57,6 +72,7 @@ const titleId = `${modalId}-title`;
 			pending = from && to ? { from, to } : null;
 			if (confirmButton) confirmButton.disabled = !pending;
 			errorEl?.setAttribute('hidden', '');
+			if (overMaxEl) overMaxEl.hidden = !pending || daysInclusive(pending.from, pending.to) <= maxRentalDays;
 		});
 
 		confirmButton?.addEventListener('click', async () => {
@@ -83,7 +99,7 @@ const titleId = `${modalId}-title`;
 							: body.error === 'not_modifiable'
 								? `This order can no longer be rescheduled (status: ${body.status}).`
 								: body.error === 'invalid_dates'
-									? 'Please pick a valid date range (within the maximum rental duration).'
+									? 'Please pick a valid date range.'
 									: 'This order could not be rescheduled.';
 					errorEl.removeAttribute('hidden');
 				}

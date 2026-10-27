@@ -1,6 +1,7 @@
 ---
 // Composes the shared order-detail display used by the hub and review
-// pages: header, hasUnpaidFees/userIsMember chips, contact name, the
+// pages: header, hasUnpaidFees/userIsMember chips (plus an "Above max
+// rental time" flag when the range exceeds the max, #391), contact name, the
 // following-rental warning (hub only), the item list, and a slot for
 // page-specific actions (Accept/Reject, Retrieve items, Return items).
 import OrderCodeHeader from '../orders/OrderCodeHeader.astro';
@@ -9,6 +10,9 @@ import StatusChip from './StatusChip.astro';
 import OrderItemsList from './OrderItemsList.astro';
 import Callout from '../ui/Callout.astro';
 import Card from '../ui/Card.astro';
+import Badge from '../ui/Badge.astro';
+import { daysInclusive } from '../../lib/dates';
+import { getMaxRentalDays, isOverMaxRental } from '../../lib/rental-policy';
 import { cardFooterClasses } from '../../lib/layout-styles';
 import type { FollowingRentalWarning, OrderDetail } from '../../lib/moderatorOrders';
 
@@ -26,6 +30,7 @@ interface Props {
 }
 
 const { order, showAvailability = false, adjustableTargets = false, followingRentalWarnings = [], formId } = Astro.props;
+const overMaxRental = isOverMaxRental(order.fromDate, order.toDate);
 ---
 
 <Card as="div">
@@ -34,6 +39,13 @@ const { order, showAvailability = false, adjustableTargets = false, followingRen
 	<div class="flex flex-wrap gap-x-6 gap-y-2">
 		<StatusChip label="Unpaid fees" value={order.hasUnpaidFees} goodValue={false} />
 		<StatusChip label="Is member" value={order.userIsMember} goodValue={true} />
+		{
+			overMaxRental && (
+				<Badge tone="warning">
+					Above max rental time ({daysInclusive(order.fromDate, order.toDate)} of {getMaxRentalDays()} days)
+				</Badge>
+			)
+		}
 	</div>
 
 	<p class="text-sm">

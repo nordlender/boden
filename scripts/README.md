@@ -51,6 +51,7 @@ Drizzle migrations (creating `data/` if needed) and seeds example data via
 `seed-example-catalog.mjs` then `seed-example-orders.mjs`. `check-db-baseline.mjs` runs first and moves a
 local db that predates the current migration baseline aside to
 `data/backups/stale-<timestamp>/` instead of letting the migration fail.
+Refuses to run unless dev mode is on (`DEV_MODE=true` in `.env`, or exported).
 
 ## `sync-schema-doc.mjs` — `npm run docs:schema`
 

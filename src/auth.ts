@@ -4,6 +4,22 @@ import { defineConfig } from 'auth-astro';
 import { db } from './db/client';
 import { getBlocProfile, type BlocProfile } from './lib/blocProfile';
 import { upsertSignedInUser } from './lib/upsertUser';
+import Credentials from '@auth/core/providers/credentials';
+import { DEV_MODE, DEV_PROVIDER_ID, findDevUser } from './lib/devMode';
+
+// Dev mode (src/lib/devMode.ts): sign in as one of the fixed test users by id.
+// Only registered when built with DEV_MODE=true.
+function DevUsers() {
+  return Credentials({
+    id: DEV_PROVIDER_ID,
+    name: 'Dev user',
+    credentials: { userId: {} },
+    authorize(credentials) {
+      const user = findDevUser(credentials?.userId);
+      return user ? { id: user.id, name: user.name, email: user.email } : null;
+    },
+  });
+}
 
 declare module '@auth/core/types' {
   interface Session {
@@ -135,6 +151,7 @@ export default defineConfig({
       // swap it per environment without touching the fixed callback path.
       redirectUri: new URL(BLOC_CALLBACK_PATH, import.meta.env.REDIRECT_URL).toString(),
     }),
+    ...(DEV_MODE ? [DevUsers()] : []),
   ],
 
   callbacks: {
@@ -150,7 +167,16 @@ export default defineConfig({
     // override), so read userId from there instead — see #59.
     // Fails closed (returns false -> sign-in rejected) rather than letting a
     // signed-in session exist with no matching users row.
-    async signIn({ user, profile }) {
+    async signIn({ user, profile, account }) {
+      if (account?.provider === DEV_PROVIDER_ID) {
+        // Dev users have no bloc profile; their id is already final (and
+        // carried through to token.sub, since jwt() below only overwrites sub
+        // for bloc profiles).
+        const devUser = findDevUser(user.id);
+        if (!devUser) return false;
+        await upsertSignedInUser(db, devUser);
+        return true;
+      }
       const blocUserId = getBlocProfile(profile)?.userId;
       if (!blocUserId || !user.email) return false;
       await upsertSignedInUser(db, { id: String(blocUserId), email: user.email, name: user.name });

@@ -55,6 +55,8 @@ This copies `.env` from the main checkout, runs pending Drizzle migrations
 (creating `data/` if needed), and seeds the example catalog via
 `scripts/seed-example-catalog.mjs`, followed by example orders, pick-up days and
 messages via `scripts/seed-example-orders.mjs`. See `scripts/dev-setup.sh` for details.
+It only runs with dev mode enabled (`DEV_MODE=true` in `.env`, see "Dev mode"
+below) and exits before migrating or seeding otherwise.
 
 ### Environment variables
 
@@ -62,6 +64,20 @@ See [`.env.example`](.env.example) for the full list — bloc OAuth app
 credentials, the OAuth redirect URI, a session secret, and a temporary
 comma-separated admin/board/moderator user-id allowlist (bloc has no role API
 yet).
+
+### Dev mode (optional)
+
+To try member/board/moderator/admin pages without bloc credentials, set
+`DEV_MODE=true` in `.env` and (re)start the dev server or rebuild. The user
+menu in the navbar then gets a **Change user ›** submenu to sign in as one of
+four test users — Jane (member), Bob (board), Mandy (moderator) and Amitda
+(admin). It works signed out too; `/auth/login` itself still goes to bloc.
+Every page shows a warning strip across the top while dev mode is on.
+
+The flag is read at build time only: Astro bakes it into the build, so it
+can't be switched on in a running server, and any build made with it set —
+including `npm run build` — has the test users. Never set it for a
+production build.
 
 ### Scripts
 

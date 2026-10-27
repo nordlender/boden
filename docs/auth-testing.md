@@ -72,8 +72,8 @@ tools, not leftover scratch code: visit either in a logged-in browser tab to
 see bloc's raw response for your own account, using your real session's
 access token. See `src/lib/blocDebug.ts` for the shared helper and the hard
 rule on what's safe to wrap this way (only your-own-account endpoints). They
-only work under `astro dev` — every `/api/debug/*` route returns 404 in a
-production build.
+only work in a build with `DEV_MODE=true` (`src/lib/devMode.ts`) — otherwise
+every `/api/debug/*` route returns 404.
 
 ## Getting a genuinely clean session for retesting
 

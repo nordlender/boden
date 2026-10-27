@@ -1,4 +1,5 @@
 import { getToken } from '@auth/core/jwt';
+import { DEV_MODE } from './devMode';
 import { json } from './http';
 
 const BLOC_BASE_URL = 'https://rest.bloc.net';
@@ -8,8 +9,9 @@ const BLOC_BASE_URL = 'https://rest.bloc.net';
  * src/pages/api/debug/. Fetches the caller's own bloc access token from
  * their session cookie and forwards it as a Bearer token to `path`.
  *
- * DEV ONLY — outside `astro dev` every route using this returns 404, so the
- * raw bloc passthrough never ships in a production build (#246).
+ * DEV MODE ONLY (src/lib/devMode.ts) — unless built with DEV_MODE=true every
+ * route using this returns 404, so the raw bloc passthrough never ships in a
+ * production build (#246).
  *
  * HARD RULE — only wrap bloc endpoints that are scoped to the CALLER'S OWN
  * token/account (no other-user identifier param). This helper does not and
@@ -26,7 +28,7 @@ export async function callBlocAsSelf(
   // that need one, so callers never decode the JWT a second time.
   pathOrBuilder: string | ((ownUserId: string) => string),
 ): Promise<Response> {
-  if (!import.meta.env.DEV) {
+  if (!DEV_MODE) {
     return new Response(null, { status: 404 });
   }
 

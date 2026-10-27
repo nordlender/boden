@@ -4,13 +4,14 @@ import Button from '../../components/ui/Button.astro';
 import Page from '../../components/ui/Page.astro';
 import { cardClasses, eyebrowClasses, sectionTitleClasses } from '../../lib/layout-styles';
 import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
-import ItemQtyLine from '../../components/ui/ItemQtyLine.astro';
-import { getCartLines, type CartLine } from '../../lib/cart';
+import ItemLine from '../../components/ui/ItemLine.astro';
+import Badge from '../../components/ui/Badge.astro';
+import SetChildrenList from '../../components/cart/SetChildrenList.astro';
+import { getCartLines } from '../../lib/cart';
 import { isValidDateRange } from '../../lib/reservation';
 import { getPickupWindowsForDate } from '../../lib/pickupDays';
 import { formatPickupWindow } from '../../lib/pickupWindowFormat';
 import { formatDateDisplay } from '../../lib/dates';
-import { formatAttributes } from '../../lib/attributes';
 
 // Gated by src/middleware/prefixes.ts (/reservation) — member-only. Only
 // reachable via the reservation form's POST: this page is a read-only
@@ -40,13 +41,6 @@ const contact = { name: text('name'), email: text('email'), mobile: text('mobile
 const note = text('note');
 const pickupWindows = await getPickupWindowsForDate(fromDate);
 
-// ItemQtyLine only renders "name × qty", so the variant (item attributes, or a
-// set's label) is folded into the name.
-const lineLabel = (line: CartLine) => {
-	const detail = 'setId' in line ? line.label : formatAttributes(line.attributes);
-	const title = 'setId' in line ? `${line.productTitle} (set)` : line.productTitle;
-	return detail ? `${title} — ${detail}` : title;
-};
 // Everything the API route needs, passed through unchanged. Fee/membership
 // status is deliberately absent: /api/orders/create fetches it from bloc itself.
 const hiddenFields: Record<string, string> = {
@@ -80,8 +74,28 @@ const hiddenFields: Record<string, string> = {
 
 		<div>
 			<OrdersTableRow fromDate={fromDate} toDate={toDate} customerName={contact.name}>
-				<ul class="flex flex-col gap-1.5 pl-1 text-text-muted">
-					{cartLines.map((line) => <ItemQtyLine name={lineLabel(line)} quantity={line.quantity} />)}
+				<ul class="flex flex-col gap-3 text-sm text-text">
+					{
+						cartLines.map((line) => {
+							const isSet = 'setId' in line;
+							return (
+								<li>
+									<ItemLine
+										imageUrl={line.imageUrl}
+										name={line.productTitle}
+										href={line.productSlug ? `/products/${line.productSlug}` : null}
+										attributes={isSet ? [] : line.attributes}
+										subtitle={isSet ? line.label : null}
+										quantity={line.quantity}
+										thumbnailSize={56}
+									>
+										{isSet && <Badge class="mt-0.5 self-start">Set</Badge>}
+										{isSet && <SetChildrenList slot="below" components={line.children} quantity={line.quantity} />}
+									</ItemLine>
+								</li>
+							);
+						})
+					}
 				</ul>
 			</OrdersTableRow>
 		</div>

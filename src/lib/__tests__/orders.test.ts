@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { createOrder, deleteOrder, generateOrderCode, getMemberOrder, getMemberOrderRows, rescheduleOrder } from '../orders';
+import { createOrder, deleteOrder, generateOrderCode, getMemberOrder, getMemberOrderRows, rescheduleOrder, toOrderRow } from '../orders';
 import type { CartEntry } from '../cart';
 
 // rescheduleOrder calls isValidDateRange (src/lib/reservation.ts), which
@@ -407,6 +407,26 @@ describe('getMemberOrderRows', () => {
 
 	it('returns an empty list for a member with no orders', async () => {
 		expect(await getMemberOrderRows('')).toEqual([]);
+	});
+});
+
+describe('toOrderRow customerName', () => {
+	const base = {
+		orderCode: 'A1',
+		status: 'pending' as const,
+		fromDate: '2026-01-01',
+		toDate: '2026-01-02',
+		contactName: 'Checkout Name',
+		orderItems: [],
+	};
+
+	it('falls back to the contact snapshot when the account name is null or user is not loaded', () => {
+		expect(toOrderRow({ ...base, user: { name: null } }).customerName).toBe('Checkout Name');
+		expect(toOrderRow(base).customerName).toBe('Checkout Name');
+	});
+
+	it('keeps an intentionally empty account name instead of the snapshot', () => {
+		expect(toOrderRow({ ...base, user: { name: '' } }).customerName).toBe('');
 	});
 });
 

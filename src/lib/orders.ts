@@ -275,7 +275,7 @@ export function toOrderRow(order: OrderRowSource): OrderRow {
     // users.name is nullable (set from the external OAuth provider) — fall
     // back to the checkout-time contact name snapshot. Callers that don't
     // load `user` (a member's own list) always get the snapshot.
-    customerName: order.user?.name || order.contactName,
+    customerName: order.user?.name ?? order.contactName,
     items: order.orderItems.map((oi) => ({
       itemName: oi.item.name,
       requestedQuantity: oi.requestedQuantity,

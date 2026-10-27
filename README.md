@@ -72,6 +72,7 @@ To try member/board/moderator/admin pages without bloc credentials, set
 menu in the navbar then gets a **Change user ›** submenu to sign in as one of
 four test users — Jane (member), Bob (board), Mandy (moderator) and Amitda
 (admin). It works signed out too; `/auth/login` itself still goes to bloc.
+Every page shows a warning strip across the top while dev mode is on.
 
 The flag is read at build time only: Astro bakes it into the build, so it
 can't be switched on in a running server, and any build made with it set —

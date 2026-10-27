@@ -96,12 +96,9 @@ describe('isValidDateRange', () => {
 		expect(isValidDateRange({ from: '2025-12-01', to: '2025-12-05' })).toBe(true);
 	});
 
-	it('accepts a range exactly at the max rental duration (14 inclusive days)', () => {
-		expect(isValidDateRange({ from: '2025-12-01', to: '2025-12-14' })).toBe(true);
-	});
-
-	it('rejects a range one day past the max rental duration', () => {
-		expect(isValidDateRange({ from: '2025-12-01', to: '2025-12-15' })).toBe(false);
+	it('accepts a range past the max rental duration — it is flagged for review, not rejected (#391)', () => {
+		expect(isValidDateRange({ from: '2025-12-01', to: '2025-12-15' })).toBe(true);
+		expect(isValidDateRange({ from: '2025-12-01', to: '2026-03-01' })).toBe(true);
 	});
 });
 

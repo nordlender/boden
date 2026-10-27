@@ -11,13 +11,15 @@ describe('deriveReservationStatus', () => {
 		expect(view.hint).toMatch(/Select your pick-up and return dates/);
 	});
 
-	it('has its own too-long state, not the fetch error, when the range exceeds the max rental period', () => {
-		const view = deriveReservationStatus({ hasDates: true, availabilities: null, rentalDays: 20, maxRentalDays: 14 });
-		expect(view).toMatchObject({ status: 'too-long', submitEnabled: false, error: null, loading: false });
-		expect(view.warning).toMatch(/maximum rental period is 14 days.*selected 20/);
-		expect(view.hint).toMatch(/shorter rental period/);
+	it('warns about a range over the max rental period without blocking submit (#391)', () => {
+		const view = deriveReservationStatus({ hasDates: true, availabilities: [yes], rentalDays: 20, maxRentalDays: 14 });
+		expect(view).toMatchObject({ status: 'all-available', submitEnabled: true, warning: null, error: null });
+		expect(view.overMaxWarning).toMatch(/maximum rental period is 14 days.*selected 20.*unlikely to be accepted.*note/);
+		// Still shown while availability is loading or the items are unavailable.
+		expect(deriveReservationStatus({ hasDates: true, availabilities: null, rentalDays: 20, maxRentalDays: 14 }).overMaxWarning).not.toBeNull();
+		expect(deriveReservationStatus({ hasDates: true, availabilities: [no], rentalDays: 20, maxRentalDays: 14 }).overMaxWarning).not.toBeNull();
 		// Exactly the max is fine.
-		expect(deriveReservationStatus({ hasDates: true, availabilities: null, rentalDays: 14, maxRentalDays: 14 }).status).toBe('loading');
+		expect(deriveReservationStatus({ hasDates: true, availabilities: [yes], rentalDays: 14, maxRentalDays: 14 }).overMaxWarning).toBeNull();
 	});
 
 	it('keeps submit disabled while the check is in flight', () => {
@@ -53,6 +55,7 @@ describe('deriveReservationStatus', () => {
 			warning: null,
 			error: null,
 			loading: false,
+			overMaxWarning: null,
 		});
 	});
 });

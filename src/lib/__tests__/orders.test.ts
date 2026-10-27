@@ -327,13 +327,13 @@ describe('rescheduleOrder', () => {
 		expect(result).toEqual({ ok: false, error: 'unavailable', unavailableItemIds: [ITEM_A_ID] });
 	});
 
-	it('rejects a reschedule range longer than the max rental duration', async () => {
+	it('allows a reschedule range longer than the max rental duration — flagged for review, not rejected (#391)', async () => {
 		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-10-01', '2026-10-02');
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
 		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-10-05', toDate: '2026-10-25' });
-		expect(result).toEqual({ ok: false, error: 'invalid_dates' });
+		expect(result.ok).toBe(true);
 	});
 
 	it('rejects rescheduling an order that has moved past "requested"', async () => {

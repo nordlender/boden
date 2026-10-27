@@ -1,11 +1,16 @@
 ---
 import OrderCodeHeader from './OrderCodeHeader.astro';
 import OrderContents from './OrderContents.astro';
+import PickupInfo from './PickupInfo.astro';
+import type { Attribute } from '../../lib/attributes';
+import type { PickupWindowDisplay } from '../../lib/pickupWindowFormat';
 
 interface OrderItemView {
 	itemName: string;
 	requestedQuantity: number;
 	itemImageUrl?: string | null;
+	attributes?: Attribute[];
+	href?: string | null;
 }
 
 interface Props {
@@ -16,12 +21,22 @@ interface Props {
 	note: string | null;
 	items: OrderItemView[];
 	showImages?: boolean;
+	// Pick-up time & place, shown between the header and the items. Leave
+	// undefined to omit the block (an order whose pick-up is no longer ahead
+	// — see isPickupPending); an empty array while the order is still only
+	// requested says a moderator will confirm it.
+	pickupWindows?: PickupWindowDisplay[];
 }
 
-const { orderCode, status, fromDate, toDate, note, items, showImages = false } = Astro.props;
+const { orderCode, status, fromDate, toDate, note, items, showImages = false, pickupWindows } = Astro.props;
 ---
 
 <section class="order-summary flex flex-col gap-6">
 	<OrderCodeHeader orderCode={orderCode} status={status} fromDate={fromDate} toDate={toDate} />
+	{
+		pickupWindows && (
+			<PickupInfo windows={pickupWindows} emptyText={status === 'requested' ? 'A moderator will confirm the time and place.' : undefined} />
+		)
+	}
 	<OrderContents items={items} note={note} showImages={showImages} />
 </section>

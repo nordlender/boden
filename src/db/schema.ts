@@ -413,7 +413,7 @@ export const pickupRecurringRules = sqliteTable('pickup_recurring_rules', {
 //
 // Every row (of either kind) is a real pick-up day: /reservation reads the
 // union of both to color its calendar, exactly like the old
-// pickupAvailableDays table's rows did — see getUpcomingAvailablePickupDates.
+// pickupAvailableDays table's rows did — see getUpcomingPickupWindows.
 export const pickupDays = sqliteTable('pickup_days', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   date: text('date').notNull(), // YYYY-MM-DD

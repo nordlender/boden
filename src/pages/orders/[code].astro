@@ -1,9 +1,10 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { db } from '../../db/client';
+import { getMemberOrder } from '../../lib/orders';
+import { toOrderItemView } from '../../lib/orderItemView';
+import { getOrderPickupWindows } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
-import OrderCodeHeader from '../../components/orders/OrderCodeHeader.astro';
-import OrderContents from '../../components/orders/OrderContents.astro';
+import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import SubmittedContactDetails from '../../components/orders/SubmittedContactDetails.astro';
 import DeleteOrderButton from '../../components/orders/DeleteOrderButton.astro';
 import ChangeOrderLink from '../../components/orders/ChangeOrderLink.astro';
@@ -14,18 +15,16 @@ import { cardFooterClasses } from '../../lib/layout-styles';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
 // reached only when logged in, so Astro.locals.user is non-null here.
-const { code } = Astro.params;
-const order = code
-  ? await db.query.orders.findFirst({
-      where: (t, { eq }) => eq(t.orderCode, code),
-      with: { orderItems: { with: { item: true } } },
-    })
-  : undefined;
+// getMemberOrder scopes the lookup to the signed-in user, so another member's
+// code resolves exactly like a nonexistent one — don't leak it by guessing or
+// enumerating order codes (never redirect differently for "not yours").
+const order = await getMemberOrder(Astro.params.code ?? '', Astro.locals.user?.id ?? '');
 
-// Don't leak another member's order by guessing/enumerating order codes.
-if (!order || order.userId !== Astro.locals.user?.id) {
+if (!order) {
   return Astro.redirect('/');
 }
+
+const pickupWindows = await getOrderPickupWindows(order);
 ---
 
 <BaseLayout title={`Order #${order.orderCode}`}>
@@ -33,13 +32,15 @@ if (!order || order.userId !== Astro.locals.user?.id) {
 		<BackLink slot="before-title" href="/">Back to shop</BackLink>
 
 		<Card as="div">
-			<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
-			<OrderContents
-				items={order.orderItems.map((oi) => ({
-					itemName: oi.item.name,
-					requestedQuantity: oi.requestedQuantity,
-				}))}
+			<UserOrderSummary
+				orderCode={order.orderCode}
+				status={order.status}
+				fromDate={order.fromDate}
+				toDate={order.toDate}
 				note={order.note}
+				items={order.orderItems.map(toOrderItemView)}
+				showImages
+				pickupWindows={pickupWindows}
 			/>
 			<SubmittedContactDetails contactName={order.contactName} />
 			<div class={cardFooterClasses}>

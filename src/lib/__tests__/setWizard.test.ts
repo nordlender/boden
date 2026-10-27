@@ -15,7 +15,8 @@ vi.mock('../../db/client', () => ({
 	},
 }));
 
-const { setSetsProduct, addSetComponent, ProductHasItemsError } = await import('../setWizard');
+const { setSetsProduct, addSetComponent } = await import('../setWizard');
+const { ProductKindConflictError } = await import('../wizardVariants');
 
 function seedProduct(database: BetterSQLite3Database<typeof schema>, slug: string) {
 	const [product] = database.insert(schema.products).values({ slug, title: slug }).returning({ id: schema.products.id }).all();
@@ -52,7 +53,9 @@ describe('setWizard', () => {
 			testDb.insert(schema.items).values({ slug: 'item-1', name: 'Item 1', productId }).run();
 			const setId = seedSet(testDb, { slug: 'set-1' });
 
-			await expect(setSetsProduct([setId], productId)).rejects.toBeInstanceOf(ProductHasItemsError);
+			const error = await setSetsProduct([setId], productId).catch((e: unknown) => e);
+			expect(error).toBeInstanceOf(ProductKindConflictError);
+			expect(error).toMatchObject({ existing: 'item', reason: 'product_has_items' });
 
 			const [row] = testDb.select({ productId: schema.sets.productId }).from(schema.sets).where(eq(schema.sets.id, setId)).all();
 			expect(row.productId).toBeNull();

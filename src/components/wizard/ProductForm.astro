@@ -31,7 +31,7 @@ const links = product?.links ?? [];
 const existingAttributeKeys = product?.attributeKeys ?? [];
 ---
 
-<form method="post" action={action} class="flex flex-col gap-region">
+<form method="post" action={action} class="flex flex-col gap-region" data-product-form>
 	<input type="hidden" name="redirectTo" value={redirectTo} />
 
 	<section class:list={[cardClasses, 'flex flex-col gap-stack p-card']}>
@@ -199,40 +199,45 @@ const existingAttributeKeys = product?.attributeKeys ?? [];
 	// both lists are plain form fields (linkLabel[]/linkUrl[]/attributeKey[]),
 	// so removing a row's DOM node is enough to drop it from submission; no
 	// index bookkeeping needed.
-	document.querySelectorAll<HTMLButtonElement>('[data-add-row]').forEach((button) => {
-		button.addEventListener('click', () => {
-			const key = button.dataset.addRow;
-			const template = document.querySelector<HTMLTemplateElement>(`template[data-row-template="${key}"]`);
-			const list = document.querySelector<HTMLElement>(`[data-row-list="${key}"]`);
-			if (!template || !list) return;
-			const row = template.content.cloneNode(true);
-			list.appendChild(row);
+	// Everything below is wired per form, so a second form on the page keeps
+	// its own rows and variant state.
+	document.querySelectorAll<HTMLFormElement>('form[data-product-form]').forEach((form) => {
+		form.querySelectorAll<HTMLButtonElement>('[data-add-row]').forEach((button) => {
+			button.addEventListener('click', () => {
+				const key = button.dataset.addRow;
+				const template = form.querySelector<HTMLTemplateElement>(`template[data-row-template="${key}"]`);
+				const list = form.querySelector<HTMLElement>(`[data-row-list="${key}"]`);
+				if (!template || !list) return;
+				const row = template.content.cloneNode(true);
+				list.appendChild(row);
+			});
 		});
-	});
 
-	document.addEventListener('click', (event) => {
-		const target = event.target;
-		if (!(target instanceof Element)) return;
-		const removeButton = target.closest<HTMLElement>('[data-remove-row]');
-		if (!removeButton) return;
-		removeButton.closest('[data-row]')?.remove();
-	});
+		form.addEventListener('click', (event) => {
+			const target = event.target;
+			if (!(target instanceof Element)) return;
+			const removeButton = target.closest<HTMLElement>('[data-remove-row]');
+			if (!removeButton) return;
+			removeButton.closest('[data-row]')?.remove();
+		});
 
-	// Variant toggle: at most one existing key is the variant (the hidden
-	// input holds its name; empty means none). Clicking the pressed key unsets
-	// it. Keys added in this same save have no pill yet — set the variant
-	// after saving.
-	const variantInput = document.querySelector<HTMLInputElement>('[data-variant-input]');
+		// Variant toggle: at most one existing key is the variant (the hidden
+		// input holds its name; empty means none). Clicking the pressed key
+		// unsets it. Keys added in this same save have no pill yet — set the
+		// variant after saving.
+		const variantInput = form.querySelector<HTMLInputElement>('[data-variant-input]');
+		if (!variantInput) return;
 
-	document.addEventListener('click', (event) => {
-		const target = event.target;
-		if (!(target instanceof Element) || !variantInput) return;
-		const toggle = target.closest<HTMLElement>('[data-variant-toggle]');
-		if (!toggle) return;
-		const wasPressed = toggle.getAttribute('aria-pressed') === 'true';
-		document.querySelectorAll('[data-variant-toggle]').forEach((other) => other.setAttribute('aria-pressed', 'false'));
-		toggle.setAttribute('aria-pressed', String(!wasPressed));
-		variantInput.value = wasPressed ? '' : (toggle.dataset.name ?? '');
+		form.addEventListener('click', (event) => {
+			const target = event.target;
+			if (!(target instanceof Element)) return;
+			const toggle = target.closest<HTMLElement>('[data-variant-toggle]');
+			if (!toggle) return;
+			const wasPressed = toggle.getAttribute('aria-pressed') === 'true';
+			form.querySelectorAll('[data-variant-toggle]').forEach((other) => other.setAttribute('aria-pressed', 'false'));
+			toggle.setAttribute('aria-pressed', String(!wasPressed));
+			variantInput.value = wasPressed ? '' : (toggle.dataset.name ?? '');
+		});
 	});
 
 	// Sub-category options are filtered to the currently selected category —

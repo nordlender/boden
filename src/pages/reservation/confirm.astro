@@ -4,14 +4,13 @@ import Button from '../../components/ui/Button.astro';
 import Page from '../../components/ui/Page.astro';
 import { cardClasses, eyebrowClasses, sectionTitleClasses } from '../../lib/layout-styles';
 import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
-import ItemLine from '../../components/ui/ItemLine.astro';
-import Badge from '../../components/ui/Badge.astro';
-import SetChildrenList from '../../components/cart/SetChildrenList.astro';
+import ReservationItemRow from '../../components/reservation/ReservationItemRow.astro';
 import { getCartLines } from '../../lib/cart';
 import { isValidDateRange } from '../../lib/reservation';
 import { getPickupWindowsForDate } from '../../lib/pickupDays';
 import { formatPickupWindow } from '../../lib/pickupWindowFormat';
 import { formatDateDisplay } from '../../lib/dates';
+import { formatAttributes } from '../../lib/attributes';
 
 // Gated by src/middleware/prefixes.ts (/reservation) — member-only. Only
 // reachable via the reservation form's POST: this page is a read-only
@@ -74,29 +73,36 @@ const hiddenFields: Record<string, string> = {
 
 		<div>
 			<OrdersTableRow fromDate={fromDate} toDate={toDate} customerName={contact.name}>
-				<ul class="flex flex-col gap-3 text-sm text-text">
+				<div class="divide-y divide-border">
 					{
-						cartLines.map((line) => {
-							const isSet = 'setId' in line;
-							return (
-								<li>
-									<ItemLine
-										imageUrl={line.imageUrl}
-										name={line.productTitle}
-										href={line.productSlug ? `/products/${line.productSlug}` : null}
-										attributes={isSet ? [] : line.attributes}
-										subtitle={isSet ? line.label : null}
-										quantity={line.quantity}
-										thumbnailSize={56}
-									>
-										{isSet && <Badge class="mt-0.5 self-start">Set</Badge>}
-										{isSet && <SetChildrenList slot="below" components={line.children} quantity={line.quantity} />}
-									</ItemLine>
-								</li>
-							);
-						})
+						cartLines.map((line) =>
+							'setId' in line ? (
+								<ReservationItemRow
+									readonly
+									kind="set"
+									id={line.setId}
+									productSlug={line.productSlug}
+									productTitle={line.productTitle}
+									imageUrl={line.imageUrl}
+									quantity={line.quantity}
+									subtitle={line.label}
+									components={line.children}
+								/>
+							) : (
+								<ReservationItemRow
+									readonly
+									kind="item"
+									id={line.itemId}
+									productSlug={line.productSlug}
+									productTitle={line.productTitle}
+									imageUrl={line.imageUrl}
+									quantity={line.quantity}
+									subtitle={formatAttributes(line.attributes)}
+								/>
+							),
+						)
 					}
-				</ul>
+				</div>
 			</OrdersTableRow>
 		</div>
 

@@ -47,6 +47,9 @@ interface Props {
 	imageUrl?: string | null;
 	name: string;
 	href?: string | null;
+	// Open the name link in a new tab — for pages where navigating away would
+	// lose in-progress state (the reservation confirm step).
+	newTab?: boolean;
 	attributes?: Attribute[];
 	// Pre-formatted text for the line under the name, used instead of
 	// `attributes` when given — for a set line, whose short label isn't an
@@ -68,6 +71,7 @@ const {
 	imageUrl = null,
 	name,
 	href = null,
+	newTab = false,
 	attributes = [],
 	subtitle = null,
 	quantity = null,
@@ -77,6 +81,7 @@ const {
 	class: className,
 } = Astro.props;
 
+const linkTarget = newTab ? { target: '_blank', rel: 'noopener' } : {};
 const attributeLabel = subtitle ?? formatAttributes(attributes);
 // Where the text column starts: thumbnail width + the row gap.
 const belowIndent = `margin-left: ${thumbnailSize + gapPixels[gap]}px;`;
@@ -90,7 +95,7 @@ const belowIndent = `margin-left: ${thumbnailSize + gapPixels[gap]}px;`;
 			quantityStyle === 'inline' ? (
 				<p class="text-sm text-text">
 					{href ? (
-						<a href={href} class="hover:underline">
+						<a href={href} {...linkTarget} class="hover:underline">
 							{name}
 						</a>
 					) : (
@@ -106,7 +111,7 @@ const belowIndent = `margin-left: ${thumbnailSize + gapPixels[gap]}px;`;
 			) : (
 				<Fragment>
 					{href ? (
-						<a href={href} class="block truncate font-medium text-text hover:underline">
+						<a href={href} {...linkTarget} class="block truncate font-medium text-text hover:underline">
 							{name}
 						</a>
 					) : (

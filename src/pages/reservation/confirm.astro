@@ -2,10 +2,9 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Button from '../../components/ui/Button.astro';
 import Page from '../../components/ui/Page.astro';
-import { cardClasses, eyebrowClasses, sectionTitleClasses } from '../../lib/layout-styles';
-import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
-import ItemQtyLine from '../../components/ui/ItemQtyLine.astro';
-import { getCartLines, type CartLine } from '../../lib/cart';
+import { sectionTitleClasses } from '../../lib/layout-styles';
+import ReservationItemRow from '../../components/reservation/ReservationItemRow.astro';
+import { getCartLines } from '../../lib/cart';
 import { isValidDateRange } from '../../lib/reservation';
 import { getPickupWindowsForDate } from '../../lib/pickupDays';
 import { formatPickupWindow } from '../../lib/pickupWindowFormat';
@@ -40,13 +39,6 @@ const contact = { name: text('name'), email: text('email'), mobile: text('mobile
 const note = text('note');
 const pickupWindows = await getPickupWindowsForDate(fromDate);
 
-// ItemQtyLine only renders "name × qty", so the variant (item attributes, or a
-// set's label) is folded into the name.
-const lineLabel = (line: CartLine) => {
-	const detail = 'setId' in line ? line.label : formatAttributes(line.attributes);
-	const title = 'setId' in line ? `${line.productTitle} (set)` : line.productTitle;
-	return detail ? `${title} — ${detail}` : title;
-};
 // Everything the API route needs, passed through unchanged. Fee/membership
 // status is deliberately absent: /api/orders/create fetches it from bloc itself.
 const hiddenFields: Record<string, string> = {
@@ -58,44 +50,99 @@ const hiddenFields: Record<string, string> = {
 	note,
 	disclaimerAccepted: 'on',
 };
+
+// Label/value pairs for the "Your details" section; empty values are skipped.
+const details = [
+	{ label: 'Name', value: contact.name },
+	{ label: 'Email', value: contact.email },
+	{ label: 'Mobile', value: contact.mobile },
+	{ label: 'Note', value: note },
+].filter((detail) => detail.value !== '');
 ---
 
 <BaseLayout title="Confirm order">
 	<Page width="medium" title="Confirm your order" description="Check everything below, then confirm to submit your request.">
-		<dl class:list={[cardClasses, 'p-card']}>
-			<dt class={eyebrowClasses}>Pick-up time</dt>
-			<dd class="mt-2 text-sm text-text">
-				{formatDateDisplay(fromDate, { weekday: true })}
-				{
-					pickupWindows.length === 0 ? (
-						<span class="text-text-muted">· time to be announced</span>
-					) : (
-						<ul class="mt-1 flex flex-col gap-1">
-							{pickupWindows.map((w) => <li>{formatPickupWindow(w)}</li>)}
-						</ul>
-					)
-				}
-			</dd>
-		</dl>
-
-		<div>
-			<OrdersTableRow fromDate={fromDate} toDate={toDate} customerName={contact.name}>
-				<ul class="flex flex-col gap-1.5 pl-1 text-text-muted">
-					{cartLines.map((line) => <ItemQtyLine name={lineLabel(line)} quantity={line.quantity} />)}
-				</ul>
-			</OrdersTableRow>
-		</div>
-
-		<section class="flex flex-col gap-snug text-sm text-text">
-			<h2 class:list={['mb-1', sectionTitleClasses]}>Your details</h2>
-			<p>{contact.email}{contact.mobile && ` · ${contact.mobile}`}</p>
-			{note && <p class="text-text-muted">Note: {note}</p>}
-		</section>
-
-		<form method="POST" action="/api/orders/create" class="flex items-center gap-controls">
+		<form method="POST" action="/api/orders/create" class="flex flex-col gap-region">
 			{Object.entries(hiddenFields).map(([name, value]) => <input type="hidden" name={name} value={value} />)}
-			<Button href="/reservation" variant="secondary" size="lg" data-back-link>Back</Button>
-			<Button type="submit" variant="primary" size="lg">Confirm order</Button>
+
+			<section class="flex flex-col gap-stack">
+				<h2 class={sectionTitleClasses}>1. Pick-up &amp; return dates</h2>
+				<dl class="flex flex-col gap-snug text-sm text-text">
+					<div>
+						<dt class="text-text-muted">Pick-up</dt>
+						<dd>
+							{formatDateDisplay(fromDate, { weekday: true })}
+							{
+								pickupWindows.length === 0 ? (
+									<span class="text-text-muted">· time to be announced</span>
+								) : (
+									<ul class="mt-1 flex flex-col gap-1">
+										{pickupWindows.map((w) => (
+											<li>{formatPickupWindow(w)}</li>
+										))}
+									</ul>
+								)
+							}
+						</dd>
+					</div>
+					<div>
+						<dt class="text-text-muted">Return</dt>
+						<dd>{formatDateDisplay(toDate, { weekday: true })}</dd>
+					</div>
+				</dl>
+			</section>
+
+			<section class="flex flex-col gap-stack">
+				<h2 class={sectionTitleClasses}>2. Your items</h2>
+				<div class="divide-y divide-border border-y border-border">
+					{
+						cartLines.map((line) =>
+							'setId' in line ? (
+								<ReservationItemRow
+									readonly
+									kind="set"
+									id={line.setId}
+									productSlug={line.productSlug}
+									productTitle={line.productTitle}
+									imageUrl={line.imageUrl}
+									quantity={line.quantity}
+									subtitle={line.label}
+									components={line.children}
+								/>
+							) : (
+								<ReservationItemRow
+									readonly
+									kind="item"
+									id={line.itemId}
+									productSlug={line.productSlug}
+									productTitle={line.productTitle}
+									imageUrl={line.imageUrl}
+									quantity={line.quantity}
+									subtitle={formatAttributes(line.attributes)}
+								/>
+							),
+						)
+					}
+				</div>
+			</section>
+
+			<section class="flex flex-col gap-stack">
+				<h2 class={sectionTitleClasses}>3. Your details</h2>
+				<dl class="flex flex-col gap-snug text-sm text-text">
+					{
+						details.map(({ label, value }) => (
+							<div>
+								<dt class="text-text-muted">{label}</dt>
+								<dd class="whitespace-pre-line">{value}</dd>
+							</div>
+						))
+					}
+				</dl>
+				<div class="mt-2 flex items-center gap-controls">
+					<Button href="/reservation" variant="secondary" size="lg" data-back-link>Back</Button>
+					<Button type="submit" variant="primary" size="lg">Confirm order</Button>
+				</div>
+			</section>
 		</form>
 	</Page>
 </BaseLayout>

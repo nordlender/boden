@@ -94,3 +94,21 @@ const error = Astro.url.searchParams.get('error');
 		</OrderDetailCard>
 	</Page>
 </ModeratorLayout>
+
+<script>
+	// The server rejects a whitespace-only reason by redirecting back with
+	// ?error=blank_reason: reopen the reason popover so the field is in view,
+	// then drop the one-shot param so a reload doesn't reopen it (same trick as
+	// wizard/AssignWarning.astro). Importing openPopover guarantees Popover's
+	// positioning listeners exist already (see lib/popover.ts).
+	import { openPopover } from '../../../lib/popover';
+
+	const url = new URL(location.href);
+	const popover = document.getElementById('reject-order-reason');
+	if (popover && url.searchParams.get('error') === 'blank_reason') {
+		openPopover(popover);
+		popover.querySelector<HTMLTextAreaElement>('textarea')?.focus();
+		url.searchParams.delete('error');
+		history.replaceState({}, '', url);
+	}
+</script>

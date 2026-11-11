@@ -20,6 +20,9 @@ interface Props {
 	class?: string;
 	form?: string;
 	formaction?: string;
+	// Native Popover API trigger — see Button.astro / ActionPopover.astro.
+	popovertarget?: string;
+	popovertargetaction?: 'show' | 'hide' | 'toggle';
 }
 
 const { action, variant = 'secondary', size = 'md', type = 'button', href, disabled = false, class: className, ...rest } = Astro.props;

@@ -1,11 +1,11 @@
 # build output
 dist/
 
-# development files
-dev/
+# local development scratch files (repo root only; src/pages/dev/ is tracked)
+/dev/
 
 # sqlite database (drizzle.config.ts)
-data/
+/data/
 # generated types
 .astro/
 
@@ -23,7 +23,7 @@ pnpm-debug.log*
 .env
 .env.production
 
-# bloc API sample response with real contact info (see auth_work_items.md)
+# bloc API sample response with real contact info (kept locally, e.g. in /dev/)
 listmypages.json
 
 # macOS-specific files

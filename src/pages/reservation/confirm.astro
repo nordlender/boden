@@ -128,12 +128,12 @@ const details = [
 
 			<section class="flex flex-col gap-stack">
 				<h2 class={sectionTitleClasses}>3. Your details</h2>
-				<dl class="flex flex-col gap-snug text-sm text-text">
+				<dl class="grid gap-stack text-sm text-text sm:grid-cols-3">
 					{
 						details.map(({ label, value }) => (
-							<div>
+							<div class:list={['min-w-0', label === 'Note' && 'sm:col-span-3']}>
 								<dt class="text-text-muted">{label}</dt>
-								<dd class="whitespace-pre-line">{value}</dd>
+								<dd class="whitespace-pre-line break-words">{value}</dd>
 							</div>
 						))
 					}

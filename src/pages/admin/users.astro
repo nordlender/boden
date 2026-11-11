@@ -1,0 +1,53 @@
+---
+// Gated by src/middleware/prefixes.ts (ROUTE_RULES via /admin) —
+// reached only when logged in with role === 'admin'.
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Page from '../../components/ui/Page.astro';
+import { chipBaseClasses } from '../../lib/button-styles';
+import UsersTable from '../../components/users/UsersTable.astro';
+import { getAllUserRows, isRole, ROLES, ROLE_LABELS } from '../../lib/users';
+import type { Role } from '../../lib/auth';
+
+const roleParam = Astro.url.searchParams.get('role');
+const activeRole: Role | null = isRole(roleParam) ? roleParam : null;
+
+function roleHref(role: Role | null) {
+	return role ? `/admin/users?role=${role}` : '/admin/users';
+}
+
+const rows = await getAllUserRows(activeRole);
+---
+<AdminLayout title="Users">
+	<Page width="wide" title="Users" description="Everyone who has signed in, and their role.">
+		<div class="flex flex-wrap gap-2">
+			<a
+				href={roleHref(null)}
+				aria-current={activeRole === null ? 'true' : undefined}
+				class:list={[
+					chipBaseClasses,
+					activeRole === null ? 'border-border-strong bg-surface text-text' : 'border-border text-text-muted hover:bg-bg-subtle hover:text-text',
+				]}
+			>
+				All
+			</a>
+			{
+				ROLES.map((role) => (
+					<a
+						href={roleHref(role)}
+						aria-current={activeRole === role ? 'true' : undefined}
+						class:list={[
+							chipBaseClasses,
+							activeRole === role
+								? 'border-border-strong bg-surface text-text'
+								: 'border-border text-text-muted hover:bg-bg-subtle hover:text-text',
+						]}
+					>
+						{ROLE_LABELS[role]}
+					</a>
+				))
+			}
+		</div>
+
+		<UsersTable users={rows} emptyMessage="No users match this filter." />
+	</Page>
+</AdminLayout>

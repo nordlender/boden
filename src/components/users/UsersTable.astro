@@ -1,0 +1,43 @@
+---
+import RoleBadge from './RoleBadge.astro';
+import type { UserRow } from '../../lib/users';
+import { formatDateDdMmYy } from '../../lib/dates';
+import { emptyStateFramedClasses } from '../../lib/layout-styles';
+
+interface Props {
+	users: UserRow[];
+	emptyMessage?: string;
+}
+
+const { users, emptyMessage = 'No users yet.' } = Astro.props;
+---
+
+<div class="flex flex-col gap-3">
+	{
+		users.length === 0 ? (
+			<p class={emptyStateFramedClasses}>{emptyMessage}</p>
+		) : (
+			users.map((user) => (
+				<div class="rounded-xl border border-border bg-surface px-card py-4 text-sm">
+					<!--
+						Same row shape as OrdersTableRow: badge, then the main fields.
+						Stacked on mobile as badge + joined date, then name, then email.
+					-->
+					<div class="grid grid-cols-2 items-center gap-x-4 gap-y-2 sm:grid-cols-[7.5rem_1fr_1fr_auto] sm:gap-y-0">
+						<div>
+							<RoleBadge role={user.role} />
+						</div>
+						<span class="truncate font-medium text-text max-sm:col-span-2 max-sm:row-start-2">{user.name ?? user.email}</span>
+						<span class="truncate text-text-muted max-sm:col-span-2 max-sm:row-start-3">{user.email}</span>
+						<span
+							class="text-text-muted max-sm:col-start-2 max-sm:row-start-1 max-sm:justify-self-end"
+							title="First signed in"
+						>
+							{formatDateDdMmYy(user.createdAt)}
+						</span>
+					</div>
+				</div>
+			))
+		)
+	}
+</div>

@@ -1,0 +1,24 @@
+---
+import Badge from '../ui/Badge.astro';
+import type { BadgeTone } from '../../lib/badge-styles';
+import type { Role } from '../../lib/auth';
+import { ROLE_LABELS } from '../../lib/users';
+
+interface Props {
+	role: Role;
+	class?: string;
+}
+
+const { role, class: className } = Astro.props;
+
+// Reuses the existing badge tones for their hue only: member grey, board
+// red, moderator blue, admin green.
+const toneByRole: Record<Role, BadgeTone> = {
+	admin: 'success',
+	board: 'error',
+	moderator: 'info',
+	member: 'neutral',
+};
+---
+
+<Badge tone={toneByRole[role]} class={className}>{ROLE_LABELS[role]}</Badge>

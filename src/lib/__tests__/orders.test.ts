@@ -413,7 +413,7 @@ describe('getMemberOrderRows', () => {
 describe('toOrderRow customerName', () => {
 	const base = {
 		orderCode: 'A1',
-		status: 'pending' as const,
+		status: 'requested' as const,
 		fromDate: '2026-01-01',
 		toDate: '2026-01-02',
 		contactName: 'Checkout Name',
@@ -425,8 +425,13 @@ describe('toOrderRow customerName', () => {
 		expect(toOrderRow(base).customerName).toBe('Checkout Name');
 	});
 
-	it('keeps an intentionally empty account name instead of the snapshot', () => {
-		expect(toOrderRow({ ...base, user: { name: '' } }).customerName).toBe('');
+	it('falls back to the contact snapshot when the account name is empty or whitespace-only', () => {
+		expect(toOrderRow({ ...base, user: { name: '' } }).customerName).toBe('Checkout Name');
+		expect(toOrderRow({ ...base, user: { name: '  ' } }).customerName).toBe('Checkout Name');
+	});
+
+	it('uses the account name when present', () => {
+		expect(toOrderRow({ ...base, user: { name: 'Account Name' } }).customerName).toBe('Account Name');
 	});
 });
 

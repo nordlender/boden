@@ -272,10 +272,11 @@ export function toOrderRow(order: OrderRowSource): OrderRow {
     status: order.status,
     fromDate: order.fromDate,
     toDate: order.toDate,
-    // users.name is nullable (set from the external OAuth provider) — fall
-    // back to the checkout-time contact name snapshot. Callers that don't
-    // load `user` (a member's own list) always get the snapshot.
-    customerName: order.user?.name ?? order.contactName,
+    // users.name is nullable (set from the external OAuth provider), and a
+    // blank or whitespace-only name counts as missing — fall back to the
+    // checkout-time contact name snapshot. Callers that don't load `user`
+    // (a member's own list) always get the snapshot.
+    customerName: order.user?.name?.trim() || order.contactName,
     items: order.orderItems.map((oi) => ({
       itemName: oi.item.name,
       requestedQuantity: oi.requestedQuantity,

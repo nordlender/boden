@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-13T01:03:31+00:00",
+  "generatedAt": "2026-11-13T01:28:10+00:00",
   "title": "Design System: Boden",
   "extensions": {
     "colorMeta": {
@@ -148,52 +148,132 @@
           "#ebeff4"
         ]
       },
-      "mint": {
+      "org-red": {
         "role": "primary",
-        "displayName": "Mint",
-        "canonical": "#4fd4a6",
-        "theme": "dark",
+        "displayName": "Org Red",
+        "canonical": "#a20000",
+        "theme": "both",
         "tonalRamp": [
-          "#000f08",
-          "#002e1f",
-          "#005038",
-          "#007453",
-          "#009b71",
-          "#59ba96",
-          "#95dbbe",
-          "#ccfbe6"
+          "#1f0000",
+          "#4d0000",
+          "#7f0805",
+          "#ae281d",
+          "#d64f41",
+          "#f47d6d",
+          "#fdb4a8",
+          "#ffe9e5"
         ]
       },
-      "mint-hover": {
+      "on-accent": {
         "role": "primary",
-        "displayName": "Mint Hover",
-        "canonical": "#7be2bf",
-        "theme": "dark",
+        "displayName": "On Accent",
+        "canonical": "#ffffff",
+        "theme": "both",
         "tonalRamp": [
-          "#010f09",
-          "#052c21",
-          "#0e4e3c",
-          "#197159",
-          "#299778",
-          "#69b79c",
-          "#9ed8c2",
-          "#d2f9e9"
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
         ]
       },
-      "mint-text": {
+      "org-red-bright": {
         "role": "primary",
-        "displayName": "Mint Text",
-        "canonical": "#6fe0b9",
+        "displayName": "Org Red Bright (hover)",
+        "canonical": "#bd1515",
         "theme": "dark",
         "tonalRamp": [
-          "#000f09",
-          "#012d20",
-          "#034e3b",
-          "#077357",
-          "#179875",
-          "#64b89a",
-          "#9bd9c1",
-          "#cffae8"
+          "#1f0000",
+          "#4c0202",
+          "#800206",
+          "#b31b18",
+          "#db483d",
+          "#fa786a",
+          "#ffb3a8",
+          "#fee9e6"
+        ]
+      },
+      "coral-text": {
+        "role": "primary",
+        "displayName": "Coral Text (accent text)",
+        "canonical": "#f06a63",
+        "theme": "dark",
+        "tonalRamp": [
+          "#1e0001",
+          "#4c0207",
+          "#7a1518",
+          "#a8302f",
+          "#cf5550",
+          "#ee8178",
+          "#feb3ac",
+          "#ffe9e6"
+        ]
+      },
+      "azure": {
+        "role": "secondary",
+        "displayName": "Azure",
+        "canonical": "#2f6ae0",
+        "theme": "dark",
+        "tonalRamp": [
+          "#00062a",
+          "#001c60",
+          "#0c3992",
+          "#2358c5",
+          "#437cec",
+          "#74a3fc",
+          "#aecafd",
+          "#e6efff"
+        ]
+      },
+      "azure-hover": {
+        "role": "secondary",
+        "displayName": "Azure Hover",
+        "canonical": "#2558c4",
+        "theme": "dark",
+        "tonalRamp": [
+          "#00062b",
+          "#021c5f",
+          "#133a8d",
+          "#2a5abe",
+          "#4a7de5",
+          "#76a3fb",
+          "#adcaff",
+          "#e6effe"
+        ]
+      },
+      "azure-text": {
+        "role": "secondary",
+        "displayName": "Azure Text",
+        "canonical": "#8ab6ff",
+        "theme": "dark",
+        "tonalRamp": [
+          "#000826",
+          "#0c234b",
+          "#234173",
+          "#3b609e",
+          "#5c82c3",
+          "#83a6e0",
+          "#abcbfe",
+          "#e6efff"
+        ]
+      },
+      "azure-focus": {
+        "role": "secondary",
+        "displayName": "Azure Focus",
+        "canonical": "#7fb0ff",
+        "theme": "dark",
+        "tonalRamp": [
+          "#000924",
+          "#08234e",
+          "#1e4077",
+          "#3660a3",
+          "#5782c9",
+          "#7fa6e5",
+          "#abcbfd",
+          "#e6effe"
         ]
       },
       "pale-ground": {
@@ -340,68 +420,84 @@
           "#eaeff5"
         ]
       },
-      "deep-mint": {
+      "org-red-deep": {
         "role": "primary",
-        "displayName": "Deep Mint",
-        "canonical": "#0a7a5c",
+        "displayName": "Org Red Deep (hover)",
+        "canonical": "#850000",
         "theme": "light",
         "tonalRamp": [
-          "#020f09",
-          "#092c21",
-          "#174d3b",
-          "#257058",
-          "#379676",
-          "#70b69b",
-          "#a2d7c1",
-          "#d4f8e9"
+          "#1f0000",
+          "#4c0302",
+          "#781a13",
+          "#a5352a",
+          "#cc594b",
+          "#eb8475",
+          "#feb4a8",
+          "#ffe9e5"
         ]
       },
-      "deep-mint-hover": {
-        "role": "primary",
-        "displayName": "Deep Mint Hover",
-        "canonical": "#07664d",
+      "deep-azure": {
+        "role": "secondary",
+        "displayName": "Deep Azure",
+        "canonical": "#1f5fcc",
         "theme": "light",
         "tonalRamp": [
-          "#030e09",
-          "#0f2b21",
-          "#1f4c3c",
-          "#306f59",
-          "#459378",
-          "#78b49d",
-          "#a7d5c3",
-          "#d8f7ea"
+          "#000826",
+          "#012058",
+          "#083b8e",
+          "#205bc0",
+          "#427ee6",
+          "#71a4fc",
+          "#accafd",
+          "#e6efff"
         ]
       },
-      "deep-mint-text": {
-        "role": "primary",
-        "displayName": "Deep Mint Text",
-        "canonical": "#086a50",
+      "deep-azure-hover": {
+        "role": "secondary",
+        "displayName": "Deep Azure Hover",
+        "canonical": "#184ea8",
         "theme": "light",
         "tonalRamp": [
-          "#030e09",
-          "#0e2b21",
-          "#1d4c3c",
-          "#2e6f59",
-          "#439478",
-          "#76b49c",
-          "#a6d5c2",
-          "#d7f7ea"
+          "#000826",
+          "#012058",
+          "#143e84",
+          "#2b5db2",
+          "#4c80d9",
+          "#76a5f4",
+          "#accbfd",
+          "#e6efff"
+        ]
+      },
+      "deep-azure-text": {
+        "role": "secondary",
+        "displayName": "Deep Azure Text",
+        "canonical": "#1a55b8",
+        "theme": "light",
+        "tonalRamp": [
+          "#000825",
+          "#002059",
+          "#0f3d89",
+          "#265cb9",
+          "#477fdf",
+          "#72a5fa",
+          "#abcafe",
+          "#e6efff"
         ]
       },
       "success-dark": {
         "role": "status",
         "displayName": "Success (dark)",
-        "canonical": "#8bd15a",
+        "canonical": "#8fdc55",
         "theme": "dark",
         "tonalRamp": [
           "#040f00",
-          "#142c01",
-          "#284d04",
-          "#3d7108",
-          "#559617",
-          "#81b75d",
-          "#aed894",
-          "#dbfaca"
+          "#142c00",
+          "#294d05",
+          "#3c7101",
+          "#539703",
+          "#7cb951",
+          "#a7db85",
+          "#d2ffb7"
         ]
       },
       "success-light": {
@@ -422,50 +518,50 @@
       },
       "info-dark": {
         "role": "status",
-        "displayName": "Info (dark)",
-        "canonical": "#6aa8f0",
+        "displayName": "Info cyan (dark)",
+        "canonical": "#38c8f0",
         "theme": "dark",
         "tonalRamp": [
-          "#030c18",
-          "#10263f",
-          "#21436a",
-          "#336399",
-          "#4985c9",
-          "#78a9e2",
-          "#a7cdfa",
-          "#d7f1ff"
+          "#000e13",
+          "#012a35",
+          "#084a5b",
+          "#066c85",
+          "#0d90b0",
+          "#4cb4d4",
+          "#84d7f2",
+          "#d7f4ff"
         ]
       },
       "info-light": {
         "role": "status",
-        "displayName": "Info (light)",
-        "canonical": "#2563a8",
+        "displayName": "Info cyan (light)",
+        "canonical": "#0a7896",
         "theme": "light",
         "tonalRamp": [
-          "#030b18",
-          "#10263f",
-          "#21436b",
-          "#33639b",
-          "#4885cb",
-          "#77a8e3",
-          "#a7cdfb",
-          "#d7f1ff"
+          "#000e14",
+          "#002a37",
+          "#07495d",
+          "#036c87",
+          "#398eab",
+          "#6bb0ca",
+          "#99d3ea",
+          "#d9f4fe"
         ]
       },
       "warning-dark": {
         "role": "status",
         "displayName": "Warning (dark)",
-        "canonical": "#f0b24a",
+        "canonical": "#ffb52e",
         "theme": "dark",
         "tonalRamp": [
           "#130900",
-          "#352000",
-          "#5b3a00",
-          "#845700",
-          "#af7500",
-          "#cc9c4f",
-          "#e8c38b",
-          "#ffeac4"
+          "#342101",
+          "#593b02",
+          "#815809",
+          "#ab7711",
+          "#d39937",
+          "#f2c073",
+          "#ffebd0"
         ]
       },
       "warning-light": {
@@ -487,17 +583,17 @@
       "error-dark": {
         "role": "status",
         "displayName": "Error (dark)",
-        "canonical": "#f2665f",
+        "canonical": "#ff5f57",
         "theme": "dark",
         "tonalRamp": [
-          "#1a0403",
-          "#431210",
-          "#712421",
-          "#a33734",
-          "#d64e49",
-          "#ef8077",
-          "#ffaea6",
-          "#ffddd6"
+          "#1e0001",
+          "#4c0205",
+          "#80030d",
+          "#b21c20",
+          "#db4842",
+          "#f9786e",
+          "#feb3aa",
+          "#fee9e6"
         ]
       },
       "error-light": {
@@ -633,7 +729,48 @@
       "source": "src/styles/global.css"
     },
     "openItems": [
-      "help token (--ui-help*) is still Tailwind violet; the user wants no violet and deferred the replacement."
+      "help token (--ui-help*) is still Tailwind violet; the user wants no violet and deferred the replacement.",
+      "--dur-quick (160ms) is declared in global.css but not used anywhere; buttons use a literal 150ms ease-out.",
+      "CartSidebar hard-codes duration-[220ms] and ease-[cubic-bezier(0.16,1,0.3,1)] instead of --dur-move / --ease-out-expo."
+    ],
+    "accentScopes": {
+      "accent-alt": {
+        "remaps": {
+          "--ui-accent": "var(--ui-azure)",
+          "--ui-accent-hover": "var(--ui-azure-hover)",
+          "--ui-accent-subtle": "var(--ui-azure-subtle)",
+          "--ui-accent-text": "var(--ui-azure-text)"
+        },
+        "appliedTo": [
+          "AdminLayout main content",
+          "ModeratorLayout <main>",
+          "CartSidebar",
+          "/orders/[code] Page",
+          "/reservation Page"
+        ],
+        "excluded": [
+          "navbar"
+        ],
+        "purpose": "Primary actions turn azure where they share a screen with red danger buttons or red availability states."
+      },
+      "always-azure": [
+        "--ui-selected* (+ on-selected)",
+        "--ui-focus-ring",
+        "input focus border and ring",
+        "accent-color on html",
+        "caret-color",
+        "::selection (32% azure)",
+        "Cally calendar selection",
+        "PickupDaysCalendar and ReservationCalendar picked days",
+        "AvailabilityCalendar today outline"
+      ],
+      "statusDarkMix": {
+        "subtle": "color-mix(in oklab, <base> 22%, #161b23)",
+        "border": "color-mix(in oklab, <base> 55%, #161b23)"
+      }
+    },
+    "knownCaveats": [
+      "Dark mode: the org red (#a20000) navbar current-page bar is 2.3:1 against the graphite ground; bold full-colour link text is the primary current-page cue, so the bar is never the only indicator."
     ]
   },
   "components": [
@@ -641,9 +778,17 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one filled mint action on a screen (Add to cart, Submit request).",
+      "description": "The one filled accent action on a screen (Add to cart, Submit request): org red with white on-accent text; azure inside .accent-alt.",
       "html": "<button class=\"ds-btn-primary\">Add to cart</button>",
-      "css": ".ds-btn-primary { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 16px; border: 0; border-radius: 8px; background: var(--ui-accent); color: var(--ui-text-inverted); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary:hover { background: var(--ui-accent-hover); } .ds-btn-primary:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; } .ds-btn-primary:active { transform: scale(0.97); } @media (prefers-reduced-motion: reduce) { .ds-btn-primary { transition: none; } .ds-btn-primary:active { transform: none; } }"
+      "css": ".ds-btn-primary { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 16px; border: 0; border-radius: 8px; background: var(--ui-accent); color: var(--ui-on-accent); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary:hover { background: var(--ui-accent-hover); } .ds-btn-primary:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; } .ds-btn-primary:active { transform: scale(0.97); } @media (prefers-reduced-motion: reduce) { .ds-btn-primary { transition: none; } .ds-btn-primary:active { transform: none; } }"
+    },
+    {
+      "name": "Primary beside Danger (accent-alt)",
+      "kind": "custom",
+      "refersTo": "button-primary-accent-alt",
+      "description": "Inside .accent-alt the accent family turns azure, so a primary action never shares red with a delete or reject button.",
+      "html": "<div class=\"ds-accent-alt ds-actions\"><button class=\"ds-alt-primary\">Accept</button><button class=\"ds-alt-danger\">Reject</button></div>",
+      "css": ".ds-accent-alt { --ui-accent: var(--ui-azure); --ui-accent-hover: var(--ui-azure-hover); --ui-accent-subtle: var(--ui-azure-subtle); --ui-accent-text: var(--ui-azure-text); } .ds-actions { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: flex; gap: 12px; } .ds-alt-primary, .ds-alt-danger { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 16px; border-radius: 8px; font-size: 0.875rem; cursor: pointer; transition: background-color 150ms ease-out, transform 150ms ease-out; } .ds-alt-primary { border: 0; background: var(--ui-accent); color: var(--ui-on-accent); font-weight: 600; } .ds-alt-primary:hover { background: var(--ui-accent-hover); } .ds-alt-danger { border: 1px solid var(--ui-error-border); background: transparent; color: var(--ui-error-text); font-weight: 500; } .ds-alt-danger:hover { background: var(--ui-error-subtle); } .ds-alt-primary:focus-visible, .ds-alt-danger:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; } .ds-alt-primary:active, .ds-alt-danger:active { transform: scale(0.97); } @media (prefers-reduced-motion: reduce) { .ds-alt-primary, .ds-alt-danger { transition: none; } .ds-alt-primary:active, .ds-alt-danger:active { transform: none; } }"
     },
     {
       "name": "Secondary Button",
@@ -665,9 +810,9 @@
       "name": "Text Input",
       "kind": "input",
       "refersTo": "input",
-      "description": "Form field: surface fill, 3:1 interactive border, mint focus.",
+      "description": "Form field: surface fill, 3:1 interactive border, azure focus-ring focus.",
       "html": "<label class=\"ds-field\"><span class=\"ds-label\">Note for the volunteer</span><input class=\"ds-input\" placeholder=\"Optional\"></label>",
-      "css": ".ds-field { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: flex; flex-direction: column; gap: 8px; } .ds-label { font-size: 0.875rem; font-weight: 500; color: var(--ui-text); } .ds-input { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); min-height: 40px; padding: 8px 12px; border: 1px solid var(--ui-border-interactive); border-radius: 8px; background: var(--ui-surface); color: var(--ui-text); font-size: 0.875rem; } .ds-input::placeholder { color: var(--ui-text-muted); } .ds-input:focus { outline: none; border-color: var(--ui-accent); box-shadow: 0 0 0 2px color-mix(in oklab, var(--ui-accent) 25%, transparent); }"
+      "css": ".ds-field { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: flex; flex-direction: column; gap: 8px; } .ds-label { font-size: 0.875rem; font-weight: 500; color: var(--ui-text); } .ds-input { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); min-height: 40px; padding: 8px 12px; border: 1px solid var(--ui-border-interactive); border-radius: 8px; background: var(--ui-surface); color: var(--ui-text); font-size: 0.875rem; } .ds-input::placeholder { color: var(--ui-text-muted); } .ds-input:focus { outline: none; border-color: var(--ui-focus-ring); box-shadow: 0 0 0 2px color-mix(in oklab, var(--ui-focus-ring) 25%, transparent); }"
     },
     {
       "name": "Category Chip",
@@ -681,9 +826,9 @@
       "name": "Variant Chip",
       "kind": "chip",
       "refersTo": "chip-variant",
-      "description": "Variant picker option; selected fills mint, out of stock strikes through.",
+      "description": "Variant picker option; selected fills org red with white text, out of stock strikes through.",
       "html": "<div class=\"ds-variants\"><button class=\"ds-variant\" aria-pressed=\"true\">M</button><button class=\"ds-variant\" aria-pressed=\"false\">L</button><button class=\"ds-variant ds-variant-out\" aria-pressed=\"false\">XL</button></div>",
-      "css": ".ds-variants { display: flex; flex-wrap: wrap; gap: 12px; } .ds-variant { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); min-height: 44px; min-width: 48px; padding: 8px 16px; border: 1px solid var(--ui-border-interactive); border-radius: 9999px; background: transparent; color: var(--ui-text); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out; } .ds-variant:hover { border-color: var(--ui-text); } .ds-variant:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; } .ds-variant[aria-pressed=\"true\"] { border-color: var(--ui-accent); background: var(--ui-accent); color: var(--ui-text-inverted); } .ds-variant-out { border-color: var(--ui-border-strong); color: var(--ui-disabled-text); text-decoration: line-through; }"
+      "css": ".ds-variants { display: flex; flex-wrap: wrap; gap: 12px; } .ds-variant { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); min-height: 44px; min-width: 48px; padding: 8px 16px; border: 1px solid var(--ui-border-interactive); border-radius: 9999px; background: transparent; color: var(--ui-text); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out; } .ds-variant:hover { border-color: var(--ui-text); } .ds-variant:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; } .ds-variant[aria-pressed=\"true\"] { border-color: var(--ui-accent); background: var(--ui-accent); color: var(--ui-on-accent); } .ds-variant-out { border-color: var(--ui-border-strong); color: var(--ui-disabled-text); text-decoration: line-through; }"
     },
     {
       "name": "Card",
@@ -697,9 +842,9 @@
       "name": "Status Badge",
       "kind": "chip",
       "refersTo": "badge-neutral",
-      "description": "Order status and availability pills in tone steps.",
-      "html": "<span class=\"ds-badge\">Requested</span> <span class=\"ds-badge ds-badge-success\">Scheduled</span>",
-      "css": ".ds-badge { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: inline-block; padding: 4px 10px; border: 1px solid var(--ui-border); border-radius: 9999px; background: var(--ui-bg-subtle); color: var(--ui-text-muted); font-size: 0.75rem; font-weight: 500; white-space: nowrap; } .ds-badge-success { border-color: var(--ui-success-border); background: var(--ui-success-subtle); color: var(--ui-success-text); }"
+      "description": "Order status and availability pills in tone steps, weight 600.",
+      "html": "<span class=\"ds-badge\">Requested</span> <span class=\"ds-badge ds-badge-info\">Scheduled</span> <span class=\"ds-badge ds-badge-success\">Picked up</span>",
+      "css": ".ds-badge { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: inline-block; padding: 4px 10px; border: 1px solid var(--ui-border); border-radius: 9999px; background: var(--ui-bg-subtle); color: var(--ui-text-muted); font-size: 0.75rem; font-weight: 600; white-space: nowrap; } .ds-badge-success { border-color: var(--ui-success-border); background: var(--ui-success-subtle); color: var(--ui-success-text); } .ds-badge-info { border-color: var(--ui-info-border); background: var(--ui-info-subtle); color: var(--ui-info-text); }"
     },
     {
       "name": "Gear Wall Row",
@@ -713,17 +858,17 @@
       "name": "Navbar",
       "kind": "nav",
       "refersTo": "navbar",
-      "description": "Sticky 64px graphite bar with the Boden lockup and a mint current-page underline.",
+      "description": "Sticky 64px graphite bar with the Boden lockup; current page is bold full-colour text plus an org red bar (outside any .accent-alt scope).",
       "html": "<nav class=\"ds-nav\"><a class=\"ds-brand\" href=\"#\"><span class=\"ds-brand-name\">Boden</span><span class=\"ds-brand-by\">by OSI Klatring</span></a><ul class=\"ds-links\"><li><a href=\"#\" aria-current=\"page\">Gear</a></li><li><a href=\"#\">My orders</a></li></ul></nav>",
       "css": ".ds-nav { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 32px; border-bottom: 1px solid var(--ui-border); background: var(--ui-bg); } .ds-brand { display: flex; flex-direction: column; line-height: 1; text-decoration: none; } .ds-brand-name { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em; color: var(--ui-text); } .ds-brand-by { margin-top: 4px; font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.025em; color: var(--ui-text-muted); } .ds-links { display: flex; gap: 4px; margin: 0; padding: 0; list-style: none; } .ds-links a { position: relative; display: block; padding: 8px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 500; color: var(--ui-text-muted); text-decoration: none; transition: color 150ms ease-out; } .ds-links a:hover { color: var(--ui-text); } .ds-links a:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; } .ds-links a[aria-current=\"page\"] { font-weight: 700; color: var(--ui-text); } .ds-links a[aria-current=\"page\"]::after { content: \"\"; position: absolute; left: 12px; right: 12px; bottom: -14px; height: 2px; border-radius: 9999px; background: var(--ui-accent); }"
     }
   ],
   "narrative": {
     "northStar": "The Gear Wall",
-    "overview": "Boden is the club shed laid out as a streaming wall: one row per category, each a sideways rail of square photo plates on a deep graphite ground. The photos carry the colour; the interface stays near-black and blue-grey so harnesses, ropes and cams read as the content. One mint accent marks what is in play: focus, selection and the single primary action on a screen. When a tile is focused or hovered it lifts and its row-mates step back, so the eye always knows where it is.\n\nDark is the native theme. Light is the same system on cool pale grey with a deeper mint, not a separate design. Type is one Nordic grotesk whose hierarchy comes from weight: heavy, tightly tracked row and page titles over plain, quiet body text, with tabular figures wherever dates, counts and order codes sit. The density is roomy by default and dense only where browsing wants it (the shop rails, small controls).\n\nThe world refuses the uniform white product-card grid with a blue call to action. It should feel like a well-kept club shelf, never cold and corporate, never playful or juvenile.",
+    "overview": "Boden is the club shed laid out as a streaming wall: one row per category, each a sideways rail of square photo plates on a deep graphite ground. The photos carry the colour; the interface stays near-black and blue-grey so harnesses, ropes and cams read as the content. OSI Klatring's org red is the club's voice: the single primary action on a screen, the current page and links. Its azure complement marks what is in play: focus and selection everywhere, and the primary action on screens where red already means delete, reject or unavailable. When a tile is focused or hovered it lifts and its row-mates step back, so the eye always knows where it is.\n\nDark is the native theme. Light is the same system on cool pale grey with the same org red fill and a deeper azure, not a separate design. Type is one Nordic grotesk whose hierarchy comes from weight: heavy, tightly tracked row and page titles over plain, quiet body text, with tabular figures wherever dates, counts and order codes sit. The density is roomy by default and dense only where browsing wants it (the shop rails, small controls).\n\nThe world refuses the uniform white product-card grid with a blue call to action. It should feel like a well-kept club shelf, never cold and corporate, never playful or juvenile.",
     "keyCharacteristics": [
       "Graphite grounds in three close steps (ground, surface, plate) with hairline borders rather than shadows.",
-      "One mint accent, used for focus, selection and the primary action only.",
+      "Org red (#a20000, white text) for the primary action, the current page and links; azure for focus, selection and the accent on red-heavy screens.",
       "Borderless fixed-ratio photo plates on a shared plate colour, so the catalogue reads as one set.",
       "Schibsted Grotesk only; weight 800 for titles, tabular figures for every number that is read or compared.",
       "Motion is short exponential ease-out on transform and opacity, and is switched off under reduced motion."
@@ -731,12 +876,17 @@
     "rules": [
       {
         "name": "The Photos Carry the Colour Rule",
-        "body": "The interface stays graphite (or pale grey) and mint; the gear photography is where colour lives. No decorative hues, gradients or tinted panels around tiles.",
+        "body": "The interface stays graphite (or pale grey) with the org red and its azure complement; the gear photography is where colour lives. No decorative hues, gradients or tinted panels around tiles.",
         "section": "colors"
       },
       {
-        "name": "The One Mint Rule",
-        "body": "Mint means \"in play\": focus, selected, or the one primary action. A screen has at most one filled mint button; everything else is secondary, ghost or text.",
+        "name": "The Red Voice, Azure Hand Rule",
+        "body": "Org red is the club speaking: the one primary action, the current page, links. Azure is the user's hand on the interface: focus and selection, always, so nothing focused or selected can read as an error. A screen has at most one filled accent button; everything else is secondary, ghost or text.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Red Beside Red Rule",
+        "body": "Wherever a primary action shares the screen with a `danger` or `danger-filled` button or with red availability states, wrap that content in `.accent-alt` so the accent turns azure. Red then means only \"destructive\" or \"unavailable\" on that screen. The navbar never goes inside the scope.",
         "section": "colors"
       },
       {
@@ -757,7 +907,8 @@
     ],
     "dos": [
       "**Do** put every gear photo on the plate colour in a fixed-ratio, borderless, 12px-rounded plate.",
-      "**Do** keep mint for focus, selection and the one primary action per screen (The One Mint Rule).",
+      "**Do** keep org red for the one primary action, the current page and links, and azure for focus and selection (The Red Voice, Azure Hand Rule).",
+      "**Do** use `on-accent` / `on-selected` for text on accent and selected fills, not `text-inverted`.",
       "**Do** use the shared motion tokens (`--ease-out-expo`, `--dur-move` 220ms, `--dur-quick` 160ms) on transform and opacity only, and disable them under `prefers-reduced-motion`.",
       "**Do** set counts, dates, quantities and codes in tabular figures.",
       "**Do** keep tile metadata visible under the plate; hover adds the lift, never the information.",
@@ -766,7 +917,9 @@
     "donts": [
       "**Don't** build a uniform white product-card grid with a blue call to action; the catalogue is rows of photo plates on graphite.",
       "**Don't** put borders or shadows on tiles at rest, or shadows on cards; depth is earned by lift or by floating.",
-      "**Don't** add a second accent hue or decorative colour; status hues are for status only.",
+      "**Don't** add a third accent hue or decorative colour; status hues are for status only, and azure is for focus, selection and `.accent-alt` only.",
+      "**Don't** put an org red primary button on the same screen as a `danger` or `danger-filled` button outside `.accent-alt`; wrap that content in the scope instead (The No Red Beside Red Rule).",
+      "**Don't** use the accent for focus, selection or native control colour; a red checkbox or focused field reads as an error.",
       "**Don't** introduce violet anywhere; the `help` token's violet is a known open item awaiting replacement, not a precedent.",
       "**Don't** derive shadow colour from the text colour; use `--ui-shadow`.",
       "**Don't** add a second typeface or set display text in a system font.",

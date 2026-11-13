@@ -11,9 +11,14 @@ colors:
   graphite-border-interactive: "#6a7584"
   frost-text: "#eef1f4"
   frost-text-muted: "#a2abb7"
-  mint: "#4fd4a6"
-  mint-hover: "#7be2bf"
-  mint-text: "#6fe0b9"
+  org-red: "#a20000"
+  on-accent: "#ffffff"
+  org-red-bright: "#bd1515"
+  coral-text: "#f06a63"
+  azure: "#2f6ae0"
+  azure-hover: "#2558c4"
+  azure-text: "#8ab6ff"
+  azure-focus: "#7fb0ff"
   pale-ground: "#f2f3f5"
   pale-ground-subtle: "#e8eaee"
   pale-surface: "#ffffff"
@@ -23,16 +28,17 @@ colors:
   pale-border-interactive: "#7a8392"
   ink-text: "#0e1218"
   ink-text-muted: "#525b68"
-  deep-mint: "#0a7a5c"
-  deep-mint-hover: "#07664d"
-  deep-mint-text: "#086a50"
-  success-dark: "#8bd15a"
+  org-red-deep: "#850000"
+  deep-azure: "#1f5fcc"
+  deep-azure-hover: "#184ea8"
+  deep-azure-text: "#1a55b8"
+  success-dark: "#8fdc55"
   success-light: "#3b7d1c"
-  info-dark: "#6aa8f0"
-  info-light: "#2563a8"
-  warning-dark: "#f0b24a"
+  info-dark: "#38c8f0"
+  info-light: "#0a7896"
+  warning-dark: "#ffb52e"
   warning-light: "#b26a00"
-  error-dark: "#f2665f"
+  error-dark: "#ff5f57"
   error-light: "#c4302b"
 typography:
   display:
@@ -107,21 +113,30 @@ spacing:
   gutter: "16px"
 components:
   button-primary:
-    backgroundColor: "{colors.mint}"
-    textColor: "{colors.graphite-ground}"
+    backgroundColor: "{colors.org-red}"
+    textColor: "{colors.on-accent}"
     typography: "{typography.label}"
     rounded: "{rounded.lg}"
     padding: "8px 16px"
     height: "40px"
   button-primary-hover:
-    backgroundColor: "{colors.mint-hover}"
-    textColor: "{colors.graphite-ground}"
+    backgroundColor: "{colors.org-red-bright}"
+    textColor: "{colors.on-accent}"
   button-primary-lg:
-    backgroundColor: "{colors.mint}"
-    textColor: "{colors.graphite-ground}"
+    backgroundColor: "{colors.org-red}"
+    textColor: "{colors.on-accent}"
     rounded: "{rounded.lg}"
     padding: "10px 24px"
     height: "48px"
+  button-primary-accent-alt:
+    backgroundColor: "{colors.azure}"
+    textColor: "{colors.on-accent}"
+    rounded: "{rounded.lg}"
+    padding: "8px 16px"
+    height: "40px"
+  button-primary-accent-alt-hover:
+    backgroundColor: "{colors.azure-hover}"
+    textColor: "{colors.on-accent}"
   button-secondary:
     backgroundColor: "transparent"
     textColor: "{colors.frost-text}"
@@ -151,8 +166,8 @@ components:
     padding: "8px 16px"
     height: "44px"
   chip-variant-selected:
-    backgroundColor: "{colors.mint}"
-    textColor: "{colors.graphite-ground}"
+    backgroundColor: "{colors.org-red}"
+    textColor: "{colors.on-accent}"
   input:
     backgroundColor: "{colors.graphite-surface}"
     textColor: "{colors.frost-text}"
@@ -179,34 +194,42 @@ components:
 
 # Design System: Boden
 
-Token usage rules (which semantic utility to reach for, no raw palette classes) live in [docs/styling.md](docs/styling.md); spacing tokens and the page/card primitives live in [docs/spacing.md](docs/spacing.md). This file owns the visual world those rules serve. Colour values are authored once, in `src/styles/global.css` as `light-dark()` pairs; the frontmatter lists each half under a dark-theme name (graphite, frost, mint) and a light-theme name (pale, ink, deep mint). Components in the frontmatter show the dark theme, which is the native one.
+Token usage rules (which semantic utility to reach for, no raw palette classes) live in [docs/styling.md](docs/styling.md); spacing tokens and the page/card primitives live in [docs/spacing.md](docs/spacing.md). This file owns the visual world those rules serve. Colour values are authored once, in `src/styles/global.css` as `light-dark()` pairs; the frontmatter lists each half under a dark-theme name (graphite, frost, coral text, azure) and a light-theme name (pale, ink, org red deep, deep azure). The org red fill and its white on-accent text are the same in both themes, so they appear once. Components in the frontmatter show the dark theme, which is the native one.
 
 ## Overview
 
 **Creative North Star: "The Gear Wall"**
 
-Boden is the club shed laid out as a streaming wall: one row per category, each a sideways rail of square photo plates on a deep graphite ground. The photos carry the colour; the interface stays near-black and blue-grey so harnesses, ropes and cams read as the content. One mint accent marks what is in play: focus, selection and the single primary action on a screen. When a tile is focused or hovered it lifts and its row-mates step back, so the eye always knows where it is.
+Boden is the club shed laid out as a streaming wall: one row per category, each a sideways rail of square photo plates on a deep graphite ground. The photos carry the colour; the interface stays near-black and blue-grey so harnesses, ropes and cams read as the content. OSI Klatring's org red is the club's voice: the single primary action on a screen, the current page and links. Its azure complement marks what is in play: focus and selection everywhere, and the primary action on screens where red already means delete, reject or unavailable. When a tile is focused or hovered it lifts and its row-mates step back, so the eye always knows where it is.
 
-Dark is the native theme. Light is the same system on cool pale grey with a deeper mint, not a separate design. Type is one Nordic grotesk whose hierarchy comes from weight: heavy, tightly tracked row and page titles over plain, quiet body text, with tabular figures wherever dates, counts and order codes sit. The density is roomy by default and dense only where browsing wants it (the shop rails, small controls).
+Dark is the native theme. Light is the same system on cool pale grey with the same org red fill and a deeper azure, not a separate design. Type is one Nordic grotesk whose hierarchy comes from weight: heavy, tightly tracked row and page titles over plain, quiet body text, with tabular figures wherever dates, counts and order codes sit. The density is roomy by default and dense only where browsing wants it (the shop rails, small controls).
 
 The world refuses the uniform white product-card grid with a blue call to action. It should feel like a well-kept club shelf, never cold and corporate, never playful or juvenile.
 
 **Key Characteristics:**
 - Graphite grounds in three close steps (ground, surface, plate) with hairline borders rather than shadows.
-- One mint accent, used for focus, selection and the primary action only.
+- Org red (#a20000, white text) for the primary action, the current page and links; azure for focus, selection and the accent on red-heavy screens.
 - Borderless fixed-ratio photo plates on a shared plate colour, so the catalogue reads as one set.
 - Schibsted Grotesk only; weight 800 for titles, tabular figures for every number that is read or compared.
 - Motion is short exponential ease-out on transform and opacity, and is switched off under reduced motion.
 
 ## Colors
 
-A cool graphite ladder with a single mint voice, plus muted status hues tuned separately for each theme.
+A cool graphite ladder carrying the club's org red as its voice and an azure complement for focus and selection, plus status hues tuned separately for each theme.
+
+The direction contract named a mint accent; at the user's request the shipped system replaced it with OSI Klatring's org red, and the build is what this file records.
 
 ### Primary
-- **Mint** (dark theme) / **Deep Mint** (light theme): the accent. Fills the primary button and the selected variant chip, colours focus rings, the active nav underline, `See all` text, text caret, native checkbox/radio fill (`accent-color`) and text selection (32% mint wash). In dark mode text on mint is graphite; in light mode it is white. Both pairings pass 4.5:1.
-- **Mint Hover / Deep Mint Hover**: the primary button's hover fill only.
-- **Mint Text / Deep Mint Text**: mint used as a text colour (links, `See all`, outline buttons), lifted or deepened from the fill so it stays readable on the ground.
-- **Selected** (`--ui-selected*`): today the same hue as the accent, kept as its own token so "this is selected" (wizard rows, calendar days) can survive a rebrand of the accent.
+- **Org Red** (both themes): the accent fill. The primary button, the selected variant chip, the reservation step markers and the navbar's 2px current-page bar. The fill is the exact org colour in light and dark, never retuned per theme, with **On Accent** white text on top (8.3:1).
+- **Org Red Deep** (light) / **Org Red Bright** (dark): the primary button's hover fill only; darker on pale grey, brighter on graphite so the hover always reads as a change.
+- **Org Red** (light) / **Coral Text** (dark): the accent as a text colour (`--ui-accent-text`): links, `See all`, the primary-outline button, the emblem's hover tint. Dark mode lifts it to a coral tint of the same red (6.4:1 on the ground) because the org red itself is only 2.3:1 on graphite. `--ui-accent-subtle` is a 16% red wash in dark (pale rose in light) for hover fills behind accent text.
+
+### Secondary
+- **Azure** (dark) / **Deep Azure** (light) (`--ui-azure*`): the complement. It is never decoration; it owns three jobs.
+  - **Selection** (`--ui-selected*`, with **On Accent** white as `on-selected`): selected wizard rows, picked reservation and pick-up calendar days (Cally's theme is pointed at `selected`), native checkboxes, radios and ranges (`accent-color`), text selection (a 32% azure wash), and the availability calendar's "today" outline. `selected-border` and `selected-text` are their own steps.
+  - **Focus**: **Azure Focus** (dark) / **Deep Azure** (light) is `--ui-focus-ring`, used for every focus outline, the input focus border plus its 25% ring, and the text caret.
+  - **The accent inside `.accent-alt`**: the scope remaps `accent`, `accent-hover`, `accent-subtle` and `accent-text` to the azure steps for its subtree. It wraps the admin and moderator main content, the cart sidebar, `/orders/[code]` and `/reservation`, so primary buttons, outline buttons, links, admin action-tile hover borders, wizard toggles and the reservation step markers there render azure. The navbar sits outside every scope and keeps the org red.
+- **Azure Hover / Deep Azure Hover**: primary hover inside `.accent-alt`. **Azure Text / Deep Azure Text**: accent text inside `.accent-alt`.
 
 ### Neutral
 - **Graphite Ground / Pale Ground**: the page background and the navbar. The sticky category-chip bar uses it too, so it reads as part of the page.
@@ -219,14 +242,16 @@ A cool graphite ladder with a single mint voice, plus muted status hues tuned se
 - **Frost Text / Ink Text**: primary text. **Frost Text Muted / Ink Text Muted**: descriptions, counts, meta lines, table headers.
 
 ### Status
-- **Success** (yellower green than mint, so "available" never reads as "selected"), **Info** (steel blue), **Warning** (amber), **Error** (coral red). Each has a base, `-subtle` fill, `-border` and `-text` step; dark-theme subtle fills are the hue mixed into the surface. Used in callouts, badges and stock lines ("Not in stock" in error text, a success/error dot on the product page).
+- **Success** (yellow-green), **Info** (cyan, deliberately not blue so "scheduled" never reads as azure selection), **Warning** (amber), **Error** (coral red). Each has a base, `-subtle` fill, `-border` and `-text` step. In dark mode they are vivid: the fill mixes the base into the surface at 22%, the border at 55%, and the text is a bright tint, so status badges stay saturated on graphite. Light mode keeps pale tinted fills with deep text. Used in callouts, badges, danger buttons and stock lines ("Not in stock" in error text, a success/error dot on the product page).
 - **Availability ramp** (`--ui-availability-0..4`): red to green transparent tints per mode for the availability calendar; counts on top always use normal text tokens.
 - **Help** (`--ui-help*`): still Tailwind violet. This is an open item: the user wants no violet and has deferred the replacement. Do not copy the violet anywhere else.
 
 ### Named Rules
-**The Photos Carry the Colour Rule.** The interface stays graphite (or pale grey) and mint; the gear photography is where colour lives. No decorative hues, gradients or tinted panels around tiles.
+**The Photos Carry the Colour Rule.** The interface stays graphite (or pale grey) with the org red and its azure complement; the gear photography is where colour lives. No decorative hues, gradients or tinted panels around tiles.
 
-**The One Mint Rule.** Mint means "in play": focus, selected, or the one primary action. A screen has at most one filled mint button; everything else is secondary, ghost or text.
+**The Red Voice, Azure Hand Rule.** Org red is the club speaking: the one primary action, the current page, links. Azure is the user's hand on the interface: focus and selection, always, so nothing focused or selected can read as an error. A screen has at most one filled accent button; everything else is secondary, ghost or text.
+
+**The No Red Beside Red Rule.** Wherever a primary action shares the screen with a `danger` or `danger-filled` button or with red availability states, wrap that content in `.accent-alt` so the accent turns azure. Red then means only "destructive" or "unavailable" on that screen. The navbar never goes inside the scope.
 
 ## Typography
 
@@ -282,20 +307,20 @@ Gently rounded throughout, on a four-step scale: 12px (`rounded-xl`) for standal
 ### Buttons
 Calm, compact and press-responsive.
 - **Shape:** 8px radius; heights pinned at 32/40/48px (sm/md/lg) so filled and outlined variants and inputs line up.
-- **Primary:** mint fill, graphite text (white on deep mint in light), weight 600. `lg` is the page's main call to action (Add to cart, Submit).
+- **Primary:** accent fill with white on-accent text in both themes, weight 600: org red on member screens, azure inside `.accent-alt`. `lg` is the page's main call to action (Add to cart, Submit).
 - **Secondary:** transparent with a strong-border outline, weight 500; hover darkens the border to interactive and fills ground-subtle.
-- **Primary outline:** mint border and mint text, mint-subtle fill on hover, for an action equal to primary that should not compete.
+- **Primary outline:** accent border and accent text, accent-subtle fill on hover, for an action equal to primary that should not compete.
 - **Ghost:** no border or fill until hovered; navbar icon triggers (cart, theme, menu) use it in a round box.
-- **Danger / Danger filled:** error-border outline, or solid error fill only for actions that actually delete.
-- **Hover / Focus / Press:** colour transitions at 150ms ease-out, `active:scale(0.97)`, a 2px focus-ring outline at 2px offset; transitions and press scale are off under reduced motion.
+- **Danger / Danger filled:** error-border outline with error text, or solid error fill (inverted text) only for actions that actually delete. Screens that carry them alongside a primary button sit inside `.accent-alt`.
+- **Hover / Focus / Press:** colour transitions at 150ms ease-out, `active:scale(0.97)`, a 2px azure focus-ring outline at 2px offset; transitions and press scale are off under reduced motion.
 
 ### Chips
 - **Category chip:** pill, 36px tall, surface fill, strong-border outline, 600 weight, with its muted tabular count inside; hover fills ground-subtle. Lives in the sticky jump bar above the rows.
-- **Variant chip:** pill, 44px tall (touch target), interactive-border outline; selected (`aria-pressed`) fills mint with inverted text; out-of-stock variants use the strong border, disabled text and a strike-through.
+- **Variant chip:** pill, 44px tall (touch target), interactive-border outline; selected (`aria-pressed`) fills org red with white on-accent text; out-of-stock variants use the strong border, disabled text and a strike-through.
 - **Filter chip** (admin): pill, 32px, 500 weight, selected colours set by the caller.
 
 ### Badges
-Pill, 1px border, 0.75rem/500 text, tone fill from the status `-subtle`/`-border`/`-text` steps (neutral, success, info, warning, error). The "Set" marker on a tile is a ground-filled pill at 0.6875rem/700 in the plate's top-left corner.
+Pill, 1px border, 0.75rem/600 text, tone fill from the status `-subtle`/`-border`/`-text` steps (neutral, success, info, warning, error). The "Set" marker on a tile is a ground-filled pill at 0.6875rem/700 in the plate's top-left corner.
 
 ### Cards / Containers
 - **Corner Style:** 12px.
@@ -307,18 +332,18 @@ Pill, 1px border, 0.75rem/500 text, tone fill from the status `-subtle`/`-border
 
 ### Inputs / Fields
 - **Style:** surface fill, 1px interactive border (3:1 contrast), 8px radius, 40px tall (32px in dense rows), 0.875rem text, muted placeholder.
-- **Focus:** border turns mint and a 2px mint ring at 25% opacity appears.
+- **Focus:** border turns the azure focus-ring colour and a 2px focus-ring ring at 25% opacity appears, on every screen (never the accent).
 - **Disabled / Readonly:** disabled-bg fill with disabled text.
 - **Quantity stepper:** a 48px tall segmented box with 48px square minus/plus cells and a bold tabular count between strong-border dividers, sized to sit beside the large primary button.
 
 ### Navigation
-- **Navbar:** sticky 64px bar on the ground colour, hairline bottom border. Left: the Boden lockup (32px club emblem, "Boden" at 1.25rem/800, -0.03em, with "by OSI Klatring" in muted 0.6875rem/500 beneath); the emblem turns mint on hover. Right: links, then round ghost icon triggers.
-- **Links:** 0.875rem/500 muted text, 6px-radius hit area; the current page goes bold, full text colour, and from 48rem gets a 2px mint underline pill sitting on the bar's bottom edge.
+- **Navbar:** sticky 64px bar on the ground colour, hairline bottom border. Left: the Boden lockup (32px club emblem, "Boden" at 1.25rem/800, -0.03em, with "by OSI Klatring" in muted 0.6875rem/500 beneath); the emblem takes the accent text colour on hover. Right: links, then round ghost icon triggers.
+- **Links:** 0.875rem/500 muted text, 6px-radius hit area; the current page goes bold and full text colour (the primary cue), and from 48rem gets a 2px org red underline pill sitting on the bar's bottom edge. In dark mode that bar is only 2.3:1 against the graphite ground, so it is a secondary cue and must never be the only current-page indicator.
 - **Mobile:** links and account items collapse into a floating panel behind a morphing menu icon.
 - **Cart sidebar:** a right-hand sheet up to 28rem wide on the surface colour with a left hairline, sliding in over an overlay at 220ms on the expo ease-out.
 
 ### Signature: Gear Wall Rows (rail and lift)
-Each category is a row: a heavy row title with its muted count, then a rail of square photo tiles with the title and a meta line (`N options · N in stock`) always visible below, so touch users never need hover. Focusing or hovering a tile scales its plate to 1.04 with the tile-lift shadow (plus the double focus ring on keyboard), and every other tile in that row fades to 45% opacity, both over 220ms on `cubic-bezier(0.16, 1, 0.3, 1)`. Hover lift only applies on devices with real hover; keyboard focus always lifts. "See all" (mint text pill) and 36px round prev/next arrows appear only when a rail actually overflows; arrows only for wide hover-capable screens. Reduced motion removes the scale and the fade transition.
+Each category is a row: a heavy row title with its muted count, then a rail of square photo tiles with the title and a meta line (`N options · N in stock`) always visible below, so touch users never need hover. Focusing or hovering a tile scales its plate to 1.04 with the tile-lift shadow (plus the double focus ring on keyboard), and every other tile in that row fades to 45% opacity, both over 220ms on `cubic-bezier(0.16, 1, 0.3, 1)`. Hover lift only applies on devices with real hover; keyboard focus always lifts. "See all" (accent text pill, accent-subtle on hover) and 36px round prev/next arrows appear only when a rail actually overflows; arrows only for wide hover-capable screens. Reduced motion removes the scale and the fade transition.
 
 ### Order code header
 "Order" in muted 600 weight beside the code at Order Code size, then a status badge; below, pick-up and return dates in bold tabular `<time>` separated by a strong-border slash.
@@ -327,7 +352,8 @@ Each category is a row: a heavy row title with its muted count, then a rail of s
 
 ### Do:
 - **Do** put every gear photo on the plate colour in a fixed-ratio, borderless, 12px-rounded plate.
-- **Do** keep mint for focus, selection and the one primary action per screen (The One Mint Rule).
+- **Do** keep org red for the one primary action, the current page and links, and azure for focus and selection (The Red Voice, Azure Hand Rule).
+- **Do** use `on-accent` / `on-selected` for text on accent and selected fills, not `text-inverted`.
 - **Do** use the shared motion tokens (`--ease-out-expo`, `--dur-move` 220ms, `--dur-quick` 160ms) on transform and opacity only, and disable them under `prefers-reduced-motion`.
 - **Do** set counts, dates, quantities and codes in tabular figures.
 - **Do** keep tile metadata visible under the plate; hover adds the lift, never the information.
@@ -336,7 +362,9 @@ Each category is a row: a heavy row title with its muted count, then a rail of s
 ### Don't:
 - **Don't** build a uniform white product-card grid with a blue call to action; the catalogue is rows of photo plates on graphite.
 - **Don't** put borders or shadows on tiles at rest, or shadows on cards; depth is earned by lift or by floating.
-- **Don't** add a second accent hue or decorative colour; status hues are for status only.
+- **Don't** add a third accent hue or decorative colour; status hues are for status only, and azure is for focus, selection and `.accent-alt` only.
+- **Don't** put an org red primary button on the same screen as a `danger` or `danger-filled` button outside `.accent-alt`; wrap that content in the scope instead (The No Red Beside Red Rule).
+- **Don't** use the accent for focus, selection or native control colour; a red checkbox or focused field reads as an error.
 - **Don't** introduce violet anywhere; the `help` token's violet is a known open item awaiting replacement, not a precedent.
 - **Don't** derive shadow colour from the text colour; use `--ui-shadow`.
 - **Don't** add a second typeface or set display text in a system font.

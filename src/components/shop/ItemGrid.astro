@@ -64,7 +64,7 @@ const arrowClasses =
 			)}
 
 			{rows.map((row) => (
-				<section id={row.slug} aria-labelledby={`${row.slug}-title`} class="shop-row scroll-mt-24" data-shop-row>
+				<section id={row.slug} aria-labelledby={`${row.slug}-title`} class="shop-row scroll-mt-36" data-shop-row>
 					<div class="flex items-center justify-between gap-stack">
 						<h2 id={`${row.slug}-title`} class="flex items-baseline gap-2.5 text-xl font-extrabold tracking-[-0.02em] text-text sm:text-2xl">
 							{row.name}
@@ -164,9 +164,17 @@ const arrowClasses =
 		}
 	}
 
+	/* From tablet up the page is width-capped (max-w-6xl = 72rem), so the
+	   rail bleeds out to the viewport edge and keeps its first tile aligned
+	   with the page content: the peeking tile reads as more shelf, not as a
+	   clipped container. */
 	@media (min-width: 48rem) {
 		.shop-rail {
 			--tiles: 4.35;
+			--rail-inset: max(var(--ui-space-gutter), calc((100vw - 72rem) / 2 + var(--ui-space-gutter)));
+			margin-inline: calc(50% - 50vw);
+			padding-inline: var(--rail-inset);
+			scroll-padding-inline: var(--rail-inset);
 		}
 	}
 

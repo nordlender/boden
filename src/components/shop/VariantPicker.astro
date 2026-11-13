@@ -198,7 +198,7 @@ function optionLabel(variant: Variant): string {
 				</div>
 			)}
 
-			<p class={`tabular flex items-center gap-2 text-sm font-semibold ${variant.inStock > 0 ? 'text-success-text' : 'text-error-text'}`}>
+			<p class={`tabular flex items-center gap-2 text-sm font-semibold ${variant.inStock > 0 ? 'text-text' : 'text-error-text'}`}>
 				<span aria-hidden="true" class={`size-2 rounded-full ${variant.inStock > 0 ? 'bg-success' : 'bg-error'}`} />
 				{variant.inStock > 0 ? `${variant.inStock} in stock` : 'Out of stock'}
 			</p>

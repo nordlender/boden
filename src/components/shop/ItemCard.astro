@@ -61,10 +61,6 @@ const optionsLabel = variantCount > 1 ? `${variantCount} ${isSet ? 'sizes' : 'op
 			box-shadow var(--dur-move) var(--ease-out-expo);
 	}
 
-	.shop-tile-plate img {
-		transition: transform 600ms var(--ease-out-expo);
-	}
-
 	/* Keyboard focus always lifts; pointer hover only lifts where hovering is
 	   real (no sticky lift after a tap on a phone). */
 	.shop-tile:focus-visible .shop-tile-plate {
@@ -72,29 +68,26 @@ const optionsLabel = variantCount > 1 ? `${variantCount} ${isSet ? 'sizes' : 'op
 		box-shadow:
 			0 0 0 2px var(--color-bg),
 			0 0 0 4px var(--color-focus-ring),
-			0 14px 28px -12px color-mix(in oklab, var(--ui-text) 35%, transparent);
+			0 14px 28px -12px var(--ui-shadow);
+		/* Forced-colors mode drops box-shadows; this outline is what shows there. */
+		outline: 2px solid transparent;
+		outline-offset: 2px;
 	}
 
 	@media (hover: hover) {
 		.shop-tile:hover .shop-tile-plate {
 			transform: scale(1.04);
-			box-shadow: 0 14px 28px -12px color-mix(in oklab, var(--ui-text) 35%, transparent);
-		}
-
-		.shop-tile:hover .shop-tile-plate img {
-			transform: scale(1.03);
+			box-shadow: 0 14px 28px -12px var(--ui-shadow);
 		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.shop-tile-plate,
-		.shop-tile-plate img {
+		.shop-tile-plate {
 			transition: none;
 		}
 
 		.shop-tile:focus-visible .shop-tile-plate,
-		.shop-tile:hover .shop-tile-plate,
-		.shop-tile:hover .shop-tile-plate img {
+		.shop-tile:hover .shop-tile-plate {
 			transform: none;
 		}
 	}

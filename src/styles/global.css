@@ -44,6 +44,10 @@
 	--ui-disabled-bg: light-dark(#e6e8ec, #1c222a);
 	--ui-disabled-text: light-dark(#8f97a3, #5c6673);
 
+	/* Drop shadows: always a dark tint, never derived from the text colour
+	 * (which is near-white in dark mode and would glow). */
+	--ui-shadow: light-dark(rgb(12 15 20 / 0.28), rgb(0 0 0 / 0.6));
+
 	--ui-overlay: light-dark(color-mix(in oklab, #0c0f14 45%, transparent), color-mix(in oklab, #000000 65%, transparent));
 
 	/* Mint: dark text on a bright mint in dark mode, white on a deep mint in
@@ -62,10 +66,12 @@
 	--ui-selected-border: light-dark(#8fd3bb, #2f7d63);
 	--ui-selected-text: light-dark(#075a44, #8ee8c8);
 
-	--ui-success: light-dark(#13804f, #3fc47f);
-	--ui-success-subtle: light-dark(#e2f4ea, color-mix(in oklab, #3fc47f 13%, #161b23));
-	--ui-success-border: light-dark(#a6dcbf, #2b6b4b);
-	--ui-success-text: light-dark(#0d5e3a, #8fe0b4);
+	/* A yellower green than the mint accent, so "available" never reads as
+	 * "selected". */
+	--ui-success: light-dark(#3b7d1c, #8bd15a);
+	--ui-success-subtle: light-dark(#e8f4df, color-mix(in oklab, #8bd15a 12%, #161b23));
+	--ui-success-border: light-dark(#b4d99c, #4a6e2f);
+	--ui-success-text: light-dark(#2d5f15, #bfe9a0);
 	/* Availability scale (AvailabilityCalendar): units available that day,
 	   0 (red) … 4+ (green). Hues mixed with transparent, so each cell blends
 	   with whatever it sits on — tints on light surfaces, glows on dark ones.
@@ -134,6 +140,7 @@
 	--color-disabled-text: var(--ui-disabled-text);
 
 	--color-overlay: var(--ui-overlay);
+	--color-shadow: var(--ui-shadow);
 
 	--color-accent: var(--ui-accent);
 	--color-accent-hover: var(--ui-accent-hover);
@@ -243,6 +250,9 @@
 }
 
 html {
+	/* Shop rails bleed to the viewport edge with 100vw maths; clip (not
+	   hidden, so sticky still works) the scrollbar-width overhang. */
+	overflow-x: clip;
 	font-family: var(--font-sans);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;

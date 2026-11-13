@@ -71,7 +71,7 @@ export const actionTileClasses =
 	'flex flex-1 flex-col items-center gap-3 rounded-xl border border-border bg-surface px-6 py-8 text-center transition-colors hover:border-accent hover:bg-bg-subtle sm:items-start sm:text-left';
 
 // Floating panel for dropdowns/menus (<details> menus, select menus).
-export const menuPanelClasses = 'rounded-xl border border-border bg-surface p-1.5 shadow-xl';
+export const menuPanelClasses = 'rounded-xl border border-border bg-surface p-1.5 shadow-xl shadow-shadow';
 
 // One row in a menuPanelClasses panel — roomy enough to be an easy target.
 export const menuItemClasses =
@@ -80,7 +80,7 @@ export const menuItemClasses =
 // Floating panel holding a small form or content (a <details> dropdown with
 // fields, Popover.astro's default chrome) — roomier than menuPanelClasses,
 // which is for a list of menu rows.
-export const floatingPanelClasses = 'rounded-xl border border-border bg-surface p-5 shadow-xl';
+export const floatingPanelClasses = 'rounded-xl border border-border bg-surface p-5 shadow-xl shadow-shadow';
 
 // Title bar across the top of a padding-less card (cardClasses with a table
 // or divide-y list inside, e.g. the wizard's item/set panels).

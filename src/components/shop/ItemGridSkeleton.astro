@@ -52,6 +52,9 @@ const { rows = 3 } = Astro.props;
 	@media (min-width: 48rem) {
 		.skeleton-rail {
 			--tiles: 4.35;
+			--rail-inset: max(var(--ui-space-gutter), calc((100vw - 72rem) / 2 + var(--ui-space-gutter)));
+			margin-inline: calc(50% - 50vw);
+			padding-inline: var(--rail-inset);
 		}
 	}
 

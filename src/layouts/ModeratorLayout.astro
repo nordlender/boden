@@ -14,7 +14,8 @@ const { title = 'Boden — Moderator' } = Astro.props;
 
 <HtmlShell title={title}>
 	<ModeratorNavbar slot="navbar" />
-	<main>
+	<!-- Accept/reject side by side: azure accent, not org red (see .accent-alt in global.css). -->
+	<main class="accent-alt">
 		<slot />
 	</main>
 </HtmlShell>

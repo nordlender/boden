@@ -73,5 +73,6 @@ describe('groupShopItemsByProduct', () => {
 
 		const grouped = groupShopItemsByProduct(items);
 		expect(grouped[0].inStock).toBe(7);
+		expect(grouped[0].variantCount).toBe(3);
 	});
 });

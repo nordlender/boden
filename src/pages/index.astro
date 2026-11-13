@@ -14,9 +14,91 @@ const snapshot = await getShopGridProducts();
 ---
 
 <BaseLayout title="Boden">
-	<Page width="full">
+	<Page
+		width="full"
+		title="Club gear"
+		description="Free to borrow for OSI Klatring members. Pick your gear and dates, then collect it from a volunteer on a pick-up day."
+	>
 		<ShopGrid server:defer>
 			{snapshot.length > 0 ? <ItemGrid slot="fallback" products={snapshot} /> : <ItemGridSkeleton slot="fallback" />}
 		</ShopGrid>
 	</Page>
 </BaseLayout>
+
+<script>
+	// Behaviour for ItemGrid's rows. Delegated and re-run on DOM changes,
+	// because the server island replaces the prerendered snapshot after load
+	// with freshly rendered rows.
+	const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+	function railOf(control: Element): HTMLElement | null {
+		return control.closest('[data-shop-row]')?.querySelector<HTMLElement>('[data-rail]') ?? null;
+	}
+
+	// Shows "See all" and the arrows only where a rail really overflows, and
+	// disables an arrow at its end of the rail.
+	function sync(row: HTMLElement) {
+		const rail = row.querySelector<HTMLElement>('[data-rail]');
+		if (!rail) return;
+		const expanded = rail.hasAttribute('data-expanded');
+		const overflowing = rail.scrollWidth > rail.clientWidth + 1;
+		const expand = row.querySelector<HTMLButtonElement>('[data-rail-expand]');
+		const prev = row.querySelector<HTMLButtonElement>('[data-rail-prev]');
+		const next = row.querySelector<HTMLButtonElement>('[data-rail-next]');
+		if (expand) expand.hidden = !expanded && !overflowing;
+		// Arrows are for mouse users on wider screens; touch scrolls the rail.
+		const arrows = !expanded && overflowing && window.matchMedia('(min-width: 48rem) and (hover: hover)').matches;
+		if (prev) {
+			prev.hidden = !arrows;
+			prev.disabled = rail.scrollLeft <= 1;
+		}
+		if (next) {
+			next.hidden = !arrows;
+			next.disabled = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 1;
+		}
+	}
+
+	const observed = new WeakSet<Element>();
+	const resizeObserver = new ResizeObserver((entries) => {
+		for (const entry of entries) {
+			const row = entry.target.closest<HTMLElement>('[data-shop-row]');
+			if (row) sync(row);
+		}
+	});
+
+	function init() {
+		document.querySelectorAll<HTMLElement>('[data-shop-row]').forEach((row) => {
+			const rail = row.querySelector<HTMLElement>('[data-rail]');
+			if (!rail || observed.has(rail)) return;
+			observed.add(rail);
+			resizeObserver.observe(rail);
+			rail.addEventListener('scroll', () => sync(row), { passive: true });
+			sync(row);
+		});
+	}
+
+	document.addEventListener('click', (event) => {
+		const target = event.target instanceof Element ? event.target : null;
+		const control = target?.closest<HTMLButtonElement>('[data-rail-expand], [data-rail-prev], [data-rail-next]');
+		if (!control) return;
+		const rail = railOf(control);
+		const row = control.closest<HTMLElement>('[data-shop-row]');
+		if (!rail || !row) return;
+
+		if (control.hasAttribute('data-rail-expand')) {
+			const open = !rail.hasAttribute('data-expanded');
+			rail.toggleAttribute('data-expanded', open);
+			rail.scrollLeft = 0;
+			control.setAttribute('aria-expanded', String(open));
+			control.textContent = open ? 'Show less' : 'See all';
+			if (!open) row.scrollIntoView({ block: 'nearest', behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+		} else {
+			const direction = control.hasAttribute('data-rail-prev') ? -1 : 1;
+			rail.scrollBy({ left: direction * rail.clientWidth * 0.9, behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+		}
+		sync(row);
+	});
+
+	init();
+	new MutationObserver(init).observe(document.body, { childList: true, subtree: true });
+</script>

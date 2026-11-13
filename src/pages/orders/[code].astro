@@ -28,8 +28,8 @@ const pickupWindows = await getOrderPickupWindows(order);
 ---
 
 <BaseLayout title={`Order #${order.orderCode}`}>
-	<Page width="narrow">
-		<BackLink slot="before-title" href="/">Back to shop</BackLink>
+	<Page width="narrow" class="accent-alt">
+		<BackLink slot="before-title" href="/orders">My orders</BackLink>
 
 		<Card as="div">
 			<UserOrderSummary

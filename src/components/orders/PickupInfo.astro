@@ -17,14 +17,14 @@ const { windows, heading = 'Pick-up time & place', emptyText } = Astro.props;
 
 {
 	(windows.length > 0 || emptyText) && (
-		<div class="text-sm text-text-muted">
-			<p class="font-medium text-text">{heading}</p>
+		<div class="rounded-lg bg-bg-subtle px-4 py-3.5 text-sm">
+			<p class="font-bold text-text">{heading}</p>
 			{windows.length > 0 ? (
-				<ul class="mt-1 list-inside list-disc">
+				<ul class="tabular mt-1.5 flex flex-col gap-1 text-text">
 					{windows.map((window) => <li>{formatPickupWindow(window)}</li>)}
 				</ul>
 			) : (
-				<p class="mt-1">{emptyText}</p>
+				<p class="mt-1 text-text-muted">{emptyText}</p>
 			)}
 		</div>
 	)

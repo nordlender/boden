@@ -8,7 +8,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ImagePlaceholder from '../../components/shop/ImagePlaceholder.astro';
 import Page from '../../components/ui/Page.astro';
 import Callout from '../../components/ui/Callout.astro';
-import { eyebrowClasses, pageTitleClasses } from '../../lib/layout-styles';
+import { pageTitleClasses, sectionTitleClasses } from '../../lib/layout-styles';
+import BackLink from '../../components/ui/BackLink.astro';
 import VariantPicker from '../../components/shop/VariantPicker.astro';
 import ProductAvailability from '../../components/availability/ProductAvailability.astro';
 import AvailabilityCalendarSkeleton from '../../components/availability/AvailabilityCalendarSkeleton.astro';
@@ -29,6 +30,13 @@ if (!product) {
 // VariantPicker's script; server-side, just default to the first item, or
 // the first set if the product has no items.
 const initialImageUrl = (product.items[0]?.imageUrl ?? product.sets[0]?.imageUrl) ?? product.thumbnailImageUrl ?? null;
+// Category, subcategory and option count, shown as one line under the title.
+const variantCount = product.items.length || product.sets.length;
+const meta = [
+	product.categoryName,
+	product.subcategoryName,
+	variantCount > 1 ? `${variantCount} ${product.items.length > 0 ? 'options' : 'sizes'}` : null,
+].filter((part): part is string => Boolean(part));
 // Which variant's availability calendar shows (see ProductAvailability.astro);
 // VariantPicker's script keeps it in sync with the selection.
 const initialVariantKey = product.items[0] ? variantKey('item', product.items[0].id) : product.sets[0] ? variantKey('set', product.sets[0].id) : '';
@@ -36,75 +44,86 @@ const initialVariantKey = product.items[0] ? variantKey('item', product.items[0]
 
 <BaseLayout title={product.title}>
 	<Page width="wide">
-	<div class="grid gap-section sm:grid-cols-2">
-		<div class="aspect-square overflow-hidden rounded-xl bg-bg-subtle">
-			<!--
-				Both the image and its placeholder are always in the DOM (rather
-				than picking one at render time) so the variant-select script can
-				reliably toggle between them — an empty data-image on a variant
-				with no photo of its own needs to fall back to the placeholder,
-				not silently keep showing the previous variant's photo.
-			-->
-			<img
-				data-product-image
-				src={initialImageUrl ?? ''}
-				alt={product.title}
-				class="h-full w-full object-cover"
-				hidden={!initialImageUrl}
-			/>
-			<div
-				data-product-image-placeholder
-				class="flex h-full w-full items-center justify-center text-disabled-text"
-				hidden={Boolean(initialImageUrl)}
-			>
-				<ImagePlaceholder size={48} />
+		<div class="flex flex-col gap-stack">
+			<BackLink href="/">All gear</BackLink>
+
+			<div class="grid gap-section md:grid-cols-2 md:items-start">
+				<div class="-mx-gutter aspect-[4/3] overflow-hidden bg-plate sm:mx-0 sm:aspect-square sm:rounded-xl md:sticky md:top-24">
+					<!--
+						Both the image and its placeholder are always in the DOM (rather
+						than picking one at render time) so the variant-select script can
+						reliably toggle between them — an empty data-image on a variant
+						with no photo of its own needs to fall back to the placeholder,
+						not silently keep showing the previous variant's photo.
+					-->
+					<img data-product-image src={initialImageUrl ?? ''} alt={product.title} class="h-full w-full object-cover" hidden={!initialImageUrl} />
+					<div data-product-image-placeholder class="flex h-full w-full items-center justify-center text-disabled-text" hidden={Boolean(initialImageUrl)}>
+						<ImagePlaceholder size={48} />
+					</div>
+				</div>
+
+				<div class="flex flex-col gap-region" data-selected-variant={initialVariantKey}>
+					<div class="flex flex-col gap-3">
+						<h1 class={pageTitleClasses}>{product.title}</h1>
+						{
+							meta.length > 0 && (
+								<p class="flex flex-wrap items-center gap-x-2 text-sm font-medium text-text-muted">
+									{meta.map((part, i) => (
+										<>
+											{i > 0 && <span aria-hidden="true" class="text-border-strong">/</span>}
+											<span>{part}</span>
+										</>
+									))}
+								</p>
+							)
+						}
+					</div>
+
+					{product.description && <p class="max-w-[65ch] text-base leading-relaxed text-text-muted">{product.description}</p>}
+
+					{
+						product.items.length === 0 && product.sets.length === 0 ? (
+							<Callout variant="error" live={false}>
+								<p>No items available for this product yet.</p>
+							</Callout>
+						) : (
+							<VariantPicker
+								items={product.items}
+								sets={product.sets}
+								productSlug={product.slug}
+								thumbnailImageUrl={product.thumbnailImageUrl}
+								variantKeys={product.variantKeys}
+							/>
+						)
+					}
+
+					{
+						initialVariantKey && (
+							<ProductAvailability server:defer productId={product.id}>
+								<AvailabilityCalendarSkeleton slot="fallback" />
+							</ProductAvailability>
+						)
+					}
+
+					{
+						product.links.length > 0 && (
+							<section class="flex flex-col gap-3 border-t border-border pt-region" aria-labelledby="product-links-heading">
+								<h2 id="product-links-heading" class={sectionTitleClasses}>More about this gear</h2>
+								<ul class="flex flex-col gap-2 text-sm">
+									{product.links.map((link) => (
+										<li>
+											<a href={link.url} target="_blank" rel="noopener noreferrer" class="font-medium text-accent-text hover:underline">
+												{link.label}
+												<span class="sr-only"> (opens in a new tab)</span>
+											</a>
+										</li>
+									))}
+								</ul>
+							</section>
+						)
+					}
+				</div>
 			</div>
 		</div>
-
-		<div class="flex flex-col gap-6" data-selected-variant={initialVariantKey}>
-			<div class="flex flex-col gap-snug">
-				{product.subcategoryName && <p class={eyebrowClasses}>{product.subcategoryName}</p>}
-				<h1 class={pageTitleClasses}>{product.title}</h1>
-			</div>
-
-			{product.description && <p class="text-base leading-relaxed text-text-muted">{product.description}</p>}
-
-			{
-				product.items.length === 0 && product.sets.length === 0 ? (
-					<Callout variant="error" live={false}><p>No items available for this product yet.</p></Callout>
-				) : (
-					<VariantPicker
-						items={product.items}
-						sets={product.sets}
-						productSlug={product.slug}
-						thumbnailImageUrl={product.thumbnailImageUrl}
-						variantKeys={product.variantKeys}
-					/>
-				)
-			}
-
-			{
-				initialVariantKey && (
-					<ProductAvailability server:defer productId={product.id}>
-						<AvailabilityCalendarSkeleton slot="fallback" />
-					</ProductAvailability>
-				)
-			}
-
-			{
-				product.links.length > 0 && (
-					<ul class="flex flex-col gap-2 border-t border-border pt-6 text-sm">
-						{product.links.map((link) => (
-							<li>
-								<a href={link.url} target="_blank" rel="noopener noreferrer" class="text-text-muted underline hover:text-text">
-									{link.label}
-								</a>
-							</li>
-						))}
-					</ul>
-				)
-			}
-		</div>
-	</div>
 	</Page>
 </BaseLayout>

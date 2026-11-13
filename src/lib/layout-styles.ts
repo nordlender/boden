@@ -22,29 +22,31 @@ export const pageWidthClasses: Record<PageWidth, string> = {
 };
 
 // Corner radius scale: `rounded-xl` for standalone surfaces (cards, panels,
-// popovers, callouts), `rounded-lg` for a box nested inside one (ImageMenu's
-// file list, a segmented toggle group), `rounded-md` for controls (buttons,
-// inputs, menu rows, icon triggers), `rounded-full` for pills and badges.
+// popovers, callouts) and shop tiles, `rounded-lg` for buttons, inputs and a
+// box nested inside a surface (ImageMenu's file list, a segmented toggle
+// group), `rounded-md` for small controls (menu rows, icon triggers),
+// `rounded-full` for pills and badges.
 
 // Surface panel; ui/Card.astro adds `p-card` padding on top of this.
 export const cardClasses = 'rounded-xl border border-border bg-surface';
 
 // Heading hierarchy, largest first:
 // One h1 per page (ui/Page.astro renders it from `title`).
-export const pageTitleClasses = 'text-2xl font-semibold tracking-tight text-text';
+export const pageTitleClasses = 'text-3xl font-extrabold tracking-[-0.025em] text-text sm:text-4xl';
 
 // The h1 of a page whose title lives inside its main card instead of a
 // ui/Page header (order detail, blind count) — one step below a page title,
 // since the card already frames it.
-export const cardTitleClasses = 'text-xl font-semibold tracking-tight text-text';
+export const cardTitleClasses = 'text-2xl font-bold tracking-[-0.02em] text-text';
 
 // A section heading under the page title, and a card/dialog/popover title.
-export const sectionTitleClasses = 'text-base font-semibold text-text';
+export const sectionTitleClasses = 'text-lg font-bold tracking-[-0.01em] text-text';
 
-// Small all-caps label for a group *inside* a card or summary (an order's
-// "Items", a product's category over its title) — quieter than a section
-// title. Page-level sections use sectionTitleClasses, not this.
-export const eyebrowClasses = 'text-xs font-semibold uppercase tracking-wide text-text-muted';
+// Small bold label for a group *inside* a card or summary (an order's
+// "Items", "Submitted by") — quieter than a section title. Sentence case,
+// never a kicker stacked above another heading. Page-level sections use
+// sectionTitleClasses, not this.
+export const eyebrowClasses = 'text-sm font-bold text-text';
 
 // Row of buttons closing a form, dialog or popover — always right-aligned,
 // Cancel first, then the primary action. Spacing above it comes from the
@@ -69,7 +71,7 @@ export const actionTileClasses =
 	'flex flex-1 flex-col items-center gap-3 rounded-xl border border-border bg-surface px-6 py-8 text-center transition-colors hover:border-accent hover:bg-bg-subtle sm:items-start sm:text-left';
 
 // Floating panel for dropdowns/menus (<details> menus, select menus).
-export const menuPanelClasses = 'rounded-xl border border-border bg-surface p-1.5 shadow-lg';
+export const menuPanelClasses = 'rounded-xl border border-border bg-surface p-1.5 shadow-xl';
 
 // One row in a menuPanelClasses panel — roomy enough to be an easy target.
 export const menuItemClasses =
@@ -78,7 +80,7 @@ export const menuItemClasses =
 // Floating panel holding a small form or content (a <details> dropdown with
 // fields, Popover.astro's default chrome) — roomier than menuPanelClasses,
 // which is for a list of menu rows.
-export const floatingPanelClasses = 'rounded-xl border border-border bg-surface p-5 shadow-lg';
+export const floatingPanelClasses = 'rounded-xl border border-border bg-surface p-5 shadow-xl';
 
 // Title bar across the top of a padding-less card (cardClasses with a table
 // or divide-y list inside, e.g. the wizard's item/set panels).

@@ -26,17 +26,23 @@ layout primitives built on them (`ui/Page.astro`, `ui/Card.astro`) live in
 
 ## Token families and their Tailwind utilities
 
+The values are authored for the "Gear Wall Rows" world (graphite grounds,
+mint accent; see `DESIGN.md`), not borrowed from Tailwind's palette. Type is
+Schibsted Grotesk (`@fontsource-variable/schibsted-grotesk`), set as
+`--font-sans` in `global.css`.
+
 | Purpose | Tokens | Example utilities |
 |---|---|---|
 | Page/section background | `bg`, `bg-subtle` | `bg-bg`, `bg-bg-subtle` |
 | Card/panel surface | `surface` | `bg-surface` |
+| Ground behind a gear photo (shop tiles, product image, thumbnails) | `plate` | `bg-plate` |
 | Borders | `border`, `border-strong`, `border-interactive` | `border-border`, `border-border-strong` |
 | Body text | `text`, `text-muted`, `text-inverted` | `text-text`, `text-text-muted` |
 | Disabled state | `disabled-bg`, `disabled-text` | `bg-disabled-bg`, `text-disabled-text` |
 | Modal/overlay backdrop | `overlay` | `bg-overlay` |
 | Brand/primary action | `accent`, `accent-hover`, `accent-subtle`, `accent-text` | `bg-accent`, `text-accent-text` |
 | "This is selected" (wizard rows) | `selected`, `selected-subtle`, `selected-border`, `selected-text` | `bg-selected`, `border-selected-border`, `text-selected-text` |
-| Keyboard focus outline | `focus-ring` | `outline-focus-ring` (defined, not yet used anywhere) |
+| Keyboard focus outline | `focus-ring` | `outline-focus-ring` |
 | Success / in-stock | `success`, `success-subtle`, `success-border`, `success-text` | `bg-success-subtle`, `text-success-text` |
 | Availability scale (AvailabilityCalendar): units available that day, 0 … 4+ (semi-transparent; text on top stays `text-text`) | `availability-0` … `availability-4` | `bg-availability-2` |
 | Informational | `info`, `info-subtle`, `info-border`, `info-text` | `bg-info-subtle`, `text-info-text` |

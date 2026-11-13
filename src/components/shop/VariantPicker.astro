@@ -83,7 +83,7 @@ function optionLabel(variant: Variant): string {
 }
 ---
 
-<form action="/api/cart/add" method="post" class="flex flex-col gap-6 border-t border-border pt-6">
+<form action="/api/cart/add" method="post" class="flex flex-col gap-region">
 	<input type="hidden" name="redirectTo" value={`/products/${productSlug}`} />
 	<!--
 		Exactly one of these is ever actually submitted — a disabled input is
@@ -126,7 +126,7 @@ function optionLabel(variant: Variant): string {
 								data-id={variant.id}
 								data-image={variant.imageUrl ?? thumbnailImageUrl ?? ''}
 								data-stock={variant.inStock}
-								class={`min-h-10 min-w-12 rounded-md border px-4 py-2 text-sm transition-colors hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-pressed:border-selected-border aria-pressed:bg-selected-subtle aria-pressed:font-medium aria-pressed:hover:bg-selected-subtle aria-pressed:text-selected-text ${variant.inStock > 0 ? 'border-border-interactive text-text' : 'border-border-interactive text-disabled-text line-through'}`}
+								class={`min-h-11 min-w-12 rounded-full border px-4 py-2 text-sm font-semibold transition-colors hover:border-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-text-inverted aria-pressed:hover:border-accent ${variant.inStock > 0 ? 'border-border-interactive text-text' : 'border-border-strong text-disabled-text line-through'}`}
 							>
 								{variant.kind === 'set' ? `Set — ${label}` : label}
 								{variant.inStock <= 0 && <span class="sr-only"> (out of stock)</span>}
@@ -147,7 +147,7 @@ function optionLabel(variant: Variant): string {
 	{variants.map((variant) => (
 		<div data-variant-panel={variantKey(variant.kind, variant.id)} hidden={variant !== initialVariant} class="flex flex-col gap-6">
 			{variant.kind === 'item' && variant.attributes.length > 0 && (
-				<dl class="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-border pt-6 text-sm">
+				<dl class="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-8 gap-y-2.5 text-sm">
 					{variant.attributes.map((attribute) => (
 						<div class="contents">
 							<dt class="text-text-muted">{attribute.key}</dt>
@@ -158,8 +158,8 @@ function optionLabel(variant: Variant): string {
 			)}
 
 			{variant.kind === 'set' && (
-				<div class="border-t border-border pt-6 text-sm">
-					<p class:list={['mb-3', labelClasses]}>Attributes</p>
+				<div class="text-sm">
+					<p class:list={['mb-3', labelClasses]}>What's in the set</p>
 					<div class="flex flex-col gap-4">
 						{variant.componentDisplay.map((group) =>
 							group.kind === 'table' ? (
@@ -198,29 +198,29 @@ function optionLabel(variant: Variant): string {
 				</div>
 			)}
 
-			{/* TODO: Style later, warning? — is "out of stock" an error or a warning state? */}
-			<p class={`text-sm font-medium ${variant.inStock > 0 ? 'text-success-text' : 'text-error-text'}`}>
+			<p class={`tabular flex items-center gap-2 text-sm font-semibold ${variant.inStock > 0 ? 'text-success-text' : 'text-error-text'}`}>
+				<span aria-hidden="true" class={`size-2 rounded-full ${variant.inStock > 0 ? 'bg-success' : 'bg-error'}`} />
 				{variant.inStock > 0 ? `${variant.inStock} in stock` : 'Out of stock'}
 			</p>
 		</div>
 	))}
 
-	<div class="flex items-center gap-controls">
+	<div class="flex items-center gap-controls border-t border-border pt-region">
 		{/* Stepper's height (h-12) and count text (text-base) are pinned to
 			Button's `lg` size (see sizeClasses in lib/button-styles.ts) rather
 			than derived from it, since a plain <input type="number"> can't be
 			styled with the spinner removed consistently across browsers. */}
-		<div class="inline-flex h-12 divide-x divide-border-interactive overflow-hidden rounded-md border border-border-interactive">
+		<div class="inline-flex h-12 shrink-0 divide-x divide-border-strong overflow-hidden rounded-lg border border-border-interactive bg-surface">
 			<button
 				type="button"
 				aria-label="Decrease quantity"
 				data-quantity-decrement
 				disabled
-				class="flex h-12 w-12 items-center justify-center bg-bg-subtle text-text-muted transition-colors hover:text-text active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-disabled-text disabled:active:bg-bg-subtle"
+				class="flex h-12 w-12 items-center justify-center text-text transition-colors hover:bg-bg-subtle active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:text-disabled-text disabled:hover:bg-transparent"
 			>
 				<AppIcon name="decrement" size={20} />
 			</button>
-			<span data-quantity-display class="flex h-12 min-w-[3.5rem] items-center justify-center text-base font-semibold text-text">
+			<span data-quantity-display class="tabular flex h-12 min-w-[3.25rem] items-center justify-center text-base font-bold text-text" aria-live="polite">
 				1
 			</span>
 			<button
@@ -228,13 +228,13 @@ function optionLabel(variant: Variant): string {
 				aria-label="Increase quantity"
 				data-quantity-increment
 				disabled={initialMax <= 1}
-				class="flex h-12 w-12 items-center justify-center bg-bg-subtle text-text-muted transition-colors hover:text-text active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-disabled-text disabled:active:bg-bg-subtle"
+				class="flex h-12 w-12 items-center justify-center text-text transition-colors hover:bg-bg-subtle active:bg-border focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:text-disabled-text disabled:hover:bg-transparent"
 			>
 				<AppIcon name="increment" size={20} />
 			</button>
 		</div>
 		<input type="hidden" name="quantity" value="1" data-quantity-input data-max={initialMax} />
-		<Button type="submit" variant="primary" size="lg" data-add-to-cart disabled={(initialVariant?.inStock ?? 0) <= 0}>
+		<Button type="submit" variant="primary" size="lg" class="flex-1 sm:flex-none sm:px-10" data-add-to-cart disabled={(initialVariant?.inStock ?? 0) <= 0}>
 			Add to cart
 		</Button>
 	</div>

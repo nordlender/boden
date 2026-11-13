@@ -26,13 +26,15 @@ interface Props {
 	// — see isPickupPending); an empty array while the order is still only
 	// requested says a moderator will confirm it.
 	pickupWindows?: PickupWindowDisplay[];
+	// See OrderCodeHeader: h2 when the page already has an h1.
+	headingLevel?: 'h1' | 'h2';
 }
 
-const { orderCode, status, fromDate, toDate, note, items, showImages = false, pickupWindows } = Astro.props;
+const { orderCode, status, fromDate, toDate, note, items, showImages = false, pickupWindows, headingLevel = 'h1' } = Astro.props;
 ---
 
-<section class="order-summary flex flex-col gap-6">
-	<OrderCodeHeader orderCode={orderCode} status={status} fromDate={fromDate} toDate={toDate} />
+<section class="order-summary flex flex-col gap-region">
+	<OrderCodeHeader orderCode={orderCode} status={status} fromDate={fromDate} toDate={toDate} headingLevel={headingLevel} />
 	{
 		pickupWindows && (
 			<PickupInfo windows={pickupWindows} emptyText={status === 'requested' ? 'A moderator will confirm the time and place.' : undefined} />

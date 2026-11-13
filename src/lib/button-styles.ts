@@ -5,26 +5,30 @@
 // prior usages this was built from.
 import type { ActionIconKey } from './icon-nodes';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'primary-outline' | 'danger' | 'danger-filled';
+export type ButtonVariant = 'primary' | 'secondary' | 'primary-outline' | 'danger' | 'danger-filled' | 'ghost';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export const variantClasses: Record<ButtonVariant, string> = {
 	primary:
-		'bg-accent font-medium text-text-inverted hover:bg-accent-hover disabled:bg-disabled-bg disabled:text-disabled-text',
+		'bg-accent font-semibold text-text-inverted hover:bg-accent-hover disabled:bg-disabled-bg disabled:text-disabled-text',
 	secondary:
-		'border border-border-strong text-text-muted hover:bg-bg-subtle hover:text-text disabled:text-disabled-text disabled:hover:bg-transparent',
+		'border border-border-strong font-medium text-text hover:border-border-interactive hover:bg-bg-subtle disabled:text-disabled-text disabled:hover:bg-transparent',
 	// Outline counterpart of `primary` — same accent palette, not filled. For
 	// actions of equal weight to primary that shouldn't compete visually
 	// with it (e.g. a secondary call-to-action next to a primary one).
 	'primary-outline':
-		'border border-accent font-medium text-accent-text hover:bg-accent-subtle disabled:border-disabled-bg disabled:text-disabled-text disabled:hover:bg-transparent',
+		'border border-accent font-semibold text-accent-text hover:bg-accent-subtle disabled:border-disabled-bg disabled:text-disabled-text disabled:hover:bg-transparent',
 	danger:
 		'border border-error-border font-medium text-error-text hover:bg-error-subtle disabled:border-disabled-bg disabled:text-disabled-text disabled:hover:bg-transparent',
 	// Solid fill instead of `danger`'s outline — for actions that actually
 	// commit a deletion (not just open a confirm dialog), so the weight of
 	// the button matches the weight of the action.
+	// No border or fill until hovered — icon triggers in the navbar and
+	// other chrome, where a boxed button would read as heavier than the
+	// content it sits beside.
+	ghost: 'text-text-muted hover:bg-bg-subtle hover:text-text disabled:text-disabled-text disabled:hover:bg-transparent',
 	'danger-filled':
-		'bg-error font-medium text-text-inverted hover:bg-error/90 disabled:bg-disabled-bg disabled:text-disabled-text',
+		'bg-error font-semibold text-text-inverted hover:bg-error/90 disabled:bg-disabled-bg disabled:text-disabled-text',
 };
 
 // Height/padding/text-size for the two-sided (text, or text+icon) buttons.
@@ -66,7 +70,7 @@ export const textIconPixelSize: Record<ButtonSize, number> = {
 };
 
 export const baseClasses =
-	'inline-flex items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed aria-disabled:pointer-events-none aria-disabled:opacity-60';
+	'inline-flex items-center justify-center rounded-lg transition-[color,background-color,border-color,transform] duration-150 ease-out active:scale-[0.97] disabled:cursor-not-allowed disabled:active:scale-100 aria-disabled:pointer-events-none aria-disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring motion-reduce:transition-none motion-reduce:active:scale-100';
 
 // Default aria-label / visible text for MorphButton/TextMorphButton's
 // `action` prop — overridable via `label` (MorphButton) or the default slot

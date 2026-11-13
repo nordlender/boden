@@ -51,7 +51,7 @@ const days = daily.map((count, i) => {
 		{Array.from({ length: leadingBlanks }, () => <li aria-hidden="true" />)}
 		{days.map((day) => (
 			<li
-				class:list={['flex h-9 items-center justify-center rounded-md text-sm font-medium tabular-nums text-text', tone(day.count), day.today && 'ring-2 ring-accent ring-offset-1 ring-offset-surface']}
+				class:list={['flex h-9 items-center justify-center rounded-md text-sm font-medium tabular-nums text-text', tone(day.count), day.today && 'outline-2 outline-offset-2 outline-accent']}
 				title={day.label}
 			>
 				<span aria-hidden="true">{day.count}</span>

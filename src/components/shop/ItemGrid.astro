@@ -1,4 +1,15 @@
 ---
+// The catalogue, one row per category: a heading with the category's
+// product count, then a horizontally snap-scrolling rail of tiles. "See all"
+// opens the row into a wrapping grid so nothing stays buried off-screen, and
+// prev/next buttons page the rail for mouse users. Both controls start
+// hidden and are switched on by src/pages/index.astro's script only when a
+// rail actually overflows (and only once JS runs — without it the rail is
+// still a plain scrollable list).
+//
+// Rendered twice per visit: as the prerendered snapshot inside the page and
+// again as the live server island (ShopGrid.astro), so it must stay pure
+// markup + styles — behaviour lives in the page script.
 import ItemCard from './ItemCard.astro';
 import type { ShopGridProduct } from '../../lib/shop';
 
@@ -7,22 +18,211 @@ interface Props {
 }
 
 const { products } = Astro.props;
+
+const OTHER = 'Other gear';
+const rows: { name: string; slug: string; products: ShopGridProduct[] }[] = [];
+for (const product of products) {
+	const name = product.categoryName ?? OTHER;
+	let row = rows.find((r) => r.name === name);
+	if (!row) {
+		const slug = `category-${name.toLowerCase().replace(/[^a-z0-9æøå]+/g, '-').replace(/^-|-$/g, '')}`;
+		row = { name, slug, products: [] };
+		rows.push(row);
+	}
+	row.products.push(product);
+}
+// Uncategorised products go last, whatever order they arrived in.
+rows.sort((a, b) => Number(a.name === OTHER) - Number(b.name === OTHER));
+
+const arrowClasses =
+	'flex size-9 items-center justify-center rounded-full border border-border-strong text-text transition-colors hover:border-border-interactive hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-default disabled:border-border disabled:text-disabled-text disabled:hover:bg-transparent';
 ---
 
 {
 	products.length === 0 ? (
-		<p class="text-sm text-text-muted">No items available.</p>
+		<p class="rounded-xl border border-dashed border-border-strong px-card py-16 text-center text-sm text-text-muted">
+			Nothing is out on the shelves yet. Check back soon.
+		</p>
 	) : (
-		<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-			{products.map((product) => (
-				<ItemCard
-					itemId={product.representativeItemId}
-					setId={product.representativeSetId}
-					productSlug={product.productSlug}
-					productTitle={product.productTitle}
-					imageUrl={product.imageUrl}
-				/>
+		<div class="flex flex-col gap-section">
+			{rows.length > 1 && (
+				<nav aria-label="Categories" class="shop-jump -mx-gutter -mt-snug px-gutter">
+					<ul class="flex gap-2 overflow-x-auto py-1 [scrollbar-width:none]">
+						{rows.map((row) => (
+							<li class="shrink-0">
+								<a
+									href={`#${row.slug}`}
+									class="inline-flex min-h-9 items-center gap-2 rounded-full border border-border-strong bg-surface px-4 text-sm font-semibold text-text transition-colors hover:border-border-interactive hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+								>
+									{row.name}
+									<span class="tabular text-xs font-medium text-text-muted">{row.products.length}</span>
+								</a>
+							</li>
+						))}
+					</ul>
+				</nav>
+			)}
+
+			{rows.map((row) => (
+				<section id={row.slug} aria-labelledby={`${row.slug}-title`} class="shop-row scroll-mt-24" data-shop-row>
+					<div class="flex items-center justify-between gap-stack">
+						<h2 id={`${row.slug}-title`} class="flex items-baseline gap-2.5 text-xl font-extrabold tracking-[-0.02em] text-text sm:text-2xl">
+							{row.name}
+							<span class="tabular text-sm font-semibold tracking-normal text-text-muted">{row.products.length}</span>
+						</h2>
+						<div class="flex shrink-0 items-center gap-2">
+							<button
+								type="button"
+								data-rail-expand
+								aria-expanded="false"
+								aria-controls={`${row.slug}-rail`}
+								hidden
+								class="min-h-9 rounded-full px-3 text-sm font-semibold text-accent-text transition-colors hover:bg-accent-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+							>
+								See all
+							</button>
+							<button type="button" data-rail-prev aria-label={`Scroll ${row.name} back`} hidden class={arrowClasses}>
+								<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<path d="m15 6-6 6 6 6" />
+								</svg>
+							</button>
+							<button type="button" data-rail-next aria-label={`Scroll ${row.name} forward`} hidden class={arrowClasses}>
+								<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<path d="m9 6 6 6-6 6" />
+								</svg>
+							</button>
+						</div>
+					</div>
+					<ul id={`${row.slug}-rail`} class="shop-rail" data-rail role="list">
+						{row.products.map((product) => (
+							<li>
+								<ItemCard
+									itemId={product.representativeItemId}
+									setId={product.representativeSetId}
+									productSlug={product.productSlug}
+									productTitle={product.productTitle}
+									imageUrl={product.imageUrl}
+									variantCount={product.variantCount}
+									inStock={product.inStock}
+								/>
+							</li>
+						))}
+					</ul>
+				</section>
 			))}
 		</div>
 	)
 }
+
+<style is:global>
+	/* Global (not scoped): the row rules below reach into ItemCard's tiles
+	   through :has(), which Astro's scoping can't rewrite. Every class here
+	   is shop-specific (shop-*), so nothing else matches. */
+
+	/* The category chips stay reachable while scrolling the shelves: they
+	   stick under the 4rem navbar. */
+	.shop-jump {
+		position: sticky;
+		top: 4rem;
+		z-index: 20;
+		background-color: var(--color-bg);
+		padding-block: 0.5rem;
+	}
+
+	.shop-rail {
+		--tile-gap: 0.75rem;
+		--tiles: 2.35;
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: calc((100% - (var(--tiles) - 0.35) * var(--tile-gap)) / var(--tiles));
+		gap: var(--tile-gap);
+		/* Full-bleed to the screen edge on phones, so the next tile peeks out
+		   from under the gutter and the row reads as scrollable. */
+		margin-inline: calc(-1 * var(--ui-space-gutter));
+		padding: 0.75rem var(--ui-space-gutter) 0.5rem;
+		scroll-padding-inline: var(--ui-space-gutter);
+		overflow-x: auto;
+		overscroll-behavior-x: contain;
+		scroll-snap-type: x mandatory;
+		scrollbar-width: none;
+	}
+
+	.shop-rail::-webkit-scrollbar {
+		display: none;
+	}
+
+	.shop-rail > li {
+		scroll-snap-align: start;
+		min-width: 0;
+		transition: opacity var(--dur-move) var(--ease-out-expo);
+	}
+
+	@media (min-width: 40rem) {
+		.shop-rail {
+			--tile-gap: 1rem;
+			--tiles: 3.35;
+		}
+	}
+
+	@media (min-width: 48rem) {
+		.shop-rail {
+			--tiles: 4.35;
+		}
+	}
+
+	@media (min-width: 64rem) {
+		.shop-rail {
+			--tile-gap: 1.25rem;
+			--tiles: 5.35;
+		}
+	}
+
+	/* "See all": the same tiles, wrapped into a grid. */
+	.shop-rail[data-expanded] {
+		--cols: 2;
+		grid-auto-flow: row;
+		grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+		grid-auto-columns: auto;
+		row-gap: 1.5rem;
+		margin-inline: 0;
+		padding-inline: 0;
+		overflow: visible;
+		scroll-snap-type: none;
+	}
+
+	@media (min-width: 40rem) {
+		.shop-rail[data-expanded] {
+			--cols: 3;
+		}
+	}
+
+	@media (min-width: 48rem) {
+		.shop-rail[data-expanded] {
+			--cols: 4;
+		}
+	}
+
+	@media (min-width: 64rem) {
+		.shop-rail[data-expanded] {
+			--cols: 5;
+		}
+	}
+
+	/* The signature move's row half: while one tile is lifted, its row-mates
+	   step back. Keyboard focus everywhere; hover only on real pointers. */
+	.shop-rail:has(.shop-tile:focus-visible) > li:not(:has(.shop-tile:focus-visible)) {
+		opacity: 0.45;
+	}
+
+	@media (hover: hover) {
+		.shop-rail:has(.shop-tile:hover) > li:not(:has(.shop-tile:hover)) {
+			opacity: 0.45;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.shop-rail > li {
+			transition: none;
+		}
+	}
+</style>

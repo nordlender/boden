@@ -11,36 +11,91 @@ interface Props {
 	productSlug: string;
 	productTitle: string;
 	imageUrl: string | null;
+	variantCount: number;
+	inStock: number;
 }
 
-const { itemId, setId, productSlug, productTitle, imageUrl } = Astro.props;
+const { itemId, setId, productSlug, productTitle, imageUrl, variantCount, inStock } = Astro.props;
 const isSet = setId !== null;
 const href = `/products/${productSlug}?${isSet ? `set=${setId}` : `item=${itemId}`}`;
+const optionsLabel = variantCount > 1 ? `${variantCount} ${isSet ? 'sizes' : 'options'}` : null;
 ---
 
-<a
-	href={href}
-	class="group flex flex-col overflow-hidden rounded-lg border border-border bg-surface transition hover:border-border-strong hover:shadow-sm"
->
-	<div class="relative aspect-square overflow-hidden bg-bg-subtle">
-		{
-			isSet && (
-				<span class="absolute left-2 top-2 rounded-full bg-surface px-2 py-0.5 text-[10px] font-medium text-text-muted shadow-sm">
-					Set
-				</span>
-			)
-		}
+<!--
+	One tile of a shop row (ItemGrid.astro). The lift on hover/keyboard focus
+	and the dimming of the rest of the row are the catalogue's signature
+	move; the row-level half lives in ItemGrid's styles.
+-->
+<a href={href} class="shop-tile group flex flex-col gap-2.5 rounded-xl focus-visible:outline-none">
+	<div class="shop-tile-plate relative aspect-square overflow-hidden rounded-xl bg-plate">
 		{
 			imageUrl ? (
-				<img src={imageUrl} alt={productTitle} class="h-full w-full object-cover transition group-hover:scale-105" />
+				<img src={imageUrl} alt="" loading="lazy" decoding="async" class="h-full w-full object-cover" />
 			) : (
 				<div class="flex h-full w-full items-center justify-center text-disabled-text">
 					<ImagePlaceholder size={32} />
 				</div>
 			)
 		}
+		{
+			isSet && (
+				<span class="absolute left-2 top-2 rounded-full bg-bg px-2 py-0.5 text-[0.6875rem] font-bold tracking-wide text-text">
+					Set
+				</span>
+			)
+		}
 	</div>
-	<div class="flex flex-1 flex-col gap-1 p-3">
-		<h3 class="text-sm font-medium text-text">{productTitle}</h3>
+	<div class="flex min-w-0 flex-col gap-0.5 px-0.5">
+		<h3 class="line-clamp-2 text-[0.9375rem] font-semibold leading-snug text-text">{productTitle}</h3>
+		<p class="tabular truncate text-[0.8125rem] text-text-muted">
+			{optionsLabel && <span>{optionsLabel} · </span>}
+			{inStock > 0 ? <span>{inStock} in stock</span> : <span class="text-error-text">Not in stock</span>}
+		</p>
 	</div>
 </a>
+
+<style>
+	.shop-tile-plate {
+		transition:
+			transform var(--dur-move) var(--ease-out-expo),
+			box-shadow var(--dur-move) var(--ease-out-expo);
+	}
+
+	.shop-tile-plate img {
+		transition: transform 600ms var(--ease-out-expo);
+	}
+
+	/* Keyboard focus always lifts; pointer hover only lifts where hovering is
+	   real (no sticky lift after a tap on a phone). */
+	.shop-tile:focus-visible .shop-tile-plate {
+		transform: scale(1.04);
+		box-shadow:
+			0 0 0 2px var(--color-bg),
+			0 0 0 4px var(--color-focus-ring),
+			0 14px 28px -12px color-mix(in oklab, var(--ui-text) 35%, transparent);
+	}
+
+	@media (hover: hover) {
+		.shop-tile:hover .shop-tile-plate {
+			transform: scale(1.04);
+			box-shadow: 0 14px 28px -12px color-mix(in oklab, var(--ui-text) 35%, transparent);
+		}
+
+		.shop-tile:hover .shop-tile-plate img {
+			transform: scale(1.03);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.shop-tile-plate,
+		.shop-tile-plate img {
+			transition: none;
+		}
+
+		.shop-tile:focus-visible .shop-tile-plate,
+		.shop-tile:hover .shop-tile-plate,
+		.shop-tile:hover .shop-tile-plate img {
+			transform: none;
+		}
+	}
+</style>

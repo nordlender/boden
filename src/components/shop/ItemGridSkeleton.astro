@@ -1,23 +1,64 @@
 ---
-// Placeholder tiles shaped like ItemGrid/ItemCard, shown while the shop
+// Placeholder rows shaped like ItemGrid/ItemCard, shown while the shop
 // grid's server island loads when there's no build-time snapshot to show
 // instead (e.g. a build against an empty database).
 interface Props {
-	count?: number;
+	rows?: number;
 }
 
-const { count = 8 } = Astro.props;
+const { rows = 3 } = Astro.props;
 ---
 
-<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4" aria-busy="true" aria-label="Loading products">
+<div class="flex flex-col gap-section" aria-busy="true" aria-label="Loading gear">
 	{
-		Array.from({ length: count }, () => (
-			<div class="flex animate-pulse flex-col overflow-hidden rounded-lg border border-border bg-surface">
-				<div class="aspect-square bg-bg-subtle" />
-				<div class="p-3">
-					<div class="h-4 w-2/3 rounded bg-bg-subtle" />
+		Array.from({ length: rows }, () => (
+			<div class="flex flex-col gap-3">
+				<div class="h-6 w-32 animate-pulse rounded-md bg-plate" />
+				<div class="skeleton-rail">
+					{Array.from({ length: 6 }, () => (
+						<div class="flex flex-col gap-2.5">
+							<div class="aspect-square animate-pulse rounded-xl bg-plate" />
+							<div class="h-4 w-3/4 animate-pulse rounded bg-plate" />
+							<div class="h-3 w-1/2 animate-pulse rounded bg-plate" />
+						</div>
+					))}
 				</div>
 			</div>
 		))
 	}
 </div>
+
+<style>
+	/* Same track maths as ItemGrid's .shop-rail, without scrolling. */
+	.skeleton-rail {
+		--tile-gap: 0.75rem;
+		--tiles: 2.35;
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: calc((100% - (var(--tiles) - 0.35) * var(--tile-gap)) / var(--tiles));
+		gap: var(--tile-gap);
+		margin-inline: calc(-1 * var(--ui-space-gutter));
+		padding: 0.75rem var(--ui-space-gutter) 0.5rem;
+		overflow: hidden;
+	}
+
+	@media (min-width: 40rem) {
+		.skeleton-rail {
+			--tile-gap: 1rem;
+			--tiles: 3.35;
+		}
+	}
+
+	@media (min-width: 48rem) {
+		.skeleton-rail {
+			--tiles: 4.35;
+		}
+	}
+
+	@media (min-width: 64rem) {
+		.skeleton-rail {
+			--tile-gap: 1.25rem;
+			--tiles: 5.35;
+		}
+	}
+</style>

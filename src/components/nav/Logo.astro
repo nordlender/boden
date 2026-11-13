@@ -1,10 +1,15 @@
 ---
+// Boden wordmark with the club's emblem as its endorsement: "Boden" is the
+// product's own name, OSI Klatring the owner (see PRODUCT.md, Brand). The
+// "by OSI Klatring" line drops on the narrowest phones, where the emblem
+// alone carries the endorsement.
 import LogoIcon from '../../assets/logo.svg';
 ---
 
-<a href="/" class="flex items-center gap-2 self-stretch">
-	<span class="aspect-square h-full">
-		<LogoIcon width={32} height={32} class="h-full w-full text-text" />
+<a href="/" class="group flex items-center gap-2.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus-ring" aria-label="Boden by OSI Klatring, home">
+	<LogoIcon width={32} height={32} class="size-8 shrink-0 text-text transition-colors group-hover:text-accent-text" aria-hidden="true" />
+	<span class="flex flex-col leading-none">
+		<span class="text-xl font-extrabold tracking-[-0.03em] text-text">Boden</span>
+		<span class="mt-1 hidden text-[0.6875rem] font-medium tracking-wide text-text-muted min-[400px]:block">by OSI Klatring</span>
 	</span>
-	<span class="text-2xl font-semibold tracking-tight text-text">Boden</span>
 </a>

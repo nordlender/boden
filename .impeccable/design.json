@@ -1,0 +1,776 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-13T01:03:31+00:00",
+  "title": "Design System: Boden",
+  "extensions": {
+    "colorMeta": {
+      "graphite-ground": {
+        "role": "neutral",
+        "displayName": "Graphite Ground",
+        "canonical": "#0c0f14",
+        "theme": "dark",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242528",
+          "#404246",
+          "#5e6167",
+          "#7e8389",
+          "#a2a5ab",
+          "#c6c9ce",
+          "#edeef2"
+        ]
+      },
+      "graphite-ground-subtle": {
+        "role": "neutral",
+        "displayName": "Graphite Ground Subtle",
+        "canonical": "#131820",
+        "theme": "dark",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232529",
+          "#3f4248",
+          "#5c626a",
+          "#7c838d",
+          "#a0a5ae",
+          "#c5c9d0",
+          "#eceff4"
+        ]
+      },
+      "graphite-surface": {
+        "role": "neutral",
+        "displayName": "Graphite Surface",
+        "canonical": "#161b23",
+        "theme": "dark",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232529",
+          "#3f4248",
+          "#5c626a",
+          "#7c838d",
+          "#a0a5ae",
+          "#c5c9d0",
+          "#eceff3"
+        ]
+      },
+      "graphite-plate": {
+        "role": "neutral",
+        "displayName": "Graphite Plate",
+        "canonical": "#1d232c",
+        "theme": "dark",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232529",
+          "#3e4249",
+          "#5c626a",
+          "#7b838e",
+          "#9fa5af",
+          "#c5c9d1",
+          "#ebeff4"
+        ]
+      },
+      "graphite-border": {
+        "role": "neutral",
+        "displayName": "Graphite Hairline",
+        "canonical": "#242b35",
+        "theme": "dark",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#22252a",
+          "#3e4249",
+          "#5b626b",
+          "#7b838f",
+          "#9fa6b0",
+          "#c4cad2",
+          "#ebeff4"
+        ]
+      },
+      "graphite-border-strong": {
+        "role": "neutral",
+        "displayName": "Graphite Border Strong",
+        "canonical": "#333c48",
+        "theme": "dark",
+        "tonalRamp": [
+          "#090b0e",
+          "#22252a",
+          "#3d424a",
+          "#5a626d",
+          "#798391",
+          "#9da6b1",
+          "#c3cad3",
+          "#eaeff5"
+        ]
+      },
+      "graphite-border-interactive": {
+        "role": "neutral",
+        "displayName": "Graphite Control Edge",
+        "canonical": "#6a7584",
+        "theme": "dark",
+        "tonalRamp": [
+          "#090b0e",
+          "#21252b",
+          "#3c434b",
+          "#59626e",
+          "#788392",
+          "#9da6b3",
+          "#c2cad4",
+          "#eaeff6"
+        ]
+      },
+      "frost-text": {
+        "role": "neutral",
+        "displayName": "Frost Text",
+        "canonical": "#eef1f4",
+        "theme": "dark",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414244",
+          "#5f6163",
+          "#808385",
+          "#a3a5a7",
+          "#c7c9cb",
+          "#edeef0"
+        ]
+      },
+      "frost-text-muted": {
+        "role": "neutral",
+        "displayName": "Frost Text Muted",
+        "canonical": "#a2abb7",
+        "theme": "dark",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#222529",
+          "#3e4249",
+          "#5b626b",
+          "#7b838e",
+          "#9fa6af",
+          "#c4cad1",
+          "#ebeff4"
+        ]
+      },
+      "mint": {
+        "role": "primary",
+        "displayName": "Mint",
+        "canonical": "#4fd4a6",
+        "theme": "dark",
+        "tonalRamp": [
+          "#000f08",
+          "#002e1f",
+          "#005038",
+          "#007453",
+          "#009b71",
+          "#59ba96",
+          "#95dbbe",
+          "#ccfbe6"
+        ]
+      },
+      "mint-hover": {
+        "role": "primary",
+        "displayName": "Mint Hover",
+        "canonical": "#7be2bf",
+        "theme": "dark",
+        "tonalRamp": [
+          "#010f09",
+          "#052c21",
+          "#0e4e3c",
+          "#197159",
+          "#299778",
+          "#69b79c",
+          "#9ed8c2",
+          "#d2f9e9"
+        ]
+      },
+      "mint-text": {
+        "role": "primary",
+        "displayName": "Mint Text",
+        "canonical": "#6fe0b9",
+        "theme": "dark",
+        "tonalRamp": [
+          "#000f09",
+          "#012d20",
+          "#034e3b",
+          "#077357",
+          "#179875",
+          "#64b89a",
+          "#9bd9c1",
+          "#cffae8"
+        ]
+      },
+      "pale-ground": {
+        "role": "neutral",
+        "displayName": "Pale Ground",
+        "canonical": "#f2f3f5",
+        "theme": "light",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252526",
+          "#414243",
+          "#606163",
+          "#818284",
+          "#a4a5a6",
+          "#c8c9ca",
+          "#eeeeef"
+        ]
+      },
+      "pale-ground-subtle": {
+        "role": "neutral",
+        "displayName": "Pale Ground Subtle",
+        "canonical": "#e8eaee",
+        "theme": "light",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414244",
+          "#606164",
+          "#808286",
+          "#a3a5a8",
+          "#c8c9cb",
+          "#eeeef0"
+        ]
+      },
+      "pale-surface": {
+        "role": "neutral",
+        "displayName": "Pale Surface",
+        "canonical": "#ffffff",
+        "theme": "light",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "pale-plate": {
+        "role": "neutral",
+        "displayName": "Pale Plate",
+        "canonical": "#e3e6eb",
+        "theme": "light",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242527",
+          "#404245",
+          "#5f6165",
+          "#808287",
+          "#a3a5a9",
+          "#c7c9cc",
+          "#edeef1"
+        ]
+      },
+      "pale-border": {
+        "role": "neutral",
+        "displayName": "Pale Hairline",
+        "canonical": "#dcdfe5",
+        "theme": "light",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242527",
+          "#404245",
+          "#5f6165",
+          "#808288",
+          "#a3a5aa",
+          "#c7c9cd",
+          "#edeef1"
+        ]
+      },
+      "pale-border-strong": {
+        "role": "neutral",
+        "displayName": "Pale Border Strong",
+        "canonical": "#c3c8d0",
+        "theme": "light",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#232528",
+          "#404246",
+          "#5e6167",
+          "#7e838a",
+          "#a1a5ab",
+          "#c6c9ce",
+          "#eceff2"
+        ]
+      },
+      "pale-border-interactive": {
+        "role": "neutral",
+        "displayName": "Pale Control Edge",
+        "canonical": "#7a8392",
+        "theme": "light",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#22252b",
+          "#3d424b",
+          "#5b626d",
+          "#7a8392",
+          "#9ea5b2",
+          "#c4c9d3",
+          "#eaeff6"
+        ]
+      },
+      "ink-text": {
+        "role": "neutral",
+        "displayName": "Ink Text",
+        "canonical": "#0e1218",
+        "theme": "light",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232528",
+          "#3f4247",
+          "#5d6268",
+          "#7d838b",
+          "#a1a5ac",
+          "#c6c9cf",
+          "#eceff2"
+        ]
+      },
+      "ink-text-muted": {
+        "role": "neutral",
+        "displayName": "Ink Text Muted",
+        "canonical": "#525b68",
+        "theme": "light",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#22252a",
+          "#3d424a",
+          "#5a626d",
+          "#7a8391",
+          "#9ea6b1",
+          "#c3cad3",
+          "#eaeff5"
+        ]
+      },
+      "deep-mint": {
+        "role": "primary",
+        "displayName": "Deep Mint",
+        "canonical": "#0a7a5c",
+        "theme": "light",
+        "tonalRamp": [
+          "#020f09",
+          "#092c21",
+          "#174d3b",
+          "#257058",
+          "#379676",
+          "#70b69b",
+          "#a2d7c1",
+          "#d4f8e9"
+        ]
+      },
+      "deep-mint-hover": {
+        "role": "primary",
+        "displayName": "Deep Mint Hover",
+        "canonical": "#07664d",
+        "theme": "light",
+        "tonalRamp": [
+          "#030e09",
+          "#0f2b21",
+          "#1f4c3c",
+          "#306f59",
+          "#459378",
+          "#78b49d",
+          "#a7d5c3",
+          "#d8f7ea"
+        ]
+      },
+      "deep-mint-text": {
+        "role": "primary",
+        "displayName": "Deep Mint Text",
+        "canonical": "#086a50",
+        "theme": "light",
+        "tonalRamp": [
+          "#030e09",
+          "#0e2b21",
+          "#1d4c3c",
+          "#2e6f59",
+          "#439478",
+          "#76b49c",
+          "#a6d5c2",
+          "#d7f7ea"
+        ]
+      },
+      "success-dark": {
+        "role": "status",
+        "displayName": "Success (dark)",
+        "canonical": "#8bd15a",
+        "theme": "dark",
+        "tonalRamp": [
+          "#040f00",
+          "#142c01",
+          "#284d04",
+          "#3d7108",
+          "#559617",
+          "#81b75d",
+          "#aed894",
+          "#dbfaca"
+        ]
+      },
+      "success-light": {
+        "role": "status",
+        "displayName": "Success (light)",
+        "canonical": "#3b7d1c",
+        "theme": "light",
+        "tonalRamp": [
+          "#040f02",
+          "#142c0a",
+          "#274d18",
+          "#3c7027",
+          "#549639",
+          "#81b66d",
+          "#aed79f",
+          "#dbf9d1"
+        ]
+      },
+      "info-dark": {
+        "role": "status",
+        "displayName": "Info (dark)",
+        "canonical": "#6aa8f0",
+        "theme": "dark",
+        "tonalRamp": [
+          "#030c18",
+          "#10263f",
+          "#21436a",
+          "#336399",
+          "#4985c9",
+          "#78a9e2",
+          "#a7cdfa",
+          "#d7f1ff"
+        ]
+      },
+      "info-light": {
+        "role": "status",
+        "displayName": "Info (light)",
+        "canonical": "#2563a8",
+        "theme": "light",
+        "tonalRamp": [
+          "#030b18",
+          "#10263f",
+          "#21436b",
+          "#33639b",
+          "#4885cb",
+          "#77a8e3",
+          "#a7cdfb",
+          "#d7f1ff"
+        ]
+      },
+      "warning-dark": {
+        "role": "status",
+        "displayName": "Warning (dark)",
+        "canonical": "#f0b24a",
+        "theme": "dark",
+        "tonalRamp": [
+          "#130900",
+          "#352000",
+          "#5b3a00",
+          "#845700",
+          "#af7500",
+          "#cc9c4f",
+          "#e8c38b",
+          "#ffeac4"
+        ]
+      },
+      "warning-light": {
+        "role": "status",
+        "displayName": "Warning (light)",
+        "canonical": "#b26a00",
+        "theme": "light",
+        "tonalRamp": [
+          "#140800",
+          "#381e01",
+          "#603702",
+          "#8a5204",
+          "#b76f12",
+          "#d3975a",
+          "#eebf92",
+          "#ffe8c8"
+        ]
+      },
+      "error-dark": {
+        "role": "status",
+        "displayName": "Error (dark)",
+        "canonical": "#f2665f",
+        "theme": "dark",
+        "tonalRamp": [
+          "#1a0403",
+          "#431210",
+          "#712421",
+          "#a33734",
+          "#d64e49",
+          "#ef8077",
+          "#ffaea6",
+          "#ffddd6"
+        ]
+      },
+      "error-light": {
+        "role": "status",
+        "displayName": "Error (light)",
+        "canonical": "#c4302b",
+        "theme": "light",
+        "tonalRamp": [
+          "#1b0302",
+          "#45100d",
+          "#74211c",
+          "#a6332c",
+          "#da4940",
+          "#f47d70",
+          "#ffaca1",
+          "#ffdcd2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page title, one per page (rises to 2.25rem from 40rem)."
+      },
+      "order-code": {
+        "displayName": "Order Code",
+        "purpose": "The order code read aloud at pick-up."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "An h1 inside its card (order detail)."
+      },
+      "row-title": {
+        "displayName": "Row Title",
+        "purpose": "Category row titles on the shop wall (rises to 1.5rem from 40rem)."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section, card, dialog and sidebar titles."
+      },
+      "tile-title": {
+        "displayName": "Tile Title",
+        "purpose": "Product name under a tile, two-line clamp."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default UI text."
+      },
+      "body-lead": {
+        "displayName": "Body Lead",
+        "purpose": "Product descriptions, max 65ch."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Form labels."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Variant count and stock line under a tile."
+      }
+    },
+    "shadows": [
+      {
+        "name": "tile-lift",
+        "value": "0 14px 28px -12px var(--ui-shadow)",
+        "purpose": "Hovered or focused shop tile, with scale(1.04)."
+      },
+      {
+        "name": "tile-focus",
+        "value": "0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-focus-ring), 0 14px 28px -12px var(--ui-shadow)",
+        "purpose": "Keyboard focus on a tile; backed by a transparent outline for forced colours."
+      },
+      {
+        "name": "floating-panel",
+        "value": "0 20px 25px -5px var(--ui-shadow), 0 8px 10px -6px var(--ui-shadow)",
+        "purpose": "Menus, popovers, floating forms (Tailwind shadow-xl tinted with --ui-shadow)."
+      },
+      {
+        "name": "sheet",
+        "value": "0 25px 50px -12px var(--ui-shadow)",
+        "purpose": "Cart sidebar (Tailwind shadow-2xl tinted with --ui-shadow)."
+      },
+      {
+        "name": "shadow-tint",
+        "value": "light-dark(rgb(12 15 20 / 0.28), rgb(0 0 0 / 0.6))",
+        "purpose": "The only shadow colour; never derived from text."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Tile lift, row dim, cart sidebar slide."
+      },
+      {
+        "name": "dur-move",
+        "value": "220ms",
+        "purpose": "Tile lift, row dim and sheet movement."
+      },
+      {
+        "name": "dur-quick",
+        "value": "160ms",
+        "purpose": "Declared for quick state changes; buttons currently use a literal 150ms ease-out."
+      },
+      {
+        "name": "button-press",
+        "value": "scale(0.97) on :active, 150ms ease-out",
+        "purpose": "Press feedback on every button primitive."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "Removes transitions, lift scale and press scale."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "40rem"
+      },
+      {
+        "name": "md",
+        "value": "48rem"
+      },
+      {
+        "name": "lg",
+        "value": "64rem"
+      }
+    ],
+    "themes": {
+      "native": "dark",
+      "mechanism": "light-dark() pairs on :root; data-theme on <html> forces a scheme",
+      "source": "src/styles/global.css"
+    },
+    "openItems": [
+      "help token (--ui-help*) is still Tailwind violet; the user wants no violet and deferred the replacement."
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled mint action on a screen (Add to cart, Submit request).",
+      "html": "<button class=\"ds-btn-primary\">Add to cart</button>",
+      "css": ".ds-btn-primary { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 16px; border: 0; border-radius: 8px; background: var(--ui-accent); color: var(--ui-text-inverted); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary:hover { background: var(--ui-accent-hover); } .ds-btn-primary:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; } .ds-btn-primary:active { transform: scale(0.97); } @media (prefers-reduced-motion: reduce) { .ds-btn-primary { transition: none; } .ds-btn-primary:active { transform: none; } }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Default action: outlined, transparent, fills on hover.",
+      "html": "<button class=\"ds-btn-secondary\">My orders</button>",
+      "css": ".ds-btn-secondary { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 16px; border: 1px solid var(--ui-border-strong); border-radius: 8px; background: transparent; color: var(--ui-text); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out; } .ds-btn-secondary:hover { border-color: var(--ui-border-interactive); background: var(--ui-bg-subtle); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; } .ds-btn-secondary:active { transform: scale(0.97); }"
+    },
+    {
+      "name": "Ghost Icon Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Navbar chrome trigger (cart, theme, menu): no box until hovered.",
+      "html": "<button class=\"ds-btn-ghost\" aria-label=\"Open cart\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 19a2 2 0 1 0 4 0a2 2 0 1 0-4 0M17 19a2 2 0 1 0 4 0a2 2 0 1 0-4 0M17 17H6V3H4M6 5l14 1-1 7H6\"/></svg></button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 0; border-radius: 9999px; background: transparent; color: var(--ui-text-muted); cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-btn-ghost:hover { background: var(--ui-bg-subtle); color: var(--ui-text); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Form field: surface fill, 3:1 interactive border, mint focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-label\">Note for the volunteer</span><input class=\"ds-input\" placeholder=\"Optional\"></label>",
+      "css": ".ds-field { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: flex; flex-direction: column; gap: 8px; } .ds-label { font-size: 0.875rem; font-weight: 500; color: var(--ui-text); } .ds-input { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); min-height: 40px; padding: 8px 12px; border: 1px solid var(--ui-border-interactive); border-radius: 8px; background: var(--ui-surface); color: var(--ui-text); font-size: 0.875rem; } .ds-input::placeholder { color: var(--ui-text-muted); } .ds-input:focus { outline: none; border-color: var(--ui-accent); box-shadow: 0 0 0 2px color-mix(in oklab, var(--ui-accent) 25%, transparent); }"
+    },
+    {
+      "name": "Category Chip",
+      "kind": "chip",
+      "refersTo": "chip-category",
+      "description": "Jump link to a category row, with its count.",
+      "html": "<a class=\"ds-chip\" href=\"#\">Harnesses <span class=\"ds-chip-count\">6</span></a>",
+      "css": ".ds-chip { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 16px; border: 1px solid var(--ui-border-strong); border-radius: 9999px; background: var(--ui-surface); color: var(--ui-text); font-size: 0.875rem; font-weight: 600; text-decoration: none; transition: background-color 150ms ease-out, border-color 150ms ease-out; } .ds-chip:hover { border-color: var(--ui-border-interactive); background: var(--ui-bg-subtle); } .ds-chip:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; } .ds-chip-count { font-size: 0.75rem; font-weight: 500; color: var(--ui-text-muted); font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Variant Chip",
+      "kind": "chip",
+      "refersTo": "chip-variant",
+      "description": "Variant picker option; selected fills mint, out of stock strikes through.",
+      "html": "<div class=\"ds-variants\"><button class=\"ds-variant\" aria-pressed=\"true\">M</button><button class=\"ds-variant\" aria-pressed=\"false\">L</button><button class=\"ds-variant ds-variant-out\" aria-pressed=\"false\">XL</button></div>",
+      "css": ".ds-variants { display: flex; flex-wrap: wrap; gap: 12px; } .ds-variant { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); min-height: 44px; min-width: 48px; padding: 8px 16px; border: 1px solid var(--ui-border-interactive); border-radius: 9999px; background: transparent; color: var(--ui-text); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out; } .ds-variant:hover { border-color: var(--ui-text); } .ds-variant:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; } .ds-variant[aria-pressed=\"true\"] { border-color: var(--ui-accent); background: var(--ui-accent); color: var(--ui-text-inverted); } .ds-variant-out { border-color: var(--ui-border-strong); color: var(--ui-disabled-text); text-decoration: line-through; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Standard surface panel: hairline border, no shadow.",
+      "html": "<section class=\"ds-card\"><h2 class=\"ds-card-title\">Your items</h2><p class=\"ds-card-body\">Two items for Saturday to Monday.</p></section>",
+      "css": ".ds-card { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: flex; flex-direction: column; gap: 20px; padding: 24px; border: 1px solid var(--ui-border); border-radius: 12px; background: var(--ui-surface); } .ds-card-title { margin: 0; font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; color: var(--ui-text); } .ds-card-body { margin: 0; font-size: 0.875rem; color: var(--ui-text-muted); }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-neutral",
+      "description": "Order status and availability pills in tone steps.",
+      "html": "<span class=\"ds-badge\">Requested</span> <span class=\"ds-badge ds-badge-success\">Scheduled</span>",
+      "css": ".ds-badge { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: inline-block; padding: 4px 10px; border: 1px solid var(--ui-border); border-radius: 9999px; background: var(--ui-bg-subtle); color: var(--ui-text-muted); font-size: 0.75rem; font-weight: 500; white-space: nowrap; } .ds-badge-success { border-color: var(--ui-success-border); background: var(--ui-success-subtle); color: var(--ui-success-text); }"
+    },
+    {
+      "name": "Gear Wall Row",
+      "kind": "custom",
+      "refersTo": "tile-plate",
+      "description": "Signature: a category row whose focused tile lifts while its row-mates dim.",
+      "html": "<section class=\"ds-row\"><h2 class=\"ds-row-title\">Harnesses <span class=\"ds-row-count\">3</span></h2><ul class=\"ds-rail\"><li><a class=\"ds-tile\" href=\"#\"><div class=\"ds-plate\"></div><span class=\"ds-tile-title\">Edelrid Harness</span><span class=\"ds-tile-meta\">4 options · 6 in stock</span></a></li><li><a class=\"ds-tile\" href=\"#\"><div class=\"ds-plate\"></div><span class=\"ds-tile-title\">Black Diamond Momentum</span><span class=\"ds-tile-meta\">3 in stock</span></a></li><li><a class=\"ds-tile\" href=\"#\"><div class=\"ds-plate\"></div><span class=\"ds-tile-title\">Petzl Corax</span><span class=\"ds-tile-meta ds-out\">Not in stock</span></a></li></ul></section>",
+      "css": ".ds-row { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: flex; flex-direction: column; gap: 12px; } .ds-row-title { margin: 0; display: flex; align-items: baseline; gap: 10px; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; color: var(--ui-text); } .ds-row-count { font-size: 0.875rem; font-weight: 600; letter-spacing: 0; color: var(--ui-text-muted); font-variant-numeric: tabular-nums; } .ds-rail { list-style: none; margin: 0; padding: 12px 0 8px; display: grid; grid-auto-flow: column; grid-auto-columns: 140px; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; } .ds-rail > li { scroll-snap-align: start; min-width: 0; transition: opacity 220ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-tile { display: flex; flex-direction: column; gap: 4px; text-decoration: none; border-radius: 12px; outline: none; } .ds-plate { aspect-ratio: 1; margin-bottom: 6px; border-radius: 12px; background: var(--ui-plate); transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-tile-title { font-size: 0.9375rem; font-weight: 600; line-height: 1.375; color: var(--ui-text); } .ds-tile-meta { font-size: 0.8125rem; color: var(--ui-text-muted); font-variant-numeric: tabular-nums; } .ds-out { color: var(--ui-error-text); } .ds-tile:hover .ds-plate { transform: scale(1.04); box-shadow: 0 14px 28px -12px var(--ui-shadow); } .ds-tile:focus-visible .ds-plate { transform: scale(1.04); box-shadow: 0 0 0 2px var(--ui-bg), 0 0 0 4px var(--ui-focus-ring), 0 14px 28px -12px var(--ui-shadow); } .ds-rail:has(.ds-tile:hover) > li:not(:has(.ds-tile:hover)), .ds-rail:has(.ds-tile:focus-visible) > li:not(:has(.ds-tile:focus-visible)) { opacity: 0.45; } @media (prefers-reduced-motion: reduce) { .ds-rail > li, .ds-plate { transition: none; } .ds-tile:hover .ds-plate, .ds-tile:focus-visible .ds-plate { transform: none; } }"
+    },
+    {
+      "name": "Navbar",
+      "kind": "nav",
+      "refersTo": "navbar",
+      "description": "Sticky 64px graphite bar with the Boden lockup and a mint current-page underline.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-brand\" href=\"#\"><span class=\"ds-brand-name\">Boden</span><span class=\"ds-brand-by\">by OSI Klatring</span></a><ul class=\"ds-links\"><li><a href=\"#\" aria-current=\"page\">Gear</a></li><li><a href=\"#\">My orders</a></li></ul></nav>",
+      "css": ".ds-nav { font-family: var(--font-sans, \"Schibsted Grotesk Variable\", ui-sans-serif, system-ui, sans-serif); display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 32px; border-bottom: 1px solid var(--ui-border); background: var(--ui-bg); } .ds-brand { display: flex; flex-direction: column; line-height: 1; text-decoration: none; } .ds-brand-name { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em; color: var(--ui-text); } .ds-brand-by { margin-top: 4px; font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.025em; color: var(--ui-text-muted); } .ds-links { display: flex; gap: 4px; margin: 0; padding: 0; list-style: none; } .ds-links a { position: relative; display: block; padding: 8px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 500; color: var(--ui-text-muted); text-decoration: none; transition: color 150ms ease-out; } .ds-links a:hover { color: var(--ui-text); } .ds-links a:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; } .ds-links a[aria-current=\"page\"] { font-weight: 700; color: var(--ui-text); } .ds-links a[aria-current=\"page\"]::after { content: \"\"; position: absolute; left: 12px; right: 12px; bottom: -14px; height: 2px; border-radius: 9999px; background: var(--ui-accent); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Gear Wall",
+    "overview": "Boden is the club shed laid out as a streaming wall: one row per category, each a sideways rail of square photo plates on a deep graphite ground. The photos carry the colour; the interface stays near-black and blue-grey so harnesses, ropes and cams read as the content. One mint accent marks what is in play: focus, selection and the single primary action on a screen. When a tile is focused or hovered it lifts and its row-mates step back, so the eye always knows where it is.\n\nDark is the native theme. Light is the same system on cool pale grey with a deeper mint, not a separate design. Type is one Nordic grotesk whose hierarchy comes from weight: heavy, tightly tracked row and page titles over plain, quiet body text, with tabular figures wherever dates, counts and order codes sit. The density is roomy by default and dense only where browsing wants it (the shop rails, small controls).\n\nThe world refuses the uniform white product-card grid with a blue call to action. It should feel like a well-kept club shelf, never cold and corporate, never playful or juvenile.",
+    "keyCharacteristics": [
+      "Graphite grounds in three close steps (ground, surface, plate) with hairline borders rather than shadows.",
+      "One mint accent, used for focus, selection and the primary action only.",
+      "Borderless fixed-ratio photo plates on a shared plate colour, so the catalogue reads as one set.",
+      "Schibsted Grotesk only; weight 800 for titles, tabular figures for every number that is read or compared.",
+      "Motion is short exponential ease-out on transform and opacity, and is switched off under reduced motion."
+    ],
+    "rules": [
+      {
+        "name": "The Photos Carry the Colour Rule",
+        "body": "The interface stays graphite (or pale grey) and mint; the gear photography is where colour lives. No decorative hues, gradients or tinted panels around tiles.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Mint Rule",
+        "body": "Mint means \"in play\": focus, selected, or the one primary action. A screen has at most one filled mint button; everything else is secondary, ghost or text.",
+        "section": "colors"
+      },
+      {
+        "name": "The Weight Ladder Rule",
+        "body": "Hierarchy comes from weight and size in one family: 400 body, 500 labels, 600 tile titles and controls, 700 section titles, 800 page and row titles. Never introduce a second family for display.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Figures Rule",
+        "body": "Tables, `<time>` elements and anything marked `tabular` (counts, order codes, quantities, pick-up windows) set `tabular-nums` so figures line up.",
+        "section": "typography"
+      },
+      {
+        "name": "The Lift Is Earned Rule",
+        "body": "Nothing on the page casts a shadow at rest. Depth is a response to focus, hover or floating, and it comes with motion.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** put every gear photo on the plate colour in a fixed-ratio, borderless, 12px-rounded plate.",
+      "**Do** keep mint for focus, selection and the one primary action per screen (The One Mint Rule).",
+      "**Do** use the shared motion tokens (`--ease-out-expo`, `--dur-move` 220ms, `--dur-quick` 160ms) on transform and opacity only, and disable them under `prefers-reduced-motion`.",
+      "**Do** set counts, dates, quantities and codes in tabular figures.",
+      "**Do** keep tile metadata visible under the plate; hover adds the lift, never the information.",
+      "**Do** author both theme values together as one `light-dark()` pair in `global.css`, and check the dark theme first: it is the native one."
+    ],
+    "donts": [
+      "**Don't** build a uniform white product-card grid with a blue call to action; the catalogue is rows of photo plates on graphite.",
+      "**Don't** put borders or shadows on tiles at rest, or shadows on cards; depth is earned by lift or by floating.",
+      "**Don't** add a second accent hue or decorative colour; status hues are for status only.",
+      "**Don't** introduce violet anywhere; the `help` token's violet is a known open item awaiting replacement, not a precedent.",
+      "**Don't** derive shadow colour from the text colour; use `--ui-shadow`.",
+      "**Don't** add a second typeface or set display text in a system font.",
+      "**Don't** stack small uppercase kickers or eyebrows above headings; group labels inside cards are bold sentence case."
+    ]
+  }
+}

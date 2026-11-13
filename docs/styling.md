@@ -40,9 +40,9 @@ Schibsted Grotesk (`@fontsource-variable/schibsted-grotesk`), set as
 | Body text | `text`, `text-muted`, `text-inverted` | `text-text`, `text-text-muted` |
 | Disabled state | `disabled-bg`, `disabled-text` | `bg-disabled-bg`, `text-disabled-text` |
 | Modal/overlay backdrop | `overlay` | `bg-overlay` |
-| Brand/primary action | `accent`, `accent-hover`, `accent-subtle`, `accent-text` | `bg-accent`, `text-accent-text` |
-| "This is selected" (wizard rows) | `selected`, `selected-subtle`, `selected-border`, `selected-text` | `bg-selected`, `border-selected-border`, `text-selected-text` |
-| Keyboard focus outline | `focus-ring` | `outline-focus-ring` |
+| Brand/primary action (OSI Klatring org red `#a20000`) | `accent`, `accent-hover`, `accent-subtle`, `accent-text`, `on-accent` (text on an accent fill) | `bg-accent text-on-accent`, `text-accent-text` |
+| "This is selected" (wizard rows, calendar days, native controls) — azure | `selected`, `selected-subtle`, `selected-border`, `selected-text`, `on-selected` | `bg-selected`, `border-selected-border`, `text-selected-text` |
+| Keyboard focus outline and input focus (azure) | `focus-ring` | `outline-focus-ring`, `focus:border-focus-ring` |
 | Success / in-stock | `success`, `success-subtle`, `success-border`, `success-text` | `bg-success-subtle`, `text-success-text` |
 | Availability scale (AvailabilityCalendar): units available that day, 0 … 4+ (semi-transparent; text on top stays `text-text`) | `availability-0` … `availability-4` | `bg-availability-2` |
 | Informational | `info`, `info-subtle`, `info-border`, `info-text` | `bg-info-subtle`, `text-info-text` |
@@ -55,9 +55,16 @@ non-text contrast minimum in both themes, because it's the *only* boundary
 cue on interactive controls like inputs and checkboxes. Use it there instead
 of the plain `border` token.
 
-`selected` and `accent` share the same hue today but are deliberately
-separate tokens, so a future rebrand can change the brand color without
-changing what "this is selected" looks like.
+`accent` is the org red; `selected` and `focus-ring` are its azure
+complement. Red is also what delete/reject buttons and "none available"
+look like, so selection and focus never use the accent, and regions where
+primary actions share the screen with destructive ones or red availability
+states wrap their content in `.accent-alt`, which swaps the whole accent
+family to azure for that subtree. It is applied today to the admin and
+moderator layouts' content, the cart sidebar, `/orders/[code]` and
+`/reservation`. Add it to any new screen that puts a primary button next to
+a `danger` one; the navbar stays outside it so the current-page bar keeps
+the org colour.
 
 ## Rules for agents
 
@@ -72,7 +79,7 @@ changing what "this is selected" looks like.
    hardcoded defaults or reassigning raw palette colors.
 3. Pick the token family by *meaning*, not by what color it happens to
    render as today — e.g. an "available to pick up" tint is `success`, not
-   `green`; a selected wizard row is `selected`, not `blue` (picked calendar days deliberately use `accent`).
+   `green`; a selected wizard row or a picked calendar day is `selected`, not `blue`.
 4. Known deferred gap: the `help` dialogue-box token is currently violet and
    is slated to change — don't treat its current hue as meaningful when
    reusing it.

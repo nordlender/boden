@@ -15,8 +15,9 @@
 
 /*
  * Visual world: "Gear Wall Rows" (see .impeccable/surfaces/ and DESIGN.md).
- * Deep graphite grounds where the gear photos carry the colour, one mint
- * accent for focus, selection and the primary action. Dark is the world's
+ * Deep graphite grounds where the gear photos carry the colour, OSI
+ * Klatring's org red as the accent, and its azure complement for
+ * selection, focus and red-heavy screens. Dark is the world's
  * native theme; light is the same system on cool pale grey. Values are
  * authored here (not borrowed from Tailwind's palette) so the two themes
  * stay one tuned system.
@@ -50,28 +51,46 @@
 
 	--ui-overlay: light-dark(color-mix(in oklab, #0c0f14 45%, transparent), color-mix(in oklab, #000000 65%, transparent));
 
-	/* Mint: dark text on a bright mint in dark mode, white on a deep mint in
-	 * light mode (text-inverted flips with the theme, so both pass 4.5:1). */
-	--ui-accent: light-dark(#0a7a5c, #4fd4a6);
-	--ui-accent-hover: light-dark(#07664d, #7be2bf);
-	--ui-accent-subtle: light-dark(#dff3eb, color-mix(in oklab, #4fd4a6 14%, transparent));
-	--ui-accent-text: light-dark(#086a50, #6fe0b9);
-	--ui-focus-ring: light-dark(#0a7a5c, #6fe0b9);
+	/* Accent: OSI Klatring's org red (#a20000) — primary actions, the
+	 * navbar's current-page bar, step markers, links. Fills keep the exact
+	 * org colour in both themes with white text on top (on-accent, 8.3:1);
+	 * accent-text is a lighter tint of the same red in dark mode so links
+	 * stay readable on graphite.
+	 *
+	 * Red is also the language of delete/reject buttons and "none
+	 * available", so wherever those share a screen with primary actions
+	 * (admin and moderator tools, the cart, an order's page, the
+	 * reservation form) the `.accent-alt` scope below swaps the accent for
+	 * the azure complement. Selection and focus are azure everywhere, so
+	 * nothing selected or focused can read as an error. */
+	--ui-accent: #a20000;
+	--ui-accent-hover: light-dark(#850000, #bd1515);
+	--ui-accent-subtle: light-dark(#f7e2e2, color-mix(in oklab, #e0322b 16%, transparent));
+	--ui-accent-text: light-dark(#a20000, #f06a63);
+	--ui-on-accent: #ffffff;
 
-	/* Same hue as accent today, but its own token: a rebrand could change the
-	 * brand color without touching what "this is selected" looks like (and
-	 * vice versa). Shared by wizard row-selection and calendar day-selection. */
-	--ui-selected: light-dark(#0a7a5c, #4fd4a6);
-	--ui-selected-subtle: light-dark(#dff3eb, color-mix(in oklab, #4fd4a6 14%, transparent));
-	--ui-selected-border: light-dark(#8fd3bb, #2f7d63);
-	--ui-selected-text: light-dark(#075a44, #8ee8c8);
+	/* Azure: the complement to the org red. Selection (wizard rows, calendar
+	 * days, native controls), keyboard focus, and the accent inside
+	 * `.accent-alt` regions. */
+	--ui-azure: light-dark(#1f5fcc, #2f6ae0);
+	--ui-azure-hover: light-dark(#184ea8, #2558c4);
+	--ui-azure-subtle: light-dark(#e2ebfa, color-mix(in oklab, #5b9bff 18%, transparent));
+	--ui-azure-text: light-dark(#1a55b8, #8ab6ff);
+	--ui-focus-ring: light-dark(#1f5fcc, #7fb0ff);
 
-	/* A yellower green than the mint accent, so "available" never reads as
-	 * "selected". */
-	--ui-success: light-dark(#3b7d1c, #8bd15a);
-	--ui-success-subtle: light-dark(#e8f4df, color-mix(in oklab, #8bd15a 12%, #161b23));
-	--ui-success-border: light-dark(#b4d99c, #4a6e2f);
-	--ui-success-text: light-dark(#2d5f15, #bfe9a0);
+	--ui-selected: var(--ui-azure);
+	--ui-selected-subtle: var(--ui-azure-subtle);
+	--ui-selected-border: light-dark(#9dbbec, #3a5f9e);
+	--ui-selected-text: light-dark(#184ea8, #a6c8ff);
+	--ui-on-selected: #ffffff;
+
+	/* Status colours. Dark mode mixes each hue strongly into the surface
+	 * (22% fill, 55% border) with a bright tint for text, so order-status
+	 * badges stay vivid on graphite instead of greying out. */
+	--ui-success: light-dark(#3b7d1c, #8fdc55);
+	--ui-success-subtle: light-dark(#e8f4df, color-mix(in oklab, #8fdc55 22%, #161b23));
+	--ui-success-border: light-dark(#b4d99c, color-mix(in oklab, #8fdc55 55%, #161b23));
+	--ui-success-text: light-dark(#2d5f15, #c6f59e);
 	/* Availability scale (AvailabilityCalendar): units available that day,
 	   0 (red) … 4+ (green). Hues mixed with transparent, so each cell blends
 	   with whatever it sits on — tints on light surfaces, glows on dark ones.
@@ -90,20 +109,22 @@
 	--ui-availability-3: light-dark(color-mix(in oklch, var(--color-lime-500) 40%, transparent), color-mix(in oklch, var(--color-lime-600) 30%, transparent));
 	--ui-availability-4: light-dark(color-mix(in oklch, var(--color-green-500) 30%, transparent), color-mix(in oklch, var(--color-green-600) 23%, transparent));
 
-	--ui-info: light-dark(#2563a8, #6aa8f0);
-	--ui-info-subtle: light-dark(#e3edf8, color-mix(in oklab, #6aa8f0 12%, #161b23));
-	--ui-info-border: light-dark(#a9c6e8, #2f4f78);
-	--ui-info-text: light-dark(#1b4a80, #a9cdf7);
+	/* Cyan rather than blue, so "scheduled" never reads as the azure
+	 * selection colour. */
+	--ui-info: light-dark(#0a7896, #38c8f0);
+	--ui-info-subtle: light-dark(#ddf1f7, color-mix(in oklab, #38c8f0 22%, #161b23));
+	--ui-info-border: light-dark(#96d2e3, color-mix(in oklab, #38c8f0 55%, #161b23));
+	--ui-info-text: light-dark(#075a72, #a6e9fb);
 
-	--ui-warning: light-dark(#b26a00, #f0b24a);
-	--ui-warning-subtle: light-dark(#fbf0dc, color-mix(in oklab, #f0b24a 12%, #161b23));
-	--ui-warning-border: light-dark(#e8c98e, #6d5426);
-	--ui-warning-text: light-dark(#7a4a00, #f6cf8a);
+	--ui-warning: light-dark(#b26a00, #ffb52e);
+	--ui-warning-subtle: light-dark(#fbf0dc, color-mix(in oklab, #ffb52e 22%, #161b23));
+	--ui-warning-border: light-dark(#e8c98e, color-mix(in oklab, #ffb52e 55%, #161b23));
+	--ui-warning-text: light-dark(#7a4a00, #ffd88a);
 
-	--ui-error: light-dark(#c4302b, #f2665f);
-	--ui-error-subtle: light-dark(#fbe6e5, color-mix(in oklab, #f2665f 13%, #161b23));
-	--ui-error-border: light-dark(#eeb0ad, #7a3431);
-	--ui-error-text: light-dark(#94211d, #f8aaa6);
+	--ui-error: light-dark(#c4302b, #ff5f57);
+	--ui-error-subtle: light-dark(#fbe6e5, color-mix(in oklab, #ff5f57 22%, #161b23));
+	--ui-error-border: light-dark(#eeb0ad, color-mix(in oklab, #ff5f57 55%, #161b23));
+	--ui-error-text: light-dark(#94211d, #ffb3ae);
 
 	/* Still violet pending a later change (no violet wanted long-term). */
 	--ui-help: light-dark(var(--color-violet-600), var(--color-violet-500));
@@ -121,6 +142,21 @@
 
 :root[data-theme="dark"] {
 	color-scheme: dark;
+}
+
+/*
+ * `.accent-alt`: regions where the org-red accent would sit beside red
+ * delete/reject buttons or red availability states (admin and moderator
+ * main content, the cart sidebar, an order's page, the reservation form).
+ * The accent family switches to azure for everything inside. Works because
+ * `@theme inline` makes `bg-accent` etc. read `--ui-accent` at the point of
+ * use.
+ */
+.accent-alt {
+	--ui-accent: var(--ui-azure);
+	--ui-accent-hover: var(--ui-azure-hover);
+	--ui-accent-subtle: var(--ui-azure-subtle);
+	--ui-accent-text: var(--ui-azure-text);
 }
 
 @theme inline {
@@ -146,12 +182,14 @@
 	--color-accent-hover: var(--ui-accent-hover);
 	--color-accent-subtle: var(--ui-accent-subtle);
 	--color-accent-text: var(--ui-accent-text);
+	--color-on-accent: var(--ui-on-accent);
 	--color-focus-ring: var(--ui-focus-ring);
 
 	--color-selected: var(--ui-selected);
 	--color-selected-subtle: var(--ui-selected-subtle);
 	--color-selected-border: var(--ui-selected-border);
 	--color-selected-text: var(--ui-selected-text);
+	--color-on-selected: var(--ui-on-selected);
 
 	--color-success: var(--ui-success);
 	--color-success-subtle: var(--ui-success-subtle);
@@ -257,8 +295,9 @@ html {
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	text-rendering: optimizeLegibility;
-	/* Native controls (checkboxes, radios, range, progress) take the mint. */
-	accent-color: var(--color-accent);
+	/* Native controls (checkboxes, radios, range, progress) take the
+	   selection azure, never the brand red (a red checkbox reads as an error). */
+	accent-color: var(--ui-selected);
 	/* Thin graphite scrollbars instead of the platform's grey slab. */
 	scrollbar-color: var(--color-border-strong) transparent;
 }
@@ -266,11 +305,11 @@ html {
 body {
 	background-color: var(--color-bg);
 	color: var(--color-text);
-	caret-color: var(--color-accent);
+	caret-color: var(--ui-focus-ring);
 }
 
 ::selection {
-	background-color: color-mix(in oklab, var(--ui-accent) 32%, transparent);
+	background-color: color-mix(in oklab, var(--ui-azure) 32%, transparent);
 	color: var(--color-text);
 }
 
@@ -313,8 +352,8 @@ h3 {
 }
 
 :root .cally-theme :is(calendar-range, calendar-multi) {
-	--color-accent: var(--ui-accent);
-	--color-text-on-accent: var(--color-text-inverted);
+	--color-accent: var(--ui-selected);
+	--color-text-on-accent: var(--ui-on-selected);
 	display: block;
 	width: 100%;
 	font-family: inherit;
@@ -339,8 +378,8 @@ h3 {
    it), which fills keyboard-focused days; a value set from outside on the
    element itself beats that. */
 :root .cally-theme calendar-month {
-	--color-accent: var(--ui-accent);
-	--color-text-on-accent: var(--color-text-inverted);
+	--color-accent: var(--ui-selected);
+	--color-text-on-accent: var(--ui-on-selected);
 	width: 100%;
 }
 

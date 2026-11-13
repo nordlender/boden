@@ -11,5 +11,8 @@ const { title } = Astro.props;
 
 <HtmlShell title={title} bodyClass="min-h-screen bg-bg-subtle">
 	<AdminNavbar slot="navbar" />
-	<slot />
+	<!-- Delete/archive controls throughout: azure accent, not org red (see .accent-alt in global.css). -->
+	<div class="accent-alt">
+		<slot />
+	</div>
 </HtmlShell>

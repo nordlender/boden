@@ -10,7 +10,7 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export const variantClasses: Record<ButtonVariant, string> = {
 	primary:
-		'bg-accent font-semibold text-text-inverted hover:bg-accent-hover disabled:bg-disabled-bg disabled:text-disabled-text',
+		'bg-accent font-semibold text-on-accent hover:bg-accent-hover disabled:bg-disabled-bg disabled:text-disabled-text',
 	secondary:
 		'border border-border-strong font-medium text-text hover:border-border-interactive hover:bg-bg-subtle disabled:text-disabled-text disabled:hover:bg-transparent',
 	// Outline counterpart of `primary` — same accent palette, not filled. For

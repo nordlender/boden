@@ -41,7 +41,7 @@ export const inputSizeClasses: Record<InputSize, string> = {
 };
 
 export const inputBaseClasses =
-	'rounded-lg border border-border-interactive bg-surface text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:bg-disabled-bg disabled:text-disabled-text';
+	'rounded-lg border border-border-interactive bg-surface text-sm text-text placeholder:text-text-muted focus:border-focus-ring focus:outline-none focus:ring-2 focus:ring-focus-ring/25 disabled:bg-disabled-bg disabled:text-disabled-text';
 
 // A display-only field (`readonly`) — same box, but greyed so it doesn't
 // read as editable. Written out separately rather than layered over

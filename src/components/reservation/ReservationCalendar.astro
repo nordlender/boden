@@ -100,8 +100,8 @@ const todayIso = todayIsoInOslo();
 
 	.reservation-calendar calendar-range calendar-month::part(range-inner) {
 		border-radius: 0;
-		background-color: var(--color-accent-subtle);
-		color: var(--color-accent-text);
+		background-color: var(--ui-selected-subtle);
+		color: var(--ui-selected-text);
 	}
 
 	.reservation-calendar calendar-range calendar-month::part(range-inner day-1) {
@@ -114,8 +114,8 @@ const todayIso = todayIsoInOslo();
 
 	.reservation-calendar calendar-range calendar-month::part(range-start),
 	.reservation-calendar calendar-range calendar-month::part(range-end) {
-		background-color: var(--color-accent);
-		color: var(--color-text-inverted);
+		background-color: var(--ui-selected);
+		color: var(--ui-on-selected);
 	}
 
 	.reservation-calendar calendar-range calendar-month::part(range-start) {

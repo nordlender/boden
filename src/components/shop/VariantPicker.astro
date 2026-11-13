@@ -126,7 +126,7 @@ function optionLabel(variant: Variant): string {
 								data-id={variant.id}
 								data-image={variant.imageUrl ?? thumbnailImageUrl ?? ''}
 								data-stock={variant.inStock}
-								class={`min-h-11 min-w-12 rounded-full border px-4 py-2 text-sm font-semibold transition-colors hover:border-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-text-inverted aria-pressed:hover:border-accent ${variant.inStock > 0 ? 'border-border-interactive text-text' : 'border-border-strong text-disabled-text line-through'}`}
+								class={`min-h-11 min-w-12 rounded-full border px-4 py-2 text-sm font-semibold transition-colors hover:border-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-on-accent aria-pressed:hover:border-accent ${variant.inStock > 0 ? 'border-border-interactive text-text' : 'border-border-strong text-disabled-text line-through'}`}
 							>
 								{variant.kind === 'set' ? `Set — ${label}` : label}
 								{variant.inStock <= 0 && <span class="sr-only"> (out of stock)</span>}

@@ -8,10 +8,10 @@
 // availability/selection colors are below.
 //
 // `import 'cally'` (which registers the custom elements) lives in the
-// <script> block below, NOT in this frontmatter — Astro's frontmatter runs
+// script block below, NOT in this frontmatter — Astro's frontmatter runs
 // server-side only and is never shipped to the browser, so a side-effect
 // import up here would leave the client with an inert <calendar-range> that
-// never upgrades. The <script> block is compiled as a real client module,
+// never upgrades. The script block is compiled as a real client module,
 // which is where the registration needs to happen.
 interface Props {
 	// Time + place windows per pick-up date (see src/lib/pickupDays.ts). Every

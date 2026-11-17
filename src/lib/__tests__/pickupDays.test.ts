@@ -7,6 +7,7 @@ vi.mock('../../db/client', async () => {
 
 const { db } = await import('../../db/client');
 const { orders, users } = await import('../../db/schema');
+const { eq } = await import('drizzle-orm');
 const {
 	isValidDateString,
 	isValidTimeString,
@@ -322,6 +323,21 @@ describe('deleting windows assigned to orders (#369)', () => {
 
 		expect(await deleteSingleDay(day.id, MODERATOR_A)).toEqual({ ok: false, error: 'assigned', orderCodes: [pickupOrder.orderCode, returnOrder.orderCode].sort() });
 		expect(await listUpcomingPickupDays('2026-01-01')).toHaveLength(1);
+	});
+
+	it('refuses to delete an active order\'s return window, but not its past pick-up window', async () => {
+		await createSingleDays(MODERATOR_A, [
+			{ date: '2026-09-07', startTime: '18:00', endTime: '20:00', where: null },
+			{ date: '2026-09-14', startTime: '18:00', endTime: '20:00', where: null },
+		]);
+		const [pickupDay, returnDay] = await listUpcomingPickupDays('2026-01-01');
+		const active = await orderUsing('active', { pickupDayId: pickupDay.id, returnDayId: returnDay.id });
+
+		expect(await deleteSingleDay(returnDay.id, MODERATOR_A)).toEqual({ ok: false, error: 'assigned', orderCodes: [active.orderCode] });
+		// Already picked up: its pick-up window is history, so it doesn't block.
+		expect(await deleteSingleDay(pickupDay.id, MODERATOR_A)).toEqual({ ok: true });
+		const [row] = await db.select().from(orders).where(eq(orders.id, active.id));
+		expect([row.pickupDayId, row.returnDayId]).toEqual([null, returnDay.id]);
 	});
 
 	it('still deletes a day referenced only by orders that are done with it, clearing their reference', async () => {

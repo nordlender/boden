@@ -388,8 +388,10 @@ export const orders = sqliteTable('orders', {
   // findOverlappingWindows in src/lib/pickupDays.ts). Null until the order is
   // accepted: the member only gives time ranges at request time, never a
   // window. No onDelete: deleteSingleDay / deleteRecurringRule
-  // (src/lib/pickupDays.ts) refuse while a scheduled order is assigned the
-  // window (#369), and clear the reference of orders past needing it.
+  // (src/lib/pickupDays.ts) refuse while an order still needs the window —
+  // a scheduled order both, an active one its return window (#369; see
+  // PICKUP/RETURN_WINDOW_HOLDING_STATUSES in src/lib/orderStatus.ts) — and
+  // clear the reference of orders past needing it.
   pickupDayId: integer('pickup_day_id').references(() => pickupDays.id),
   returnDayId: integer('return_day_id').references(() => pickupDays.id),
   // TODO: dueAt (rental due date) — not yet confirmed, see docs/schema-legacy-fixes.md #9
@@ -983,10 +985,13 @@ moderator then assigns a real window to the order when accepting it
   presets (#368), the review page and `acceptOrder` (#343).
 - **Assigned windows** (`orders.pickupDayId` / `returnDayId`) stay null until
   the order is accepted. There's no `onDelete`: `deleteSingleDay` /
-  `deleteRecurringRule` refuse (listing the order codes) while a `scheduled`
-  order is assigned one of the affected windows (#369), and otherwise clear
-  the reference of orders that are done with it (rejected, returned, …) in
-  the same transaction as the delete.
+  `deleteRecurringRule` refuse (listing the order codes) while an order
+  still needs one of the affected windows (#369): a `scheduled` order its
+  pick-up and return window, an `active` one its return window
+  (`PICKUP_WINDOW_HOLDING_STATUSES` / `RETURN_WINDOW_HOLDING_STATUSES` in
+  `src/lib/orderStatus.ts`). Otherwise they clear the reference of orders
+  that are done with it (rejected, returned, an active order's past pick-up
+  window) in the same transaction as the delete.
 - **Requesting** (#368): `/reservation` collects the ranges once the dates
   are picked (the day's windows are presets); `validateOrderTimeRanges`
   adds the date rules (no range on today that has already passed, Oslo

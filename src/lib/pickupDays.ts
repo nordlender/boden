@@ -1,9 +1,9 @@
-import { and, asc, eq, gt, gte, inArray, ne, or, type SQL } from 'drizzle-orm';
-import { db } from '../db/client';
+import { and, asc, eq, gt, gte, inArray, notInArray, or, type SQL } from 'drizzle-orm';
+import { db, type Tx } from '../db/client';
 import { addDaysIso, isIsoDate } from './dates';
 import { orders, pickupDays, pickupRecurringRules } from '../db/schema';
 import type { QueryExecutor } from './availability';
-import { isPickupPending } from './orderStatus';
+import { PICKUP_WINDOW_HOLDING_STATUSES, RETURN_WINDOW_HOLDING_STATUSES, isPickupPending } from './orderStatus';
 import type { PickupWindowDisplay } from './pickupWindowFormat';
 import { isValidTimeString, mergeTimeRanges, overlapMinutes, type TimeRange } from './timeRanges';
 
@@ -185,20 +185,23 @@ export type DeletePickupDayResult =
 	// orders (orders.pickupDayId / returnDayId) — see assignedOrderCodes.
 	| { ok: false; error: 'assigned'; orderCodes: string[] };
 
-type DeleteTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-// Order codes of the scheduled orders whose confirmed pick-up or return
-// window is one of `dayIds`. Deleting such a window would silently drop the
-// time a moderator confirmed to the member, so the deletes below refuse
-// (#369; #370 will replace the block with alerting the members). Only
-// 'scheduled' blocks: requested orders have no window yet, and rejected,
-// returned (and, once #373 lands, cancelled) orders are done with theirs.
+// Order codes of the orders that still need one of `dayIds` as their
+// confirmed window: a scheduled order's pick-up or return window, or an
+// active (picked-up) order's return window — see PICKUP/
+// RETURN_WINDOW_HOLDING_STATUSES. Deleting such a window would silently drop
+// the time a moderator confirmed to the member, so the deletes below refuse
+// (#369; #370 will replace the block with alerting the members).
 export function assignedOrderCodes(dayIds: number[], executor: QueryExecutor = db): string[] {
 	if (dayIds.length === 0) return [];
 	const rows = executor
 		.select({ orderCode: orders.orderCode })
 		.from(orders)
-		.where(and(eq(orders.status, 'scheduled'), or(inArray(orders.pickupDayId, dayIds), inArray(orders.returnDayId, dayIds))))
+		.where(
+			or(
+				and(inArray(orders.status, PICKUP_WINDOW_HOLDING_STATUSES), inArray(orders.pickupDayId, dayIds)),
+				and(inArray(orders.status, RETURN_WINDOW_HOLDING_STATUSES), inArray(orders.returnDayId, dayIds)),
+			),
+		)
 		.orderBy(asc(orders.orderCode))
 		.all();
 	return rows.map((row) => row.orderCode);
@@ -208,17 +211,23 @@ export function assignedOrderCodes(dayIds: number[], executor: QueryExecutor = d
 // an assigned window fails), so once assignedOrderCodes found no blocking
 // order, any remaining reference — from an order that's past needing it —
 // is cleared here, in the same transaction as the delete.
-function releaseNonBlockingReferences(tx: DeleteTx, dayIds: number[]): void {
+function releaseNonBlockingReferences(tx: Tx, dayIds: number[]): void {
 	if (dayIds.length === 0) return;
-	tx.update(orders).set({ pickupDayId: null }).where(and(ne(orders.status, 'scheduled'), inArray(orders.pickupDayId, dayIds))).run();
-	tx.update(orders).set({ returnDayId: null }).where(and(ne(orders.status, 'scheduled'), inArray(orders.returnDayId, dayIds))).run();
+	tx.update(orders)
+		.set({ pickupDayId: null })
+		.where(and(notInArray(orders.status, [...PICKUP_WINDOW_HOLDING_STATUSES]), inArray(orders.pickupDayId, dayIds)))
+		.run();
+	tx.update(orders)
+		.set({ returnDayId: null })
+		.where(and(notInArray(orders.status, [...RETURN_WINDOW_HOLDING_STATUSES]), inArray(orders.returnDayId, dayIds)))
+		.run();
 }
 
 // Deletable only by the owning moderator, on a 'single' row — both checked
 // in the WHERE clause itself, not just before calling, so there's no gap
 // between "checked" and "deleted" to race or bypass. 'not_found' covers
 // someone else's id too, so the API route can 404 instead of silently
-// no-opping. Refuses with 'assigned' while a scheduled order has the window
+// no-opping. Refuses with 'assigned' while an order still needs the window
 // as its confirmed time, checked in the same transaction as the delete.
 export async function deleteSingleDay(id: number, userId: string): Promise<DeletePickupDayResult> {
 	return db.transaction((tx): DeletePickupDayResult => {

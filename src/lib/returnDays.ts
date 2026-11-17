@@ -11,7 +11,7 @@ import { addDaysIso, daysInclusive } from './dates';
  */
 export function validReturnDays(from: string, pickupDates: ReadonlySet<string>, maxRangeDays?: number): string[] {
 	const last = maxRangeDays ? addDaysIso(from, maxRangeDays - 1) : undefined;
-	return [...pickupDates].filter((date) => date >= from && (!last || date <= last)).sort();
+	return [...pickupDates].filter((date) => date >= from && (!last || date <= last)).sort((a, b) => a.localeCompare(b));
 }
 
 /**

@@ -142,7 +142,8 @@ export function initTimeRangesPicker(root: HTMLElement): void {
 				const button = document.createElement('button');
 				button.type = 'button';
 				button.className = presetButton;
-				button.textContent = `${window.startTime}–${window.endTime}${window.where ? ` · ${window.where}` : ''}`;
+				const where = window.where ? ` · ${window.where}` : '';
+				button.textContent = `${window.startTime}–${window.endTime}${where}`;
 				button.setAttribute('aria-label', `Add ${window.startTime} to ${window.endTime} as a ${kind === 'pickup' ? 'pick-up' : 'return'} time range`);
 				button.addEventListener('click', () => {
 					const already = readRows(kind).ranges.some((r) => r.from === window.startTime && r.to === window.endTime);
@@ -182,7 +183,8 @@ export function initTimeRangesPicker(root: HTMLElement): void {
 		for (const [kind, date] of [['pickup', from], ['return', to]] as const) {
 			if (dates[kind] === date) continue;
 			dates[kind] = date;
-			const keep = initial && (kind === 'pickup' ? initial.fromDate : initial.toDate) === date ? initial[kind] : [];
+			const initialDate = kind === 'pickup' ? initial?.fromDate : initial?.toDate;
+			const keep = initial && initialDate === date ? initial[kind] : [];
 			renderSection(kind, date, keep.filter((r) => isValidTimeString(r.from) && isValidTimeString(r.to)));
 		}
 		root.hidden = false;

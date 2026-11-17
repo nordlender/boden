@@ -41,10 +41,10 @@ export function overlapMinutes(a: TimeRange, b: TimeRange): number {
  * (12:00-14:00 + 14:00-16:00 -> 12:00-16:00). Assumes every range is valid.
  */
 export function mergeTimeRanges(ranges: readonly TimeRange[]): TimeRange[] {
-	const sorted = [...ranges].sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
+	const sorted = [...ranges].sort((a, b) => a.from.localeCompare(b.from));
 	const merged: TimeRange[] = [];
 	for (const range of sorted) {
-		const last = merged[merged.length - 1];
+		const last = merged.at(-1);
 		if (last && range.from <= last.to) {
 			if (range.to > last.to) last.to = range.to;
 		} else {
@@ -101,6 +101,13 @@ export type OrderTimeRangeError =
 	// Same-day rental: no return range ends after the earliest pick-up start.
 	| { kind: 'return'; error: 'return_before_pickup' };
 
+/** Tags a normalizeTimeRanges failure with the side it came from. */
+function normalizeErrorDetail(kind: TimeRangeKind, result: Extract<NormalizeTimeRangesResult, { ok: false }>): OrderTimeRangeError {
+	if (result.error === 'no_ranges') return { kind, error: result.error };
+	if (result.error === 'too_many') return { kind, error: result.error, max: result.max };
+	return { kind, error: result.error, index: result.index };
+}
+
 export type ValidateOrderTimeRangesResult =
 	| { ok: true; ranges: { pickup: TimeRange[]; return: TimeRange[] } }
 	| { ok: false; detail: OrderTimeRangeError };
@@ -120,15 +127,7 @@ export function validateOrderTimeRanges(
 	const ranges = { pickup: [] as TimeRange[], return: [] as TimeRange[] };
 	for (const kind of ['pickup', 'return'] as const) {
 		const result = normalizeTimeRanges(input[kind]);
-		if (!result.ok) {
-			const detail: OrderTimeRangeError =
-				result.error === 'no_ranges'
-					? { kind, error: result.error }
-					: result.error === 'too_many'
-						? { kind, error: result.error, max: result.max }
-						: { kind, error: result.error, index: result.index };
-			return { ok: false, detail };
-		}
+		if (!result.ok) return { ok: false, detail: normalizeErrorDetail(kind, result) };
 		const date = kind === 'pickup' ? dates.fromDate : dates.toDate;
 		if (date === now.date) {
 			const index = input[kind].findIndex((range) => range.to <= now.time);

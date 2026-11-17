@@ -282,7 +282,7 @@ export async function acceptOrder(orderId: number, input: AcceptOrderInput): Pro
 				.from(orders)
 				.where(eq(orders.id, orderId))
 				.get();
-			if (!order || order.status !== 'requested') throw new AcceptRefusedError({ ok: false, error: 'not_pending_review' });
+			if (order?.status !== 'requested') throw new AcceptRefusedError({ ok: false, error: 'not_pending_review' });
 			if (order.fromDate < todayIsoInOslo()) throw new AcceptRefusedError({ ok: false, error: 'start_date_passed' });
 
 			const ranges = getOrderTimeRanges(order.id, tx);

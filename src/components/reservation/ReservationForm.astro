@@ -1,6 +1,7 @@
 ---
 import ReservationCalendar from './ReservationCalendar.astro';
 import ReservationItemRow from './ReservationItemRow.astro';
+import TimeRangesPicker from './TimeRangesPicker.astro';
 import CheckoutForm from '../cart/CheckoutForm.astro';
 import { entryKey, type CartLine } from '../../lib/cart';
 import { formatAttributes } from '../../lib/attributes';
@@ -29,10 +30,11 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 );
 ---
 
-<div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} data-max-rental-days={maxRentalDays} class="flex flex-col gap-region">
+<div data-reservation-form data-time-ranges-scope data-cart-lines={JSON.stringify(lineRefs)} data-max-rental-days={maxRentalDays} class="flex flex-col gap-region">
 	<section class="flex flex-col gap-stack">
 		<h2 class={sectionTitleClasses}>1. Pick-up &amp; return dates</h2>
-		<ReservationCalendar pickupWindows={pickupWindows} />
+		<ReservationCalendar pickupWindows={pickupWindows} maxRangeDays={maxRentalDays} />
+		<TimeRangesPicker windows={pickupWindows} />
 	</section>
 
 	<section class="flex flex-col gap-stack">

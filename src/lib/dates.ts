@@ -80,18 +80,26 @@ export function todayIsoInOslo(): string {
   return dateToIsoInOslo(new Date());
 }
 
-const OSLO_TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+// One formatter for both halves of timeNowOslo, so the date and the time
+// come from a single formatToParts pass of the same instant. Named parts,
+// not format() output, for the same CLDR reason as OSLO_DATE_PARTS_FORMATTER.
+const OSLO_DATE_TIME_PARTS_FORMATTER = new Intl.DateTimeFormat('en-US', {
   timeZone: 'Europe/Oslo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
   hour: '2-digit',
   minute: '2-digit',
   hourCycle: 'h23',
 });
 
-// The current Oslo wall-clock date (YYYY-MM-DD) and time (HH:MM, 24h) —
-// same shapes as pickup_days.date/startTime/endTime, so they compare as
-// plain strings.
-export function nowInOslo(now: Date = new Date()): { date: string; time: string } {
-  return { date: dateToIsoInOslo(now), time: OSLO_TIME_FORMATTER.format(now) };
+// The Oslo wall-clock date (YYYY-MM-DD) and time (HH:MM, 24h) at `now` —
+// same shapes as pickup_days.date/startTime/endTime and the requested time
+// ranges, so they compare as plain strings (e.g. to tell whether a window or
+// a requested range today has already ended).
+export function timeNowOslo(now: Date = new Date()): { date: string; time: string } {
+  const parts = Object.fromEntries(OSLO_DATE_TIME_PARTS_FORMATTER.formatToParts(now).map((p) => [p.type, p.value]));
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
 }
 
 // dd/mm/yy for a bare YYYY-MM-DD date (e.g. a unit's manufacturedAt) — a

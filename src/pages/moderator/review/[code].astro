@@ -11,7 +11,9 @@ import BackLink from '../../../components/ui/BackLink.astro';
 import Button from '../../../components/ui/Button.astro';
 import ActionPopover from '../../../components/ui/ActionPopover.astro';
 import TextMorphButton from '../../../components/ui/TextMorphButton.astro';
-import { getOrderDetailByCode } from '../../../lib/moderatorOrders';
+import AcceptTimeChoice from '../../../components/moderator/AcceptTimeChoice.astro';
+import { getAcceptReadiness, getOrderDetailByCode, type AcceptBlocker } from '../../../lib/moderatorOrders';
+import { formatDateDisplay } from '../../../lib/dates';
 
 const codeParam = Astro.params.code;
 const order = codeParam ? await getOrderDetailByCode(codeParam) : null;
@@ -27,6 +29,35 @@ if (!order) {
 // another tab).
 const alreadyReviewed = order.status !== 'requested';
 const error = Astro.url.searchParams.get('error');
+
+// Accepting confirms a pick-up and a return window overlapping the member's
+// requested time ranges (#343); acceptOrder re-checks all of this.
+const readiness = alreadyReviewed ? null : getAcceptReadiness(order);
+const acceptFormId = `accept-order-${order.id}`;
+const side = (kind: 'pickup' | 'return') => (kind === 'pickup' ? 'pick-up' : 'return');
+const day = (date: string) => formatDateDisplay(date, { weekday: true });
+function blockerText(blocker: AcceptBlocker): string {
+	switch (blocker.error) {
+		case 'start_date_passed':
+			return 'The pick-up date has already passed. Reject the order, or ask the member to change the dates.';
+		case 'no_time_ranges':
+			return `The member gave no ${side(blocker.kind)} time ranges, so there is nothing to match a window against. Ask the member to change the order and add them, or reject it with a reason.`;
+		case 'windows_ended':
+			return `Every ${side(blocker.kind)} window today that overlaps the member's time ranges has already ended. Add a later window that covers one of them, or reject the order with a reason.`;
+		case 'return_before_pickup':
+			return `This is a same-day rental, and no return window on ${day(blocker.date)} ends after a pick-up window starts. Add a later window, or reject the order with a reason.`;
+		case 'no_overlapping_window':
+			return `No ${side(blocker.kind)} window on ${day(blocker.date)} overlaps the member's time ranges. Add a pick-up window that covers one of them, or reject the order with a reason.`;
+	}
+}
+const acceptErrors: Record<string, string> = {
+	start_date_passed: 'The order could not be accepted: its pick-up date has already passed.',
+	invalid_pickup_window: 'The order could not be accepted: the chosen pick-up window is gone or no longer overlaps the member\'s time ranges. Choose again.',
+	invalid_return_window: 'The order could not be accepted: the chosen return window is gone or no longer overlaps the member\'s time ranges. Choose again.',
+	pickup_window_ended: 'The order could not be accepted: the chosen pick-up window has already ended. Choose a later one.',
+	return_window_ended: 'The order could not be accepted: the chosen return window has already ended. Choose a later one.',
+	return_before_pickup: 'The order could not be accepted: on a same-day rental the return window must end after the pick-up window starts. Choose again.',
+};
 ---
 
 <ModeratorLayout title={`Review order #${order.orderCode} — Moderator`}>
@@ -48,6 +79,11 @@ const error = Astro.url.searchParams.get('error');
 						)
 					) : (
 						<div class="flex w-full flex-col gap-stack">
+							{error && acceptErrors[error] && (
+								<Callout variant="error">
+									<p>{acceptErrors[error]}</p>
+								</Callout>
+							)}
 							{
 								error === 'blank_reason' && (
 									<Callout variant="error">
@@ -55,10 +91,25 @@ const error = Astro.url.searchParams.get('error');
 									</Callout>
 								)
 							}
+							{/* The window radios sit outside the accept <form> (it only wraps
+							    its button in the grid below) and join it via form=. */}
+							{readiness && (
+								<>
+									<AcceptTimeChoice option={readiness.pickup} form={acceptFormId} />
+									<AcceptTimeChoice option={readiness.return} form={acceptFormId} />
+								</>
+							)}
+							{readiness && readiness.blockers.length > 0 && (
+								<Callout variant="warning" title="Can't accept yet" live={false}>
+									<ul class="flex flex-col gap-1">
+										{readiness.blockers.map((blocker) => <li>{blockerText(blocker)}</li>)}
+									</ul>
+								</Callout>
+							)}
 							{/* data-popover-container: the reason popover spans both buttons */}
 							<div data-popover-container class="grid grid-cols-2 gap-controls">
-								<form method="post" action={`/api/moderator/orders/${order.id}/accept`} class="contents">
-									<TextMorphButton action="accept" type="submit" variant="primary" size="lg" class="w-full" />
+								<form id={acceptFormId} method="post" action={`/api/moderator/orders/${order.id}/accept`} class="contents">
+									<TextMorphButton action="accept" type="submit" variant="primary" size="lg" class="w-full" disabled={!readiness || readiness.blockers.length > 0} />
 								</form>
 
 								<ActionPopover

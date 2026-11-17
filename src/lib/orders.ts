@@ -6,6 +6,10 @@ import type { Role } from './auth';
 import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
+import { getPickupDatesAmong } from './pickupDays';
+import { InvalidTimeRangesError, setOrderTimeRanges } from './orderTimeRanges';
+import { validateOrderTimeRanges, type OrderTimeRangeError, type OrderTimeRangeInput, type TimeRange } from './timeRanges';
+import { timeNowOslo } from './dates';
 import type { OrderStatus } from './orderStatus';
 
 // NNAAX: two digits, two free letters, one role letter.
@@ -67,6 +71,24 @@ class UnavailableItemsError extends Error {
   }
 }
 
+// Thrown inside the create/reschedule transaction when the return day has
+// no pick-up window (any more) — returns only happen on pick-up days (#336).
+class ReturnDayNotPickupDayError extends Error {
+  constructor() {
+    super('return_not_pickup_day');
+  }
+}
+
+// The return-day rule (#336), checked inside the create/reschedule
+// transaction so a window deleted mid-request can't slip through. The caller
+// has already checked the date range itself (isValidDateRange), so this only
+// asks whether the return day still has a pick-up window.
+function assertReturnOnPickupDay(tx: Tx, toDate: string): void {
+  if (!getPickupDatesAmong([toDate], tx).has(toDate)) {
+    throw new ReturnDayNotPickupDayError();
+  }
+}
+
 export type CreateOrderInput = {
   userId: string;
   // Role of the member creating the order, used to pick the order code's
@@ -76,6 +98,10 @@ export type CreateOrderInput = {
   cartEntries: CartEntry[];
   fromDate: string;
   toDate: string;
+  // The member's requested pick-up (on fromDate) and return (on toDate) time
+  // ranges (#368), validated by validateOrderTimeRanges and stored merged in
+  // order_time_ranges.
+  timeRanges: OrderTimeRangeInput;
   // Snapshot of the checkout form's contact fields — see schema.ts's
   // orders.contactName/contactEmail/contactMobile doc comment.
   contactName: string;
@@ -94,6 +120,9 @@ export type CreateOrderInput = {
 export type CreateOrderResult =
   | { ok: true; orderId: number; orderCode: string }
   | { ok: false; error: 'empty_cart' }
+  | { ok: false; error: 'invalid_dates' }
+  | { ok: false; error: 'return_not_pickup_day' }
+  | { ok: false; error: 'invalid_time_ranges'; detail: OrderTimeRangeError }
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
   | { ok: false; error: 'user_not_found' };
 
@@ -105,6 +134,8 @@ function insertOrder(
     note: string | null;
     fromDate: string;
     toDate: string;
+    // Already validated and merged (validateOrderTimeRanges).
+    timeRanges: { pickup: TimeRange[]; return: TimeRange[] };
     // Always already resolved down to real items (see
     // resolveEntriesToItemQuantities) — a set never reaches this far; orders
     // always reference items, never sets (see schema.ts's `sets` comment).
@@ -124,6 +155,7 @@ function insertOrder(
   // point. Doing it here rather than before the transaction closes the race
   // between two members submitting overlapping requests concurrently: the
   // check and the insert commit atomically together.
+  assertReturnOnPickupDay(tx, input.toDate);
   const availabilities = getReservationAvailability({ from: input.fromDate, to: input.toDate }, input.entries, undefined, tx);
   const unavailableItemIds = availabilities.filter((a) => !a.available).map((a) => a.itemId);
   if (unavailableItemIds.length > 0) {
@@ -160,6 +192,9 @@ function insertOrder(
           })),
         )
         .run();
+
+      setOrderTimeRanges(order.id, 'pickup', input.timeRanges.pickup, tx);
+      setOrderTimeRanges(order.id, 'return', input.timeRanges.return, tx);
 
       return order;
     } catch (err) {
@@ -203,6 +238,11 @@ async function resolveOrderableEntries(cartEntries: CartEntry[]): Promise<CartEn
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
+  if (!isValidDateRange({ from: input.fromDate, to: input.toDate })) {
+    return { ok: false, error: 'invalid_dates' };
+  }
+  const times = validateOrderTimeRanges(input.timeRanges, input, timeNowOslo());
+  if (!times.ok) return { ok: false, error: 'invalid_time_ranges', detail: times.detail };
   const entriesToOrder = await resolveOrderableEntries(input.cartEntries);
   if (entriesToOrder.length === 0) {
     return { ok: false, error: 'empty_cart' };
@@ -225,6 +265,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         note: input.note,
         fromDate: input.fromDate,
         toDate: input.toDate,
+        timeRanges: times.ranges,
         entries: resolvedEntries,
         contactName: input.contactName,
         contactEmail: input.contactEmail,
@@ -238,6 +279,12 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   } catch (err) {
     if (err instanceof UnavailableItemsError) {
       return { ok: false, error: 'unavailable', unavailableItemIds: err.itemIds };
+    }
+    if (err instanceof ReturnDayNotPickupDayError) {
+      return { ok: false, error: 'return_not_pickup_day' };
+    }
+    if (err instanceof InvalidTimeRangesError) {
+      return { ok: false, error: 'invalid_time_ranges', detail: err.detail };
     }
     // orders.userId is a FK sourced from the checkout route's ambient
     // session id (locals.user!.id) rather than a freshly-looked-up row —
@@ -329,11 +376,14 @@ export async function getMemberOrder(orderCode: string, userId: string) {
   if (!orderCode || !userId) return undefined;
   return db.query.orders.findFirst({
     where: (t, { eq: eqCol }) => and(eqCol(t.orderCode, orderCode), eqCol(t.userId, userId)),
-    // product + attributeValues feed toOrderItemView (src/lib/orderItemView.ts).
+    // product + attributeValues feed toOrderItemView (src/lib/orderItemView.ts);
+    // pickupDay / returnDay are the confirmed windows (#343).
     with: {
       orderItems: {
         with: { item: { with: { product: true, attributeValues: { with: { attribute: true } } } } },
       },
+      pickupDay: true,
+      returnDay: true,
     },
   });
 }
@@ -375,13 +425,17 @@ export async function deleteOrder(input: DeleteOrderInput): Promise<DeleteOrderR
   return { ok: false, error: 'not_deletable', status: existing.status };
 }
 
-export type RescheduleOrderInput = { orderCode: string; userId: string; fromDate: string; toDate: string };
+// New dates always come with new time ranges (#368): the old ranges belong
+// to the old dates, so both kinds are replaced.
+export type RescheduleOrderInput = { orderCode: string; userId: string; fromDate: string; toDate: string; timeRanges: OrderTimeRangeInput };
 
 export type RescheduleOrderResult =
   | { ok: true; fromDate: string; toDate: string }
   | { ok: false; error: 'not_found' }
   | { ok: false; error: 'not_modifiable'; status: string }
   | { ok: false; error: 'invalid_dates' }
+  | { ok: false; error: 'return_not_pickup_day' }
+  | { ok: false; error: 'invalid_time_ranges'; detail: OrderTimeRangeError }
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] };
 
 // Thrown inside the transaction below when the order's status changed to
@@ -414,6 +468,8 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
   if (!isValidDateRange({ from: input.fromDate, to: input.toDate })) {
     return { ok: false, error: 'invalid_dates' };
   }
+  const times = validateOrderTimeRanges(input.timeRanges, input, timeNowOslo());
+  if (!times.ok) return { ok: false, error: 'invalid_time_ranges', detail: times.detail };
 
   const order = await db.query.orders.findFirst({
     where: (t, { eq: eqCol }) => eqCol(t.orderCode, input.orderCode),
@@ -445,6 +501,7 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
       if (current.acceptedAt) {
         throw new OrderNotModifiableError('scheduled');
       }
+      assertReturnOnPickupDay(tx, input.toDate);
 
       const availabilities = getReservationAvailability(
         { from: input.fromDate, to: input.toDate },
@@ -458,6 +515,8 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
       }
 
       tx.update(orders).set({ fromDate: input.fromDate, toDate: input.toDate }).where(eq(orders.id, order.id)).run();
+      setOrderTimeRanges(order.id, 'pickup', times.ranges.pickup, tx);
+      setOrderTimeRanges(order.id, 'return', times.ranges.return, tx);
     });
   } catch (err) {
     if (err instanceof UnavailableItemsError) {
@@ -468,6 +527,12 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
     }
     if (err instanceof OrderGoneError) {
       return { ok: false, error: 'not_found' };
+    }
+    if (err instanceof ReturnDayNotPickupDayError) {
+      return { ok: false, error: 'return_not_pickup_day' };
+    }
+    if (err instanceof InvalidTimeRangesError) {
+      return { ok: false, error: 'invalid_time_ranges', detail: err.detail };
     }
     throw err;
   }

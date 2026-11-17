@@ -5,6 +5,10 @@ import { isForeignKeyViolation } from './db-errors';
 import { getReservationAvailability } from './reservation';
 import { lineQuantity, occupiedQuantity } from './availability';
 import { RESERVING_STATUSES, type OrderStatus } from './orderStatus';
+import { findOverlappingWindows, type OverlappingWindow } from './pickupDays';
+import { getOrderTimeRanges } from './orderTimeRanges';
+import { timeNowOslo } from './dates';
+import type { TimeRange, TimeRangeKind } from './timeRanges';
 
 // Moderator-side order operations — kept separate from member-side
 // src/lib/orders.ts (createOrder/deleteOrder/
@@ -156,8 +160,6 @@ export async function getOrderIdByCode(orderCode: string): Promise<number | null
 	return order?.id ?? null;
 }
 
-export type AcceptOrderResult = { ok: true } | { ok: false; error: 'not_pending_review' };
-
 // Gate shared by acceptOrder/rejectOrder: an order is pending review only
 // while its status is still 'requested'. Re-POSTing
 // against an order that's since moved on (accepted by another moderator tab,
@@ -168,13 +170,162 @@ export type AcceptOrderResult = { ok: true } | { ok: false; error: 'not_pending_
 const PENDING_REVIEW_WHERE = (orderId: number) =>
 	and(eq(orders.id, orderId), eq(orders.status, 'requested'));
 
-export async function acceptOrder(orderId: number): Promise<AcceptOrderResult> {
-	const result = db
-		.update(orders)
-		.set({ status: 'scheduled', acceptedAt: new Date() })
-		.where(PENDING_REVIEW_WHERE(orderId))
-		.run();
-	return result.changes > 0 ? { ok: true } : { ok: false, error: 'not_pending_review' };
+// One side (pick-up on fromDate, return on toDate) of what the review page
+// offers a moderator (#343): the member's requested ranges and the windows
+// on that date overlapping them that a moderator can still confirm, best
+// match (largest overlap) first.
+export interface AcceptTimeOption {
+	kind: TimeRangeKind;
+	date: string;
+	ranges: TimeRange[];
+	windows: OverlappingWindow[];
+	// Overlapping windows left out of `windows` because they already ended
+	// (earlier today), so the page can say why none are offered.
+	endedWindowCount: number;
+}
+
+export type AcceptBlocker =
+	| { error: 'start_date_passed' }
+	// The member gave no ranges for this side (e.g. an order from before
+	// time ranges existed), so there's nothing to match a window against.
+	| { error: 'no_time_ranges'; kind: TimeRangeKind; date: string }
+	| { error: 'no_overlapping_window'; kind: TimeRangeKind; date: string }
+	// There were overlapping windows today, but every one has ended.
+	| { error: 'windows_ended'; kind: TimeRangeKind; date: string }
+	// Same-day rental: no return window ends after a pick-up window starts.
+	| { error: 'return_before_pickup'; date: string };
+
+export interface AcceptReadiness {
+	pickup: AcceptTimeOption;
+	return: AcceptTimeOption;
+	// Why accepting is impossible right now; empty when it can go ahead.
+	blockers: AcceptBlocker[];
+}
+
+type Executor = Parameters<typeof findOverlappingWindows>[2];
+type OsloNow = { date: string; time: string };
+
+// A window that is over (an earlier date, or earlier today) can't be
+// confirmed: the member would be told to come at a time that has passed.
+export function hasWindowEnded(window: { date: string; endTime: string }, now: OsloNow): boolean {
+	return window.date < now.date || (window.date === now.date && window.endTime <= now.time);
+}
+
+// On a same-day rental the return window must end after the pick-up window
+// starts — the same rule validateOrderTimeRanges applies to the member's
+// own ranges. Different dates always pass.
+export function isReturnAfterPickup(pickup: { date: string; startTime: string }, ret: { date: string; endTime: string }): boolean {
+	return pickup.date !== ret.date || ret.endTime > pickup.startTime;
+}
+
+function acceptTimeOption(kind: TimeRangeKind, date: string, ranges: TimeRange[], now: OsloNow, executor?: Executor): AcceptTimeOption {
+	const overlapping = findOverlappingWindows(date, ranges, executor);
+	const windows = overlapping.filter((window) => !hasWindowEnded(window, now));
+	return { kind, date, ranges, windows, endedWindowCount: overlapping.length - windows.length };
+}
+
+function optionBlocker(option: AcceptTimeOption, now: OsloNow): AcceptBlocker | null {
+	// A past date is covered by start_date_passed (toDate >= fromDate).
+	if (option.date < now.date) return null;
+	if (option.ranges.length === 0) return { error: 'no_time_ranges', kind: option.kind, date: option.date };
+	if (option.windows.length > 0) return null;
+	if (option.endedWindowCount > 0) return { error: 'windows_ended', kind: option.kind, date: option.date };
+	return { error: 'no_overlapping_window', kind: option.kind, date: option.date };
+}
+
+// What the review page needs to offer, and gate, accepting an order (#343).
+// acceptOrder re-checks the same rules inside its transaction. `now` is the
+// Oslo wall clock (timeNowOslo).
+export function getAcceptReadiness(order: { id: number; fromDate: string; toDate: string }, now: OsloNow = timeNowOslo()): AcceptReadiness {
+	const ranges = getOrderTimeRanges(order.id);
+	const pickup = acceptTimeOption('pickup', order.fromDate, ranges.pickup, now);
+	const ret = acceptTimeOption('return', order.toDate, ranges.return, now);
+	const blockers: AcceptBlocker[] = [];
+	if (order.fromDate < now.date) blockers.push({ error: 'start_date_passed' });
+	for (const option of [pickup, ret]) {
+		const blocker = optionBlocker(option, now);
+		if (blocker) blockers.push(blocker);
+	}
+
+	// Same-day rental: only offer return windows that can follow some
+	// pick-up window, and list the ones that follow the pre-selected (best)
+	// pick-up window first, so the page's default pair is always valid.
+	if (order.fromDate === order.toDate && pickup.windows.length > 0 && ret.windows.length > 0) {
+		const possible = ret.windows.filter((w) => pickup.windows.some((p) => isReturnAfterPickup(p, w)));
+		const best = pickup.windows[0];
+		ret.windows = [...possible.filter((w) => isReturnAfterPickup(best, w)), ...possible.filter((w) => !isReturnAfterPickup(best, w))];
+		if (ret.windows.length === 0) blockers.push({ error: 'return_before_pickup', date: order.toDate });
+	}
+	return { pickup, return: ret, blockers };
+}
+
+export type AcceptOrderInput = { pickupDayId: number | null; returnDayId: number | null };
+
+export type AcceptOrderResult =
+	| { ok: true }
+	| { ok: false; error: 'not_pending_review' }
+	| { ok: false; error: 'start_date_passed' }
+	// The chosen window is missing, on another date than fromDate / toDate,
+	// or doesn't overlap any of the member's ranges for that side.
+	| { ok: false; error: 'invalid_window'; kind: TimeRangeKind }
+	// The chosen window has already ended (earlier today).
+	| { ok: false; error: 'window_ended'; kind: TimeRangeKind }
+	// Same-day rental whose chosen return window ends before the chosen
+	// pick-up window starts.
+	| { ok: false; error: 'return_before_pickup' };
+
+class AcceptRefusedError extends Error {
+	constructor(public result: Exclude<AcceptOrderResult, { ok: true }>) {
+		super(result.error);
+	}
+}
+
+// Accepting confirms a pick-up and a return window for the order (#343):
+// both are required, each must be a pick-up window on the right date
+// (fromDate / toDate) that overlaps one of the member's requested ranges for
+// that side and hasn't ended yet, on a same-day rental the return window
+// must end after the pick-up window starts, and the pick-up date must not
+// have passed. All of it is re-checked inside the transaction that sets the
+// windows and moves the order to 'scheduled', so a window deleted or an
+// order changed in between can't slip through.
+export async function acceptOrder(orderId: number, input: AcceptOrderInput, now: OsloNow = timeNowOslo()): Promise<AcceptOrderResult> {
+	try {
+		db.transaction((tx) => {
+			const order = tx
+				.select({ id: orders.id, status: orders.status, fromDate: orders.fromDate, toDate: orders.toDate })
+				.from(orders)
+				.where(eq(orders.id, orderId))
+				.get();
+			if (order?.status !== 'requested') throw new AcceptRefusedError({ ok: false, error: 'not_pending_review' });
+			if (order.fromDate < now.date) throw new AcceptRefusedError({ ok: false, error: 'start_date_passed' });
+
+			const ranges = getOrderTimeRanges(order.id, tx);
+			const pickup = chosenWindow('pickup', input.pickupDayId, order.fromDate, ranges.pickup, now, tx);
+			const ret = chosenWindow('return', input.returnDayId, order.toDate, ranges.return, now, tx);
+			if (!isReturnAfterPickup(pickup, ret)) throw new AcceptRefusedError({ ok: false, error: 'return_before_pickup' });
+
+			const result = tx
+				.update(orders)
+				.set({ status: 'scheduled', acceptedAt: new Date(), pickupDayId: pickup.id, returnDayId: ret.id })
+				.where(PENDING_REVIEW_WHERE(orderId))
+				.run();
+			if (result.changes === 0) throw new AcceptRefusedError({ ok: false, error: 'not_pending_review' });
+		});
+	} catch (err) {
+		if (err instanceof AcceptRefusedError) return err.result;
+		throw err;
+	}
+	return { ok: true };
+}
+
+// The window a moderator picked for one side, or a refusal. findOverlappingWindows
+// only returns windows on `date` that overlap a range, so membership covers
+// the id, date and overlap rules at once.
+function chosenWindow(kind: TimeRangeKind, dayId: number | null, date: string, ranges: TimeRange[], now: OsloNow, executor: Executor): OverlappingWindow {
+	const window = dayId === null ? undefined : findOverlappingWindows(date, ranges, executor).find((w) => w.id === dayId);
+	if (!window) throw new AcceptRefusedError({ ok: false, error: 'invalid_window', kind });
+	if (hasWindowEnded(window, now)) throw new AcceptRefusedError({ ok: false, error: 'window_ended', kind });
+	return window;
 }
 
 export type RejectOrderResult = { ok: true } | { ok: false; error: 'not_pending_review' } | { ok: false; error: 'blank_reason' };

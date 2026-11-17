@@ -5,7 +5,7 @@
 // Orders are never split (#247), so the member either gets every line or
 // fixes the cart/dates: any unavailable line blocks submit.
 
-export type ReservationStatus = 'no-dates' | 'too-long' | 'loading' | 'error' | 'all-available' | 'some-unavailable' | 'none-available';
+export type ReservationStatus = 'no-dates' | 'too-long' | 'loading' | 'error' | 'all-available' | 'needs-times' | 'some-unavailable' | 'none-available';
 
 export interface ReservationStatusInput {
 	hasDates: boolean;
@@ -17,6 +17,9 @@ export interface ReservationStatusInput {
 	maxRentalDays?: number;
 	// null while the check is in flight; 'error' when it failed.
 	availabilities: Array<{ available: boolean }> | 'error' | null;
+	// Whether the time-range picker holds valid pick-up and return ranges
+	// (#368). Only false blocks; omit it to skip the check.
+	timesValid?: boolean;
 }
 
 export interface ReservationStatusView {
@@ -33,7 +36,7 @@ export interface ReservationStatusView {
 
 const NO_DATES_HINT = 'Select your pick-up and return dates above to continue.';
 
-export function deriveReservationStatus({ hasDates, availabilities, rentalDays, maxRentalDays }: ReservationStatusInput): ReservationStatusView {
+export function deriveReservationStatus({ hasDates, availabilities, rentalDays, maxRentalDays, timesValid }: ReservationStatusInput): ReservationStatusView {
 	const base = { submitEnabled: false, warning: null, error: null, loading: false };
 	if (!hasDates) {
 		return { ...base, status: 'no-dates', hint: NO_DATES_HINT };
@@ -73,6 +76,9 @@ export function deriveReservationStatus({ hasDates, availabilities, rentalDays, 
 			hint: 'Remove the unavailable item(s) from your cart to continue, or choose different dates.',
 			warning: 'Some items are not available in this timeframe. Remove them from your cart below, or choose different dates.',
 		};
+	}
+	if (availabilities.length > 0 && timesValid === false) {
+		return { ...base, status: 'needs-times', hint: 'Add at least one valid pick-up and one valid return time range above to continue.' };
 	}
 	return { ...base, status: 'all-available', submitEnabled: availabilities.length > 0, hint: '' };
 }

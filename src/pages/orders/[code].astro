@@ -2,8 +2,12 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getMemberOrder } from '../../lib/orders';
 import { toOrderItemView } from '../../lib/orderItemView';
-import { getOrderPickupWindows } from '../../lib/pickupDays';
+import { getUpcomingPickupWindows } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
+import { getOrderTimeRanges } from '../../lib/orderTimeRanges';
+import RequestedTimeRanges from '../../components/orders/RequestedTimeRanges.astro';
+import ConfirmedPickupWindows from '../../components/orders/ConfirmedPickupWindows.astro';
+import { timeNowOslo } from '../../lib/dates';
 import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import SubmittedContactDetails from '../../components/orders/SubmittedContactDetails.astro';
 import DeleteOrderButton from '../../components/orders/DeleteOrderButton.astro';
@@ -24,7 +28,12 @@ if (!order) {
   return Astro.redirect('/');
 }
 
-const pickupWindows = await getOrderPickupWindows(order);
+// Only the reschedule modal needs the upcoming windows: their dates colour
+// the calendar (returns must be on a pick-up day, #336) and they are the
+// time-range presets (#368) — one query for both.
+const reschedulable = order.status === 'requested' && !order.acceptedAt;
+const upcomingWindows = reschedulable ? await getUpcomingPickupWindows(timeNowOslo()) : {};
+const timeRanges = getOrderTimeRanges(order.id);
 ---
 
 <BaseLayout title={`Order #${order.orderCode}`}>
@@ -40,11 +49,13 @@ const pickupWindows = await getOrderPickupWindows(order);
 				note={order.note}
 				items={order.orderItems.map(toOrderItemView)}
 				showImages
-				pickupWindows={pickupWindows}
-			/>
+			>
+				{order.status === 'requested' && <RequestedTimeRanges fromDate={order.fromDate} toDate={order.toDate} ranges={timeRanges} framed={false} />}
+				{(order.status === 'scheduled' || order.status === 'active') && <ConfirmedPickupWindows pickup={order.pickupDay} return={order.returnDay} />}
+			</UserOrderSummary>
 			<SubmittedContactDetails contactName={order.contactName} />
 			<div class={cardFooterClasses}>
-				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} />
+				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} pickupWindows={upcomingWindows} timeRanges={timeRanges} />
 				<DeleteOrderButton orderCode={order.orderCode} status={order.status} />
 			</div>
 		</Card>

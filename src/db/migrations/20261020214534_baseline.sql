@@ -57,6 +57,19 @@ CREATE TABLE `order_items` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `order_items_order_item_unique` ON `order_items` (`order_id`,`item_id`);--> statement-breakpoint
 CREATE INDEX `order_items_order_id_idx` ON `order_items` (`order_id`);--> statement-breakpoint
+CREATE TABLE `order_time_ranges` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`order_id` integer NOT NULL,
+	`kind` text NOT NULL,
+	`from_time` text NOT NULL,
+	`to_time` text NOT NULL,
+	FOREIGN KEY (`order_id`) REFERENCES `orders`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "order_time_ranges_kind_valid" CHECK("order_time_ranges"."kind" IN ('pickup', 'return')),
+	CONSTRAINT "order_time_ranges_time_format" CHECK("order_time_ranges"."from_time" GLOB '[0-2][0-9]:[0-5][0-9]' AND "order_time_ranges"."to_time" GLOB '[0-2][0-9]:[0-5][0-9]'),
+	CONSTRAINT "order_time_ranges_from_before_to" CHECK("order_time_ranges"."from_time" < "order_time_ranges"."to_time")
+);
+--> statement-breakpoint
+CREATE INDEX `order_time_ranges_order_id_kind_idx` ON `order_time_ranges` (`order_id`,`kind`);--> statement-breakpoint
 CREATE TABLE `orders` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`order_code` text NOT NULL,
@@ -79,15 +92,21 @@ CREATE TABLE `orders` (
 	`rejected_at` integer,
 	`rejected_reason` text,
 	`disclaimer_accepted_at` integer,
+	`pickup_day_id` integer,
+	`return_day_id` integer,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`confirmed_by_user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`returned_by_user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`pickup_day_id`) REFERENCES `pickup_days`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`return_day_id`) REFERENCES `pickup_days`(`id`) ON UPDATE no action ON DELETE no action,
 	CONSTRAINT "order_date_range_valid" CHECK("orders"."to_date" >= "orders"."from_date")
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `orders_order_code_unique` ON `orders` (`order_code`);--> statement-breakpoint
 CREATE INDEX `orders_user_id_idx` ON `orders` (`user_id`);--> statement-breakpoint
 CREATE INDEX `orders_status_idx` ON `orders` (`status`);--> statement-breakpoint
+CREATE INDEX `orders_pickup_day_id_idx` ON `orders` (`pickup_day_id`);--> statement-breakpoint
+CREATE INDEX `orders_return_day_id_idx` ON `orders` (`return_day_id`);--> statement-breakpoint
 CREATE INDEX `orders_date_range_idx` ON `orders` (`from_date`,`to_date`);--> statement-breakpoint
 CREATE TABLE `pickup_days` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -128,6 +147,7 @@ CREATE TABLE `product_attribute_keys` (
 	`product_id` integer NOT NULL,
 	`name` text NOT NULL,
 	`sort_order` integer DEFAULT 0 NOT NULL,
+	`is_variant` integer DEFAULT false NOT NULL,
 	FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint

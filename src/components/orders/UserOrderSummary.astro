@@ -38,5 +38,8 @@ const { orderCode, status, fromDate, toDate, note, items, showImages = false, pi
 			<PickupInfo windows={pickupWindows} emptyText={status === 'requested' ? 'A moderator will confirm the time and place.' : undefined} />
 		)
 	}
+	{/* The order's own times (requested ranges / confirmed windows) on
+	    /orders/[code], in place of pickupWindows. */}
+	<slot />
 	<OrderContents items={items} note={note} showImages={showImages} />
 </section>

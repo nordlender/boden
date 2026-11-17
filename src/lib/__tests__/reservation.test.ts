@@ -104,6 +104,16 @@ describe('isValidDateRange', () => {
 		expect(isValidDateRange({ from: '2025-12-01', to: '2025-12-15' })).toBe(false);
 	});
 });
+describe('isValidDateRange with pick-up dates (#336)', () => {
+	it('requires the return day to be a pick-up day when the pick-up dates are given', () => {
+		const pickupDates = new Set(['2026-01-05']);
+		expect(isValidDateRange({ from: '2026-01-01', to: '2026-01-05' }, pickupDates)).toBe(true);
+		expect(isValidDateRange({ from: '2026-01-01', to: '2026-01-04' }, pickupDates)).toBe(false);
+		// The pick-up day itself needs no window.
+		expect(isValidDateRange({ from: '2026-01-02', to: '2026-01-05' }, pickupDates)).toBe(true);
+	});
+});
+
 
 describe('getReservationAvailability', () => {
 	it('reports unavailable when the requested quantity exceeds stock minus the overlapping reservation', async () => {

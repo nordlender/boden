@@ -25,8 +25,15 @@ export interface ReservationDateRange {
 	to: string; // YYYY-MM-DD
 }
 
-export function isValidDateRange(range: Partial<ReservationDateRange>): range is ReservationDateRange {
+// `pickupDates`, when given, is the set of dates that have a pick-up window
+// (see getPickupDatesAmong in src/lib/pickupDays.ts): returns only happen on
+// pick-up days (#336), so `to` must be one of them. Passed in rather than
+// looked up here so this stays db-free; order creation and reschedule pass
+// it from inside their transaction. The pick-up day (`from`) needs no
+// window: the member can still request a pick-up on any day.
+export function isValidDateRange(range: Partial<ReservationDateRange>, pickupDates?: ReadonlySet<string>): range is ReservationDateRange {
 	if (!range.from || !range.to) return false;
+	if (pickupDates && !pickupDates.has(range.to)) return false;
 	if (!isIsoDate(range.from) || !isIsoDate(range.to)) return false;
 	// The calendar's `min` attribute (ReservationCalendar.astro) only stops a
 	// past date client-side — this is the server-side backstop against a

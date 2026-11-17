@@ -7,7 +7,7 @@ import { emptyStateFramedClasses } from '../../lib/layout-styles';
 import { getCartLines } from '../../lib/cart';
 import { getUpcomingPickupWindows } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
-import { nowInOslo } from '../../lib/dates';
+import { timeNowOslo } from '../../lib/dates';
 import { getSession } from 'auth-astro/server';
 import { fetchOwnMemberFeeStatus } from '../../lib/blocFeeStatus';
 
@@ -23,7 +23,7 @@ const [session, feeStatus] = await Promise.all([
 ]);
 
 // Europe/Oslo's clock, not the server host's — see src/lib/dates.ts.
-const pickupWindows = await getUpcomingPickupWindows(nowInOslo());
+const pickupWindows = await getUpcomingPickupWindows(timeNowOslo());
 
 // Surfaces the error redirects /api/orders/create (and /reservation/confirm)
 // can send back here — see the keys of errorMessages below. Without this the
@@ -31,6 +31,10 @@ const pickupWindows = await getUpcomingPickupWindows(nowInOslo());
 const error = Astro.url.searchParams.get('error');
 const errorMessages: Record<string, string> = {
 	invalid_dates: `Your selected dates were invalid, the pick-up date has already passed, or the range was longer than the maximum ${getMaxRentalDays()} days — please choose your dates again.`,
+	invalid_time_ranges:
+		'Your pick-up or return time ranges were not valid (for example, one has already passed, or a same-day return ends before the pick-up starts) — please check them and submit again.',
+	return_not_pickup_day:
+		'Returns can only be made on a pick-up day, and your return date no longer has a pick-up time — please choose your dates again.',
 	unavailable:
 		'One or more items in your cart are no longer available for the selected dates — check the availability badges below and adjust your dates, or remove the unavailable item(s) from your cart, before submitting again.',
 	disclaimer_required: 'You must accept the disclaimer before submitting the order.',

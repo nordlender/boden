@@ -53,8 +53,15 @@ const popoverId = `pickup-day-delete-${id}`;
 					container.closest<HTMLElement>('[data-pickup-day-row]')?.remove();
 					return;
 				}
+				const body = await res.json().catch(() => ({}));
 				if (errorEl) {
-					errorEl.textContent = 'This could not be deleted — try refreshing the page.';
+					// 409 'assigned' (#369): the window is the confirmed pick-up or
+					// return time of these scheduled orders.
+					const codes: string[] = res.status === 409 && Array.isArray(body.orderCodes) ? body.orderCodes : [];
+					errorEl.textContent =
+						codes.length > 0
+							? `Can't delete: this is the confirmed pick-up or return time of scheduled ${codes.length === 1 ? 'order' : 'orders'} ${codes.join(', ')}.`
+							: 'This could not be deleted — try refreshing the page.';
 					errorEl.removeAttribute('hidden');
 				}
 			} catch {

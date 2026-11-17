@@ -45,6 +45,15 @@ describe('deriveReservationStatus', () => {
 		expect(view.warning).toMatch(/Some items/);
 	});
 
+	it('asks for time ranges once every line is available but the ranges are not valid yet (#368)', () => {
+		const view = deriveReservationStatus({ hasDates: true, availabilities: [yes, yes], timesValid: false });
+		expect(view).toMatchObject({ status: 'needs-times', submitEnabled: false, warning: null, error: null });
+		expect(view.hint).toMatch(/valid pick-up and one valid return time range/);
+		// Unavailable lines are the bigger problem, so they still win.
+		expect(deriveReservationStatus({ hasDates: true, availabilities: [yes, no], timesValid: false }).status).toBe('some-unavailable');
+		expect(deriveReservationStatus({ hasDates: true, availabilities: [yes], timesValid: true })).toMatchObject({ status: 'all-available', submitEnabled: true });
+	});
+
 	it('enables submit when every line is available', () => {
 		expect(deriveReservationStatus({ hasDates: true, availabilities: [yes, yes] })).toEqual({
 			status: 'all-available',

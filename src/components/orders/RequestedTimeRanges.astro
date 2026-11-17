@@ -1,0 +1,41 @@
+---
+// The member's requested pick-up and return time ranges (#368), as on the
+// /reservation/confirm step and on /orders/[code] until a moderator accepts
+// the order and confirms a window (see ConfirmedPickupWindows.astro).
+import { cardClasses, eyebrowClasses } from '../../lib/layout-styles';
+import { formatDateDisplay } from '../../lib/dates';
+import type { TimeRange } from '../../lib/timeRanges';
+
+interface Props {
+	fromDate: string;
+	toDate: string;
+	ranges: { pickup: TimeRange[]; return: TimeRange[] };
+	// Card (confirm page) or plain block inside an existing card (order page).
+	framed?: boolean;
+}
+
+const { fromDate, toDate, ranges, framed = true } = Astro.props;
+const rows = [
+	{ label: 'Pick-up', date: fromDate, ranges: ranges.pickup },
+	{ label: 'Return', date: toDate, ranges: ranges.return },
+];
+const format = (list: TimeRange[]) => list.map((r) => `${r.from}–${r.to}`).join(', ');
+---
+
+<section class:list={['flex flex-col gap-snug', framed && [cardClasses, 'p-card']]}>
+	<h2 class={eyebrowClasses}>Your requested times</h2>
+	<dl class="grid grid-cols-[auto_1fr] gap-x-stack gap-y-1 text-sm text-text">
+		{
+			rows.map((row) => (
+				<>
+					<dt class="font-medium">{row.label}</dt>
+					<dd>
+						{formatDateDisplay(row.date, { weekday: true })}
+						<span class="text-text-muted"> · {row.ranges.length > 0 ? format(row.ranges) : 'no time given'}</span>
+					</dd>
+				</>
+			))
+		}
+	</dl>
+	<p class="text-xs text-text-muted">A moderator will confirm a pick-up and return time within these ranges.</p>
+</section>

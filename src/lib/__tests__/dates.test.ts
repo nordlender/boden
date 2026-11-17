@@ -7,14 +7,14 @@ import {
 	formatDateDisplay,
 	formatDateTimeDisplay,
 	isIsoDate,
-	nowInOslo,
+	timeNowOslo,
 } from '../dates';
 
-describe('nowInOslo', () => {
+describe('timeNowOslo', () => {
 	it('reads the Oslo wall clock (CEST in summer, CET in winter), 24h, crossing midnight', () => {
-		expect(nowInOslo(new Date('2026-07-01T10:05:00Z'))).toEqual({ date: '2026-07-01', time: '12:05' });
-		expect(nowInOslo(new Date('2026-01-15T10:05:00Z'))).toEqual({ date: '2026-01-15', time: '11:05' });
-		expect(nowInOslo(new Date('2026-07-01T22:30:00Z'))).toEqual({ date: '2026-07-02', time: '00:30' });
+		expect(timeNowOslo(new Date('2026-07-01T10:05:00Z'))).toEqual({ date: '2026-07-01', time: '12:05' });
+		expect(timeNowOslo(new Date('2026-01-15T10:05:00Z'))).toEqual({ date: '2026-01-15', time: '11:05' });
+		expect(timeNowOslo(new Date('2026-07-01T22:30:00Z'))).toEqual({ date: '2026-07-02', time: '00:30' });
 	});
 });
 

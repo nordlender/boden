@@ -74,13 +74,12 @@ const { order, showAvailability = false, adjustableTargets = false, followingRen
 	)}
 
 	{order.status === 'cancelled' && (
-		<div class="rounded-md border border-border bg-bg-subtle p-3 text-sm text-text">
-			<p class="font-semibold">Cancelled by member</p>
-			<p class="text-text-muted">
+		<Callout variant="info" title="Cancelled by member" live={false}>
+			<p>
 				{order.cancelledAt ? `Cancelled ${formatDateTimeDisplay(order.cancelledAt)}, after it was accepted.` : 'Cancelled after it was accepted.'}
 				{' '}No hand-out is needed; the gear is free again.
 			</p>
-		</div>
+		</Callout>
 	)}
 
 	<OrderItemsList items={order.items} showAvailability={showAvailability} adjustableTargets={adjustableTargets} formId={formId} />

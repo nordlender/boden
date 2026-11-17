@@ -1,8 +1,9 @@
 // Shared client-side flow behind an ActionPopover.astro plain-confirm
 // (`data-action-popover-confirm`) that fires a fetch: hide the popover,
 // disable the confirm button, send the request, then either run the
-// caller's success action or show an error, and re-enable the button in
-// `finally`. Used by src/components/orders/DeleteOrderButton.astro (delete
+// caller's success action — leaving the button disabled, so it can't be
+// confirmed again while e.g. a navigation is still loading — or show an
+// error and re-enable it. Used by src/components/orders/DeleteOrderButton.astro (delete
 // or cancel an order) and src/components/pickup-days/PickupDayDeleteButton.astro
 // (delete a pickup-days row), which differ only in endpoint, method,
 // what happens on success and the error copy (#216).
@@ -47,8 +48,7 @@ export function wireActionPopoverConfirm(container: HTMLElement, options: Action
 			showError(formatError(body, res));
 		} catch {
 			showError(networkError);
-		} finally {
-			trigger.disabled = false;
 		}
+		trigger.disabled = false;
 	});
 }

@@ -306,7 +306,7 @@ describe('findOverlappingWindows', () => {
 
 describe('deleting windows assigned to orders (#369)', () => {
 	let orderSeq = 0;
-	async function orderUsing(status: 'requested' | 'scheduled' | 'active' | 'returned' | 'rejected', days: { pickupDayId?: number; returnDayId?: number }) {
+	async function orderUsing(status: 'requested' | 'scheduled' | 'active' | 'returned' | 'rejected' | 'no_show', days: { pickupDayId?: number; returnDayId?: number }) {
 		orderSeq += 1;
 		const [order] = await db
 			.insert(orders)
@@ -338,6 +338,13 @@ describe('deleting windows assigned to orders (#369)', () => {
 		expect(await deleteSingleDay(pickupDay.id, MODERATOR_A)).toEqual({ ok: true });
 		const [row] = await db.select().from(orders).where(eq(orders.id, active.id));
 		expect([row.pickupDayId, row.returnDayId]).toEqual([null, returnDay.id]);
+	});
+
+	it('does not let a no-show order block deleting its windows', async () => {
+		await createSingleDays(MODERATOR_A, [{ date: '2026-09-07', startTime: '18:00', endTime: '20:00', where: null }]);
+		const [day] = await listUpcomingPickupDays('2026-01-01');
+		await orderUsing('no_show', { pickupDayId: day.id, returnDayId: day.id });
+		expect(await deleteSingleDay(day.id, MODERATOR_A)).toEqual({ ok: true });
 	});
 
 	it('still deletes a day referenced only by orders that are done with it, clearing their reference', async () => {

@@ -302,8 +302,11 @@ export const orders = sqliteTable('orders', {
   // to moderators and what appears in the retrieve-order URL.
   orderCode: text('order_code').notNull().unique(),
   userId: text('user_id').notNull().references(() => users.id),
+  // 'no_show': a scheduled order nobody picked up — the daily order cleanup
+  // (src/lib/orderCleanup.ts) moves a 'scheduled' order there the day after
+  // its fromDate. Like 'returned' and 'rejected' it holds no stock or window.
   status: text('status', {
-    enum: ['requested', 'scheduled', 'active', 'returned', 'rejected'],
+    enum: ['requested', 'scheduled', 'active', 'returned', 'rejected', 'no_show'],
   }).notNull().default('requested'),
   // Reservation date range (YYYY-MM-DD, inclusive on both ends) chosen on the
   // /reservation page — the whole order (all its orderItems) shares one

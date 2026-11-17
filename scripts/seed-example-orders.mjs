@@ -43,7 +43,8 @@ const users = [
 // (#368, order_time_ranges); each overlaps a pick-up window on that date
 // (see the pick-up days below), so requested orders can be accepted, and
 // accepted orders get those windows as their confirmed pickup_day_id /
-// return_day_id (#343).
+// return_day_id (#343). A scheduled order whose fromDate has passed is
+// turned into a no-show by the daily order cleanup (src/lib/orderCleanup.ts).
 //
 // The two Dragon Cam #00 orders overlap on 12–13 Nov with one unit each —
 // the item has exactly two active units, so that day is fully booked and
@@ -270,7 +271,7 @@ function insertTimeRanges(orderId, order) {
   for (const range of order.returnRanges) insertTimeRange.run(orderId, 'return', range.from, range.to);
 }
 
-const isAccepted = (order) => ['scheduled', 'active', 'returned'].includes(order.status);
+const isAccepted = (order) => ['scheduled', 'active', 'returned', 'no_show'].includes(order.status);
 
 // Orders seeded before time ranges existed (#368) get their ranges and, if
 // accepted, their windows — only what's missing, nothing overwritten.

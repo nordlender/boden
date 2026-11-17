@@ -6,7 +6,17 @@ import { orders } from '../db/schema';
 
 export type OrderStatus = (typeof orders.$inferSelect)['status'];
 
-export const ORDER_STATUSES = ['requested', 'scheduled', 'active', 'returned', 'rejected'] as const satisfies readonly OrderStatus[];
+export const ORDER_STATUSES = ['requested', 'scheduled', 'active', 'returned', 'rejected', 'no_show'] as const satisfies readonly OrderStatus[];
+
+// Human-readable status, for badges and filters.
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+	requested: 'Requested',
+	scheduled: 'Scheduled',
+	active: 'Active',
+	returned: 'Returned',
+	rejected: 'Rejected',
+	no_show: 'No show',
+};
 
 // Statuses that still hold a claim on stock / calendar days.
 export const RESERVING_STATUSES = ['requested', 'scheduled', 'active'] as const satisfies readonly OrderStatus[];
@@ -15,7 +25,7 @@ export const RESERVING_STATUSES = ['requested', 'scheduled', 'active'] as const 
 // returnDayId, #343), so deleting that window is refused (#369 — see
 // src/lib/pickupDays.ts). A scheduled order needs both; an active one has
 // been picked up, so only its return window is still ahead. Requested
-// orders have no window yet; returned and rejected orders are done.
+// orders have no window yet; returned, rejected and no-show orders are done.
 export const PICKUP_WINDOW_HOLDING_STATUSES = ['scheduled'] as const satisfies readonly OrderStatus[];
 export const RETURN_WINDOW_HOLDING_STATUSES = ['scheduled', 'active'] as const satisfies readonly OrderStatus[];
 

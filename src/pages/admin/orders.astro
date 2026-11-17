@@ -6,7 +6,7 @@ import Page from '../../components/ui/Page.astro';
 import { chipBaseClasses } from '../../lib/button-styles';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
 import { getAllOrderRows } from '../../lib/orders';
-import { ORDER_STATUSES, isOrderStatus, type OrderStatus } from '../../lib/orderStatus';
+import { ORDER_STATUSES, ORDER_STATUS_LABELS, isOrderStatus, type OrderStatus } from '../../lib/orderStatus';
 import OrdersLayoutToggle from '../../components/orders/OrdersLayoutToggle.astro';
 
 
@@ -49,7 +49,7 @@ const rows = await getAllOrderRows(activeStatus);
 									: 'border-border text-text-muted hover:bg-bg-subtle hover:text-text',
 							]}
 						>
-							{status}
+							{ORDER_STATUS_LABELS[status]}
 						</a>
 					))
 				}

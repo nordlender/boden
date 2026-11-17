@@ -1,6 +1,7 @@
 ---
 import Badge from '../ui/Badge.astro';
 import type { BadgeTone } from '../../lib/badge-styles';
+import { ORDER_STATUS_LABELS, isOrderStatus } from '../../lib/orderStatus';
 
 interface Props {
 	status: string;
@@ -16,8 +17,10 @@ const toneByStatus: Record<string, BadgeTone> = {
 	active: 'success',
 	returned: 'neutral',
 	rejected: 'error',
+	no_show: 'error',
 };
 const tone = toneByStatus[status] ?? 'neutral';
+const label = isOrderStatus(status) ? ORDER_STATUS_LABELS[status] : status;
 ---
 
-<Badge tone={tone} class:list={['capitalize', className]}>{status}</Badge>
+<Badge tone={tone} class:list={['capitalize', className]}>{label}</Badge>

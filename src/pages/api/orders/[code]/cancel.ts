@@ -1,11 +1,12 @@
 import type { APIRoute } from 'astro';
 import { cancelOrder } from '../../../../lib/orders';
 import { json, jsonError, requireUser } from '../../../../lib/http';
+import { setOrderNotice } from '../../../../lib/orderNotice';
 
 // Member soft-cancels their own 'scheduled' order (#371) — see
 // src/lib/orders.ts's cancelOrder. A 'requested' order is hard-deleted via
 // DELETE /api/orders/[code] instead.
-export const POST: APIRoute = async ({ params, locals }) => {
+export const POST: APIRoute = async ({ params, locals, cookies }) => {
   const authError = requireUser(locals);
   if (authError) return authError;
 
@@ -22,5 +23,6 @@ export const POST: APIRoute = async ({ params, locals }) => {
     return json(result, status);
   }
 
+  setOrderNotice(cookies, 'cancelled', code);
   return json({ ok: true });
 };

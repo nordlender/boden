@@ -119,12 +119,6 @@ async function markOrderScheduled(orderId: number) {
 	await db.update(schema.orders).set({ status: 'scheduled', acceptedAt: new Date() }).where(eq(schema.orders.id, orderId));
 }
 
-async function markOrderAccepted(orderId: number) {
-	const { db } = await import('../../db/client');
-	const schema = await import('../../db/schema');
-	await db.update(schema.orders).set({ acceptedAt: new Date() }).where(eq(schema.orders.id, orderId));
-}
-
 describe('createOrder', () => {
 	it('creates an order with an NNAAX order code', async () => {
 		const result = await placeOrder([{ itemId: ITEM_B_ID, quantity: 2 }], '2026-02-01', '2026-02-05');
@@ -271,15 +265,12 @@ describe('deleteOrder', () => {
 		expect(result).toEqual({ ok: false, error: 'not_found' });
 	});
 
-	it.each([
-		['scheduled (moderator-accepted)', markOrderScheduled, '2026-05-20', '2026-05-21'],
-		['legacy accepted (requested + acceptedAt)', markOrderAccepted, '2026-05-22', '2026-05-23'],
-	])('rejects deleting a %s order — it can only be cancelled', async (_label, markAccepted, fromDate, toDate) => {
-		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], fromDate, toDate);
+	it('rejects deleting a scheduled (moderator-accepted) order — it can only be cancelled', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-20', '2026-05-21');
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
-		await markAccepted(created.orderId);
+		await markOrderScheduled(created.orderId);
 
 		expect(await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({
 			ok: false,
@@ -331,16 +322,6 @@ describe('cancelOrder', () => {
 		expect(after?.status).toBe('scheduled');
 		expect(after?.cancelledAt).toBeNull();
 		expect(await cancelOrder({ orderCode: 'ZZZZZ', userId: 'member-1' })).toEqual({ ok: false, error: 'not_found' });
-	});
-
-	it('soft-cancels a legacy accepted order (requested + acceptedAt)', async () => {
-		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-23', '2026-05-24');
-		expect(created.ok).toBe(true);
-		if (!created.ok) return;
-		await markOrderAccepted(created.orderId);
-
-		expect(await cancelOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({ ok: true });
-		expect((await findOrderByCode(created.orderCode))?.status).toBe('cancelled');
 	});
 
 	it('rejects cancelling a requested order — that one is deleted instead', async () => {
@@ -472,7 +453,7 @@ describe('rescheduleOrder', () => {
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
-		await markOrderAccepted(created.orderId);
+		await markOrderScheduled(created.orderId);
 
 		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-20', toDate: '2026-11-21' });
 		expect(result).toEqual({ ok: false, error: 'not_modifiable', status: 'scheduled' });
@@ -503,9 +484,7 @@ describe('getMemberOrder', () => {
 });
 
 describe('getMemberOrderRows', () => {
-	it("lists only the member's own orders, named by the checkout contact snapshot", async () => {
-		// users.name ('Member') deliberately differs from the contact name, so a
-		// row that picked up the account name would fail the customerName check.
+	it("lists only the member's own orders, without a customer name", async () => {
 		const result = await createOrder({
 			userId: 'member-1',
 			note: null,
@@ -518,10 +497,9 @@ describe('getMemberOrderRows', () => {
 		if (!result.ok) throw new Error('expected order to be created');
 
 		const rows = await getMemberOrderRows('member-1');
-		expect(rows.find((r) => r.orderCode === result.orderCode)).toMatchObject({
-			customerName: 'Checkout Name',
-			items: [{ itemName: 'Item B', requestedQuantity: 1 }],
-		});
+		const row = rows.find((r) => r.orderCode === result.orderCode);
+		expect(row).toMatchObject({ items: [{ itemName: 'Item B', requestedQuantity: 1 }] });
+		expect(row).not.toHaveProperty('customerName');
 		expect(rows.map((r) => r.orderCode)).not.toContain('AAAAAA');
 	});
 

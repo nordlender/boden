@@ -6,7 +6,7 @@ import { getOrderPickupWindows } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
 import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import SubmittedContactDetails from '../../components/orders/SubmittedContactDetails.astro';
-import DeleteOrderButton from '../../components/orders/DeleteOrderButton.astro';
+import MemberOrderActionButton from '../../components/orders/MemberOrderActionButton.astro';
 import ChangeOrderLink from '../../components/orders/ChangeOrderLink.astro';
 import Page from '../../components/ui/Page.astro';
 import Card from '../../components/ui/Card.astro';
@@ -29,6 +29,7 @@ if (!order) {
 }
 
 const pickupWindows = order ? await getOrderPickupWindows(order) : undefined;
+const action = order ? memberOrderAction(order.status) : null;
 ---
 
 {
@@ -66,17 +67,16 @@ const pickupWindows = order ? await getOrderPickupWindows(order) : undefined;
 					{
 						// Members can change/delete an unreviewed order and cancel an
 						// accepted one; from hand-out on there's nothing they can do.
-						memberOrderAction(order) && (
+						action && (
 							<div class={cardFooterClasses}>
 								<ChangeOrderLink
 									orderCode={order.orderCode}
 									status={order.status}
-									acceptedAt={order.acceptedAt}
 									fromDate={order.fromDate}
 									toDate={order.toDate}
 									maxRentalDays={getMaxRentalDays()}
 								/>
-								<DeleteOrderButton orderCode={order.orderCode} action={memberOrderAction(order)} />
+								<MemberOrderActionButton orderCode={order.orderCode} action={action} />
 							</div>
 						)
 					}

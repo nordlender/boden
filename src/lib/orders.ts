@@ -1,6 +1,6 @@
 import { db, type Tx } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
-import { and, eq, inArray, isNotNull, isNull, or } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
 import type { Role } from './auth';
 import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
@@ -255,14 +255,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
 async function findOwnedOrderStatus(input: { orderCode: string; userId: string }) {
   const existing = await db.query.orders.findFirst({
     where: (t, { eq: eqCol }) => eqCol(t.orderCode, input.orderCode),
-    columns: { userId: true, status: true, acceptedAt: true },
+    columns: { userId: true, status: true },
   });
-  if (existing?.userId !== input.userId) {
-    return null;
-  }
-  // A legacy accepted order (still 'requested', acceptedAt set) is reported
-  // as 'scheduled', same as rescheduleOrder does — see memberOrderAction.
-  return existing.status === 'requested' && existing.acceptedAt ? 'scheduled' : existing.status;
+  return existing?.userId === input.userId ? existing.status : null;
 }
 
 // Row shape rendered by OrdersTable.astro — shared by the member, admin and
@@ -284,16 +279,17 @@ type OrderRowSource = Pick<OrderRow, 'orderCode' | 'status' | 'fromDate' | 'toDa
   orderItems: { requestedQuantity: number; item: { name: string } }[];
 };
 
-export function toOrderRow(order: OrderRowSource): OrderRow {
+// `withCustomer: false` leaves customerName out — for the member's own list,
+// where it would only repeat their own name.
+export function toOrderRow(order: OrderRowSource, { withCustomer = true }: { withCustomer?: boolean } = {}): OrderRow {
   return {
     orderCode: order.orderCode,
     status: order.status,
     fromDate: order.fromDate,
     toDate: order.toDate,
     // users.name is nullable (set from the external OAuth provider) — fall
-    // back to the checkout-time contact name snapshot. Callers that don't
-    // load `user` (a member's own list) always get the snapshot.
-    customerName: order.user?.name || order.contactName,
+    // back to the checkout-time contact name snapshot.
+    ...(withCustomer && { customerName: order.user?.name || order.contactName }),
     items: order.orderItems.map((oi) => ({
       itemName: oi.item.name,
       requestedQuantity: oi.requestedQuantity,
@@ -307,7 +303,7 @@ export async function getMemberOrderRows(userId: string): Promise<OrderRow[]> {
     orderBy: (t, { desc }) => [desc(t.createdAt)],
     with: { orderItems: { with: { item: true } } },
   });
-  return memberOrders.map(toOrderRow);
+  return memberOrders.map((order) => toOrderRow(order, { withCustomer: false }));
 }
 
 export interface PendingRequestRow extends OrderRow {
@@ -322,7 +318,7 @@ export async function getAllOrderRows(status: OrderStatus | null = null): Promis
 		orderBy: (t, { desc }) => [desc(t.createdAt)],
 		with: { user: true, orderItems: { with: { item: true } } },
 	});
-	return allOrders.map(toOrderRow);
+	return allOrders.map((order) => toOrderRow(order));
 }
 
 // Shared by src/pages/moderator/requests.astro (the full queue) and
@@ -364,12 +360,10 @@ export type DeleteOrderResult =
   | { ok: false; error: 'not_deletable'; status: string };
 
 // Hard delete — only ever offered to a member while their order is still
-// 'requested' and not yet accepted (memberOrderAction in orderStatus.ts).
-// Once a moderator accepts it, acceptOrder (src/lib/moderatorOrders.ts) moves
-// it to 'scheduled', and from then on the member can only soft-cancel it (see
-// cancelOrder below), never delete it. Orders accepted before that status
-// existed are still 'requested' with acceptedAt set, hence the acceptedAt
-// check — they also count as accepted.
+// 'requested' (not yet reviewed; memberOrderAction in orderStatus.ts). Once a
+// moderator accepts it, acceptOrder (src/lib/moderatorOrders.ts) moves it to
+// 'scheduled', and from then on the member can only soft-cancel it (see
+// cancelOrder below), never delete it.
 // Ownership and status are filtered directly in the DELETE's WHERE clause
 // rather than checked beforehand, so there's no gap for a moderator action
 // to land between an ownership/status check and the delete itself.
@@ -377,9 +371,7 @@ export type DeleteOrderResult =
 export async function deleteOrder(input: DeleteOrderInput): Promise<DeleteOrderResult> {
   const result = db
     .delete(orders)
-    .where(
-      and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, 'requested'), isNull(orders.acceptedAt)),
-    )
+    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, 'requested')))
     .run();
 
   if (result.changes > 0) {
@@ -401,25 +393,18 @@ export type CancelOrderResult =
   | { ok: false; error: 'not_cancellable'; status: string };
 
 // Soft cancel — only ever offered to a member while their order is
-// accepted by a moderator but not yet handed out: 'scheduled', or a legacy
-// 'requested' order with acceptedAt set (see deleteOrder). The row is kept
+// 'scheduled' (accepted by a moderator, not yet handed out). The row is kept
 // with status 'cancelled' rather than deleted because a moderator has already
 // committed a pick-up window for it, so it stays visible to moderators (#371).
 // 'cancelled' isn't in RESERVING_STATUSES, so its stock and calendar days are
-// freed. Ownership and the accepted status are filtered in the UPDATE's
+// freed. Ownership and status = 'scheduled' are filtered in the UPDATE's
 // WHERE clause — same pattern as deleteOrder — so this can't race a
 // moderator's hand-out (confirmRetrieval moves 'scheduled' to 'active').
 export async function cancelOrder(input: CancelOrderInput): Promise<CancelOrderResult> {
   const result = db
     .update(orders)
     .set({ status: 'cancelled', cancelledAt: new Date() })
-    .where(
-      and(
-        eq(orders.orderCode, input.orderCode),
-        eq(orders.userId, input.userId),
-        or(eq(orders.status, 'scheduled'), and(eq(orders.status, 'requested'), isNotNull(orders.acceptedAt))),
-      ),
-    )
+    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, 'scheduled')))
     .run();
 
   if (result.changes > 0) {
@@ -462,10 +447,10 @@ class OrderGoneError extends Error {
   }
 }
 
-// Only ever offered to a member while their order is still 'requested' AND
-// not yet accepted by a moderator (`acceptedAt` unset) — unlike deleteOrder,
-// since rescheduling an accepted order would silently carry the acceptance
-// over to dates the moderator never reviewed (#242). Reuses getReservationAvailability's
+// Only ever offered to a member while their order is still 'requested' (not
+// yet accepted — acceptOrder moves it to 'scheduled'), since rescheduling an
+// accepted order would silently carry the acceptance over to dates the
+// moderator never reviewed (#242). Reuses getReservationAvailability's
 // `excludeOrderId` param so the order's own current reservation doesn't
 // count against itself when checking the new date range.
 export async function rescheduleOrder(input: RescheduleOrderInput): Promise<RescheduleOrderResult> {
@@ -483,9 +468,6 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
   if (order.status !== 'requested') {
     return { ok: false, error: 'not_modifiable', status: order.status };
   }
-  if (order.acceptedAt) {
-    return { ok: false, error: 'not_modifiable', status: 'scheduled' };
-  }
 
   try {
     // Re-check status and availability inside the same transaction as the
@@ -493,15 +475,12 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
     // advisory only; this is the actual enforcement point against a
     // concurrent moderator action or a competing reservation.
     db.transaction((tx) => {
-      const current = tx.select({ status: orders.status, acceptedAt: orders.acceptedAt }).from(orders).where(eq(orders.id, order.id)).get();
+      const current = tx.select({ status: orders.status }).from(orders).where(eq(orders.id, order.id)).get();
       if (!current) {
         throw new OrderGoneError();
       }
       if (current.status !== 'requested') {
         throw new OrderNotModifiableError(current.status);
-      }
-      if (current.acceptedAt) {
-        throw new OrderNotModifiableError('scheduled');
       }
 
       const availabilities = getReservationAvailability(

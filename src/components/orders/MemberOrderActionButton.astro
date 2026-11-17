@@ -5,7 +5,7 @@
 // - 'cancel' (accepted, not handed out): soft cancel,
 //   POST /api/orders/[code]/cancel — the order is kept as 'cancelled'.
 // - null: nothing is rendered.
-// Either way, success lands on /orders with a notice (see orders/index.astro).
+// Either way, success lands on /orders with a one-shot notice (src/lib/orderNotice.ts).
 // The fetch/confirm flow is shared via src/lib/action-popover-confirm.ts.
 import ActionPopover from '../ui/ActionPopover.astro';
 import { inlineErrorClasses } from '../../lib/form-styles';
@@ -33,14 +33,14 @@ const copy: Record<MemberOrderAction, { title: string; label: string; confirmLab
 		body: 'A moderator has already accepted this order. Cancelling frees the gear for others and cannot be undone.',
 	},
 };
-const c = action && copy[action];
+const c = action ? { action, ...copy[action] } : null;
 ---
 
 {
-	action && c && (
-		<div data-delete-order={orderCode} data-order-action={action}>
+	c && (
+		<div data-member-order-action={c.action} data-order-code={orderCode}>
 			<ActionPopover
-				id={`${action}-order-${orderCode}-confirm`}
+				id={`${c.action}-order-${orderCode}-confirm`}
 				title={c.title}
 				triggerLabel={c.label}
 				triggerVariant="danger"
@@ -50,7 +50,7 @@ const c = action && copy[action];
 			>
 				<p class="text-sm text-text-muted">{c.body}</p>
 			</ActionPopover>
-			<p data-delete-order-error hidden class:list={['mt-2', inlineErrorClasses]} />
+			<p data-member-order-error hidden class:list={['mt-2', inlineErrorClasses]} />
 		</div>
 	)
 }
@@ -58,18 +58,19 @@ const c = action && copy[action];
 <script>
 	import { wireActionPopoverConfirm } from '../../lib/action-popover-confirm';
 
-	document.querySelectorAll<HTMLElement>('[data-delete-order]').forEach((container) => {
-		const orderCode = container.dataset.deleteOrder;
+	document.querySelectorAll<HTMLElement>('[data-member-order-action]').forEach((container) => {
+		const orderCode = container.dataset.orderCode;
 		if (!orderCode) return;
-		const isCancel = container.dataset.orderAction === 'cancel';
+		const isCancel = container.dataset.memberOrderAction === 'cancel';
 		const verb = isCancel ? 'cancelled' : 'deleted';
 
 		wireActionPopoverConfirm(container, {
 			endpoint: isCancel ? `/api/orders/${orderCode}/cancel` : `/api/orders/${orderCode}`,
 			method: isCancel ? 'POST' : 'DELETE',
-			errorEl: container.querySelector<HTMLElement>('[data-delete-order-error]'),
+			errorEl: container.querySelector<HTMLElement>('[data-member-order-error]'),
 			onSuccess: () => {
-				window.location.href = `/orders?${verb}=${encodeURIComponent(orderCode)}`;
+				// The API set a one-shot notice cookie that /orders shows.
+				window.location.href = '/orders';
 			},
 			formatError: (body) =>
 				body.error === 'not_deletable' || body.error === 'not_cancellable'

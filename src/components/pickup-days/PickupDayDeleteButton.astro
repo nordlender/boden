@@ -2,12 +2,12 @@
 // Delete-with-confirm for a persisted pickup-days row (a moderator's own
 // single day, or — from RecurringPickupDaysTable — an admin's recurring
 // rule). Same ActionPopover + fetch flow as
-// src/components/orders/DeleteOrderButton.astro (both via
+// src/components/orders/MemberOrderActionButton.astro (both via
 // src/lib/action-popover-confirm.ts), except on success this
 // removes the row from the DOM in place instead of navigating away (the
 // table stays on the page), and the trigger is an icon-only MorphButton
 // (via ActionPopover's `trigger` slot) rather than the text Button
-// DeleteOrderButton uses — these rows are dense table rows, not a single
+// MemberOrderActionButton uses — these rows are dense table rows, not a single
 // detail-page action.
 import ActionPopover from '../ui/ActionPopover.astro';
 import { inlineErrorClasses } from '../../lib/form-styles';

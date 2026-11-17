@@ -2,10 +2,7 @@ import { orders } from '../db/schema';
 
 // Single home for order status constants. `orders.status` is the single
 // source of truth for where an order is in its lifecycle; acceptedAt /
-// rejectedAt / etc. are accountability timestamps, with one exception: orders
-// accepted before 'scheduled' existed are still 'requested' with acceptedAt
-// set, so the member-facing rules (memberOrderAction, rescheduleOrder) treat
-// requested + acceptedAt as accepted.
+// rejectedAt / etc. are accountability timestamps only, never used for gating.
 
 export type OrderStatus = (typeof orders.$inferSelect)['status'];
 
@@ -33,8 +30,8 @@ export function isOrderStatus(value: unknown): value is OrderStatus {
 // cancelOrder in src/lib/orders.ts, which are the actual enforcement.
 export type MemberOrderAction = 'delete' | 'cancel';
 
-export function memberOrderAction(order: { status: string; acceptedAt?: Date | null }): MemberOrderAction | null {
-	if (order.status === 'requested') return order.acceptedAt ? 'cancel' : 'delete';
-	if (order.status === 'scheduled') return 'cancel';
+export function memberOrderAction(status: string): MemberOrderAction | null {
+	if (status === 'requested') return 'delete';
+	if (status === 'scheduled') return 'cancel';
 	return null;
 }

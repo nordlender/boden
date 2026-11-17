@@ -20,17 +20,16 @@ describe('order status constants', () => {
 
 describe('memberOrderAction', () => {
 	it('deletes an unreviewed requested order', () => {
-		expect(memberOrderAction({ status: 'requested', acceptedAt: null })).toBe('delete');
+		expect(memberOrderAction('requested')).toBe('delete');
 	});
 
-	it('cancels an accepted order, including a legacy requested + acceptedAt one', () => {
-		expect(memberOrderAction({ status: 'scheduled', acceptedAt: new Date() })).toBe('cancel');
-		expect(memberOrderAction({ status: 'requested', acceptedAt: new Date() })).toBe('cancel');
+	it('cancels an accepted (scheduled) order', () => {
+		expect(memberOrderAction('scheduled')).toBe('cancel');
 	});
 
 	it('offers nothing from hand-out on', () => {
 		for (const status of ['active', 'returned', 'rejected', 'cancelled']) {
-			expect(memberOrderAction({ status, acceptedAt: new Date() })).toBeNull();
+			expect(memberOrderAction(status)).toBeNull();
 		}
 	});
 });

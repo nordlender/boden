@@ -3,7 +3,7 @@ import Modal from '../ui/Modal.astro';
 import Button from '../ui/Button.astro';
 import ReservationCalendar from '../reservation/ReservationCalendar.astro';
 import TimeRangesPicker from '../reservation/TimeRangesPicker.astro';
-import type { PickupDayRow } from '../../lib/pickupDays';
+import type { PickupWindowDisplay } from '../../lib/pickupWindowFormat';
 import type { OrderTimeRanges } from '../../lib/orderTimeRanges';
 import { actionRowClasses, sectionTitleClasses } from '../../lib/layout-styles';
 import { inlineErrorClasses } from '../../lib/form-styles';
@@ -16,21 +16,22 @@ interface Props {
 	fromDate: string;
 	toDate: string;
 	maxRentalDays: number;
-	// Upcoming dates with a pick-up window — return days must be one (#336).
-	availablePickupDates: string[];
-	// New dates need new time ranges (#368): presets and the current ranges.
-	timeRangeWindows: PickupDayRow[];
+	// Pick-up windows that haven't ended yet, keyed by date: the keys colour
+	// the calendar (return days must be one, #336) and the windows are the
+	// time-range presets (#368).
+	pickupWindows: Record<string, PickupWindowDisplay[]>;
+	// The order's current ranges, prefilled while its dates are unchanged.
 	timeRanges: OrderTimeRanges;
 }
 
-const { orderCode, status, acceptedAt, fromDate, toDate, maxRentalDays, availablePickupDates, timeRangeWindows, timeRanges } = Astro.props;
+const { orderCode, status, acceptedAt, fromDate, toDate, maxRentalDays, pickupWindows, timeRanges } = Astro.props;
 const modalId = `change-order-${orderCode}`;
 const titleId = `${modalId}-title`;
 ---
 
 {
 	status === 'requested' && !acceptedAt && (
-		<div data-change-order={orderCode} data-time-ranges-scope data-initial-from={fromDate} data-initial-to={toDate}>
+		<div data-change-order={orderCode} data-time-ranges-scope data-initial-from={fromDate} data-initial-to={toDate} data-initial-ranges={JSON.stringify(timeRanges)}>
 			<Button type="button" data-modal-open data-modal-target={modalId}>
 				Change order
 			</Button>
@@ -39,8 +40,8 @@ const titleId = `${modalId}-title`;
 				<h2 id={titleId} class={sectionTitleClasses}>
 					Change pick-up &amp; return dates
 				</h2>
-				<ReservationCalendar value={`${fromDate}/${toDate}`} maxRangeDays={maxRentalDays} availablePickupDates={availablePickupDates} />
-				<TimeRangesPicker windows={timeRangeWindows} initial={{ fromDate, toDate, pickup: timeRanges.pickup, return: timeRanges.return }} />
+				<ReservationCalendar value={`${fromDate}/${toDate}`} maxRangeDays={maxRentalDays} pickupWindows={pickupWindows} />
+				<TimeRangesPicker windows={pickupWindows} initial={{ fromDate, toDate, pickup: timeRanges.pickup, return: timeRanges.return }} />
 				<p data-change-order-error hidden class={inlineErrorClasses} />
 				<div class={actionRowClasses}>
 					<Button type="button" data-modal-close>Cancel</Button>
@@ -54,7 +55,7 @@ const titleId = `${modalId}-title`;
 }
 
 <script>
-	import { orderTimeRangeErrorMessage } from '../../lib/timeRanges';
+	import { mergeTimeRanges, orderTimeRangeErrorMessage, type TimeRange } from '../../lib/timeRanges';
 	import type { TimeRangesChangeDetail } from '../reservation/timeRangesPicker';
 
 	document.querySelectorAll<HTMLElement>('[data-change-order]').forEach((container) => {
@@ -67,8 +68,24 @@ const titleId = `${modalId}-title`;
 		let pending: { from: string; to: string } | null = initialFrom && initialTo ? { from: initialFrom, to: initialTo } : null;
 		// Filled by TimeRangesPicker (#368); null until its ranges are valid.
 		let times: TimeRangesChangeDetail | null = null;
+		// What the order has now, merged the same way the picker emits its
+		// ranges, so an untouched modal compares equal.
+		let initialRanges: { pickup: TimeRange[]; return: TimeRange[] } = { pickup: [], return: [] };
+		try {
+			const parsed = JSON.parse(container.dataset.initialRanges ?? '{}');
+			initialRanges = { pickup: mergeTimeRanges(parsed.pickup ?? []), return: mergeTimeRanges(parsed.return ?? []) };
+		} catch {
+			// No initial ranges: any valid choice counts as a change.
+		}
+		const sameRanges = (a: TimeRange[], b: TimeRange[]) => JSON.stringify(a) === JSON.stringify(b);
+		// Confirm stays disabled until something differs from the order as it is.
+		const isUnchanged = (p: { from: string; to: string }, t: TimeRangesChangeDetail) =>
+			p.from === initialFrom &&
+			p.to === initialTo &&
+			sameRanges(t.pickup, initialRanges.pickup) &&
+			sameRanges(t.return, initialRanges.return);
 		const refreshConfirm = () => {
-			if (confirmButton) confirmButton.disabled = !pending || !times;
+			if (confirmButton) confirmButton.disabled = !pending || !times || isUnchanged(pending, times);
 		};
 
 		container.addEventListener('reservation-range-change', (event) => {

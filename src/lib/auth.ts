@@ -1,4 +1,5 @@
 import { getToken } from '@auth/core/jwt';
+import { findDevUser, isStaleDevUserId } from './devMode';
 
 export type Role = 'admin' | 'board' | 'moderator' | 'member';
 
@@ -40,6 +41,9 @@ const MODERATOR_USER_IDS = parseIdAllowlist(import.meta.env.MODERATOR_USER_IDS);
 // Plain synchronous lookup; add caching back only once a real bloc role API
 // exists (#22).
 export function getRole(userId: string): Role {
+  // Dev-mode test users (src/lib/devMode.ts); undefined unless built with DEV_MODE.
+  const devUser = findDevUser(userId);
+  if (devUser) return devUser.role;
   if (ADMIN_USER_IDS.has(userId)) return 'admin';
   if (BOARD_USER_IDS.has(userId)) return 'board';
   if (MODERATOR_USER_IDS.has(userId)) return 'moderator';
@@ -54,6 +58,7 @@ export function getRole(userId: string): Role {
 export async function validateSession(request: Request): Promise<App.Locals['user']> {
   const token = await getToken({ req: request, secret: import.meta.env.AUTH_SECRET });
   if (!token?.sub || typeof token.email !== 'string') return null;
+  if (isStaleDevUserId(token.sub)) return null;
 
   const role = getRole(token.sub);
 

@@ -9,7 +9,7 @@ import {
 	timeToMinutes,
 	validateOrderTimeRanges,
 } from '../timeRanges';
-import { nowInOslo } from '../dates';
+import { timeNowOslo } from '../dates';
 
 describe('timeToMinutes', () => {
 	it('converts HH:MM to minutes since midnight', () => {
@@ -161,9 +161,9 @@ describe('parseTimeRanges', () => {
 	});
 });
 
-describe('nowInOslo', () => {
+describe('timeNowOslo', () => {
 	it('reads the date and 24h time on a clock in Oslo', () => {
-		expect(nowInOslo(new Date('2026-10-22T22:30:00Z'))).toEqual({ date: '2026-10-23', time: '00:30' });
-		expect(nowInOslo(new Date('2026-01-15T11:05:00Z'))).toEqual({ date: '2026-01-15', time: '12:05' });
+		expect(timeNowOslo(new Date('2026-10-22T22:30:00Z'))).toEqual({ date: '2026-10-23', time: '00:30' });
+		expect(timeNowOslo(new Date('2026-01-15T11:05:00Z'))).toEqual({ date: '2026-01-15', time: '12:05' });
 	});
 });

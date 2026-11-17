@@ -1,14 +1,14 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { db } from '../../db/client';
+import { getMemberOrder } from '../../lib/orders';
+import { toOrderItemView } from '../../lib/orderItemView';
+import { getUpcomingPickupWindows } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
-import { getUpcomingAvailablePickupDates, listUpcomingPickupDays } from '../../lib/pickupDays';
 import { getOrderTimeRanges } from '../../lib/orderTimeRanges';
 import RequestedTimeRanges from '../../components/orders/RequestedTimeRanges.astro';
 import ConfirmedPickupWindows from '../../components/orders/ConfirmedPickupWindows.astro';
-import { todayIsoInOslo } from '../../lib/dates';
-import OrderCodeHeader from '../../components/orders/OrderCodeHeader.astro';
-import OrderContents from '../../components/orders/OrderContents.astro';
+import { timeNowOslo } from '../../lib/dates';
+import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import SubmittedContactDetails from '../../components/orders/SubmittedContactDetails.astro';
 import DeleteOrderButton from '../../components/orders/DeleteOrderButton.astro';
 import ChangeOrderLink from '../../components/orders/ChangeOrderLink.astro';
@@ -19,24 +19,20 @@ import { cardFooterClasses } from '../../lib/layout-styles';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
 // reached only when logged in, so Astro.locals.user is non-null here.
-const { code } = Astro.params;
-const order = code
-  ? await db.query.orders.findFirst({
-      where: (t, { eq }) => eq(t.orderCode, code),
-      with: { orderItems: { with: { item: true } }, pickupDay: true, returnDay: true },
-    })
-  : undefined;
+// getMemberOrder scopes the lookup to the signed-in user, so another member's
+// code resolves exactly like a nonexistent one — don't leak it by guessing or
+// enumerating order codes (never redirect differently for "not yours").
+const order = await getMemberOrder(Astro.params.code ?? '', Astro.locals.user?.id ?? '');
 
-// Don't leak another member's order by guessing/enumerating order codes.
-if (!order || order.userId !== Astro.locals.user?.id) {
+if (!order) {
   return Astro.redirect('/');
 }
 
-// Only the reschedule modal needs these: return days must be pick-up days
-// (#336), and the day's windows are the time-range presets (#368).
+// Only the reschedule modal needs the upcoming windows: their dates colour
+// the calendar (returns must be on a pick-up day, #336) and they are the
+// time-range presets (#368) — one query for both.
 const reschedulable = order.status === 'requested' && !order.acceptedAt;
-const availablePickupDates = reschedulable ? await getUpcomingAvailablePickupDates(todayIsoInOslo()) : [];
-const timeRangeWindows = reschedulable ? await listUpcomingPickupDays(todayIsoInOslo()) : [];
+const upcomingWindows = reschedulable ? await getUpcomingPickupWindows(timeNowOslo()) : {};
 const timeRanges = getOrderTimeRanges(order.id);
 ---
 
@@ -45,19 +41,21 @@ const timeRanges = getOrderTimeRanges(order.id);
 		<BackLink slot="before-title" href="/">Back to shop</BackLink>
 
 		<Card as="div">
-			<OrderCodeHeader orderCode={order.orderCode} status={order.status} fromDate={order.fromDate} toDate={order.toDate} />
-			{order.status === 'requested' && <RequestedTimeRanges fromDate={order.fromDate} toDate={order.toDate} ranges={timeRanges} framed={false} />}
-			{(order.status === 'scheduled' || order.status === 'active') && <ConfirmedPickupWindows pickup={order.pickupDay} return={order.returnDay} />}
-			<OrderContents
-				items={order.orderItems.map((oi) => ({
-					itemName: oi.item.name,
-					requestedQuantity: oi.requestedQuantity,
-				}))}
+			<UserOrderSummary
+				orderCode={order.orderCode}
+				status={order.status}
+				fromDate={order.fromDate}
+				toDate={order.toDate}
 				note={order.note}
-			/>
+				items={order.orderItems.map(toOrderItemView)}
+				showImages
+			>
+				{order.status === 'requested' && <RequestedTimeRanges fromDate={order.fromDate} toDate={order.toDate} ranges={timeRanges} framed={false} />}
+				{(order.status === 'scheduled' || order.status === 'active') && <ConfirmedPickupWindows pickup={order.pickupDay} return={order.returnDay} />}
+			</UserOrderSummary>
 			<SubmittedContactDetails contactName={order.contactName} />
 			<div class={cardFooterClasses}>
-				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} availablePickupDates={availablePickupDates} timeRangeWindows={timeRangeWindows} timeRanges={timeRanges} />
+				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} pickupWindows={upcomingWindows} timeRanges={timeRanges} />
 				<DeleteOrderButton orderCode={order.orderCode} status={order.status} />
 			</div>
 		</Card>

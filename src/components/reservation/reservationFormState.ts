@@ -13,6 +13,8 @@
 // module decides *what* to render and calls those functions with the result.
 import { hideRow, renderRow, setSubmitEnabled, setSubmitHint, type LineAvailability } from './reservationFormRender';
 import type { TimeRangesChangeDetail } from './timeRangesPicker';
+import { daysInclusive } from '../../lib/dates';
+import { deriveReservationStatus, type ReservationStatusInput } from '../../lib/reservationStatus';
 
 // A cart line's reservation-relevant shape — `key` is cart.ts's entryKey
 // ('item:<id>' or 'set:<id>'), matching this line's `[data-line-key]`
@@ -22,25 +24,29 @@ export type ReservationCartLineRef =
 	| { key: string; itemId: number; quantity: number }
 	| { key: string; setId: number; quantity: number };
 
-export function initReservationForm(initialCartLines: ReservationCartLineRef[]): void {
+export function initReservationForm(initialCartLines: ReservationCartLineRef[], maxRentalDays: number): void {
 	// Mutable: removing an unavailable line drops it from here so later
 	// availability checks only cover what's still in the cart.
 	let cartLines = [...initialCartLines];
 	let lastFrom: string | undefined;
 	let lastTo: string | undefined;
 
-	const warning = document.querySelector('[data-unavailable-warning]');
-	const loadingIndicator = document.querySelector('[data-availability-loading]');
+	const warning = document.querySelector<HTMLElement>('[data-unavailable-warning]');
+	const warningText = document.querySelector<HTMLElement>('[data-unavailable-warning-text]');
+	const errorBox = document.querySelector<HTMLElement>('[data-availability-error]');
+	const errorText = document.querySelector<HTMLElement>('[data-availability-error-text]');
+	const loadingIndicator = document.querySelector<HTMLElement>('[data-availability-loading]');
 	const submitHint = document.querySelector('[data-submit-hint]');
 	const checkoutForm = document.querySelector('.checkout-form');
 	const submitButton = checkoutForm?.querySelector('button[type="submit"]');
 	const fromDateInput = checkoutForm?.querySelector('[data-checkout-from-date]');
 	const toDateInput = checkoutForm?.querySelector('[data-checkout-to-date]');
 
-	let lastAllAvailable = false;
-	let lastSomeUnavailable = false;
-	// Whether TimeRangesPicker holds valid pick-up and return ranges (#368).
+	// Whether TimeRangesPicker holds valid pick-up and return ranges (#368),
+	// and the last availability input, so a time-range change can repaint
+	// the status without refetching availability.
 	let timesValid = false;
+	let lastStatus: ReservationStatusInput = { hasDates: false, availabilities: null };
 	const pickupRangesInput = checkoutForm?.querySelector('[data-checkout-pickup-ranges]');
 	const returnRangesInput = checkoutForm?.querySelector('[data-checkout-return-ranges]');
 	// Guards against an in-flight request landing after a later one (rapid
@@ -51,18 +57,18 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 		return document.querySelectorAll('[data-reservation-row]');
 	}
 
-	function refreshSubmitState() {
-		const enabled = lastAllAvailable && cartLines.length > 0 && timesValid;
-		setSubmitEnabled(submitButton, enabled);
-		if (enabled) {
-			setSubmitHint(submitHint, '');
-		} else if (lastSomeUnavailable) {
-			setSubmitHint(submitHint, 'Remove the unavailable item(s) from your cart to continue, or choose different dates.');
-		} else if (lastAllAvailable && !timesValid) {
-			setSubmitHint(submitHint, 'Add at least one valid pick-up and one valid return time range above to continue.');
-		} else {
-			setSubmitHint(submitHint, 'Select your pick-up and return dates above to continue.');
-		}
+	// Paints every status element from one derived view. The states and their
+	// text live in src/lib/reservationStatus.ts.
+	function applyStatus(input: ReservationStatusInput) {
+		lastStatus = input;
+		const view = deriveReservationStatus({ ...input, timesValid });
+		setSubmitEnabled(submitButton, view.submitEnabled && cartLines.length > 0);
+		setSubmitHint(submitHint, view.hint);
+		if (loadingIndicator) loadingIndicator.hidden = !view.loading;
+		if (warning) warning.hidden = view.warning === null;
+		if (warningText) warningText.textContent = view.warning ?? '';
+		if (errorBox) errorBox.hidden = view.error === null;
+		if (errorText) errorText.textContent = view.error ?? '';
 	}
 
 	setSubmitEnabled(submitButton, false);
@@ -76,16 +82,22 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 		const token = ++requestToken;
 
 		if (!from || !to) {
-			warning?.setAttribute('hidden', '');
-			loadingIndicator?.setAttribute('hidden', '');
-			lastAllAvailable = false;
-			lastSomeUnavailable = false;
-			refreshSubmitState();
+			applyStatus({ hasDates: false, availabilities: null });
 			getRows().forEach((row) => hideRow(row));
 			return;
 		}
 
-		loadingIndicator?.removeAttribute('hidden');
+		// Over the max rental period the API would reject the request, so say
+		// so here rather than letting it surface as a failed availability check.
+		const rentalDays = daysInclusive(from, to);
+		if (rentalDays > maxRentalDays) {
+			applyStatus({ hasDates: true, availabilities: null, rentalDays, maxRentalDays });
+			getRows().forEach((row) => hideRow(row));
+			return;
+		}
+
+		// Loading: submit stays disabled until this check answers.
+		applyStatus({ hasDates: true, availabilities: null });
 
 		let availabilities: LineAvailability[];
 		try {
@@ -95,27 +107,20 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 				body: JSON.stringify({ from, to, lines: cartLines }),
 			});
 			if (token !== requestToken) return;
-			if (!res.ok) {
-				loadingIndicator?.setAttribute('hidden', '');
-				return;
-			}
+			if (!res.ok) throw new Error(`availability check failed: ${res.status}`);
 			({ availabilities } = await res.json());
 			if (token !== requestToken) return;
+			if (!Array.isArray(availabilities)) throw new Error('availability check returned no lines');
 		} catch {
-			if (token === requestToken) loadingIndicator?.setAttribute('hidden', '');
+			if (token !== requestToken) return;
+			applyStatus({ hasDates: true, availabilities: 'error' });
+			getRows().forEach((row) => hideRow(row));
 			return;
 		}
 
-		loadingIndicator?.setAttribute('hidden', '');
+		applyStatus({ hasDates: true, availabilities });
 
 		const byKey = new Map(availabilities.map((a) => [a.key, a]));
-		const someUnavailable = availabilities.some((a) => !a.available);
-
-		warning?.toggleAttribute('hidden', !someUnavailable);
-		lastAllAvailable = availabilities.every((a) => a.available);
-		lastSomeUnavailable = someUnavailable;
-		refreshSubmitState();
-
 		getRows().forEach((row) => {
 			const availability = byKey.get((row as HTMLElement).dataset.lineKey ?? '');
 			if (availability) renderRow(row, availability);
@@ -152,7 +157,7 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[]):
 		timesValid = detail.valid;
 		if (pickupRangesInput instanceof HTMLInputElement) pickupRangesInput.value = detail.valid ? JSON.stringify(detail.pickup) : '';
 		if (returnRangesInput instanceof HTMLInputElement) returnRangesInput.value = detail.valid ? JSON.stringify(detail.return) : '';
-		refreshSubmitState();
+		applyStatus(lastStatus);
 	});
 
 	document.addEventListener('reservation-range-change', (event) => {

@@ -7,8 +7,9 @@ import OrdersTableRow from '../../components/orders/OrdersTableRow.astro';
 import ItemQtyLine from '../../components/ui/ItemQtyLine.astro';
 import { getCartLines, type CartLine } from '../../lib/cart';
 import { isValidDateRange } from '../../lib/reservation';
-import { getPickupDatesAmong, listPickupDaysOn } from '../../lib/pickupDays';
-import { formatDateDisplay, nowInOslo } from '../../lib/dates';
+import { getPickupDatesAmong, getPickupWindowsForDate } from '../../lib/pickupDays';
+import { formatPickupWindow } from '../../lib/pickupWindowFormat';
+import { formatDateDisplay, timeNowOslo } from '../../lib/dates';
 import { parseTimeRanges, validateOrderTimeRanges } from '../../lib/timeRanges';
 import RequestedTimeRanges from '../../components/orders/RequestedTimeRanges.astro';
 import { formatAttributes } from '../../lib/attributes';
@@ -33,7 +34,7 @@ if (!isValidDateRange({ from: fromDate, to: toDate })) {
 	return Astro.redirect('/reservation?error=invalid_dates');
 }
 // Returns only happen on pick-up days (#336); the calendar enforces it too.
-if (!isValidDateRange({ from: fromDate, to: toDate }, getPickupDatesAmong([toDate]))) {
+if (!getPickupDatesAmong([toDate]).has(toDate)) {
 	return Astro.redirect('/reservation?error=return_not_pickup_day');
 }
 if (form.get('disclaimerAccepted') !== 'on') {
@@ -43,7 +44,7 @@ if (form.get('disclaimerAccepted') !== 'on') {
 const times = validateOrderTimeRanges(
 	{ pickup: parseTimeRanges(form.get('pickupRanges')?.toString() ?? '') ?? [], return: parseTimeRanges(form.get('returnRanges')?.toString() ?? '') ?? [] },
 	{ fromDate, toDate },
-	nowInOslo(),
+	timeNowOslo(),
 );
 if (!times.ok) {
 	return Astro.redirect('/reservation?error=invalid_time_ranges');
@@ -52,7 +53,7 @@ if (!times.ok) {
 const text = (name: string) => form.get(name)?.toString().trim() ?? '';
 const contact = { name: text('name'), email: text('email'), mobile: text('mobile') };
 const note = text('note');
-const pickupWindows = await listPickupDaysOn(fromDate);
+const pickupWindows = await getPickupWindowsForDate(fromDate);
 
 // ItemQtyLine only renders "name × qty", so the variant (item attributes, or a
 // set's label) is folded into the name.
@@ -87,12 +88,7 @@ const hiddenFields: Record<string, string> = {
 						<span class="text-text-muted">· time to be announced</span>
 					) : (
 						<ul class="mt-1 flex flex-col gap-1">
-							{pickupWindows.map((w) => (
-								<li>
-									{w.startTime}–{w.endTime}
-									{w.where && <span class="text-text-muted"> · {w.where}</span>}
-								</li>
-							))}
+							{pickupWindows.map((w) => <li>{formatPickupWindow(w)}</li>)}
 						</ul>
 					)
 				}

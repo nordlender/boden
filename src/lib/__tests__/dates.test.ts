@@ -7,7 +7,16 @@ import {
 	formatDateDisplay,
 	formatDateTimeDisplay,
 	isIsoDate,
+	timeNowOslo,
 } from '../dates';
+
+describe('timeNowOslo', () => {
+	it('reads the Oslo wall clock (CEST in summer, CET in winter), 24h, crossing midnight', () => {
+		expect(timeNowOslo(new Date('2026-07-01T10:05:00Z'))).toEqual({ date: '2026-07-01', time: '12:05' });
+		expect(timeNowOslo(new Date('2026-01-15T10:05:00Z'))).toEqual({ date: '2026-01-15', time: '11:05' });
+		expect(timeNowOslo(new Date('2026-07-01T22:30:00Z'))).toEqual({ date: '2026-07-02', time: '00:30' });
+	});
+});
 
 describe('isIsoDate', () => {
 	it('accepts real dates, including leap day', () => {

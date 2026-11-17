@@ -1,5 +1,8 @@
 ---
 import { menuItemClasses } from '../../lib/layout-styles';
+import { DEV_MODE, DEV_USERS } from '../../lib/devMode';
+import AppIcon from '../icons/AppIcon.astro';
+import Dropdown from '../ui/Dropdown.astro';
 ---
 
 <!--
@@ -27,10 +30,36 @@ import { menuItemClasses } from '../../lib/layout-styles';
 			</button>
 		</li>
 	</ul>
+	<!--
+		Dev mode only (src/lib/devMode.ts): sign in as a fixed test user.
+		[&>summary]:w-full because Dropdown's summary hugs its trigger (w-fit);
+		this row should span the menu like its siblings.
+	-->
+	{DEV_MODE && (
+		<div class="mt-1 border-t border-border pt-1">
+			<Dropdown panelClass="mt-1 w-full" class="group/change-user w-full [&>summary]:w-full">
+				<span slot="trigger" class:list={[menuItemClasses, 'justify-between']}>
+					Change user
+					<AppIcon name="chevronRight" size={16} class="transition-transform group-open/change-user:rotate-90" />
+				</span>
+				<ul class="flex flex-col gap-1">
+					{DEV_USERS.map((u) => (
+						<li>
+							<button type="button" data-dev-user={u.id} class:list={[menuItemClasses, 'justify-between aria-current:font-semibold aria-current:text-text']}>
+								{u.name}
+								<span class="text-xs text-text-muted">{u.role}</span>
+							</button>
+						</li>
+					))}
+				</ul>
+			</Dropdown>
+		</div>
+	)}
 </div>
 
 <script>
-	import { signOut } from 'auth-astro/client';
+	import { signIn, signOut } from 'auth-astro/client';
+	import { DEV_PROVIDER_ID } from '../../lib/devMode';
 
 	async function loadSession() {
 		try {
@@ -43,6 +72,9 @@ import { menuItemClasses } from '../../lib/layout-styles';
 			});
 			document.querySelectorAll<HTMLElement>('[data-signed-in]').forEach((el) => {
 				el.hidden = !signedIn;
+			});
+			document.querySelectorAll<HTMLButtonElement>('[data-dev-user]').forEach((button) => {
+				button.toggleAttribute('aria-current', button.dataset.devUser === session?.user?.id);
 			});
 			document.querySelectorAll<HTMLElement>('[data-user-email]').forEach((el) => {
 				if (signedIn && session.user?.email) {
@@ -63,6 +95,16 @@ import { menuItemClasses } from '../../lib/layout-styles';
 			// isn't installed as a dependency here (same gap login.astro's signIn
 			// call works around) — cast rather than pull in next-auth for types.
 			void signOut({ callbackUrl: '/' } as Parameters<typeof signOut>[0]);
+		});
+	});
+
+	// Dev mode only — the buttons aren't rendered otherwise. Signing in again
+	// replaces the current session, so no sign-out first; callbackUrl brings
+	// the user back to the page they were on, re-rendered as the new user.
+	document.querySelectorAll<HTMLButtonElement>('[data-dev-user]').forEach((button) => {
+		button.addEventListener('click', () => {
+			// Same next-auth/react type gap as signOut above.
+			void signIn(DEV_PROVIDER_ID, { userId: button.dataset.devUser, callbackUrl: location.href } as Parameters<typeof signIn>[1]);
 		});
 	});
 

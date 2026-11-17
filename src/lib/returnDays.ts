@@ -5,13 +5,16 @@
 import { addDaysIso, daysInclusive } from './dates';
 
 /**
- * Pick-up days a member could return on after picking up on `from`: every
- * date in `pickupDates` from `from` (a same-day return) to the last day the
- * max rental length allows, sorted.
+ * Whether a member picking up on `from` has any pick-up day in `pickupDates`
+ * to return on: `from` itself (a same-day return) up to the last day the max
+ * rental length allows. Stops at the first match.
  */
-export function validReturnDays(from: string, pickupDates: ReadonlySet<string>, maxRangeDays?: number): string[] {
+export function hasValidReturnDay(from: string, pickupDates: ReadonlySet<string>, maxRangeDays?: number): boolean {
 	const last = maxRangeDays ? addDaysIso(from, maxRangeDays - 1) : undefined;
-	return [...pickupDates].filter((date) => date >= from && (!last || date <= last)).sort((a, b) => a.localeCompare(b));
+	for (const date of pickupDates) {
+		if (date >= from && (!last || date <= last)) return true;
+	}
+	return false;
 }
 
 /**

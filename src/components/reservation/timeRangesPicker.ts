@@ -9,7 +9,8 @@
 // Rows are built with createElement rather than cloned from a <template>
 // (astro-icon in a <template> blanks icons page-wide; plain text buttons
 // keep this simple anyway).
-import { formatDateDisplay, nowInOslo } from '../../lib/dates';
+import { formatDateDisplay, timeNowOslo } from '../../lib/dates';
+import { formatPickupWindow, type PickupWindowDisplay } from '../../lib/pickupWindowFormat';
 import { inputSmClasses } from '../../lib/form-styles';
 import { baseClasses, sizeClasses, variantClasses } from '../../lib/button-styles';
 import {
@@ -20,12 +21,6 @@ import {
 	type TimeRange,
 	type TimeRangeKind,
 } from '../../lib/timeRanges';
-
-export interface PickerWindow {
-	startTime: string;
-	endTime: string;
-	where: string | null;
-}
 
 export interface TimeRangesChangeDetail {
 	valid: boolean;
@@ -47,7 +42,7 @@ const smallButton = `${baseClasses} ${sizeClasses.sm} ${variantClasses.secondary
 const presetButton = `${baseClasses} ${sizeClasses.sm} ${variantClasses['primary-outline']}`;
 
 export function initTimeRangesPicker(root: HTMLElement): void {
-	const windowsByDate: Record<string, PickerWindow[]> = JSON.parse(root.dataset.windows ?? '{}');
+	const windowsByDate: Record<string, PickupWindowDisplay[]> = JSON.parse(root.dataset.windows ?? '{}');
 	const initial: InitialRanges | null = root.dataset.initial ? JSON.parse(root.dataset.initial) : null;
 	// The calendar's `reservation-range-change` bubbles up to this scope.
 	const scope: HTMLElement | Document = root.closest<HTMLElement>('[data-time-ranges-scope]') ?? document;
@@ -79,7 +74,7 @@ export function initTimeRangesPicker(root: HTMLElement): void {
 		const ret = readRows('return');
 		let detail: TimeRangesChangeDetail = { valid: false, pickup: [], return: [], message: '' };
 		if (dates.pickup && dates.return) {
-			const result = validateOrderTimeRanges({ pickup: pickup.ranges, return: ret.ranges }, { fromDate: dates.pickup, toDate: dates.return }, nowInOslo());
+			const result = validateOrderTimeRanges({ pickup: pickup.ranges, return: ret.ranges }, { fromDate: dates.pickup, toDate: dates.return }, timeNowOslo());
 			if (result.ok) {
 				detail = { valid: true, pickup: result.ranges.pickup, return: result.ranges.return, message: '' };
 			} else {
@@ -142,8 +137,7 @@ export function initTimeRangesPicker(root: HTMLElement): void {
 				const button = document.createElement('button');
 				button.type = 'button';
 				button.className = presetButton;
-				const where = window.where ? ` · ${window.where}` : '';
-				button.textContent = `${window.startTime}–${window.endTime}${where}`;
+				button.textContent = formatPickupWindow(window);
 				button.setAttribute('aria-label', `Add ${window.startTime} to ${window.endTime} as a ${kind === 'pickup' ? 'pick-up' : 'return'} time range`);
 				button.addEventListener('click', () => {
 					const already = readRows(kind).ranges.some((r) => r.from === window.startTime && r.to === window.endTime);

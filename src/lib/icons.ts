@@ -44,6 +44,8 @@ export const icons = {
 	// (see icon-nodes.ts) — since a client-rendered custom element there would
 	// interfere with Astro's prefetch of the link it sits on.
 	user: 'tabler:user',
+	// User menu's dev-mode "Change user" submenu (UserMenuLinks.astro).
+	chevronRight: 'tabler:chevron-right',
 	// Orders table (OrdersTable.astro): the compact row's view-order action
 	// is icon-only, and the layout toggle switches between the compact and
 	// detailed row components.

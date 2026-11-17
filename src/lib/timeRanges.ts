@@ -102,7 +102,7 @@ export type OrderTimeRangeError =
 	| { kind: 'return'; error: 'return_before_pickup' };
 
 /** Tags a normalizeTimeRanges failure with the side it came from. */
-function normalizeErrorDetail(kind: TimeRangeKind, result: Extract<NormalizeTimeRangesResult, { ok: false }>): OrderTimeRangeError {
+export function normalizeErrorDetail(kind: TimeRangeKind, result: Extract<NormalizeTimeRangesResult, { ok: false }>): OrderTimeRangeError {
 	if (result.error === 'no_ranges') return { kind, error: result.error };
 	if (result.error === 'too_many') return { kind, error: result.error, max: result.max };
 	return { kind, error: result.error, index: result.index };

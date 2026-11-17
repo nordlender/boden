@@ -1,4 +1,4 @@
-import { db } from '../db/client';
+import { db, type Tx } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CartEntry } from './cart';
@@ -7,9 +7,10 @@ import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
 import { getPickupDatesAmong } from './pickupDays';
-import { setOrderTimeRanges } from './orderTimeRanges';
+import { InvalidTimeRangesError, setOrderTimeRanges } from './orderTimeRanges';
 import { validateOrderTimeRanges, type OrderTimeRangeError, type OrderTimeRangeInput, type TimeRange } from './timeRanges';
-import { nowInOslo } from './dates';
+import { timeNowOslo } from './dates';
+import type { OrderStatus } from './orderStatus';
 
 // NNAAX: two digits, two free letters, one role letter.
 export const ORDER_CODE_LENGTH = 5;
@@ -80,10 +81,10 @@ class ReturnDayNotPickupDayError extends Error {
 
 // The return-day rule (#336), checked inside the create/reschedule
 // transaction so a window deleted mid-request can't slip through. The caller
-// has already checked the plain date range, so failing here means the return
-// day has no pick-up window.
-function assertReturnOnPickupDay(tx: Tx, fromDate: string, toDate: string): void {
-  if (!isValidDateRange({ from: fromDate, to: toDate }, getPickupDatesAmong([toDate], tx))) {
+// has already checked the date range itself (isValidDateRange), so this only
+// asks whether the return day still has a pick-up window.
+function assertReturnOnPickupDay(tx: Tx, toDate: string): void {
+  if (!getPickupDatesAmong([toDate], tx).has(toDate)) {
     throw new ReturnDayNotPickupDayError();
   }
 }
@@ -125,8 +126,6 @@ export type CreateOrderResult =
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
   | { ok: false; error: 'user_not_found' };
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
 function insertOrder(
   tx: Tx,
   input: {
@@ -156,7 +155,7 @@ function insertOrder(
   // point. Doing it here rather than before the transaction closes the race
   // between two members submitting overlapping requests concurrently: the
   // check and the insert commit atomically together.
-  assertReturnOnPickupDay(tx, input.fromDate, input.toDate);
+  assertReturnOnPickupDay(tx, input.toDate);
   const availabilities = getReservationAvailability({ from: input.fromDate, to: input.toDate }, input.entries, undefined, tx);
   const unavailableItemIds = availabilities.filter((a) => !a.available).map((a) => a.itemId);
   if (unavailableItemIds.length > 0) {
@@ -242,7 +241,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   if (!isValidDateRange({ from: input.fromDate, to: input.toDate })) {
     return { ok: false, error: 'invalid_dates' };
   }
-  const times = validateOrderTimeRanges(input.timeRanges, input, nowInOslo());
+  const times = validateOrderTimeRanges(input.timeRanges, input, timeNowOslo());
   if (!times.ok) return { ok: false, error: 'invalid_time_ranges', detail: times.detail };
   const entriesToOrder = await resolveOrderableEntries(input.cartEntries);
   if (entriesToOrder.length === 0) {
@@ -284,6 +283,9 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     if (err instanceof ReturnDayNotPickupDayError) {
       return { ok: false, error: 'return_not_pickup_day' };
     }
+    if (err instanceof InvalidTimeRangesError) {
+      return { ok: false, error: 'invalid_time_ranges', detail: err.detail };
+    }
     // orders.userId is a FK sourced from the checkout route's ambient
     // session id (locals.user!.id) rather than a freshly-looked-up row —
     // same defensive-only case as moderatorOrders.ts's confirmRetrieval.
@@ -292,6 +294,98 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     }
     throw err;
   }
+}
+
+// Row shape rendered by OrdersTable.astro — shared by the member, admin and
+// moderator order lists.
+export interface OrderRow {
+  orderCode: string;
+  status: OrderStatus;
+  fromDate: string;
+  toDate: string;
+  customerName: string;
+  items: { itemName: string; requestedQuantity: number }[];
+}
+
+type OrderRowSource = Pick<OrderRow, 'orderCode' | 'status' | 'fromDate' | 'toDate'> & {
+  contactName: string;
+  user?: { name: string | null } | null;
+  orderItems: { requestedQuantity: number; item: { name: string } }[];
+};
+
+export function toOrderRow(order: OrderRowSource): OrderRow {
+  return {
+    orderCode: order.orderCode,
+    status: order.status,
+    fromDate: order.fromDate,
+    toDate: order.toDate,
+    // users.name is nullable (set from the external OAuth provider) — fall
+    // back to the checkout-time contact name snapshot. Callers that don't
+    // load `user` (a member's own list) always get the snapshot.
+    customerName: order.user?.name || order.contactName,
+    items: order.orderItems.map((oi) => ({
+      itemName: oi.item.name,
+      requestedQuantity: oi.requestedQuantity,
+    })),
+  };
+}
+
+export async function getMemberOrderRows(userId: string): Promise<OrderRow[]> {
+  const memberOrders = await db.query.orders.findMany({
+    where: (t, { eq: eqCol }) => eqCol(t.userId, userId),
+    orderBy: (t, { desc }) => [desc(t.createdAt)],
+    with: { orderItems: { with: { item: true } } },
+  });
+  return memberOrders.map(toOrderRow);
+}
+
+export interface PendingRequestRow extends OrderRow {
+	id: number;
+}
+
+// Every member's orders, most recent first, optionally filtered by status —
+// the admin's all-orders list.
+export async function getAllOrderRows(status: OrderStatus | null = null): Promise<OrderRow[]> {
+	const allOrders = await db.query.orders.findMany({
+		where: status ? (t, { eq: eqCol }) => eqCol(t.status, status) : undefined,
+		orderBy: (t, { desc }) => [desc(t.createdAt)],
+		with: { user: true, orderItems: { with: { item: true } } },
+	});
+	return allOrders.map(toOrderRow);
+}
+
+// Shared by src/pages/moderator/requests.astro (the full queue) and
+// src/pages/moderator/index.astro (the hub's upcoming-requests preview) —
+// same pending-review query and OrdersTable-row shape, so both stay in
+// sync rather than drifting from two copies of this query.
+export async function getPendingRequestRows(): Promise<PendingRequestRow[]> {
+	const pendingOrders = await db.query.orders.findMany({
+		where: (t, { eq: eqCol }) => eqCol(t.status, 'requested'),
+		// Earliest submitted first (first come, first served); id breaks
+		// ties since createdAt only has one-second resolution.
+		orderBy: (t, { asc: ascCol }) => [ascCol(t.createdAt), ascCol(t.id)],
+		with: { user: true, orderItems: { with: { item: true } } },
+	});
+
+	return pendingOrders.map((order) => ({ id: order.id, ...toOrderRow(order) }));
+}
+
+// Ownership is part of the WHERE clause, so another member's order code
+// resolves to undefined exactly like a nonexistent one — callers can't leak it.
+export async function getMemberOrder(orderCode: string, userId: string) {
+  if (!orderCode || !userId) return undefined;
+  return db.query.orders.findFirst({
+    where: (t, { eq: eqCol }) => and(eqCol(t.orderCode, orderCode), eqCol(t.userId, userId)),
+    // product + attributeValues feed toOrderItemView (src/lib/orderItemView.ts);
+    // pickupDay / returnDay are the confirmed windows (#343).
+    with: {
+      orderItems: {
+        with: { item: { with: { product: true, attributeValues: { with: { attribute: true } } } } },
+      },
+      pickupDay: true,
+      returnDay: true,
+    },
+  });
 }
 
 export type DeleteOrderInput = { orderCode: string; userId: string };
@@ -374,7 +468,7 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
   if (!isValidDateRange({ from: input.fromDate, to: input.toDate })) {
     return { ok: false, error: 'invalid_dates' };
   }
-  const times = validateOrderTimeRanges(input.timeRanges, input, nowInOslo());
+  const times = validateOrderTimeRanges(input.timeRanges, input, timeNowOslo());
   if (!times.ok) return { ok: false, error: 'invalid_time_ranges', detail: times.detail };
 
   const order = await db.query.orders.findFirst({
@@ -407,7 +501,7 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
       if (current.acceptedAt) {
         throw new OrderNotModifiableError('scheduled');
       }
-      assertReturnOnPickupDay(tx, input.fromDate, input.toDate);
+      assertReturnOnPickupDay(tx, input.toDate);
 
       const availabilities = getReservationAvailability(
         { from: input.fromDate, to: input.toDate },
@@ -436,6 +530,9 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
     }
     if (err instanceof ReturnDayNotPickupDayError) {
       return { ok: false, error: 'return_not_pickup_day' };
+    }
+    if (err instanceof InvalidTimeRangesError) {
+      return { ok: false, error: 'invalid_time_ranges', detail: err.detail };
     }
     throw err;
   }

@@ -1,23 +1,27 @@
 import { describe, it, expect } from 'vitest';
-import { isSecondClickAllowed, validReturnDays } from '../returnDays';
+import { hasValidReturnDay, isSecondClickAllowed } from '../returnDays';
 
 const PICKUP_DAYS = new Set(['2026-09-07', '2026-09-14', '2026-09-21', '2026-09-28']);
 
-describe('validReturnDays', () => {
-	it('lists pick-up days from the pick-up day to the end of the max rental length', () => {
-		expect(validReturnDays('2026-09-08', PICKUP_DAYS, 14)).toEqual(['2026-09-14', '2026-09-21']);
+describe('hasValidReturnDay', () => {
+	it('finds a pick-up day after the pick-up day within the max rental length', () => {
+		expect(hasValidReturnDay('2026-09-08', PICKUP_DAYS, 14)).toBe(true);
 	});
 
-	it('includes the pick-up day itself when it is a pick-up day (same-day return)', () => {
-		expect(validReturnDays('2026-09-07', PICKUP_DAYS, 7)).toEqual(['2026-09-07']);
+	it('counts the pick-up day itself when it is a pick-up day (same-day return)', () => {
+		expect(hasValidReturnDay('2026-09-07', PICKUP_DAYS, 1)).toBe(true);
 	});
 
-	it('is empty when no pick-up day falls within the max rental length', () => {
-		expect(validReturnDays('2026-09-08', PICKUP_DAYS, 6)).toEqual([]);
+	it('is false when no pick-up day falls within the max rental length', () => {
+		expect(hasValidReturnDay('2026-09-08', PICKUP_DAYS, 6)).toBe(false);
+	});
+
+	it('ignores pick-up days before the pick-up day', () => {
+		expect(hasValidReturnDay('2026-09-29', PICKUP_DAYS)).toBe(false);
 	});
 
 	it('is unbounded without a max', () => {
-		expect(validReturnDays('2026-09-22', PICKUP_DAYS)).toEqual(['2026-09-28']);
+		expect(hasValidReturnDay('2026-09-22', PICKUP_DAYS)).toBe(true);
 	});
 });
 

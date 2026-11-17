@@ -8,7 +8,7 @@ vi.mock('../../db/client', async () => {
 
 const { db } = await import('../../db/client');
 const { orders, orderTimeRanges, pickupDays, users } = await import('../../db/schema');
-const { getOrderTimeRanges, setOrderTimeRanges } = await import('../orderTimeRanges');
+const { getOrderTimeRanges, InvalidTimeRangesError, setOrderTimeRanges } = await import('../orderTimeRanges');
 
 const MEMBER = 'member-1';
 let orderId: number;
@@ -27,7 +27,7 @@ beforeEach(async () => {
 describe('setOrderTimeRanges / getOrderTimeRanges', () => {
 	it('stores merged ranges per kind and reads them back sorted', () => {
 		const pickup = setOrderTimeRanges(orderId, 'pickup', [{ from: '18:00', to: '20:00' }, { from: '12:00', to: '14:00' }, { from: '14:00', to: '15:00' }]);
-		expect(pickup).toEqual({ ok: true, ranges: [{ from: '12:00', to: '15:00' }, { from: '18:00', to: '20:00' }] });
+		expect(pickup).toEqual([{ from: '12:00', to: '15:00' }, { from: '18:00', to: '20:00' }]);
 		setOrderTimeRanges(orderId, 'return', [{ from: '09:00', to: '10:00' }]);
 
 		expect(getOrderTimeRanges(orderId)).toEqual({
@@ -47,10 +47,14 @@ describe('setOrderTimeRanges / getOrderTimeRanges', () => {
 		});
 	});
 
-	it('writes nothing and returns the error for invalid input', () => {
+	it('writes nothing and throws InvalidTimeRangesError for invalid input', () => {
 		setOrderTimeRanges(orderId, 'pickup', [{ from: '12:00', to: '14:00' }]);
-		expect(setOrderTimeRanges(orderId, 'pickup', [{ from: '14:00', to: '12:00' }])).toEqual({ ok: false, error: 'from_not_before_to', index: 0 });
-		expect(setOrderTimeRanges(orderId, 'pickup', [])).toEqual({ ok: false, error: 'no_ranges' });
+		expect(() => setOrderTimeRanges(orderId, 'pickup', [{ from: '14:00', to: '12:00' }])).toThrow(InvalidTimeRangesError);
+		try {
+			setOrderTimeRanges(orderId, 'return', []);
+		} catch (err) {
+			expect((err as InstanceType<typeof InvalidTimeRangesError>).detail).toEqual({ kind: 'return', error: 'no_ranges' });
+		}
 		expect(getOrderTimeRanges(orderId).pickup).toEqual([{ from: '12:00', to: '14:00' }]);
 	});
 

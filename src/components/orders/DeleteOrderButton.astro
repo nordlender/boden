@@ -1,57 +1,54 @@
 ---
 // Member-side "get rid of this order" action, behind a confirm popover.
-// Which action depends on how far the order has got (#371):
-// - 'requested' (not yet reviewed): hard delete, DELETE /api/orders/[code].
-// - 'scheduled' (accepted, not handed out): soft cancel,
+// Which action is decided by memberOrderAction (src/lib/orderStatus.ts, #371):
+// - 'delete' (not yet reviewed): hard delete, DELETE /api/orders/[code].
+// - 'cancel' (accepted, not handed out): soft cancel,
 //   POST /api/orders/[code]/cancel — the order is kept as 'cancelled'.
-// - anything later: nothing is rendered.
+// - null: nothing is rendered.
 // Either way, success lands on /orders with a notice (see orders/index.astro).
 // The fetch/confirm flow is shared via src/lib/action-popover-confirm.ts.
 import ActionPopover from '../ui/ActionPopover.astro';
 import { inlineErrorClasses } from '../../lib/form-styles';
+import type { MemberOrderAction } from '../../lib/orderStatus';
 
 interface Props {
 	orderCode: string;
-	status: string;
+	action: MemberOrderAction | null;
 }
 
-const { orderCode, status } = Astro.props;
-const mode = status === 'requested' ? 'delete' : status === 'scheduled' ? 'cancel' : null;
-const popoverId = `${mode}-order-${orderCode}-confirm`;
+const { orderCode, action } = Astro.props;
+
+const copy: Record<MemberOrderAction, { title: string; label: string; confirmLabel: string; dismissLabel?: string; body: string }> = {
+	delete: {
+		title: `Delete order #${orderCode}?`,
+		label: 'Delete order',
+		confirmLabel: 'Delete',
+		body: 'This cannot be undone.',
+	},
+	cancel: {
+		title: `Cancel order #${orderCode}?`,
+		label: 'Cancel order',
+		confirmLabel: 'Cancel order',
+		dismissLabel: 'Keep order',
+		body: 'A moderator has already accepted this order. Cancelling frees the gear for others and cannot be undone.',
+	},
+};
+const c = action && copy[action];
 ---
 
 {
-	mode === 'delete' && (
-		<div data-delete-order={orderCode} data-order-action="delete">
+	action && c && (
+		<div data-delete-order={orderCode} data-order-action={action}>
 			<ActionPopover
-				id={popoverId}
-				title={`Delete order #${orderCode}?`}
-				triggerLabel="Delete order"
+				id={`${action}-order-${orderCode}-confirm`}
+				title={c.title}
+				triggerLabel={c.label}
 				triggerVariant="danger"
-				confirmLabel="Delete"
+				confirmLabel={c.confirmLabel}
 				confirmVariant="danger"
+				dismissLabel={c.dismissLabel}
 			>
-				<p class="text-sm text-text-muted">This cannot be undone.</p>
-			</ActionPopover>
-			<p data-delete-order-error hidden class:list={['mt-2', inlineErrorClasses]} />
-		</div>
-	)
-}
-{
-	mode === 'cancel' && (
-		<div data-delete-order={orderCode} data-order-action="cancel">
-			<ActionPopover
-				id={popoverId}
-				title={`Cancel order #${orderCode}?`}
-				triggerLabel="Cancel order"
-				triggerVariant="danger"
-				confirmLabel="Cancel order"
-				confirmVariant="danger"
-				dismissLabel="Keep order"
-			>
-				<p class="text-sm text-text-muted">
-					A moderator has already accepted this order. Cancelling frees the gear for others and cannot be undone.
-				</p>
+				<p class="text-sm text-text-muted">{c.body}</p>
 			</ActionPopover>
 			<p data-delete-order-error hidden class:list={['mt-2', inlineErrorClasses]} />
 		</div>

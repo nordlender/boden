@@ -14,6 +14,7 @@ import Button from '../../components/ui/Button.astro';
 import Callout from '../../components/ui/Callout.astro';
 import { cardFooterClasses } from '../../lib/layout-styles';
 import { formatDateTimeDisplay } from '../../lib/dates';
+import { memberOrderAction } from '../../lib/orderStatus';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
 // reached only when logged in, so Astro.locals.user is non-null here.
@@ -64,9 +65,9 @@ if (!order) {
 					/>
 					<SubmittedContactDetails contactName={order.contactName} />
 					{
-						// Members can change/delete a 'requested' order and cancel a
-						// 'scheduled' one; from 'active' on there's nothing they can do.
-						(order.status === 'requested' || order.status === 'scheduled') && (
+						// Members can change/delete an unreviewed order and cancel an
+						// accepted one; from hand-out on there's nothing they can do.
+						memberOrderAction(order) && (
 							<div class={cardFooterClasses}>
 								<ChangeOrderLink
 									orderCode={order.orderCode}
@@ -76,7 +77,7 @@ if (!order) {
 									toDate={order.toDate}
 									maxRentalDays={getMaxRentalDays()}
 								/>
-								<DeleteOrderButton orderCode={order.orderCode} status={order.status} />
+								<DeleteOrderButton orderCode={order.orderCode} action={memberOrderAction(order)} />
 							</div>
 						)
 					}

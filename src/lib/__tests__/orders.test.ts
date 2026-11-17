@@ -271,27 +271,15 @@ describe('deleteOrder', () => {
 		expect(result).toEqual({ ok: false, error: 'not_found' });
 	});
 
-	it('rejects deleting a legacy accepted order (requested + acceptedAt) — it can only be cancelled', async () => {
-		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-22', '2026-05-23');
+	it.each([
+		['scheduled (moderator-accepted)', markOrderScheduled, '2026-05-20', '2026-05-21'],
+		['legacy accepted (requested + acceptedAt)', markOrderAccepted, '2026-05-22', '2026-05-23'],
+	])('rejects deleting a %s order — it can only be cancelled', async (_label, markAccepted, fromDate, toDate) => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], fromDate, toDate);
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
-		await markOrderAccepted(created.orderId);
-
-		expect(await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({
-			ok: false,
-			error: 'not_deletable',
-			status: 'scheduled',
-		});
-		expect(await findOrderByCode(created.orderCode)).toBeDefined();
-	});
-
-	it('rejects deleting a scheduled (moderator-accepted) order — it can only be cancelled', async () => {
-		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-20', '2026-05-21');
-		expect(created.ok).toBe(true);
-		if (!created.ok) return;
-
-		await markOrderScheduled(created.orderId);
+		await markAccepted(created.orderId);
 
 		expect(await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({
 			ok: false,

@@ -1,6 +1,6 @@
 import { db } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 import type { CartEntry } from './cart';
 import type { Role } from './auth';
 import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
@@ -254,9 +254,14 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
 async function findOwnedOrderStatus(input: { orderCode: string; userId: string }) {
   const existing = await db.query.orders.findFirst({
     where: (t, { eq: eqCol }) => eqCol(t.orderCode, input.orderCode),
-    columns: { userId: true, status: true },
+    columns: { userId: true, status: true, acceptedAt: true },
   });
-  return existing?.userId === input.userId ? existing.status : null;
+  if (existing?.userId !== input.userId) {
+    return null;
+  }
+  // A legacy accepted order (still 'requested', acceptedAt set) is reported
+  // as 'scheduled', same as rescheduleOrder does — see memberOrderAction.
+  return existing.status === 'requested' && existing.acceptedAt ? 'scheduled' : existing.status;
 }
 
 export type DeleteOrderInput = { orderCode: string; userId: string };
@@ -267,9 +272,12 @@ export type DeleteOrderResult =
   | { ok: false; error: 'not_deletable'; status: string };
 
 // Hard delete — only ever offered to a member while their order is still
-// 'requested' (not yet reviewed). Once a moderator accepts it, acceptOrder
-// (src/lib/moderatorOrders.ts) moves it to 'scheduled', and from then on the
-// member can only soft-cancel it (see cancelOrder below), never delete it.
+// 'requested' and not yet accepted (memberOrderAction in orderStatus.ts).
+// Once a moderator accepts it, acceptOrder (src/lib/moderatorOrders.ts) moves
+// it to 'scheduled', and from then on the member can only soft-cancel it (see
+// cancelOrder below), never delete it. Orders accepted before that status
+// existed are still 'requested' with acceptedAt set, hence the acceptedAt
+// check — they also count as accepted.
 // Ownership and status are filtered directly in the DELETE's WHERE clause
 // rather than checked beforehand, so there's no gap for a moderator action
 // to land between an ownership/status check and the delete itself.
@@ -277,7 +285,9 @@ export type DeleteOrderResult =
 export async function deleteOrder(input: DeleteOrderInput): Promise<DeleteOrderResult> {
   const result = db
     .delete(orders)
-    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, 'requested')))
+    .where(
+      and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, 'requested'), isNull(orders.acceptedAt)),
+    )
     .run();
 
   if (result.changes > 0) {
@@ -299,18 +309,25 @@ export type CancelOrderResult =
   | { ok: false; error: 'not_cancellable'; status: string };
 
 // Soft cancel — only ever offered to a member while their order is
-// 'scheduled' (accepted by a moderator, not yet handed out). The row is kept
+// accepted by a moderator but not yet handed out: 'scheduled', or a legacy
+// 'requested' order with acceptedAt set (see deleteOrder). The row is kept
 // with status 'cancelled' rather than deleted because a moderator has already
 // committed a pick-up window for it, so it stays visible to moderators (#371).
 // 'cancelled' isn't in RESERVING_STATUSES, so its stock and calendar days are
-// freed. Ownership and status = 'scheduled' are filtered in the UPDATE's
+// freed. Ownership and the accepted status are filtered in the UPDATE's
 // WHERE clause — same pattern as deleteOrder — so this can't race a
 // moderator's hand-out (confirmRetrieval moves 'scheduled' to 'active').
 export async function cancelOrder(input: CancelOrderInput): Promise<CancelOrderResult> {
   const result = db
     .update(orders)
     .set({ status: 'cancelled', cancelledAt: new Date() })
-    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, 'scheduled')))
+    .where(
+      and(
+        eq(orders.orderCode, input.orderCode),
+        eq(orders.userId, input.userId),
+        or(eq(orders.status, 'scheduled'), and(eq(orders.status, 'requested'), isNotNull(orders.acceptedAt))),
+      ),
+    )
     .run();
 
   if (result.changes > 0) {

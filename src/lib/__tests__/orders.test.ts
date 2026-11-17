@@ -271,6 +271,21 @@ describe('deleteOrder', () => {
 		expect(result).toEqual({ ok: false, error: 'not_found' });
 	});
 
+	it('rejects deleting a legacy accepted order (requested + acceptedAt) — it can only be cancelled', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-22', '2026-05-23');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		await markOrderAccepted(created.orderId);
+
+		expect(await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({
+			ok: false,
+			error: 'not_deletable',
+			status: 'scheduled',
+		});
+		expect(await findOrderByCode(created.orderCode)).toBeDefined();
+	});
+
 	it('rejects deleting a scheduled (moderator-accepted) order — it can only be cancelled', async () => {
 		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-20', '2026-05-21');
 		expect(created.ok).toBe(true);
@@ -315,8 +330,29 @@ describe('cancelOrder', () => {
 	});
 
 	it('rejects cancelling an order owned by someone else, without revealing whether it exists', async () => {
-		expect(await cancelOrder({ orderCode: 'AAAAAA', userId: 'member-1' })).toEqual({ ok: false, error: 'not_found' });
+		// A scheduled order — otherwise the status filter alone would reject it
+		// and this wouldn't exercise the ownership check.
+		const { db } = await import('../../db/client');
+		const schema = await import('../../db/schema');
+		await db
+			.insert(schema.orders)
+			.values({ orderCode: 'BBBBB', userId: 'other-user', fromDate: '2026-07-01', toDate: '2026-07-02', status: 'scheduled', acceptedAt: new Date() });
+
+		expect(await cancelOrder({ orderCode: 'BBBBB', userId: 'member-1' })).toEqual({ ok: false, error: 'not_found' });
+		const after = await findOrderByCode('BBBBB');
+		expect(after?.status).toBe('scheduled');
+		expect(after?.cancelledAt).toBeNull();
 		expect(await cancelOrder({ orderCode: 'ZZZZZ', userId: 'member-1' })).toEqual({ ok: false, error: 'not_found' });
+	});
+
+	it('soft-cancels a legacy accepted order (requested + acceptedAt)', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-23', '2026-05-24');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+		await markOrderAccepted(created.orderId);
+
+		expect(await cancelOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({ ok: true });
+		expect((await findOrderByCode(created.orderCode))?.status).toBe('cancelled');
 	});
 
 	it('rejects cancelling a requested order — that one is deleted instead', async () => {

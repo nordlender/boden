@@ -1,17 +1,14 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { db } from '../../db/client';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
-import type { OrdersTableRow } from '../../components/orders/OrdersTable.astro';
 import OrdersLayoutToggle from '../../components/orders/OrdersLayoutToggle.astro';
 import Page from '../../components/ui/Page.astro';
 import Callout from '../../components/ui/Callout.astro';
 import Button from '../../components/ui/Button.astro';
-import { ORDER_CODE_LENGTH } from '../../lib/orders';
+import { ORDER_CODE_LENGTH, getMemberOrderRows } from '../../lib/orders';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
 // reached only when logged in, so Astro.locals.user is non-null here.
-const userId = Astro.locals.user?.id ?? '';
 
 // One-shot notice after DeleteOrderButton deletes or cancels an order
 // (?deleted=CODE / ?cancelled=CODE). The code is only echoed back if it
@@ -26,22 +23,8 @@ const notice =
 			? `Order #${cancelledCode} was cancelled. The gear has been released for others to book.`
 			: null;
 
-const userOrders = await db.query.orders.findMany({
-	where: (t, { eq }) => eq(t.userId, userId),
-	orderBy: (t, { desc }) => [desc(t.createdAt)],
-	with: { orderItems: { with: { item: true } } },
-});
-
-const rows: OrdersTableRow[] = userOrders.map((order) => ({
-	orderCode: order.orderCode,
-	status: order.status,
-	fromDate: order.fromDate,
-	toDate: order.toDate,
-	items: order.orderItems.map((oi) => ({
-		itemName: oi.item.name,
-		requestedQuantity: oi.requestedQuantity,
-	})),
-}));
+// The customer column would only repeat the member's own name, so drop it.
+const rows = (await getMemberOrderRows(Astro.locals.user?.id ?? '')).map((row) => ({ ...row, customerName: undefined }));
 ---
 
 <BaseLayout title="My orders">

@@ -20,6 +20,7 @@ vi.mock('../../db/client', () => ({
 // Import after the mock is set up so wizard.ts's `import { db }` resolves to
 // the mocked module.
 const { setItemsProduct, setBulkAttributeValues } = await import('../wizard');
+const { ProductKindConflictError } = await import('../wizardVariants');
 
 function seedProduct(database: BetterSQLite3Database<typeof schema>, opts: { slug: string; title: string; keys?: string[] }) {
 	const [product] = database
@@ -148,7 +149,9 @@ describe('wizard', () => {
 			const itemId = seedItem(testDb, { slug: 'item-1', name: 'Item 1' });
 			testDb.insert(schema.sets).values({ slug: 'set-1', name: 'Set 1', productId: productX.id }).run();
 
-			await expect(setItemsProduct([itemId], productX.id)).rejects.toThrow();
+			const error = await setItemsProduct([itemId], productX.id).catch((e: unknown) => e);
+			expect(error).toBeInstanceOf(ProductKindConflictError);
+			expect(error).toMatchObject({ existing: 'set', reason: 'product_has_sets' });
 
 			const [row] = testDb.select({ productId: schema.items.productId }).from(schema.items).where(eq(schema.items.id, itemId)).all();
 			expect(row.productId).toBeNull();

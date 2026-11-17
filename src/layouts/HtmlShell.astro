@@ -5,10 +5,12 @@
 // tokens. Section layouts differ only in the navbar slot, body classes and
 // any trailing slot content.
 //
-// Slots: `navbar` (before content), default (page content), `after`
-// (after content, e.g. CartSidebar), `head` (extra <head> elements).
+// Slots: `navbar` (before content, below the dev-mode strip), default (page
+// content), `after` (after content, e.g. CartSidebar), `head` (extra <head>
+// elements).
 import '../styles/global.css';
 import ThemeInit from '../components/ThemeInit.astro';
+import { DEV_MODE } from '../lib/devMode';
 
 interface Props {
 	title: string;
@@ -31,6 +33,16 @@ const { title, bodyClass = 'min-h-screen bg-bg text-text', bodyAttrs = {} } = As
 		<slot name="head" />
 	</head>
 	<body class={bodyClass} {...bodyAttrs}>
+		<!--
+			Dev mode (src/lib/devMode.ts): on every page, above any navbar, so a
+			dev-mode build can't be mistaken for a real one. Here rather than in
+			the navbar so pages without one (/auth/login) show it too.
+		-->
+		{DEV_MODE && (
+			<div class="border-b border-warning-border bg-warning-subtle px-gutter py-1.5 text-center text-xs font-semibold text-warning-text">
+				Dev mode — test users enabled. Never deploy this build.
+			</div>
+		)}
 		<slot name="navbar" />
 		<slot />
 		<slot name="after" />

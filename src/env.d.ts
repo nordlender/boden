@@ -13,6 +13,9 @@ interface ImportMetaEnv {
   readonly ADMIN_USER_IDS: string;
   readonly BOARD_USER_IDS: string;
   readonly MODERATOR_USER_IDS: string;
+  // 'true' builds the app in dev mode (fixed test users, "Change user" menu).
+  // Inlined at build time — see src/lib/devMode.ts.
+  readonly DEV_MODE?: string;
 }
 
 // `import` above makes this file a module, so the App augmentation needs an

@@ -111,11 +111,15 @@ function upsertUserRow(tx: UsersTx, user: SignInUser, name: string | null): void
     .run();
 }
 
+// Stays `async` although better-sqlite3 makes the body synchronous: callers
+// (src/auth.ts, tests) use the Promise contract — errors must surface as a
+// rejection ("fails closed"), not a synchronous throw — and an async driver
+// would not change the signature.
 export async function upsertSignedInUser(db: UsersDb, user: SignInUser): Promise<void> {
   const name = user.name ?? null;
 
   try {
-    await db.transaction((tx) => {
+    db.transaction((tx) => {
       upsertUserRow(tx, user, name);
     });
     return;
@@ -142,7 +146,7 @@ export async function upsertSignedInUser(db: UsersDb, user: SignInUser): Promise
   // success. Not fixed here — left for the TODO above to resolve, since a
   // schema change removing the UNIQUE constraint would remove this whole
   // fallback (and the race) rather than patch it.
-  await db.transaction((tx) => {
+  db.transaction((tx) => {
     const staleRow = tx
       .select({ id: users.id })
       .from(users)

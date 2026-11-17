@@ -1,22 +1,27 @@
 ---
 import ItemQtyLine from '../ui/ItemQtyLine.astro';
 import ItemLine from '../ui/ItemLine.astro';
+import type { Attribute } from '../../lib/attributes';
 import { eyebrowClasses } from '../../lib/layout-styles';
 
 interface OrderItemView {
 	itemName: string;
 	requestedQuantity: number;
 	itemImageUrl?: string | null;
+	// Only used by the showImages layout (see src/lib/orderItemView.ts).
+	attributes?: Attribute[];
+	href?: string | null;
 }
 
 interface Props {
 	items: OrderItemView[];
 	note: string | null;
-	// Renders each line as an image+name×qty ItemLine instead of the
-	// plain "{name} × {qty}" text line — used by the checkout success
-	// receipt, where a picture helps confirm what was actually reserved.
-	// Defaults to false so /orders/[code].astro's existing text-only look
-	// is unaffected.
+	// Renders each line as a full ItemLine (image or placeholder, linked
+	// product name, variant values such as size/colour, "Qty: N") instead
+	// of the plain "{name} × {qty}" text line. Used by the checkout success
+	// receipt, where it helps confirm what was actually reserved (#220).
+	// Defaults to false so /orders/[code].astro's text-only look is
+	// unaffected.
 	showImages?: boolean;
 }
 
@@ -25,12 +30,19 @@ const { items, note, showImages = false } = Astro.props;
 
 <section class="flex flex-col gap-3">
 	<h2 class={eyebrowClasses}>Items</h2>
-	<ul class="flex flex-col gap-2 text-sm text-text">
+	<ul class:list={['flex flex-col text-sm text-text', showImages ? 'gap-3' : 'gap-2']}>
 		{
 			items.map((item) =>
 				showImages ? (
 					<li>
-						<ItemLine imageUrl={item.itemImageUrl} name={item.itemName} quantity={item.requestedQuantity} quantityStyle="inline" />
+						<ItemLine
+							imageUrl={item.itemImageUrl}
+							name={item.itemName}
+							href={item.href}
+							attributes={item.attributes}
+							quantity={item.requestedQuantity}
+							thumbnailSize={56}
+						/>
 					</li>
 				) : (
 					<ItemQtyLine name={item.itemName} quantity={item.requestedQuantity} />

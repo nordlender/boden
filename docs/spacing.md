@@ -67,7 +67,7 @@ Use these instead of hand-rolling the same classes per page:
 | Headings, card shell, action rows, empty states, menus, floating panels, action tiles | `lib/layout-styles.ts` | `pageTitleClasses`, `cardTitleClasses`, `sectionTitleClasses`, `eyebrowClasses`, `cardClasses`, `cardHeaderClasses`, `cardFooterClasses`, `actionRowClasses`, `emptyStateClasses`, `emptyStateFramedClasses`, `menuPanelClasses`, `menuItemClasses`, `floatingPanelClasses`, `actionTileClasses`, `pageWidthClasses` |
 | Form fields | `lib/form-styles.ts` | `formClasses`, `fieldClasses`, `labelClasses`, `compactLabelClasses`, `hintClasses`, `inlineErrorClasses`, `inputClasses` (40px), `inputSmClasses` (32px), `textareaClasses`, `readonlyInputClasses` |
 | Tables | `lib/table-styles.ts` | Real `<table>`: `tableClasses`, `theadRowClasses`, `tbodyRowClasses`, `thClasses`/`tdClasses` (`roomy` / `dense`). CSS-grid tables: `gridColumnsClasses`, `gridTableFrameClasses`, `gridTableHeaderClasses`, `gridTableRowClasses`, plus `tableToolbarClasses` for the strip above one. |
-| Buttons, chips, dropdown triggers | `lib/button-styles.ts` | Button heights 32/40/48px (`sm`/`md`/`lg`), `summaryButtonClasses` for `<details>` triggers, `chipBaseClasses` for pill toggles/filters |
+| Buttons, chips, dropdown triggers | `lib/button-styles.ts` | Button heights 32/40/48px (`sm`/`md`/`lg`), `ui/Dropdown` for `<details>` dropdowns (its default trigger uses the secondary `md` button classes), `chipBaseClasses` for pill toggles/filters |
 | Badges | `lib/badge-styles.ts` / `ui/Badge.astro` | Status pills |
 
 Inputs and buttons share heights, so a field and the button next to it

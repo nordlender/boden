@@ -25,7 +25,9 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 		// The review page disables Accept in these cases too, so this means
 		// something changed in between (a window deleted, the date passed).
 		const orderCode = await getOrderCodeById(orderId);
-		const error = result.error === 'invalid_window' ? `invalid_${result.kind}_window` : result.error;
+		let error: string = result.error;
+		if (result.error === 'invalid_window') error = `invalid_${result.kind}_window`;
+		else if (result.error === 'window_ended') error = `${result.kind}_window_ended`;
 		return redirect(orderCode ? `/moderator/review/${orderCode}?error=${error}` : '/moderator/requests', 303);
 	}
 

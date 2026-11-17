@@ -1,8 +1,10 @@
 ---
 // One side (pick-up or return) of the review page's accept form (#343): the
 // member's requested time ranges and the pick-up windows that overlap them,
-// as radios named pickupDayId / returnDayId. The best match (largest
-// overlap) comes first and is pre-selected; the moderator can pick another.
+// as radios named pickupDayId / returnDayId. The best match comes first and
+// is pre-selected (largest overlap; on a same-day rental, a return window
+// that follows the pre-selected pick-up — see getAcceptReadiness); the
+// moderator can pick another. Windows that already ended aren't offered.
 import { formatDateDisplay } from '../../lib/dates';
 import { labelClasses } from '../../lib/form-styles';
 import type { AcceptTimeOption } from '../../lib/moderatorOrders';
@@ -43,7 +45,13 @@ const formatMinutes = (minutes: number) => (minutes % 60 === 0 ? `${minutes / 60
 				))}
 			</ul>
 		) : (
-			<p class="text-sm text-warning-text">No pick-up window on this day overlaps the member's time ranges.</p>
+			option.ranges.length > 0 && (
+				<p class="text-sm text-warning-text">
+					{option.endedWindowCount > 0
+						? 'Every window on this day that overlaps the member\'s time ranges has already ended.'
+						: 'No pick-up window on this day overlaps the member\'s time ranges.'}
+				</p>
+			)
 		)
 	}
 </fieldset>

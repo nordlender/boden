@@ -197,7 +197,7 @@ describe('acceptOrder (#343)', () => {
 
 	it('offers the overlapping windows per side, best match first, with nothing blocking', async () => {
 		const order = await seedAcceptable();
-		const readiness = getAcceptReadiness({ id: order.orderId, fromDate: order.fromDate, toDate: order.toDate }, '2026-05-01');
+		const readiness = getAcceptReadiness({ id: order.orderId, fromDate: order.fromDate, toDate: order.toDate }, { date: '2026-05-01', time: '12:00' });
 		expect(readiness.pickup.ranges).toEqual([{ from: '16:00', to: '19:00' }]);
 		expect(readiness.pickup.windows.map((w) => [w.id, w.overlapMinutes])).toEqual([
 			[order.bestPickup, 60],
@@ -212,8 +212,87 @@ describe('acceptOrder (#343)', () => {
 		// As if the order's return day had no windows, seen the day after pick-up.
 		const { addDaysIso } = await import('../dates');
 		const lateReturn = addDaysIso(order.toDate, 1);
-		const readiness = getAcceptReadiness({ id: order.orderId, fromDate: order.fromDate, toDate: lateReturn }, addDaysIso(order.fromDate, 1));
+		const readiness = getAcceptReadiness({ id: order.orderId, fromDate: order.fromDate, toDate: lateReturn }, { date: addDaysIso(order.fromDate, 1), time: '12:00' });
 		expect(readiness.blockers).toEqual([{ error: 'start_date_passed' }, { error: 'no_overlapping_window', kind: 'return', date: lateReturn }]);
+	});
+
+	it('reports no_time_ranges, not a missing window, for an order without ranges', async () => {
+		const { addDaysIso } = await import('../dates');
+		const fromDate = addDaysIso('2026-06-10', 4 * seq);
+		seq += 1;
+		const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, fromDate, toDate: fromDate });
+		const readiness = getAcceptReadiness({ id: orderId, fromDate, toDate: fromDate }, { date: '2026-05-01', time: '12:00' });
+		expect(readiness.blockers).toEqual([
+			{ error: 'no_time_ranges', kind: 'pickup', date: fromDate },
+			{ error: 'no_time_ranges', kind: 'return', date: fromDate },
+		]);
+	});
+
+	it('leaves out windows that already ended today, and blocks once every one has', async () => {
+		const order = await seedAcceptable();
+		const ids = { id: order.orderId, fromDate: order.fromDate, toDate: order.toDate };
+		// 16:45: 15:30-16:30 is over, 18:00-20:00 is still ahead.
+		const partly = getAcceptReadiness(ids, { date: order.fromDate, time: '16:45' });
+		expect(partly.pickup.windows.map((w) => w.id)).toEqual([order.bestPickup]);
+		expect(partly.pickup.endedWindowCount).toBe(1);
+		expect(partly.blockers).toEqual([]);
+		// 20:00: both are over (a window ending exactly now counts as ended).
+		const late = getAcceptReadiness(ids, { date: order.fromDate, time: '20:00' });
+		expect(late.pickup.windows).toEqual([]);
+		expect(late.blockers).toEqual([{ error: 'windows_ended', kind: 'pickup', date: order.fromDate }]);
+	});
+
+	it('refuses a window that already ended today', async () => {
+		const order = await seedAcceptable();
+		const now = { date: order.fromDate, time: '17:00' };
+		expect(await acceptOrder(order.orderId, { pickupDayId: order.otherPickup, returnDayId: order.returnWindow }, now)).toEqual({
+			ok: false,
+			error: 'window_ended',
+			kind: 'pickup',
+		});
+		expect(await acceptOrder(order.orderId, { pickupDayId: order.bestPickup, returnDayId: order.returnWindow }, now)).toEqual({ ok: true });
+	});
+
+	describe('same-day rentals', () => {
+		// One day, windows A 08:00-10:00 and B 16:00-18:00; pick-up 16:00-18:00.
+		async function seedSameDay(returnRange: { from: string; to: string }) {
+			const { addDaysIso } = await import('../dates');
+			const date = addDaysIso('2026-06-10', 4 * seq);
+			seq += 1;
+			const { db } = await import('../../db/client');
+			const schema = await import('../../db/schema');
+			const { setOrderTimeRanges } = await import('../orderTimeRanges');
+			const { orderId } = await seedOrder({ itemId: ITEM_AVAILABLE_ID, fromDate: date, toDate: date });
+			setOrderTimeRanges(orderId, 'pickup', [{ from: '16:00', to: '18:00' }]);
+			setOrderTimeRanges(orderId, 'return', [returnRange]);
+			const window = async (startTime: string, endTime: string) =>
+				(await db.insert(schema.pickupDays).values({ date, startTime, endTime, userId: 'moderator-1' }).returning())[0].id;
+			return { orderId, date, morning: await window('08:00', '10:00'), afternoon: await window('16:00', '18:00') };
+		}
+
+		it('only offers return windows that end after a pick-up window starts', async () => {
+			// Morning and afternoon tie on overlap with 08:00-20:00, and the earlier
+			// one used to win — a return before the pick-up.
+			const order = await seedSameDay({ from: '08:00', to: '20:00' });
+			const readiness = getAcceptReadiness({ id: order.orderId, fromDate: order.date, toDate: order.date }, { date: '2026-05-01', time: '12:00' });
+			expect(readiness.pickup.windows.map((w) => w.id)).toEqual([order.afternoon]);
+			expect(readiness.return.windows.map((w) => w.id)).toEqual([order.afternoon]);
+			expect(readiness.blockers).toEqual([]);
+		});
+
+		it('blocks when no return window can follow a pick-up window', async () => {
+			const order = await seedSameDay({ from: '08:00', to: '11:00' });
+			const readiness = getAcceptReadiness({ id: order.orderId, fromDate: order.date, toDate: order.date }, { date: '2026-05-01', time: '12:00' });
+			expect(readiness.return.windows).toEqual([]);
+			expect(readiness.blockers).toEqual([{ error: 'return_before_pickup', date: order.date }]);
+		});
+
+		it('refuses a return window that ends before the pick-up window starts', async () => {
+			const order = await seedSameDay({ from: '08:00', to: '20:00' });
+			expect(await acceptOrder(order.orderId, { pickupDayId: order.afternoon, returnDayId: order.morning })).toEqual({ ok: false, error: 'return_before_pickup' });
+			expect((await getOrderDetail(order.orderId))?.status).toBe('requested');
+			expect(await acceptOrder(order.orderId, { pickupDayId: order.afternoon, returnDayId: order.afternoon })).toEqual({ ok: true });
+		});
 	});
 
 	it('accepts with both windows, setting them, acceptedAt and status scheduled', async () => {

@@ -1,1 +1,0 @@
-ALTER TABLE `orders` ADD `cancelled_at` integer;

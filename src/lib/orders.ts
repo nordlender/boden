@@ -248,6 +248,17 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   }
 }
 
+// Follow-up read for deleteOrder/cancelOrder when their guarded write matched
+// nothing — disambiguates not-found/not-owned (null → 404) from
+// exists-but-wrong-status (the current status → 409).
+async function findOwnedOrderStatus(input: { orderCode: string; userId: string }) {
+  const existing = await db.query.orders.findFirst({
+    where: (t, { eq: eqCol }) => eqCol(t.orderCode, input.orderCode),
+    columns: { userId: true, status: true },
+  });
+  return existing?.userId === input.userId ? existing.status : null;
+}
+
 export type DeleteOrderInput = { orderCode: string; userId: string };
 
 export type DeleteOrderResult =
@@ -273,16 +284,11 @@ export async function deleteOrder(input: DeleteOrderInput): Promise<DeleteOrderR
     return { ok: true };
   }
 
-  // Nothing matched — disambiguate not-found/not-owned (404) from
-  // exists-but-wrong-status (409) with one follow-up read.
-  const existing = await db.query.orders.findFirst({
-    where: (t, { eq: eqCol }) => eqCol(t.orderCode, input.orderCode),
-    columns: { userId: true, status: true },
-  });
-  if (!existing || existing.userId !== input.userId) {
+  const status = await findOwnedOrderStatus(input);
+  if (status === null) {
     return { ok: false, error: 'not_found' };
   }
-  return { ok: false, error: 'not_deletable', status: existing.status };
+  return { ok: false, error: 'not_deletable', status };
 }
 
 export type CancelOrderInput = { orderCode: string; userId: string };
@@ -311,16 +317,11 @@ export async function cancelOrder(input: CancelOrderInput): Promise<CancelOrderR
     return { ok: true };
   }
 
-  // Nothing matched — disambiguate not-found/not-owned (404) from
-  // exists-but-wrong-status (409) with one follow-up read.
-  const existing = await db.query.orders.findFirst({
-    where: (t, { eq: eqCol }) => eqCol(t.orderCode, input.orderCode),
-    columns: { userId: true, status: true },
-  });
-  if (!existing || existing.userId !== input.userId) {
+  const status = await findOwnedOrderStatus(input);
+  if (status === null) {
     return { ok: false, error: 'not_found' };
   }
-  return { ok: false, error: 'not_cancellable', status: existing.status };
+  return { ok: false, error: 'not_cancellable', status };
 }
 
 export type RescheduleOrderInput = { orderCode: string; userId: string; fromDate: string; toDate: string };

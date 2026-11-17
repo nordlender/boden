@@ -39,6 +39,11 @@ const users = [
 // Orders. `code` is fixed so the seed is idempotent (NNAAX: last letter M =
 // created by a member). `status` drives which timestamps/accountability
 // columns get filled, mimicking what the moderator flow would have written.
+// `pickupRanges` / `returnRanges` are the member's requested time ranges
+// (#368, order_time_ranges); each overlaps a pick-up window on that date
+// (see the pick-up days below), so requested orders can be accepted, and
+// accepted orders get those windows as their confirmed pickup_day_id /
+// return_day_id (#343).
 //
 // The two Dragon Cam #00 orders overlap on 12–13 Nov with one unit each —
 // the item has exactly two active units, so that day is fully booked and
@@ -52,6 +57,8 @@ const orders = [
     fromDate: '2026-11-12',
     toDate: '2026-11-13',
     note: 'Trad weekend at Hell — first order on Dragon Cam #00.',
+    pickupRanges: [{ from: '11:00', to: '15:00' }],
+    returnRanges: [{ from: '17:00', to: '20:00' }],
     items: [{ slug: 'dmm-dragon-cam-00', quantity: 1 }],
   },
   {
@@ -61,6 +68,8 @@ const orders = [
     fromDate: '2026-11-11',
     toDate: '2026-11-14',
     note: 'Second order on Dragon Cam #00, wraps around the first.',
+    pickupRanges: [{ from: '16:00', to: '18:00' }],
+    returnRanges: [{ from: '12:00', to: '16:00' }],
     items: [{ slug: 'dmm-dragon-cam-00', quantity: 1 }],
   },
   {
@@ -70,6 +79,8 @@ const orders = [
     fromDate: '2026-11-24',
     toDate: '2026-11-26',
     note: null,
+    pickupRanges: [{ from: '18:00', to: '21:00' }],
+    returnRanges: [{ from: '17:00', to: '19:00' }, { from: '19:30', to: '21:00' }],
     items: [
       { slug: 'climbing-helmet', quantity: 2 },
       { slug: 'quickdraw-set-6', quantity: 1 },
@@ -82,6 +93,8 @@ const orders = [
     fromDate: '2026-11-25',
     toDate: '2026-11-27',
     note: 'Pick up Wednesday evening if possible.',
+    pickupRanges: [{ from: '18:30', to: '20:00' }],
+    returnRanges: [{ from: '16:00', to: '18:00' }],
     items: [
       { slug: 'ice-axe', quantity: 2 },
       { slug: 'crampons', quantity: 2 },
@@ -94,6 +107,8 @@ const orders = [
     fromDate: '2026-11-23',
     toDate: '2026-11-29',
     note: 'Week-long trip, will return on the Sunday.',
+    pickupRanges: [{ from: '18:00', to: '19:00' }],
+    returnRanges: [{ from: '12:00', to: '15:00' }],
     items: [
       { slug: 'dynamic-rope-60m', quantity: 1 },
       { slug: 'climbing-harness-red', quantity: 1 },
@@ -107,6 +122,8 @@ const orders = [
     fromDate: '2026-11-20',
     toDate: '2026-11-22',
     note: null,
+    pickupRanges: [{ from: '17:00', to: '19:00' }],
+    returnRanges: [{ from: '12:00', to: '14:00' }],
     items: [{ slug: 'climbing-harness-blue', quantity: 2 }],
   },
   {
@@ -117,19 +134,32 @@ const orders = [
     toDate: '2026-11-30',
     note: 'Need a full rack.',
     rejectedReason: 'Dragon Cam #3 is retired and not available.',
+    pickupRanges: [{ from: '17:00', to: '18:00' }],
+    returnRanges: [{ from: '18:00', to: '20:00' }],
     items: [{ slug: 'dmm-dragon-cam-3', quantity: 1 }],
   },
 ];
 
 // Pick-up days. Mondays 18:00–20:00 as a recurring rule, plus single days a
-// moderator registered ad hoc on the days the example orders start or end,
-// so scheduled orders have a pick-up day to match against.
+// moderator registered ad hoc on every day the example orders start or end
+// that isn't a Monday — returns only happen on pick-up days (#336), and
+// every order's ranges need a window to match.
 const MODERATOR_ID = 'example-moderator';
 const recurringRule = { weekday: 1, startTime: '18:00', endTime: '20:00', startDate: '2026-10-26', endDate: '2026-12-14' };
+const VULKAN = 'At Vulkan';
+const BLINDERN = 'In the reception at SiO Athletica Blindern';
 const singlePickupDays = [
-  { date: '2026-11-11', startTime: '17:00', endTime: '19:00', where: 'At Vulkan' },
-  { date: '2026-11-12', startTime: '12:00', endTime: '14:00', where: 'In the reception at SiO Athletica Blindern' },
-  { date: '2026-11-25', startTime: '18:00', endTime: '20:00', where: 'At Vulkan' },
+  { date: '2026-11-11', startTime: '17:00', endTime: '19:00', where: VULKAN },
+  { date: '2026-11-12', startTime: '12:00', endTime: '14:00', where: BLINDERN },
+  { date: '2026-11-13', startTime: '17:00', endTime: '19:00', where: VULKAN },
+  { date: '2026-11-14', startTime: '12:00', endTime: '14:00', where: BLINDERN },
+  { date: '2026-11-20', startTime: '17:00', endTime: '19:00', where: VULKAN },
+  { date: '2026-11-22', startTime: '12:00', endTime: '14:00', where: BLINDERN },
+  { date: '2026-11-24', startTime: '18:00', endTime: '20:00', where: VULKAN },
+  { date: '2026-11-25', startTime: '18:00', endTime: '20:00', where: VULKAN },
+  { date: '2026-11-26', startTime: '18:00', endTime: '20:00', where: VULKAN },
+  { date: '2026-11-27', startTime: '17:00', endTime: '19:00', where: VULKAN },
+  { date: '2026-11-29', startTime: '12:00', endTime: '14:00', where: BLINDERN },
 ];
 
 // Hub board messages (unit notes are seeded with the catalog's units).
@@ -155,20 +185,32 @@ const upsertUser = db.prepare(
 );
 
 const getItemBySlug = db.prepare('SELECT id FROM items WHERE slug = ?');
-const getOrderByCode = db.prepare('SELECT id FROM orders WHERE order_code = ?');
+const getOrderByCode = db.prepare('SELECT id, pickup_day_id, return_day_id FROM orders WHERE order_code = ?');
 const getUser = db.prepare('SELECT name, email FROM users WHERE id = ?');
 const insertOrder = db.prepare(
   `INSERT INTO orders (
      order_code, user_id, status, from_date, to_date, note,
      contact_name, contact_email, contact_mobile, has_unpaid_fees, user_is_member,
      confirmed_by_user_id, returned_by_user_id, created_at,
-     accepted_at, activated_at, returned_at, rejected_at, rejected_reason, disclaimer_accepted_at
+     accepted_at, activated_at, returned_at, rejected_at, rejected_reason, disclaimer_accepted_at,
+     pickup_day_id, return_day_id
    ) VALUES (
      @code, @userId, @status, @fromDate, @toDate, @note,
      @contactName, @contactEmail, @contactMobile, 0, 1,
      @confirmedBy, @returnedBy, @createdAt,
-     @acceptedAt, @activatedAt, @returnedAt, @rejectedAt, @rejectedReason, @createdAt
+     @acceptedAt, @activatedAt, @returnedAt, @rejectedAt, @rejectedReason, @createdAt,
+     @pickupDayId, @returnDayId
    )`,
+);
+const countTimeRanges = db.prepare('SELECT count(*) AS n FROM order_time_ranges WHERE order_id = ?');
+const insertTimeRange = db.prepare('INSERT INTO order_time_ranges (order_id, kind, from_time, to_time) VALUES (?, ?, ?, ?)');
+const setOrderWindows = db.prepare(
+  `UPDATE orders SET pickup_day_id = coalesce(pickup_day_id, @pickupDayId), return_day_id = coalesce(return_day_id, @returnDayId)
+   WHERE id = @id`,
+);
+// The earliest window on `date` that overlaps the range (max(start) < min(end)).
+const findWindow = db.prepare(
+  `SELECT id FROM pickup_days WHERE date = @date AND start_time < @to AND end_time > @from ORDER BY start_time, id LIMIT 1`,
 );
 const insertOrderItem = db.prepare(
   `INSERT INTO order_items (order_id, item_id, requested_quantity, retrieved_quantity) VALUES (?, ?, ?, ?)`,
@@ -211,12 +253,44 @@ const dayBefore = (date, days) => {
   return d.toISOString().slice(0, 10);
 };
 
+// The confirmed windows for an accepted order: the first window overlapping
+// the order's first range on each side. Throws if the pick-up days above
+// don't cover the order, so the seed can't drift from its own orders.
+function confirmedWindows(order) {
+  const window = (date, range) => {
+    const row = findWindow.get({ date, from: range.from, to: range.to });
+    if (!row) throw new Error(`No pick-up window on ${date} overlaps ${range.from}–${range.to} (order ${order.code}).`);
+    return row.id;
+  };
+  return { pickupDayId: window(order.fromDate, order.pickupRanges[0]), returnDayId: window(order.toDate, order.returnRanges[0]) };
+}
+
+function insertTimeRanges(orderId, order) {
+  for (const range of order.pickupRanges) insertTimeRange.run(orderId, 'pickup', range.from, range.to);
+  for (const range of order.returnRanges) insertTimeRange.run(orderId, 'return', range.from, range.to);
+}
+
+const isAccepted = (order) => ['scheduled', 'active', 'returned'].includes(order.status);
+
+// Orders seeded before time ranges existed (#368) get their ranges and, if
+// accepted, their windows — only what's missing, nothing overwritten.
+function backfillOrder(existing, order) {
+  if (countTimeRanges.get(existing.id).n === 0) insertTimeRanges(existing.id, order);
+  if (isAccepted(order) && (existing.pickup_day_id === null || existing.return_day_id === null)) {
+    setOrderWindows.run({ id: existing.id, ...confirmedWindows(order) });
+  }
+}
+
 function seedOrder(order) {
-  if (getOrderByCode.get(order.code)) return false;
+  const existing = getOrderByCode.get(order.code);
+  if (existing) {
+    backfillOrder(existing, order);
+    return false;
+  }
 
   const user = getUser.get(order.userId);
   const createdAt = unix(dayBefore(order.fromDate, 7));
-  const accepted = ['scheduled', 'active', 'returned'].includes(order.status);
+  const accepted = isAccepted(order);
   const handedOut = ['active', 'returned'].includes(order.status);
   const returned = order.status === 'returned';
   const rejected = order.status === 'rejected';
@@ -239,7 +313,9 @@ function seedOrder(order) {
     returnedAt: returned ? unix(order.toDate, '18:30') : null,
     rejectedAt: rejected ? createdAt + 86400 : null,
     rejectedReason: rejected ? order.rejectedReason : null,
+    ...(accepted ? confirmedWindows(order) : { pickupDayId: null, returnDayId: null }),
   });
+  insertTimeRanges(orderId, order);
 
   for (const { slug, quantity } of order.items) {
     const item = getItemBySlug.get(slug);
@@ -262,9 +338,7 @@ function datesOnWeekday({ weekday, startDate, endDate }) {
 const seed = db.transaction(() => {
   for (const u of users) upsertUser.run(u);
 
-  let newOrders = 0;
-  for (const o of orders) if (seedOrder(o)) newOrders++;
-
+  // Pick-up days first: accepted orders reference them.
   if (!getRule.get(recurringRule)) {
     const { lastInsertRowid: ruleId } = insertRule.run({ ...recurringRule, userId: MODERATOR_ID });
     for (const date of datesOnWeekday(recurringRule)) {
@@ -272,6 +346,9 @@ const seed = db.transaction(() => {
     }
   }
   for (const day of singlePickupDays) insertSingleDay.run({ ...day, userId: MODERATOR_ID });
+
+  let newOrders = 0;
+  for (const o of orders) if (seedOrder(o)) newOrders++;
 
   for (const m of messages) {
     if (getMessage.get(m.content)) continue;

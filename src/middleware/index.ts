@@ -1,6 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { validateSession, hasRole } from '../lib/auth';
 import { requiredRole, isApiRoute } from './prefixes';
+import { ensureScheduledJobsStarted } from '../lib/scheduledJobs';
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
   // Prerendered routes (shop grid shell, login, 404) are built once, ahead of
@@ -11,6 +12,11 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     ctx.locals.user = null;
     return next();
   }
+
+  // Starts the recurring server jobs (order cleanup, …) on the first real
+  // request — Astro has no server-start hook. A no-op after that; see
+  // src/lib/scheduledJobs/index.ts.
+  ensureScheduledJobsStarted();
 
   const user = await validateSession(ctx.request);
   ctx.locals.user = user;

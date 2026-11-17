@@ -334,8 +334,11 @@ export const orders = sqliteTable('orders', {
   // to moderators and what appears in the retrieve-order URL.
   orderCode: text('order_code').notNull().unique(),
   userId: text('user_id').notNull().references(() => users.id),
+  // 'no_show': a scheduled order nobody picked up — the daily order cleanup
+  // (src/lib/orderCleanup.ts) moves a 'scheduled' order there the day after
+  // its fromDate. Like 'returned' and 'rejected' it holds no stock or window.
   status: text('status', {
-    enum: ['requested', 'scheduled', 'active', 'returned', 'rejected'],
+    enum: ['requested', 'scheduled', 'active', 'returned', 'rejected', 'no_show'],
   }).notNull().default('requested'),
   // Reservation date range (YYYY-MM-DD, inclusive on both ends) chosen on the
   // /reservation page — the whole order (all its orderItems) shares one
@@ -990,8 +993,8 @@ moderator then assigns a real window to the order when accepting it
   pick-up and return window, an `active` one its return window
   (`PICKUP_WINDOW_HOLDING_STATUSES` / `RETURN_WINDOW_HOLDING_STATUSES` in
   `src/lib/orderStatus.ts`). Otherwise they clear the reference of orders
-  that are done with it (rejected, returned, an active order's past pick-up
-  window) in the same transaction as the delete.
+  that are done with it (rejected, returned, no-show, an active order's
+  past pick-up window) in the same transaction as the delete.
 - **Requesting** (#368): `/reservation` collects the ranges once the dates
   are picked (the day's windows are presets); `validateOrderTimeRanges`
   adds the date rules (no range on today that has already passed, Oslo

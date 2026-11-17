@@ -83,6 +83,10 @@ moderator fetches items from storage, then on the hub clicks "Confirm"
     quantity handed out per item
   → status: active  (rental is now live; activatedAt + confirmedByUserId stamped)
 
+nobody picks a scheduled order up on its pick-up day
+  → the next day, the daily order cleanup (docs/scheduled-jobs.md) sets
+    status: no_show  (holds no stock or window any more)
+
 member returns items on-site
   → moderator blind-counts them at /moderator/return/[id]
   → status: returned  (returnedAt + returnedByUserId stamped, moved to archive)
@@ -532,6 +536,7 @@ AUTH_SECRET=                 # auth-astro session encryption key — openssl ran
 ADMIN_USER_IDS=              # comma-separated bloc user ids — temporary role allowlist, see §8
 BOARD_USER_IDS=              # comma-separated bloc user ids
 MODERATOR_USER_IDS=          # comma-separated bloc user ids
+SCHEDULED_JOBS=              # set to `off` to run without the scheduled jobs — see docs/scheduled-jobs.md
 ```
 
 ---
@@ -539,6 +544,7 @@ MODERATOR_USER_IDS=          # comma-separated bloc user ids
 ## 14. Deployment (single VPS)
 
 SQLite requires a persistent filesystem — deploy to a plain VPS, not a serverless platform.
+Run a single server process: the scheduled jobs (`docs/scheduled-jobs.md`) run inside it.
 
 ```bash
 npm run build

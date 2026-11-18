@@ -1,5 +1,5 @@
 import type { AstroCookies } from 'astro';
-import { ORDER_CODE_LENGTH } from './orderCode';
+import { isOrderCodeFormat } from './orderCode';
 
 // One-shot "your order was deleted/cancelled" notice for /orders (#371).
 // Set by the delete/cancel API routes only after the write succeeded, and
@@ -11,7 +11,6 @@ export type OrderNotice = { kind: OrderNoticeKind; orderCode: string };
 
 const COOKIE = 'order_notice';
 const COOKIE_PATH = '/orders';
-const ORDER_CODE_PATTERN = new RegExp(`^[A-Z0-9]{${ORDER_CODE_LENGTH}}$`);
 
 export function setOrderNotice(cookies: AstroCookies, kind: OrderNoticeKind, orderCode: string): void {
 	cookies.set(COOKIE, `${kind}:${orderCode}`, {
@@ -28,7 +27,7 @@ export function takeOrderNotice(cookies: AstroCookies): OrderNotice | null {
 	cookies.delete(COOKIE, { path: COOKIE_PATH });
 
 	const [kind, orderCode] = value.split(':');
-	if ((kind !== 'deleted' && kind !== 'cancelled') || !orderCode || !ORDER_CODE_PATTERN.test(orderCode)) {
+	if ((kind !== 'deleted' && kind !== 'cancelled') || !orderCode || !isOrderCodeFormat(orderCode)) {
 		return null;
 	}
 	return { kind, orderCode };

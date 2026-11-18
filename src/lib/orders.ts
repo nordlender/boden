@@ -7,55 +7,9 @@ import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
 import { MEMBER_CANCELLABLE_STATUS, MEMBER_DELETABLE_STATUS, type OrderStatus } from './orderStatus';
-import { ORDER_CODE_LENGTH } from './orderCode';
+import { generateOrderCode } from './orderCode';
 
-export { ORDER_CODE_LENGTH };
 const MAX_ORDER_CODE_ATTEMPTS = 5;
-
-// Excludes 0/O and 1/I — same ambiguous-character rationale as
-// RANDOM_CODE_ALPHABET above; an order code is read aloud by members to
-// moderators. 'I' still appears as a *fixed* role-letter suffix below
-// (ORDER_CODE_ROLE_LETTERS) — that's a single, always-in-the-same-position
-// character, not a randomly drawn one, so it doesn't reintroduce the
-// ambiguity this excludes from the two free-letter positions.
-const ORDER_CODE_DIGITS = '23456789';
-const ORDER_CODE_FREE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-
-// Maps the role that created the order to its fixed last-character letter —
-// every order code's last letter is always one of these four, so the
-// creating role is legible at a glance rather than merely "privileged vs.
-// not". Ranked highest-privilege first: admin > board member > instructor
-// (moderator) > member. A user can hold more than one of these at once (an
-// admin is implicitly also a board member/instructor, etc.), but getRole()
-// (src/lib/auth.ts) already resolves that down to a single highest-ranked
-// Role before it ever reaches here, so this map is a direct one-to-one
-// lookup.
-const ORDER_CODE_ROLE_LETTERS: Record<Role, string> = {
-  admin: 'A',
-  board: 'B',
-  moderator: 'I', // instructor
-  member: 'M',
-};
-
-function randomChar(alphabet: string): string {
-  return alphabet[Math.floor(Math.random() * alphabet.length)];
-}
-
-// Order code format is `NNAAX` (see issue #155, revised): two digits, two
-// free letters, then a role-flag letter always drawn from
-// ORDER_CODE_ROLE_LETTERS — A/B/I/M for admin/board member/instructor
-// (moderator)/member, so the creating role is legible at a glance. `role` is
-// the role of the member who created the order.
-export function generateOrderCode(role: Role = 'member'): string {
-  const lastLetter = ORDER_CODE_ROLE_LETTERS[role];
-  return (
-    randomChar(ORDER_CODE_DIGITS) +
-    randomChar(ORDER_CODE_DIGITS) +
-    randomChar(ORDER_CODE_FREE_LETTERS) +
-    randomChar(ORDER_CODE_FREE_LETTERS) +
-    lastLetter
-  );
-}
 
 // Thrown by insertOrder to abort (and roll back) the transaction when an
 // item's availability was re-checked at insert time and found wanting —

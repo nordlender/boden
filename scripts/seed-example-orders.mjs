@@ -119,6 +119,16 @@ const orders = [
     rejectedReason: 'Dragon Cam #3 is retired and not available.',
     items: [{ slug: 'dmm-dragon-cam-3', quantity: 1 }],
   },
+  {
+    // Accepted, then cancelled by the member before hand-out (#371).
+    code: '91QRM',
+    userId: 'example-member-2',
+    status: 'cancelled',
+    fromDate: '2026-11-26',
+    toDate: '2026-11-28',
+    note: 'Trip got called off.',
+    items: [{ slug: 'climbing-helmet', quantity: 1 }],
+  },
 ];
 
 // Pick-up days. Mondays 18:00–20:00 as a recurring rule, plus single days a
@@ -162,12 +172,12 @@ const insertOrder = db.prepare(
      order_code, user_id, status, from_date, to_date, note,
      contact_name, contact_email, contact_mobile, has_unpaid_fees, user_is_member,
      confirmed_by_user_id, returned_by_user_id, created_at,
-     accepted_at, activated_at, returned_at, rejected_at, rejected_reason, disclaimer_accepted_at
+     accepted_at, activated_at, returned_at, rejected_at, rejected_reason, cancelled_at, disclaimer_accepted_at
    ) VALUES (
      @code, @userId, @status, @fromDate, @toDate, @note,
      @contactName, @contactEmail, @contactMobile, 0, 1,
      @confirmedBy, @returnedBy, @createdAt,
-     @acceptedAt, @activatedAt, @returnedAt, @rejectedAt, @rejectedReason, @createdAt
+     @acceptedAt, @activatedAt, @returnedAt, @rejectedAt, @rejectedReason, @cancelledAt, @createdAt
    )`,
 );
 const insertOrderItem = db.prepare(
@@ -216,10 +226,11 @@ function seedOrder(order) {
 
   const user = getUser.get(order.userId);
   const createdAt = unix(dayBefore(order.fromDate, 7));
-  const accepted = ['scheduled', 'active', 'returned'].includes(order.status);
+  const accepted = ['scheduled', 'active', 'returned', 'cancelled'].includes(order.status);
   const handedOut = ['active', 'returned'].includes(order.status);
   const returned = order.status === 'returned';
   const rejected = order.status === 'rejected';
+  const cancelled = order.status === 'cancelled';
 
   const { lastInsertRowid: orderId } = insertOrder.run({
     code: order.code,
@@ -239,6 +250,7 @@ function seedOrder(order) {
     returnedAt: returned ? unix(order.toDate, '18:30') : null,
     rejectedAt: rejected ? createdAt + 86400 : null,
     rejectedReason: rejected ? order.rejectedReason : null,
+    cancelledAt: cancelled ? createdAt + 2 * 86400 : null,
   });
 
   for (const { slug, quantity } of order.items) {

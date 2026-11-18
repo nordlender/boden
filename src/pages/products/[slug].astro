@@ -7,7 +7,6 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ImagePlaceholder from '../../components/shop/ImagePlaceholder.astro';
 import Page from '../../components/ui/Page.astro';
-import Callout from '../../components/ui/Callout.astro';
 import { eyebrowClasses, pageTitleClasses } from '../../lib/layout-styles';
 import VariantPicker from '../../components/shop/VariantPicker.astro';
 import ProductAvailability from '../../components/availability/ProductAvailability.astro';
@@ -71,7 +70,7 @@ const initialVariantKey = product.items[0] ? variantKey('item', product.items[0]
 
 			{
 				product.items.length === 0 && product.sets.length === 0 ? (
-					<Callout variant="error" live={false}><p>No items available for this product yet.</p></Callout>
+					<p class="text-sm text-text-muted">No items available for this product yet.</p>
 				) : (
 					<VariantPicker
 						items={product.items}

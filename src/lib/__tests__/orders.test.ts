@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { createOrder, deleteOrder, generateOrderCode, getMemberOrder, getMemberOrderRows, rescheduleOrder } from '../orders';
+import { cancelOrder, createOrder, deleteOrder, getMemberOrder, getMemberOrderRows, rescheduleOrder } from '../orders';
 import type { CartEntry } from '../cart';
 
 // rescheduleOrder calls isValidDateRange (src/lib/reservation.ts), which
@@ -111,10 +111,12 @@ async function markOrderActive(orderId: number) {
 	await db.update(schema.orders).set({ status: 'active' }).where(eq(schema.orders.id, orderId));
 }
 
-async function markOrderAccepted(orderId: number) {
+// What acceptOrder (src/lib/moderatorOrders.ts) actually does today: moves
+// the order to 'scheduled' and stamps acceptedAt.
+async function markOrderScheduled(orderId: number) {
 	const { db } = await import('../../db/client');
 	const schema = await import('../../db/schema');
-	await db.update(schema.orders).set({ acceptedAt: new Date() }).where(eq(schema.orders.id, orderId));
+	await db.update(schema.orders).set({ status: 'scheduled', acceptedAt: new Date() }).where(eq(schema.orders.id, orderId));
 }
 
 describe('createOrder', () => {
@@ -263,15 +265,19 @@ describe('deleteOrder', () => {
 		expect(result).toEqual({ ok: false, error: 'not_found' });
 	});
 
-	it('allows deleting an accepted (scheduled) order', async () => {
+	it('rejects deleting a scheduled (moderator-accepted) order — it can only be cancelled', async () => {
 		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-20', '2026-05-21');
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
-		await markOrderAccepted(created.orderId);
+		await markOrderScheduled(created.orderId);
 
-		expect(await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({ ok: true });
-		expect(await findOrderByCode(created.orderCode)).toBeUndefined();
+		expect(await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({
+			ok: false,
+			error: 'not_deletable',
+			status: 'scheduled',
+		});
+		expect(await findOrderByCode(created.orderCode)).toBeDefined();
 	});
 
 	it('rejects deleting an order that has moved past "requested"', async () => {
@@ -284,6 +290,101 @@ describe('deleteOrder', () => {
 		const result = await deleteOrder({ orderCode: created.orderCode, userId: 'member-1' });
 		expect(result).toEqual({ ok: false, error: 'not_deletable', status: 'active' });
 		expect(await findOrderByCode(created.orderCode)).toBeDefined();
+	});
+});
+
+describe('cancelOrder', () => {
+	it('soft-cancels a scheduled order owned by the caller, keeping the row and its orderItems', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-25', '2026-05-26');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+		await markOrderScheduled(created.orderId);
+
+		expect(await cancelOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({ ok: true });
+
+		const after = await findOrderByCode(created.orderCode);
+		expect(after?.status).toBe('cancelled');
+		expect(after?.cancelledAt).toBeInstanceOf(Date);
+		expect(await orderItemRows(created.orderId)).toHaveLength(1);
+	});
+
+	it('rejects cancelling an order owned by someone else, without revealing whether it exists', async () => {
+		// A scheduled order — otherwise the status filter alone would reject it
+		// and this wouldn't exercise the ownership check.
+		const { db } = await import('../../db/client');
+		const schema = await import('../../db/schema');
+		await db
+			.insert(schema.orders)
+			.values({ orderCode: 'BBBBB', userId: 'other-user', fromDate: '2026-07-01', toDate: '2026-07-02', status: 'scheduled', acceptedAt: new Date() });
+
+		expect(await cancelOrder({ orderCode: 'BBBBB', userId: 'member-1' })).toEqual({ ok: false, error: 'not_found' });
+		const after = await findOrderByCode('BBBBB');
+		expect(after?.status).toBe('scheduled');
+		expect(after?.cancelledAt).toBeNull();
+		expect(await cancelOrder({ orderCode: 'ZZZZZ', userId: 'member-1' })).toEqual({ ok: false, error: 'not_found' });
+	});
+
+	it('rejects cancelling a requested order — that one is deleted instead', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-27', '2026-05-28');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		expect(await cancelOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({
+			ok: false,
+			error: 'not_cancellable',
+			status: 'requested',
+		});
+		expect((await findOrderByCode(created.orderCode))?.status).toBe('requested');
+	});
+
+	it('rejects cancelling an active order and leaves it untouched', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-05-29', '2026-05-30');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+		await markOrderActive(created.orderId);
+
+		expect(await cancelOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({
+			ok: false,
+			error: 'not_cancellable',
+			status: 'active',
+		});
+		const after = await findOrderByCode(created.orderCode);
+		expect(after?.status).toBe('active');
+		expect(after?.cancelledAt).toBeNull();
+	});
+
+	it('is not repeatable: a second cancel reports not_cancellable', async () => {
+		const created = await placeOrder([{ itemId: ITEM_B_ID, quantity: 1 }], '2026-06-20', '2026-06-21');
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+		await markOrderScheduled(created.orderId);
+
+		expect(await cancelOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({ ok: true });
+		expect(await cancelOrder({ orderCode: created.orderCode, userId: 'member-1' })).toEqual({
+			ok: false,
+			error: 'not_cancellable',
+			status: 'cancelled',
+		});
+	});
+
+	it('frees the stock: a cancelled order stops holding availability', async () => {
+		// Item A has 1 unit — a scheduled order fully books it, so a second
+		// overlapping order fails until the first is cancelled.
+		const first = await placeOrder([{ itemId: ITEM_A_ID, quantity: 1 }], '2026-10-01', '2026-10-05');
+		expect(first.ok).toBe(true);
+		if (!first.ok) return;
+		await markOrderScheduled(first.orderId);
+
+		expect(await placeOrder([{ itemId: ITEM_A_ID, quantity: 1 }], '2026-10-03', '2026-10-04')).toEqual({
+			ok: false,
+			error: 'unavailable',
+			unavailableItemIds: [ITEM_A_ID],
+		});
+
+		expect(await cancelOrder({ orderCode: first.orderCode, userId: 'member-1' })).toEqual({ ok: true });
+
+		const second = await placeOrder([{ itemId: ITEM_A_ID, quantity: 1 }], '2026-10-03', '2026-10-04');
+		expect(second.ok).toBe(true);
 	});
 });
 
@@ -352,7 +453,7 @@ describe('rescheduleOrder', () => {
 		expect(created.ok).toBe(true);
 		if (!created.ok) return;
 
-		await markOrderAccepted(created.orderId);
+		await markOrderScheduled(created.orderId);
 
 		const result = await rescheduleOrder({ orderCode: created.orderCode, userId: 'member-1', fromDate: '2026-11-20', toDate: '2026-11-21' });
 		expect(result).toEqual({ ok: false, error: 'not_modifiable', status: 'scheduled' });
@@ -383,9 +484,7 @@ describe('getMemberOrder', () => {
 });
 
 describe('getMemberOrderRows', () => {
-	it("lists only the member's own orders, named by the checkout contact snapshot", async () => {
-		// users.name ('Member') deliberately differs from the contact name, so a
-		// row that picked up the account name would fail the customerName check.
+	it("lists only the member's own orders, without a customer name", async () => {
 		const result = await createOrder({
 			userId: 'member-1',
 			note: null,
@@ -398,55 +497,13 @@ describe('getMemberOrderRows', () => {
 		if (!result.ok) throw new Error('expected order to be created');
 
 		const rows = await getMemberOrderRows('member-1');
-		expect(rows.find((r) => r.orderCode === result.orderCode)).toMatchObject({
-			customerName: 'Checkout Name',
-			items: [{ itemName: 'Item B', requestedQuantity: 1 }],
-		});
+		const row = rows.find((r) => r.orderCode === result.orderCode);
+		expect(row).toMatchObject({ items: [{ itemName: 'Item B', requestedQuantity: 1 }] });
+		expect(row).not.toHaveProperty('customerName');
 		expect(rows.map((r) => r.orderCode)).not.toContain('AAAAAA');
 	});
 
 	it('returns an empty list for a member with no orders', async () => {
 		expect(await getMemberOrderRows('')).toEqual([]);
-	});
-});
-
-describe('generateOrderCode', () => {
-	it("always ends a member order with M", () => {
-		for (let i = 0; i < 20; i++) {
-			expect(generateOrderCode('member')).toMatch(/M$/);
-		}
-	});
-
-	it("always ends an admin's order code with A", () => {
-		for (let i = 0; i < 20; i++) {
-			expect(generateOrderCode('admin')).toMatch(/A$/);
-		}
-	});
-
-	it("always ends a board member's order code with B", () => {
-		for (let i = 0; i < 20; i++) {
-			expect(generateOrderCode('board')).toMatch(/B$/);
-		}
-	});
-
-	it("always ends a moderator's (instructor's) order code with I", () => {
-		for (let i = 0; i < 20; i++) {
-			expect(generateOrderCode('moderator')).toMatch(/I$/);
-		}
-	});
-
-	it('matches the NNAAX format', () => {
-		expect(generateOrderCode('member')).toMatch(/^\d{2}[A-Z]{2}[ABIM]$/);
-	});
-
-	it('never draws the randomly-placed digits/letters from the ambiguous 0/O or 1/I pairs', () => {
-		// The fixed 5th character legitimately can be 'I' (moderator) — this
-		// only checks the two random digits and two random free letters
-		// (positions 0-3), same ambiguity rationale as RANDOM_CODE_ALPHABET.
-		for (let i = 0; i < 50; i++) {
-			const code = generateOrderCode('member');
-			const randomPart = code.slice(0, 4);
-			expect(randomPart).not.toMatch(/[01IO]/);
-		}
 	});
 });

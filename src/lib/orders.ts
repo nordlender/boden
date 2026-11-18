@@ -6,56 +6,10 @@ import type { Role } from './auth';
 import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
-import type { OrderStatus } from './orderStatus';
+import { MEMBER_CANCELLABLE_STATUS, MEMBER_DELETABLE_STATUS, type OrderStatus } from './orderStatus';
+import { generateOrderCode } from './orderCode';
 
-// NNAAX: two digits, two free letters, one role letter.
-export const ORDER_CODE_LENGTH = 5;
 const MAX_ORDER_CODE_ATTEMPTS = 5;
-
-// Excludes 0/O and 1/I — same ambiguous-character rationale as
-// RANDOM_CODE_ALPHABET above; an order code is read aloud by members to
-// moderators. 'I' still appears as a *fixed* role-letter suffix below
-// (ORDER_CODE_ROLE_LETTERS) — that's a single, always-in-the-same-position
-// character, not a randomly drawn one, so it doesn't reintroduce the
-// ambiguity this excludes from the two free-letter positions.
-const ORDER_CODE_DIGITS = '23456789';
-const ORDER_CODE_FREE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-
-// Maps the role that created the order to its fixed last-character letter —
-// every order code's last letter is always one of these four, so the
-// creating role is legible at a glance rather than merely "privileged vs.
-// not". Ranked highest-privilege first: admin > board member > instructor
-// (moderator) > member. A user can hold more than one of these at once (an
-// admin is implicitly also a board member/instructor, etc.), but getRole()
-// (src/lib/auth.ts) already resolves that down to a single highest-ranked
-// Role before it ever reaches here, so this map is a direct one-to-one
-// lookup.
-const ORDER_CODE_ROLE_LETTERS: Record<Role, string> = {
-  admin: 'A',
-  board: 'B',
-  moderator: 'I', // instructor
-  member: 'M',
-};
-
-function randomChar(alphabet: string): string {
-  return alphabet[Math.floor(Math.random() * alphabet.length)];
-}
-
-// Order code format is `NNAAX` (see issue #155, revised): two digits, two
-// free letters, then a role-flag letter always drawn from
-// ORDER_CODE_ROLE_LETTERS — A/B/I/M for admin/board member/instructor
-// (moderator)/member, so the creating role is legible at a glance. `role` is
-// the role of the member who created the order.
-export function generateOrderCode(role: Role = 'member'): string {
-  const lastLetter = ORDER_CODE_ROLE_LETTERS[role];
-  return (
-    randomChar(ORDER_CODE_DIGITS) +
-    randomChar(ORDER_CODE_DIGITS) +
-    randomChar(ORDER_CODE_FREE_LETTERS) +
-    randomChar(ORDER_CODE_FREE_LETTERS) +
-    lastLetter
-  );
-}
 
 // Thrown by insertOrder to abort (and roll back) the transaction when an
 // item's availability was re-checked at insert time and found wanting —
@@ -249,6 +203,17 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   }
 }
 
+// Follow-up read for deleteOrder/cancelOrder when their guarded write matched
+// nothing — disambiguates not-found/not-owned (null → 404) from
+// exists-but-wrong-status (the current status → 409).
+async function findOwnedOrderStatus(input: { orderCode: string; userId: string }) {
+  const existing = await db.query.orders.findFirst({
+    where: (t, { eq: eqCol }) => eqCol(t.orderCode, input.orderCode),
+    columns: { userId: true, status: true },
+  });
+  return existing?.userId === input.userId ? existing.status : null;
+}
+
 // Row shape rendered by OrdersTable.astro — shared by the member, admin and
 // moderator order lists.
 export interface OrderRow {
@@ -256,7 +221,9 @@ export interface OrderRow {
   status: OrderStatus;
   fromDate: string;
   toDate: string;
-  customerName: string;
+  // Left out on the member's own list (/orders), where it would only repeat
+  // their own name — OrdersTable then drops the customer column.
+  customerName?: string;
   items: { itemName: string; requestedQuantity: number }[];
 }
 
@@ -266,16 +233,17 @@ type OrderRowSource = Pick<OrderRow, 'orderCode' | 'status' | 'fromDate' | 'toDa
   orderItems: { requestedQuantity: number; item: { name: string } }[];
 };
 
-export function toOrderRow(order: OrderRowSource): OrderRow {
+// `withCustomer: false` leaves customerName out — for the member's own list,
+// where it would only repeat their own name.
+export function toOrderRow(order: OrderRowSource, { withCustomer = true }: { withCustomer?: boolean } = {}): OrderRow {
   return {
     orderCode: order.orderCode,
     status: order.status,
     fromDate: order.fromDate,
     toDate: order.toDate,
     // users.name is nullable (set from the external OAuth provider) — fall
-    // back to the checkout-time contact name snapshot. Callers that don't
-    // load `user` (a member's own list) always get the snapshot.
-    customerName: order.user?.name || order.contactName,
+    // back to the checkout-time contact name snapshot.
+    ...(withCustomer && { customerName: order.user?.name || order.contactName }),
     items: order.orderItems.map((oi) => ({
       itemName: oi.item.name,
       requestedQuantity: oi.requestedQuantity,
@@ -289,7 +257,7 @@ export async function getMemberOrderRows(userId: string): Promise<OrderRow[]> {
     orderBy: (t, { desc }) => [desc(t.createdAt)],
     with: { orderItems: { with: { item: true } } },
   });
-  return memberOrders.map(toOrderRow);
+  return memberOrders.map((order) => toOrderRow(order, { withCustomer: false }));
 }
 
 export interface PendingRequestRow extends OrderRow {
@@ -304,7 +272,7 @@ export async function getAllOrderRows(status: OrderStatus | null = null): Promis
 		orderBy: (t, { desc }) => [desc(t.createdAt)],
 		with: { user: true, orderItems: { with: { item: true } } },
 	});
-	return allOrders.map(toOrderRow);
+	return allOrders.map((order) => toOrderRow(order));
 }
 
 // Shared by src/pages/moderator/requests.astro (the full queue) and
@@ -346,33 +314,63 @@ export type DeleteOrderResult =
   | { ok: false; error: 'not_deletable'; status: string };
 
 // Hard delete — only ever offered to a member while their order is still
-// 'requested', which includes a moderator-accepted ("scheduled") order:
-// acceptance only sets `acceptedAt`, so members may still cancel it until it
-// becomes 'active' at pick-up. Ownership and
-// status are filtered directly in the DELETE's WHERE clause rather than
-// checked beforehand, so there's no gap for a moderator action to land
-// between an ownership/status check and the delete itself. orderItems rows
-// cascade automatically (onDelete: 'cascade' on the FK).
+// 'requested' (not yet reviewed; memberOrderAction in orderStatus.ts). Once a
+// moderator accepts it, acceptOrder (src/lib/moderatorOrders.ts) moves it to
+// 'scheduled', and from then on the member can only soft-cancel it (see
+// cancelOrder below), never delete it.
+// Ownership and status are filtered directly in the DELETE's WHERE clause
+// rather than checked beforehand, so there's no gap for a moderator action
+// to land between an ownership/status check and the delete itself.
+// orderItems rows cascade automatically (onDelete: 'cascade' on the FK).
 export async function deleteOrder(input: DeleteOrderInput): Promise<DeleteOrderResult> {
   const result = db
     .delete(orders)
-    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, 'requested')))
+    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, MEMBER_DELETABLE_STATUS)))
     .run();
 
   if (result.changes > 0) {
     return { ok: true };
   }
 
-  // Nothing matched — disambiguate not-found/not-owned (404) from
-  // exists-but-wrong-status (409) with one follow-up read.
-  const existing = await db.query.orders.findFirst({
-    where: (t, { eq: eqCol }) => eqCol(t.orderCode, input.orderCode),
-    columns: { userId: true, status: true },
-  });
-  if (!existing || existing.userId !== input.userId) {
+  const status = await findOwnedOrderStatus(input);
+  if (status === null) {
     return { ok: false, error: 'not_found' };
   }
-  return { ok: false, error: 'not_deletable', status: existing.status };
+  return { ok: false, error: 'not_deletable', status };
+}
+
+export type CancelOrderInput = { orderCode: string; userId: string };
+
+export type CancelOrderResult =
+  | { ok: true }
+  | { ok: false; error: 'not_found' }
+  | { ok: false; error: 'not_cancellable'; status: string };
+
+// Soft cancel — only ever offered to a member while their order is
+// 'scheduled' (accepted by a moderator, not yet handed out). The row is kept
+// with status 'cancelled' rather than deleted because a moderator has already
+// committed a pick-up window for it: a moderator who looks the order up by
+// code on /moderator/retrieve sees that the member cancelled it (#371).
+// 'cancelled' isn't in RESERVING_STATUSES, so its stock and calendar days are
+// freed. Ownership and status = 'scheduled' are filtered in the UPDATE's
+// WHERE clause — same pattern as deleteOrder — so this can't race a
+// moderator's hand-out (confirmRetrieval moves 'scheduled' to 'active').
+export async function cancelOrder(input: CancelOrderInput): Promise<CancelOrderResult> {
+  const result = db
+    .update(orders)
+    .set({ status: 'cancelled', cancelledAt: new Date() })
+    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, MEMBER_CANCELLABLE_STATUS)))
+    .run();
+
+  if (result.changes > 0) {
+    return { ok: true };
+  }
+
+  const status = await findOwnedOrderStatus(input);
+  if (status === null) {
+    return { ok: false, error: 'not_found' };
+  }
+  return { ok: false, error: 'not_cancellable', status };
 }
 
 export type RescheduleOrderInput = { orderCode: string; userId: string; fromDate: string; toDate: string };
@@ -404,10 +402,10 @@ class OrderGoneError extends Error {
   }
 }
 
-// Only ever offered to a member while their order is still 'requested' AND
-// not yet accepted by a moderator (`acceptedAt` unset) — unlike deleteOrder,
-// since rescheduling an accepted order would silently carry the acceptance
-// over to dates the moderator never reviewed (#242). Reuses getReservationAvailability's
+// Only ever offered to a member while their order is still 'requested' (not
+// yet accepted — acceptOrder moves it to 'scheduled'), since rescheduling an
+// accepted order would silently carry the acceptance over to dates the
+// moderator never reviewed (#242). Reuses getReservationAvailability's
 // `excludeOrderId` param so the order's own current reservation doesn't
 // count against itself when checking the new date range.
 export async function rescheduleOrder(input: RescheduleOrderInput): Promise<RescheduleOrderResult> {
@@ -425,9 +423,6 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
   if (order.status !== 'requested') {
     return { ok: false, error: 'not_modifiable', status: order.status };
   }
-  if (order.acceptedAt) {
-    return { ok: false, error: 'not_modifiable', status: 'scheduled' };
-  }
 
   try {
     // Re-check status and availability inside the same transaction as the
@@ -435,15 +430,12 @@ export async function rescheduleOrder(input: RescheduleOrderInput): Promise<Resc
     // advisory only; this is the actual enforcement point against a
     // concurrent moderator action or a competing reservation.
     db.transaction((tx) => {
-      const current = tx.select({ status: orders.status, acceptedAt: orders.acceptedAt }).from(orders).where(eq(orders.id, order.id)).get();
+      const current = tx.select({ status: orders.status }).from(orders).where(eq(orders.id, order.id)).get();
       if (!current) {
         throw new OrderGoneError();
       }
       if (current.status !== 'requested') {
         throw new OrderNotModifiableError(current.status);
-      }
-      if (current.acceptedAt) {
-        throw new OrderNotModifiableError('scheduled');
       }
 
       const availabilities = getReservationAvailability(

@@ -6,10 +6,10 @@ import type { Role } from './auth';
 import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
 import { getReservationAvailability, isValidDateRange } from './reservation';
-import type { OrderStatus } from './orderStatus';
+import { MEMBER_CANCELLABLE_STATUS, MEMBER_DELETABLE_STATUS, type OrderStatus } from './orderStatus';
+import { ORDER_CODE_LENGTH } from './orderCode';
 
-// NNAAX: two digits, two free letters, one role letter.
-export const ORDER_CODE_LENGTH = 5;
+export { ORDER_CODE_LENGTH };
 const MAX_ORDER_CODE_ATTEMPTS = 5;
 
 // Excludes 0/O and 1/I — same ambiguous-character rationale as
@@ -371,7 +371,7 @@ export type DeleteOrderResult =
 export async function deleteOrder(input: DeleteOrderInput): Promise<DeleteOrderResult> {
   const result = db
     .delete(orders)
-    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, 'requested')))
+    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, MEMBER_DELETABLE_STATUS)))
     .run();
 
   if (result.changes > 0) {
@@ -395,7 +395,8 @@ export type CancelOrderResult =
 // Soft cancel — only ever offered to a member while their order is
 // 'scheduled' (accepted by a moderator, not yet handed out). The row is kept
 // with status 'cancelled' rather than deleted because a moderator has already
-// committed a pick-up window for it, so it stays visible to moderators (#371).
+// committed a pick-up window for it: a moderator who looks the order up by
+// code on /moderator/retrieve sees that the member cancelled it (#371).
 // 'cancelled' isn't in RESERVING_STATUSES, so its stock and calendar days are
 // freed. Ownership and status = 'scheduled' are filtered in the UPDATE's
 // WHERE clause — same pattern as deleteOrder — so this can't race a
@@ -404,7 +405,7 @@ export async function cancelOrder(input: CancelOrderInput): Promise<CancelOrderR
   const result = db
     .update(orders)
     .set({ status: 'cancelled', cancelledAt: new Date() })
-    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, 'scheduled')))
+    .where(and(eq(orders.orderCode, input.orderCode), eq(orders.userId, input.userId), eq(orders.status, MEMBER_CANCELLABLE_STATUS)))
     .run();
 
   if (result.changes > 0) {

@@ -1,5 +1,5 @@
 import type { AstroCookies } from 'astro';
-import { ORDER_CODE_LENGTH } from './orders';
+import { ORDER_CODE_LENGTH } from './orderCode';
 
 // One-shot "your order was deleted/cancelled" notice for /orders (#371).
 // Set by the delete/cancel API routes only after the write succeeded, and

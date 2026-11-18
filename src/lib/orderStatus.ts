@@ -26,12 +26,16 @@ export function isOrderStatus(value: unknown): value is OrderStatus {
 
 // What a member may do to get rid of their own order (#371): hard-delete it
 // while it's unreviewed, soft-cancel it once a moderator has accepted it, and
-// nothing from hand-out on. Mirrors the WHERE clauses of deleteOrder and
-// cancelOrder in src/lib/orders.ts, which are the actual enforcement.
+// nothing from hand-out on. These constants are also the WHERE clauses of
+// deleteOrder and cancelOrder in src/lib/orders.ts (the actual enforcement),
+// so the UI and the API can't drift apart.
+export const MEMBER_DELETABLE_STATUS = 'requested' as const satisfies OrderStatus;
+export const MEMBER_CANCELLABLE_STATUS = 'scheduled' as const satisfies OrderStatus;
+
 export type MemberOrderAction = 'delete' | 'cancel';
 
 export function memberOrderAction(status: string): MemberOrderAction | null {
-	if (status === 'requested') return 'delete';
-	if (status === 'scheduled') return 'cancel';
+	if (status === MEMBER_DELETABLE_STATUS) return 'delete';
+	if (status === MEMBER_CANCELLABLE_STATUS) return 'cancel';
 	return null;
 }

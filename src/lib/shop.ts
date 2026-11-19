@@ -233,6 +233,9 @@ export interface ShopGridProduct {
 	// still owns the stock badge's final design), so this effectively reads
 	// "in stock if any variant in the group is available."
 	inStock: number;
+	// How many variants (items, or sets) the product has — the shop tile's
+	// "5 options" line.
+	variantCount: number;
 }
 
 // What both an item and a set variant provide to the grid — ShopItem and
@@ -273,6 +276,7 @@ function groupVariantsByProduct(
 			categoryName: representative.categoryName,
 			subcategoryName: representative.subcategoryName,
 			inStock: group.reduce((sum, variant) => sum + variant.inStock, 0),
+			variantCount: group.length,
 		};
 	});
 }

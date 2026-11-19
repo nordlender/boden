@@ -5,6 +5,7 @@
 export const prerender = true;
 
 import HtmlShell from '../../layouts/HtmlShell.astro';
+import LogoIcon from '../../assets/logo.svg';
 ---
 <HtmlShell title="Signing in…" bodyClass="">
 		<!--
@@ -16,7 +17,15 @@ import HtmlShell from '../../layouts/HtmlShell.astro';
 			unavoidable, but the user never sees an interactive login screen —
 			just an instant redirect to bloc.
 		-->
-		<p class="p-gutter text-sm text-text-muted">Signing in…</p>
+		<main class="grid min-h-[80vh] place-items-center px-gutter">
+			<div class="flex flex-col items-center gap-4 text-center" role="status">
+				<LogoIcon width={48} height={48} class="size-12 text-text" aria-hidden="true" />
+				<div class="flex flex-col gap-1">
+					<p class="text-lg font-bold text-text">Signing you in…</p>
+					<p class="text-sm text-text-muted">Taking you to the OSI Klatring member login.</p>
+				</div>
+			</div>
+		</main>
 		<script>
 			import { signIn } from 'auth-astro/client';
 

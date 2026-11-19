@@ -7,7 +7,7 @@ import { triggerBoxClasses, triggerIconPixelSize } from '../../lib/icon-sizes';
 <button
 	type="button"
 	id="theme-toggle"
-	class:list={['flex cursor-pointer items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle', triggerBoxClasses.md]}
+	class:list={['flex cursor-pointer items-center justify-center rounded-full text-text-muted transition-colors hover:bg-bg-subtle hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring', triggerBoxClasses.md]}
 	aria-label="Toggle dark mode"
 >
 	<MorphIcon icon={themeToggle.light} size={triggerIconPixelSize.md} class="theme-toggle-icon" />

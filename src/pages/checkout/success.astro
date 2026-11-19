@@ -40,6 +40,7 @@ const pickupWindows = await getOrderPickupWindows(order);
 			items={order.orderItems.map(toOrderItemView)}
 			showImages
 			pickupWindows={pickupWindows}
+			headingLevel="h2"
 		/>
 		<Button variant="primary" size="lg" href={`/orders/${order.orderCode}`} class="self-start">
 			View or manage this order

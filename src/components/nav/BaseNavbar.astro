@@ -18,16 +18,16 @@ interface Props {
 const { links, showCart = false } = Astro.props;
 ---
 
-<header class="border-b border-border bg-bg">
-	<nav class="mx-auto flex max-w-6xl items-center justify-between gap-6 px-gutter py-4">
+<header class="sticky top-0 z-30 border-b border-border bg-bg">
+	<nav class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-gutter">
 		<Logo />
 
-		<div class="flex items-center gap-8">
+		<div class="flex items-center gap-6">
 			<div class="hidden md:block">
 				<NavLinks links={links} />
 			</div>
 
-			<div class="flex items-center gap-controls">
+			<div class="flex items-center gap-1">
 				{showCart && <CartButton />}
 				<ThemeToggle />
 
@@ -39,14 +39,14 @@ const { links, showCart = false } = Astro.props;
 					align="right"
 					ariaLabel="Open menu"
 					panel="floating"
-					panelClass="mt-3 w-60"
+					panelClass="mt-3 w-64"
 					class="nav-menu group md:hidden"
 				>
-					<span slot="trigger" class:list={['flex items-center justify-center rounded-md border border-border-strong text-text-muted hover:bg-bg-subtle', triggerBoxClasses.md]}>
+					<span slot="trigger" class:list={['flex items-center justify-center rounded-full text-text-muted transition-colors hover:bg-bg-subtle hover:text-text group-open:bg-bg-subtle group-open:text-text', triggerBoxClasses.md]}>
 						<MorphIcon icon={navMenu.closed} size={triggerIconPixelSize.md} class="nav-menu-icon" />
 					</span>
 					<NavLinks links={links} />
-					<div class="mt-4 border-t border-border pt-4">
+					<div class="mt-3 border-t border-border pt-3">
 						<UserMenuLinks />
 					</div>
 				</Dropdown>

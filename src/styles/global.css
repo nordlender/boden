@@ -280,8 +280,11 @@ body {
 		flex: 1 1 0%;
 	}
 
+	/* Restore Cally's own :host display (flex column), not `block`: in a
+	   block box the month's table shrinks to its content instead of
+	   stretching, so the second month renders narrower than the first. */
 	:root .cally-theme.cally-narrow-single calendar-month:nth-of-type(2) {
-		display: block;
+		display: flex;
 	}
 }
 

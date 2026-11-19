@@ -8,7 +8,7 @@ interface Props {
 	orders: OrderRow[];
 	// Method signature rather than an arrow-typed property: the latter makes the
 	// Astro language tools report `Props` as unused (ts 6196).
-	viewHref(orderCode: string): string;
+	viewHref(order: OrderRow): string;
 	emptyMessage?: string;
 }
 // Optional `empty-action` slot: rendered under emptyMessage when there are
@@ -38,7 +38,7 @@ const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 							fromDate={order.fromDate}
 							toDate={order.toDate}
 							customerName={order.customerName}
-							viewHref={viewHref(order.orderCode)}
+							viewHref={viewHref(order)}
 						/>
 					))}
 				</div>
@@ -51,7 +51,7 @@ const { orders, viewHref, emptyMessage = 'No orders yet.' } = Astro.props;
 							toDate={order.toDate}
 							customerName={order.customerName}
 							items={order.items}
-							viewHref={viewHref(order.orderCode)}
+							viewHref={viewHref(order)}
 						/>
 					))}
 				</div>

@@ -5,7 +5,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import Page from '../../components/ui/Page.astro';
 import { chipBaseClasses } from '../../lib/button-styles';
 import OrdersTable from '../../components/orders/OrdersTable.astro';
-import { getAllOrderRows } from '../../lib/orders';
+import { getAllOrderRows, staffOrderHref } from '../../lib/orders';
 import { ORDER_STATUSES, isOrderStatus, type OrderStatus } from '../../lib/orderStatus';
 import OrdersLayoutToggle from '../../components/orders/OrdersLayoutToggle.astro';
 
@@ -57,6 +57,6 @@ const rows = await getAllOrderRows(activeStatus);
 			<OrdersLayoutToggle />
 		</div>
 
-		<OrdersTable orders={rows} viewHref={(code: string) => `/admin/orders/${code}`} emptyMessage="No orders match this filter." />
+		<OrdersTable orders={rows} viewHref={staffOrderHref} emptyMessage="No orders match this filter." />
 	</Page>
 </AdminLayout>

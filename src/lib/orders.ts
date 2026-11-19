@@ -217,6 +217,7 @@ async function findOwnedOrderStatus(input: { orderCode: string; userId: string }
 // Row shape rendered by OrdersTable.astro — shared by the member, admin and
 // moderator order lists.
 export interface OrderRow {
+  id: number;
   orderCode: string;
   status: OrderStatus;
   fromDate: string;
@@ -227,7 +228,7 @@ export interface OrderRow {
   items: { itemName: string; requestedQuantity: number }[];
 }
 
-type OrderRowSource = Pick<OrderRow, 'orderCode' | 'status' | 'fromDate' | 'toDate'> & {
+type OrderRowSource = Pick<OrderRow, 'id' | 'orderCode' | 'status' | 'fromDate' | 'toDate'> & {
   contactName: string;
   user?: { name: string | null } | null;
   orderItems: { requestedQuantity: number; item: { name: string } }[];
@@ -237,6 +238,7 @@ type OrderRowSource = Pick<OrderRow, 'orderCode' | 'status' | 'fromDate' | 'toDa
 // where it would only repeat their own name.
 export function toOrderRow(order: OrderRowSource, { withCustomer = true }: { withCustomer?: boolean } = {}): OrderRow {
   return {
+    id: order.id,
     orderCode: order.orderCode,
     status: order.status,
     fromDate: order.fromDate,
@@ -260,8 +262,13 @@ export async function getMemberOrderRows(userId: string): Promise<OrderRow[]> {
   return memberOrders.map((order) => toOrderRow(order, { withCustomer: false }));
 }
 
-export interface PendingRequestRow extends OrderRow {
-	id: number;
+// Where staff go to look at an order: there's no admin order detail page
+// (#241), so this points at the moderator pages, which admins can also reach
+// (src/middleware/prefixes.ts). An order still pending review opens the
+// accept/reject page; every other status opens the order hub, which shows the
+// order and the next action for whatever state it's in.
+export function staffOrderHref(order: Pick<OrderRow, 'id' | 'orderCode' | 'status'>): string {
+	return order.status === 'requested' ? `/moderator/review/${order.orderCode}` : `/moderator/retrieve/${order.id}`;
 }
 
 // Every member's orders, most recent first, optionally filtered by status —
@@ -279,7 +286,7 @@ export async function getAllOrderRows(status: OrderStatus | null = null): Promis
 // src/pages/moderator/index.astro (the hub's upcoming-requests preview) —
 // same pending-review query and OrdersTable-row shape, so both stay in
 // sync rather than drifting from two copies of this query.
-export async function getPendingRequestRows(): Promise<PendingRequestRow[]> {
+export async function getPendingRequestRows(): Promise<OrderRow[]> {
 	const pendingOrders = await db.query.orders.findMany({
 		where: (t, { eq: eqCol }) => eqCol(t.status, 'requested'),
 		// Earliest submitted first (first come, first served); id breaks
@@ -288,7 +295,7 @@ export async function getPendingRequestRows(): Promise<PendingRequestRow[]> {
 		with: { user: true, orderItems: { with: { item: true } } },
 	});
 
-	return pendingOrders.map((order) => ({ id: order.id, ...toOrderRow(order) }));
+	return pendingOrders.map((order) => toOrderRow(order));
 }
 
 // Ownership is part of the WHERE clause, so another member's order code

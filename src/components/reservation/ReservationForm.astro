@@ -1,9 +1,8 @@
 ---
 import ReservationCalendar from './ReservationCalendar.astro';
-import ReservationItemRow from './ReservationItemRow.astro';
+import ReservationItemList from './ReservationItemList.astro';
 import CheckoutForm from '../cart/CheckoutForm.astro';
 import { entryKey, type CartLine } from '../../lib/cart';
-import { formatAttributes } from '../../lib/attributes';
 import type { PickupWindowDisplay } from '../../lib/pickupWindowFormat';
 import type { ReservationCartLineRef } from './reservationFormState';
 import Callout from '../ui/Callout.astro';
@@ -56,34 +55,7 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 			</div>
 		</div>
 
-		<div class="divide-y divide-border border-y border-border">
-			{
-				cartLines.map((line) =>
-					'setId' in line ? (
-						<ReservationItemRow
-							kind="set"
-							id={line.setId}
-							productSlug={line.productSlug}
-							productTitle={line.productTitle}
-							imageUrl={line.imageUrl}
-							quantity={line.quantity}
-							subtitle={line.label}
-							components={line.children}
-						/>
-					) : (
-						<ReservationItemRow
-							kind="item"
-							id={line.itemId}
-							productSlug={line.productSlug}
-							productTitle={line.productTitle}
-							imageUrl={line.imageUrl}
-							quantity={line.quantity}
-							subtitle={formatAttributes(line.attributes)}
-						/>
-					),
-				)
-			}
-		</div>
+		<ReservationItemList lines={cartLines} />
 	</section>
 
 	<section class="flex flex-col gap-stack">

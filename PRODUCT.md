@@ -26,7 +26,7 @@ A members-only, free lending system run by volunteers for one club, not a commer
 
 - Login and membership/fee status come from bloc (osiklatring.no's membership backend) via OAuth, not a separate account system. Unpaid fees and non-membership are snapshotted on each order for the moderator.
 - Cart lives in a cookie until the member submits a reservation.
-- Order lifecycle: requested → scheduled (moderator accepts) or rejected → active (blind-counted hand-out) → returned (blind-counted return). Members can reschedule before acceptance or delete their own order.
+- Order lifecycle: requested → scheduled (moderator accepts) or rejected → active (blind-counted hand-out) → returned (blind-counted return). Before acceptance a member can reschedule or delete their own order; once it is scheduled they can cancel it instead, which keeps the row as `cancelled` so moderators still see it, and frees the stock and calendar days. After hand-out there is nothing a member can do.
 - Each order gets a short code (NNAAX format) that is read aloud at pick-up.
 - Pick-up happens on pick-up days that moderators register (one-off) or admins set (recurring).
 

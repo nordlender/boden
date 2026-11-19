@@ -11,12 +11,18 @@ interface Props {
 	status?: string;
 	fromDate: string;
 	toDate: string;
-	customerName: string;
+	// Omitted on the member's own order list, where it would only repeat
+	// their own name — the customer cell is then left out too.
+	customerName?: string;
 	viewHref?: string;
 }
 
 const { orderCode, status, fromDate, toDate, customerName, viewHref } = Astro.props;
 const isPersisted = Boolean(orderCode && status && viewHref);
+const hasCustomer = customerName !== undefined;
+// Without a customer cell the mobile layout has no name row, so dates and
+// code move up from row 3 to row 2. Written out in full for Tailwind's scanner.
+const bottomRow = hasCustomer ? 'max-sm:row-start-3' : 'max-sm:row-start-2';
 ---
 
 <div class="flex flex-col gap-3 rounded-xl border border-border bg-surface px-card py-4 text-sm">
@@ -30,7 +36,11 @@ const isPersisted = Boolean(orderCode && status && viewHref);
 	<div
 		class:list={[
 			'grid grid-cols-2 items-center gap-x-4 gap-y-2 sm:gap-y-0',
-			isPersisted ? 'sm:grid-cols-[5rem_1fr_1fr_auto_auto]' : 'sm:grid-cols-[1fr_1fr]',
+			isPersisted
+				? hasCustomer
+					? 'sm:grid-cols-[5rem_1fr_1fr_auto_auto]'
+					: 'sm:grid-cols-[5rem_1fr_auto_auto]'
+				: 'sm:grid-cols-[1fr_1fr]',
 		]}
 	>
 		{
@@ -40,9 +50,9 @@ const isPersisted = Boolean(orderCode && status && viewHref);
 				</div>
 			)
 		}
-		<span class="text-text-muted max-sm:col-start-1 max-sm:row-start-3">{formatDateDisplay(fromDate)} &ndash; {formatDateDisplay(toDate)}</span>
-		<span class="truncate font-medium text-text max-sm:col-span-2 max-sm:row-start-2">{customerName}</span>
-		{isPersisted && <span class="font-mono text-text-muted max-sm:col-start-2 max-sm:row-start-3 max-sm:justify-self-end">#{orderCode}</span>}
+		<span class:list={['text-text-muted max-sm:col-start-1', bottomRow]}>{formatDateDisplay(fromDate)} &ndash; {formatDateDisplay(toDate)}</span>
+		{hasCustomer && <span class="truncate font-medium text-text max-sm:col-span-2 max-sm:row-start-2">{customerName}</span>}
+		{isPersisted && <span class:list={['font-mono text-text-muted max-sm:col-start-2 max-sm:justify-self-end', bottomRow]}>#{orderCode}</span>}
 		{
 			isPersisted && (
 				<MorphButton

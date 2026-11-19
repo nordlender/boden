@@ -23,6 +23,15 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 		return new Response('Order is not acceptable for retrieval', { status: 409 });
 	}
 
+	// The order can leave 'scheduled' while the moderator is counting — most
+	// commonly the member cancelling it (#371). Send them back to the hub,
+	// which shows the order's current state (e.g. "Cancelled by member"),
+	// rather than reporting a count result for an order that can't be handed out.
+	const hub = `/moderator/retrieve/${orderId}`;
+	if (order.status !== 'scheduled') {
+		return redirect(hub, 303);
+	}
+
 	// Whether every line's submitted count matches its target is decided
 	// here, iterating the order's own full item list (not whatever ids the
 	// form happened to include) — confirmRetrieval's own per-line bounds
@@ -50,13 +59,14 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
 
 	const result = await confirmRetrieval(orderId, locals.user!.id, retrieved);
 	if (!result.ok) {
-		// Only reachable via a stale/tampered POST, or (moderator_not_found) a
-		// moderator whose user row vanished mid-session — the page's own match
-		// check above is what normally prevents the others (e.g. someone else
-		// already confirmed this order in another tab).
+		// not_acceptable: the order left 'scheduled' between the check above and
+		// the write (member cancelled, another moderator confirmed) — the hub
+		// shows what happened. The rest are only reachable via a stale/tampered
+		// POST, or (moderator_not_found) a moderator whose user row vanished
+		// mid-session.
 		switch (result.error) {
 			case 'not_acceptable':
-				return new Response('Order is not acceptable for retrieval', { status: 409 });
+				return redirect(hub, 303);
 			case 'quantity_exceeds_requested':
 				return new Response('Quantity exceeds requested', { status: 400 });
 			case 'moderator_not_found':

@@ -2,6 +2,7 @@
 import CartActionsBar from './CartActionsBar.astro';
 import { emptyStateClasses, sectionTitleClasses } from '../../lib/layout-styles';
 import MorphButton from '../ui/MorphButton.astro';
+import Button from '../ui/Button.astro';
 ---
 
 <div data-cart-backdrop class="fixed inset-0 z-40 hidden bg-overlay"></div>
@@ -21,6 +22,9 @@ import MorphButton from '../ui/MorphButton.astro';
 		<div data-cart-empty class={emptyStateClasses}>
 			<p class="font-semibold text-text">Your cart is empty.</p>
 			<p class="mt-1">Pick gear from the shelves, then choose your dates here.</p>
+			<div class="mt-4">
+				<Button href="/" variant="secondary">Browse gear</Button>
+			</div>
 		</div>
 		<div data-cart-rows class="divide-y divide-border"></div>
 	</div>

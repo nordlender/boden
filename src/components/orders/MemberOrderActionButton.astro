@@ -1,0 +1,81 @@
+---
+// Member-side "get rid of this order" action, behind a confirm popover.
+// Which action is decided by memberOrderAction (src/lib/orderStatus.ts, #371):
+// - 'delete' (not yet reviewed): hard delete, DELETE /api/orders/[code].
+// - 'cancel' (accepted, not handed out): soft cancel,
+//   POST /api/orders/[code]/cancel — the order is kept as 'cancelled'.
+// - null: nothing is rendered.
+// Either way, success lands on /orders with a one-shot notice (src/lib/orderNotice.ts).
+// The fetch/confirm flow is shared via src/lib/action-popover-confirm.ts.
+import ActionPopover from '../ui/ActionPopover.astro';
+import { inlineErrorClasses } from '../../lib/form-styles';
+import type { MemberOrderAction } from '../../lib/orderStatus';
+
+interface Props {
+	orderCode: string;
+	action: MemberOrderAction | null;
+}
+
+const { orderCode, action } = Astro.props;
+
+const copy: Record<MemberOrderAction, { title: string; label: string; confirmLabel: string; dismissLabel?: string; body: string }> = {
+	delete: {
+		title: `Delete order #${orderCode}?`,
+		label: 'Delete order',
+		confirmLabel: 'Delete',
+		body: 'This cannot be undone.',
+	},
+	cancel: {
+		title: `Cancel order #${orderCode}?`,
+		label: 'Cancel order',
+		confirmLabel: 'Cancel order',
+		dismissLabel: 'Keep order',
+		body: 'A moderator has already accepted this order. Cancelling frees the gear for others and cannot be undone.',
+	},
+};
+const c = action ? { action, ...copy[action] } : null;
+---
+
+{
+	c && (
+		<div data-member-order-action={c.action} data-order-code={orderCode}>
+			<ActionPopover
+				id={`${c.action}-order-${orderCode}-confirm`}
+				title={c.title}
+				triggerLabel={c.label}
+				triggerVariant="danger"
+				confirmLabel={c.confirmLabel}
+				confirmVariant="danger"
+				dismissLabel={c.dismissLabel}
+			>
+				<p class="text-sm text-text-muted">{c.body}</p>
+			</ActionPopover>
+			<p data-member-order-error hidden class:list={['mt-2', inlineErrorClasses]} />
+		</div>
+	)
+}
+
+<script>
+	import { wireActionPopoverConfirm } from '../../lib/action-popover-confirm';
+
+	document.querySelectorAll<HTMLElement>('[data-member-order-action]').forEach((container) => {
+		const orderCode = container.dataset.orderCode;
+		if (!orderCode) return;
+		const isCancel = container.dataset.memberOrderAction === 'cancel';
+		const verb = isCancel ? 'cancelled' : 'deleted';
+
+		wireActionPopoverConfirm(container, {
+			endpoint: isCancel ? `/api/orders/${orderCode}/cancel` : `/api/orders/${orderCode}`,
+			method: isCancel ? 'POST' : 'DELETE',
+			errorEl: container.querySelector<HTMLElement>('[data-member-order-error]'),
+			onSuccess: () => {
+				// The API set a one-shot notice cookie that /orders shows.
+				window.location.href = '/orders';
+			},
+			formatError: (body) =>
+				body.error === 'not_deletable' || body.error === 'not_cancellable'
+					? `This order can no longer be ${verb} (status: ${String(body.status)}).`
+					: `This order could not be ${verb}.`,
+		});
+	});
+</script>

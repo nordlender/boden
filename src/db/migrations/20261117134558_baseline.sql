@@ -78,6 +78,7 @@ CREATE TABLE `orders` (
 	`returned_at` integer,
 	`rejected_at` integer,
 	`rejected_reason` text,
+	`cancelled_at` integer,
 	`disclaimer_accepted_at` integer,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`confirmed_by_user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,
@@ -128,6 +129,7 @@ CREATE TABLE `product_attribute_keys` (
 	`product_id` integer NOT NULL,
 	`name` text NOT NULL,
 	`sort_order` integer DEFAULT 0 NOT NULL,
+	`is_variant` integer DEFAULT false NOT NULL,
 	FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint

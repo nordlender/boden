@@ -8,20 +8,18 @@ import { inlineErrorClasses } from '../../lib/form-styles';
 interface Props {
 	orderCode: string;
 	status: string;
-	// Set once a moderator accepts the order ("scheduled") — no more date changes.
-	acceptedAt?: Date | null;
 	fromDate: string;
 	toDate: string;
 	maxRentalDays: number;
 }
 
-const { orderCode, status, acceptedAt, fromDate, toDate, maxRentalDays } = Astro.props;
+const { orderCode, status, fromDate, toDate, maxRentalDays } = Astro.props;
 const modalId = `change-order-${orderCode}`;
 const titleId = `${modalId}-title`;
 ---
 
 {
-	status === 'requested' && !acceptedAt && (
+	status === 'requested' && (
 		<div data-change-order={orderCode}>
 			<Button type="button" data-modal-open data-modal-target={modalId}>
 				Change order

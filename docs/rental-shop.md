@@ -83,14 +83,24 @@ moderator fetches items from storage, then on the hub clicks "Confirm"
     quantity handed out per item
   → status: active  (rental is now live; activatedAt + confirmedByUserId stamped)
 
+member changes their mind before hand-out, from /orders/[code]
+  → while requested: delete → DELETE /api/orders/[code]
+    (row and its orderItems are removed — nobody has reviewed it yet)
+  → while scheduled: cancel → POST /api/orders/[code]/cancel
+  → status: cancelled  (cancelledAt stamped; row kept so moderators see it,
+    stock and calendar days freed — 'cancelled' isn't a reserving status)
+
 member returns items on-site
   → moderator blind-counts them at /moderator/return/[id]
   → status: returned  (returnedAt + returnedByUserId stamped, moved to archive)
 ```
 
-A member can also reschedule (`PATCH /api/orders/[code]/reschedule`, blocked
-once a moderator has accepted) or delete (`DELETE /api/orders/[code]`) their
-own order from `/orders`.
+A member can also reschedule a `requested` order
+(`PATCH /api/orders/[code]/reschedule`, blocked once a moderator has
+accepted). Which of delete/cancel a member is offered comes from
+`memberOrderAction` in `src/lib/orderStatus.ts`; from `active` on there is
+nothing a member can do. After a delete or cancel, `/orders` shows a one-shot
+notice (`src/lib/orderNotice.ts`).
 
 Every step above is implemented — cart → reservation → order creation
 (`src/lib/orders.ts`, `src/pages/api/orders/create.ts`) and the moderator
@@ -135,7 +145,7 @@ boden/
 │   │   ├── checkout/success.astro           # Order receipt after placing — SSR
 │   │   ├── orders/
 │   │   │   ├── index.astro                  # The member's own orders
-│   │   │   └── [code].astro                 # One of the member's orders (reschedule / delete)
+│   │   │   └── [code].astro                 # One of the member's orders (reschedule / delete / cancel)
 │   │   ├── admin/                           # Admin only
 │   │   │   ├── index.astro                  # Hub with the message board
 │   │   │   ├── products.astro, products/new.astro, products/[id]/edit.astro
@@ -159,7 +169,7 @@ boden/
 │   │
 │   ├── pages/api/
 │   │   ├── cart.ts, cart/                   # add / remove / update / update-all / clear — cookie cart
-│   │   ├── orders/                          # create.ts; [code].ts (DELETE); [code]/reschedule.ts (PATCH)
+│   │   ├── orders/                          # create.ts; [code].ts (DELETE); [code]/{reschedule (PATCH), cancel (POST)}.ts
 │   │   ├── reservation/availability.ts      # POST — live availability preview for chosen dates
 │   │   ├── moderator/                       # retrieve.ts, orders/[id]/{accept,reject,confirm,return}.ts, pickup-days/
 │   │   ├── admin/                           # images.ts (upload), pickup-days/recurring/
@@ -471,7 +481,7 @@ The moderator types in an order code (an optional leading `#` is stripped). The 
 
 ### Order hub (`/moderator/retrieve/[id]`)
 
-Shows the full order — member details, fee/membership flags, requested items with quantities, availability warnings — and offers the next action for the order's state: review (`requested`), confirm (`scheduled`, with a warning if a late return would break the following rental), or return (`active`).
+Shows the full order — member details, fee/membership flags, requested items with quantities, availability warnings — and offers the next action for the order's state: review (`requested`), confirm (`scheduled`, with a warning if a late return would break the following rental), or return (`active`). A `cancelled` order shows a "Cancelled by member" notice and no action.
 
 ### Review (`/moderator/review/[code]`)
 

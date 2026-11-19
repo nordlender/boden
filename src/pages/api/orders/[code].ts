@@ -1,8 +1,9 @@
 import type { APIRoute } from 'astro';
 import { json, jsonError, requireUser } from '../../../lib/http';
 import { deleteOrder } from '../../../lib/orders';
+import { setOrderNotice } from '../../../lib/orderNotice';
 
-export const DELETE: APIRoute = async ({ params, locals }) => {
+export const DELETE: APIRoute = async ({ params, locals, cookies }) => {
   const authError = requireUser(locals);
   if (authError) return authError;
 
@@ -19,5 +20,6 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
     return json(result, status);
   }
 
+  setOrderNotice(cookies, 'deleted', code);
   return json({ ok: true });
 };

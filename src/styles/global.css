@@ -282,7 +282,11 @@ body {
 
 	/* Restore Cally's own :host display (flex column), not `block`: in a
 	   block box the month's table shrinks to its content instead of
-	   stretching, so the second month renders narrower than the first. */
+	   stretching, so the second month renders narrower than the first.
+	   This copies Cally's internal :host value (cally 0.9.2), so a Cally
+	   upgrade that changes calendar-month's layout would be overridden here.
+	   Sturdier option: wrap the display: none rule above in
+	   @container (width < 30rem) and drop this override entirely. */
 	:root .cally-theme.cally-narrow-single calendar-month:nth-of-type(2) {
 		display: flex;
 	}

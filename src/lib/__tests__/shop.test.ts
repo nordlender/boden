@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupShopItemsByProduct, type ShopItem } from '../shop';
+import { groupShopItemsByProduct, pickInitialVariant, type ShopItem, type ShopSet } from '../shop';
 
 function makeItem(overrides: Partial<ShopItem>): ShopItem {
 	return {
@@ -73,5 +73,31 @@ describe('groupShopItemsByProduct', () => {
 
 		const grouped = groupShopItemsByProduct(items);
 		expect(grouped[0].inStock).toBe(7);
+	});
+});
+
+describe('pickInitialVariant', () => {
+	const makeSet = (id: number): ShopSet => ({ ...makeItem({ id }), label: null, componentDisplay: [] });
+	const items = [makeItem({ id: 1 }), makeItem({ id: 2, imageUrl: '/two.jpg' })];
+	const sets = [makeSet(7), makeSet(8)];
+	const pick = (product: { items: ShopItem[]; sets: ShopSet[] }, query: string) =>
+		pickInitialVariant(product, new URLSearchParams(query));
+
+	it('defaults to the first item, else the first set, else null', () => {
+		expect(pick({ items, sets: [] }, '')).toEqual({ kind: 'item', id: 1, imageUrl: null });
+		expect(pick({ items: [], sets }, '')).toMatchObject({ kind: 'set', id: 7 });
+		expect(pick({ items: [], sets: [] }, '?item=1')).toBeNull();
+	});
+
+	it('preselects a matching ?item= or ?set=', () => {
+		expect(pick({ items, sets: [] }, '?item=2')).toEqual({ kind: 'item', id: 2, imageUrl: '/two.jpg' });
+		expect(pick({ items: [], sets }, '?set=8')).toMatchObject({ kind: 'set', id: 8 });
+	});
+
+	it('falls back to the first variant for an unknown id or the other kind', () => {
+		expect(pick({ items, sets: [] }, '?item=99')).toMatchObject({ kind: 'item', id: 1 });
+		expect(pick({ items, sets: [] }, '?item=abc')).toMatchObject({ kind: 'item', id: 1 });
+		expect(pick({ items, sets }, '?set=8')).toMatchObject({ kind: 'item', id: 1 });
+		expect(pick({ items: [], sets }, '?item=8')).toMatchObject({ kind: 'set', id: 7 });
 	});
 });

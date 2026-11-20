@@ -6,47 +6,91 @@ import { getOrderPickupWindows } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
 import UserOrderSummary from '../../components/orders/UserOrderSummary.astro';
 import SubmittedContactDetails from '../../components/orders/SubmittedContactDetails.astro';
-import DeleteOrderButton from '../../components/orders/DeleteOrderButton.astro';
+import MemberOrderActionButton from '../../components/orders/MemberOrderActionButton.astro';
 import ChangeOrderLink from '../../components/orders/ChangeOrderLink.astro';
 import Page from '../../components/ui/Page.astro';
 import Card from '../../components/ui/Card.astro';
 import BackLink from '../../components/ui/BackLink.astro';
+import Button from '../../components/ui/Button.astro';
+import Callout from '../../components/ui/Callout.astro';
 import { cardFooterClasses } from '../../lib/layout-styles';
+import { formatDateTimeDisplay } from '../../lib/dates';
+import { memberOrderAction } from '../../lib/orderStatus';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES via /orders) —
 // reached only when logged in, so Astro.locals.user is non-null here.
 // getMemberOrder scopes the lookup to the signed-in user, so another member's
-// code resolves exactly like a nonexistent one — don't leak it by guessing or
-// enumerating order codes (never redirect differently for "not yours").
+// code resolves exactly like a nonexistent one — codes can't be guessed or
+// enumerated. Rendered in place with a 404 status rather than redirecting, so
+// a mistyped code says what went wrong.
 const order = await getMemberOrder(Astro.params.code ?? '', Astro.locals.user?.id ?? '');
-
 if (!order) {
-  return Astro.redirect('/');
+  Astro.response.status = 404;
 }
 
-const pickupWindows = await getOrderPickupWindows(order);
+const pickupWindows = order ? await getOrderPickupWindows(order) : undefined;
+const action = order ? memberOrderAction(order.status) : null;
 ---
 
-<BaseLayout title={`Order #${order.orderCode}`}>
-	<Page width="narrow">
-		<BackLink slot="before-title" href="/">Back to shop</BackLink>
+{
+	order ? (
+		<BaseLayout title={`Order #${order.orderCode}`}>
+			<Page width="narrow">
+				<BackLink slot="before-title" href="/orders">My orders</BackLink>
 
-		<Card as="div">
-			<UserOrderSummary
-				orderCode={order.orderCode}
-				status={order.status}
-				fromDate={order.fromDate}
-				toDate={order.toDate}
-				note={order.note}
-				items={order.orderItems.map(toOrderItemView)}
-				showImages
-				pickupWindows={pickupWindows}
-			/>
-			<SubmittedContactDetails contactName={order.contactName} />
-			<div class={cardFooterClasses}>
-				<ChangeOrderLink orderCode={order.orderCode} status={order.status} acceptedAt={order.acceptedAt} fromDate={order.fromDate} toDate={order.toDate} maxRentalDays={getMaxRentalDays()} />
-				<DeleteOrderButton orderCode={order.orderCode} status={order.status} />
-			</div>
-		</Card>
-	</Page>
-</BaseLayout>
+				<Card as="div">
+					<UserOrderSummary
+						orderCode={order.orderCode}
+						status={order.status}
+						fromDate={order.fromDate}
+						toDate={order.toDate}
+						note={order.note}
+						items={order.orderItems.map(toOrderItemView)}
+						showImages
+						pickupWindows={pickupWindows}
+					>
+						{order.status === 'rejected' && (
+							<Callout variant="error" title="Order rejected" live={false}>
+								<p>{order.rejectedReason || 'A moderator rejected this order.'}</p>
+							</Callout>
+						)}
+						{order.status === 'cancelled' && (
+							<Callout variant="info" title="Order cancelled" live={false}>
+								<p>
+									You cancelled this order{order.cancelledAt && ` on ${formatDateTimeDisplay(order.cancelledAt)}`}. The gear
+									has been released for others to book.
+								</p>
+							</Callout>
+						)}
+					</UserOrderSummary>
+					<SubmittedContactDetails contactName={order.contactName} />
+					{
+						// Members can change/delete an unreviewed order and cancel an
+						// accepted one; from hand-out on there's nothing they can do.
+						action && (
+							<div class={cardFooterClasses}>
+								<ChangeOrderLink
+									orderCode={order.orderCode}
+									status={order.status}
+									fromDate={order.fromDate}
+									toDate={order.toDate}
+									maxRentalDays={getMaxRentalDays()}
+								/>
+								<MemberOrderActionButton orderCode={order.orderCode} action={action} />
+							</div>
+						)
+					}
+				</Card>
+			</Page>
+		</BaseLayout>
+	) : (
+		<BaseLayout title="Order not found">
+			<Page width="narrow" title="Order not found" description="There's no order with that code on your account." class="sm:py-24">
+				<div class="flex flex-wrap gap-2">
+					<Button href="/orders" variant="primary" size="lg">My orders</Button>
+					<Button href="/" variant="secondary" size="lg">Browse gear</Button>
+				</div>
+			</Page>
+		</BaseLayout>
+	)
+}

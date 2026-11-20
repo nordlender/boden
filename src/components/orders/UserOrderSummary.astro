@@ -33,6 +33,8 @@ const { orderCode, status, fromDate, toDate, note, items, showImages = false, pi
 
 <section class="order-summary flex flex-col gap-6">
 	<OrderCodeHeader orderCode={orderCode} status={status} fromDate={fromDate} toDate={toDate} />
+	{/* Default slot: status notices (rejected, cancelled) right under the header. */}
+	<slot />
 	{
 		pickupWindows && (
 			<PickupInfo windows={pickupWindows} emptyText={status === 'requested' ? 'A moderator will confirm the time and place.' : undefined} />

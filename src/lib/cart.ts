@@ -78,12 +78,15 @@ export interface CartSetLine {
 
 export type CartLine = CartItemLine | CartSetLine;
 
+// The cookie is client-controlled, so it goes through the same strict
+// parseCartEntries as the confirm page's posted cart. A malformed value
+// (bad JSON, wrong shape, bad ids/quantities, duplicate lines, unknown
+// fields) rejects the whole cart rather than salvaging part of it: it's
+// treated as empty, and the next cart mutation overwrites it with a valid one.
 export function getCart(cookies: AstroCookies): CartEntry[] {
-	try {
-		return JSON.parse(cookies.get('cart')?.value ?? '[]');
-	} catch {
-		return [];
-	}
+	const raw = cookies.get('cart')?.value;
+	if (raw === undefined || raw === '') return [];
+	return parseCartEntries(raw) ?? [];
 }
 
 export function setCart(cookies: AstroCookies, cart: CartEntry[]) {
@@ -144,11 +147,13 @@ export function clearCart(cookies: AstroCookies) {
 	setCart(cookies, []);
 }
 
-// Strict parse of a cart posted as a form field (the confirm page's hidden
-// `cartEntries`, see src/pages/reservation/confirm.astro). Unlike getCart's
-// cookie read, a malformed value is rejected outright (null) rather than
-// silently treated as empty: an order must be built from exactly the lines
-// the member reviewed, or not at all.
+// Strict parse of a serialized cart: the cart cookie (getCart) and the
+// confirm page's hidden `cartEntries` field (see
+// src/pages/reservation/confirm.astro). Anything that isn't exactly a JSON
+// array of `{ itemId, quantity }` / `{ setId, quantity }` objects (positive
+// safe integers, no other fields, each line at most once) is rejected
+// outright (null) rather than partly salvaged: an order must be built from
+// exactly the lines the member reviewed, or not at all.
 export function parseCartEntries(raw: string): CartEntry[] | null {
 	let parsed: unknown;
 	try {
@@ -157,16 +162,24 @@ export function parseCartEntries(raw: string): CartEntry[] | null {
 		return null;
 	}
 	if (!Array.isArray(parsed)) return null;
-	const isPositiveInt = (v: unknown): v is number => Number.isInteger(v) && (v as number) > 0;
+	// Safe integers only: Number.isInteger(1e300) is true, but such a value
+	// isn't a real id/quantity and can't round-trip through SQLite exactly.
+	const isPositiveInt = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) > 0;
 	const entries: CartEntry[] = [];
 	const seen = new Set<string>();
 	for (const e of parsed) {
-		if (typeof e !== 'object' || e === null || !isPositiveInt(e.quantity)) return null;
-		const hasItem = 'itemId' in e;
-		const hasSet = 'setId' in e;
+		if (typeof e !== 'object' || e === null || Array.isArray(e)) return null;
+		// Exactly one id field plus quantity, nothing else — own keys only, so
+		// nothing is picked up from the prototype chain.
+		const keys = Object.keys(e);
+		if (keys.length !== 2 || !Object.hasOwn(e, 'quantity')) return null;
+		const hasItem = Object.hasOwn(e, 'itemId');
+		const hasSet = Object.hasOwn(e, 'setId');
 		if (hasItem === hasSet) return null;
-		const entry: CartEntry = hasItem ? { itemId: e.itemId, quantity: e.quantity } : { setId: e.setId, quantity: e.quantity };
-		if (!isPositiveInt('itemId' in entry ? entry.itemId : entry.setId)) return null;
+		const { quantity } = e as { quantity: unknown };
+		const id = (e as Record<string, unknown>)[hasItem ? 'itemId' : 'setId'];
+		if (!isPositiveInt(quantity) || !isPositiveInt(id)) return null;
+		const entry: CartEntry = hasItem ? { itemId: id, quantity } : { setId: id, quantity };
 		const key = entryKey(entry);
 		if (seen.has(key)) return null;
 		seen.add(key);

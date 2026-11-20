@@ -37,7 +37,7 @@ const rows = await getMemberOrderRows(Astro.locals.user?.id ?? '');
 			)
 		}
 
-		<OrdersTable orders={rows} viewHref={(order) => `/orders/${order.orderCode}`} emptyMessage="You haven't placed any orders yet.">
+		<OrdersTable orders={rows} viewHref={(code: string) => `/orders/${code}`} emptyMessage="You haven't placed any orders yet.">
 			<Button slot="empty-action" href="/" variant="secondary">Browse gear</Button>
 		</OrdersTable>
 	</Page>

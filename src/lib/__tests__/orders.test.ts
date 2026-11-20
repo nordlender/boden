@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { cancelOrder, createOrder, deleteOrder, getMemberOrder, getMemberOrderRows, rescheduleOrder, staffOrderHref } from '../orders';
+import { cancelOrder, createOrder, deleteOrder, getMemberOrder, getMemberOrderRows, rescheduleOrder } from '../orders';
 import type { CartEntry } from '../cart';
 
 // rescheduleOrder calls isValidDateRange (src/lib/reservation.ts), which
@@ -505,15 +505,5 @@ describe('getMemberOrderRows', () => {
 
 	it('returns an empty list for a member with no orders', async () => {
 		expect(await getMemberOrderRows('')).toEqual([]);
-	});
-});
-
-describe('staffOrderHref', () => {
-	it('opens the review page for an order still pending review', () => {
-		expect(staffOrderHref({ id: 7, orderCode: 'ABC123', status: 'requested' })).toBe('/moderator/review/ABC123');
-	});
-
-	it.each(['scheduled', 'active', 'returned', 'rejected', 'cancelled'] as const)('opens the order hub for a %s order', (status) => {
-		expect(staffOrderHref({ id: 7, orderCode: 'ABC123', status })).toBe('/moderator/retrieve/7');
 	});
 });

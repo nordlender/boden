@@ -16,7 +16,7 @@ const rows = await getPendingRequestRows();
 
 		<OrdersTable
 			orders={rows}
-			viewHref={(order) => `/moderator/review/${order.orderCode}`}
+			viewHref={(code: string) => `/moderator/review/${code}`}
 			emptyMessage="No orders are waiting for review."
 		/>
 	</Page>

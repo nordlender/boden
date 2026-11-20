@@ -21,13 +21,17 @@ interface Props {
 	// smaller underneath, read-only (never independently removed —
 	// see cart.ts's CartSetChild).
 	components?: { productTitle: string; quantityPerSet: number }[];
+	// Display-only (the confirm step): no availability badge, remove button or
+	// form-state hooks, and the product link opens in a new tab so the member
+	// doesn't leave a page whose form values only live in this POST response.
+	readonly?: boolean;
 }
 
-const { kind, id, productSlug, productTitle, imageUrl, quantity, subtitle, components = [] } = Astro.props;
+const { kind, id, productSlug, productTitle, imageUrl, quantity, subtitle, components = [], readonly = false } = Astro.props;
 const lineKey = `${kind}:${id}`;
 ---
 
-<div data-reservation-row data-line-key={lineKey} class="py-5">
+<div data-reservation-row={readonly ? undefined : ''} data-line-key={readonly ? undefined : lineKey} class="py-5">
 	<ItemLine
 		imageUrl={imageUrl}
 		name={productTitle}
@@ -36,25 +40,34 @@ const lineKey = `${kind}:${id}`;
 		quantity={quantity}
 		thumbnailSize={64}
 		gap="lg"
+		newTab={readonly}
 		class="flex-wrap"
 	>
 		{kind === 'set' && <Badge class="mt-0.5 self-start">Set</Badge>}
-		<Fragment slot="badge">
-			<p data-availability-badge hidden class={badgeBaseClasses}></p>
-		</Fragment>
+		{
+			!readonly && (
+				<Fragment slot="badge">
+					<p data-availability-badge hidden class={badgeBaseClasses} />
+				</Fragment>
+			)
+		}
 
-		<Fragment slot="action">
-			<button
-				type="button"
-				data-remove-item-button
-				hidden
-				title={`Remove this ${kind} from your cart`}
-				class:list={['shrink-0', baseClasses, sizeClasses.sm, variantClasses.secondary]}
-			>
-				Remove
-				<span class="sr-only">{productTitle} from your cart</span>
-			</button>
-		</Fragment>
+		{
+			!readonly && (
+				<Fragment slot="action">
+					<button
+						type="button"
+						data-remove-item-button
+						hidden
+						title={`Remove this ${kind} from your cart`}
+						class:list={['shrink-0', baseClasses, sizeClasses.sm, variantClasses.secondary]}
+					>
+						Remove
+						<span class="sr-only">{productTitle} from your cart</span>
+					</button>
+				</Fragment>
+			)
+		}
 		{kind === 'set' && <SetChildrenList slot="below" components={components} quantity={quantity} />}
 	</ItemLine>
 </div>

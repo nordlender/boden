@@ -144,6 +144,48 @@ export function clearCart(cookies: AstroCookies) {
 	setCart(cookies, []);
 }
 
+// Strict parse of a cart posted as a form field (the confirm page's hidden
+// `cartEntries`, see src/pages/reservation/confirm.astro). Unlike getCart's
+// cookie read, a malformed value is rejected outright (null) rather than
+// silently treated as empty: an order must be built from exactly the lines
+// the member reviewed, or not at all.
+export function parseCartEntries(raw: string): CartEntry[] | null {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		return null;
+	}
+	if (!Array.isArray(parsed)) return null;
+	const isPositiveInt = (v: unknown): v is number => Number.isInteger(v) && (v as number) > 0;
+	const entries: CartEntry[] = [];
+	const seen = new Set<string>();
+	for (const e of parsed) {
+		if (typeof e !== 'object' || e === null || !isPositiveInt(e.quantity)) return null;
+		const hasItem = 'itemId' in e;
+		const hasSet = 'setId' in e;
+		if (hasItem === hasSet) return null;
+		const entry: CartEntry = hasItem ? { itemId: e.itemId, quantity: e.quantity } : { setId: e.setId, quantity: e.quantity };
+		if (!isPositiveInt('itemId' in entry ? entry.itemId : entry.setId)) return null;
+		const key = entryKey(entry);
+		if (seen.has(key)) return null;
+		seen.add(key);
+		entries.push(entry);
+	}
+	return entries;
+}
+
+// Takes a just-ordered cart out of the cookie, line by line — not a full
+// clear, because the cookie may have gained lines (or quantity) in another
+// tab after the confirm page rendered; those stay for a later order.
+export function subtractFromCart(cookies: AstroCookies, ordered: CartEntry[]) {
+	const orderedQty = new Map(ordered.map((e) => [entryKey(e), e.quantity]));
+	const remaining = getCart(cookies)
+		.map((e) => ({ ...e, quantity: e.quantity - (orderedQty.get(entryKey(e)) ?? 0) }))
+		.filter((e) => e.quantity > 0);
+	setCart(cookies, remaining);
+}
+
 async function buildItemLines(entries: { itemId: number; quantity: number }[]): Promise<CartItemLine[]> {
 	if (entries.length === 0) return [];
 	const itemIds = entries.map((e) => e.itemId);

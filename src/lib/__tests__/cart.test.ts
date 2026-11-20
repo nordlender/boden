@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { AstroCookies } from 'astro';
-import { getCart, setCart, addToCart, updateCartQuantity, removeFromCart, getCartLines } from '../cart';
+import { getCart, setCart, addToCart, updateCartQuantity, removeFromCart, getCartLines, parseCartEntries, subtractFromCart } from '../cart';
 
 // getCartLines joins the cookie cart against the db (src/lib/cart.ts imports
 // ../db/client, which itself opens a fixed `./data/rental.db` file that
@@ -273,6 +273,81 @@ describe('removeFromCart', () => {
   it('is a no-op when the item is not in the cart', () => {
     addToCart(cookies, { itemId: 1, quantity: 1 });
     removeFromCart(cookies, { itemId: 99 });
+    expect(getCart(cookies)).toEqual([{ itemId: 1, quantity: 1 }]);
+  });
+});
+
+describe('parseCartEntries', () => {
+  it('parses item and set entries', () => {
+    expect(parseCartEntries('[{"itemId":1,"quantity":2},{"setId":3,"quantity":1}]')).toEqual([
+      { itemId: 1, quantity: 2 },
+      { setId: 3, quantity: 1 },
+    ]);
+  });
+
+  it('accepts an empty array', () => {
+    expect(parseCartEntries('[]')).toEqual([]);
+  });
+
+  it('strips unknown fields', () => {
+    expect(parseCartEntries('[{"itemId":1,"quantity":1,"extra":true}]')).toEqual([{ itemId: 1, quantity: 1 }]);
+  });
+
+  it.each([
+    ['empty string', ''],
+    ['malformed JSON', '{nope'],
+    ['non-array', '{"itemId":1,"quantity":1}'],
+    ['null entry', '[null]'],
+    ['both ids', '[{"itemId":1,"setId":1,"quantity":1}]'],
+    ['no id', '[{"quantity":1}]'],
+    ['zero quantity', '[{"itemId":1,"quantity":0}]'],
+    ['fractional quantity', '[{"itemId":1,"quantity":1.5}]'],
+    ['string id', '[{"itemId":"1","quantity":1}]'],
+    ['negative id', '[{"setId":-1,"quantity":1}]'],
+    ['duplicate line', '[{"itemId":1,"quantity":1},{"itemId":1,"quantity":2}]'],
+  ])('rejects %s', (_label, raw) => {
+    expect(parseCartEntries(raw)).toBeNull();
+  });
+});
+
+describe('subtractFromCart', () => {
+  let cookies: AstroCookies;
+
+  beforeEach(() => {
+    cookies = asCookies(createFakeCookies());
+  });
+
+  it('removes ordered lines and keeps lines added since', () => {
+    setCart(cookies, [
+      { itemId: 1, quantity: 2 },
+      { setId: 1, quantity: 1 },
+      { itemId: 2, quantity: 1 },
+    ]);
+    subtractFromCart(cookies, [
+      { itemId: 1, quantity: 2 },
+      { setId: 1, quantity: 1 },
+    ]);
+    expect(getCart(cookies)).toEqual([{ itemId: 2, quantity: 1 }]);
+  });
+
+  it('keeps quantity added to an ordered line since', () => {
+    setCart(cookies, [{ itemId: 1, quantity: 3 }]);
+    subtractFromCart(cookies, [{ itemId: 1, quantity: 2 }]);
+    expect(getCart(cookies)).toEqual([{ itemId: 1, quantity: 1 }]);
+  });
+
+  it('drops a line whose quantity was lowered since', () => {
+    setCart(cookies, [{ itemId: 1, quantity: 1 }]);
+    subtractFromCart(cookies, [{ itemId: 1, quantity: 2 }]);
+    expect(getCart(cookies)).toEqual([]);
+  });
+
+  it('does not confuse an item and a set sharing an id', () => {
+    setCart(cookies, [
+      { itemId: 1, quantity: 1 },
+      { setId: 1, quantity: 1 },
+    ]);
+    subtractFromCart(cookies, [{ setId: 1, quantity: 1 }]);
     expect(getCart(cookies)).toEqual([{ itemId: 1, quantity: 1 }]);
   });
 });

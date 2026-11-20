@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { fetchOwnMemberFeeStatus } from '../../../lib/blocFeeStatus';
-import { getCart, setCart } from '../../../lib/cart';
+import { parseCartEntries, subtractFromCart } from '../../../lib/cart';
 import { createOrder } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
 import { redirectWithError, requireUser } from '../../../lib/http';
@@ -9,12 +9,21 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
   const authError = requireUser(locals);
   if (authError) return authError;
 
-  const cart = getCart(cookies);
+  const form = await request.formData();
+
+  // The cart the member reviewed on /reservation/confirm, posted as a hidden
+  // field — not the cookie, which another tab may have changed since (e.g. via
+  // the confirm page's new-tab product links). Trusting it is no weaker than
+  // trusting the cookie, which is equally client-controlled; createOrder
+  // re-validates every line (rentable, available) at insert time.
+  const cart = parseCartEntries(form.get('cartEntries')?.toString() ?? '');
+  if (cart === null) {
+    return redirect(redirectWithError('/reservation', 'order_failed'));
+  }
   if (cart.length === 0) {
     return redirect(redirectWithError('/reservation', 'cart_empty'));
   }
 
-  const form = await request.formData();
   const note = form.get('note')?.toString().trim() || null;
   const fromDate = form.get('fromDate')?.toString() ?? '';
   const toDate = form.get('toDate')?.toString() ?? '';
@@ -78,6 +87,6 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     return redirect(redirectWithError('/reservation', result.error === 'empty_cart' ? 'items_unrentable' : 'order_failed'));
   }
 
-  setCart(cookies, []);
+  subtractFromCart(cookies, cart);
   return redirect(`/checkout/success?order=${result.orderCode}`, 303);
 };

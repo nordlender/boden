@@ -1,0 +1,46 @@
+---
+import ReservationItemRow from './ReservationItemRow.astro';
+import { formatAttributes } from '../../lib/attributes';
+import type { CartLine } from '../../lib/cart';
+
+// The cart's lines as ReservationItemRows — shared by the reservation form
+// (interactive) and the confirm step (readonly), so both map a CartLine to
+// row props the same way.
+interface Props {
+	lines: CartLine[];
+	readonly?: boolean;
+}
+
+const { lines, readonly = false } = Astro.props;
+---
+
+<div class="divide-y divide-border border-y border-border">
+	{
+		lines.map((line) =>
+			'setId' in line ? (
+				<ReservationItemRow
+					readonly={readonly}
+					kind="set"
+					id={line.setId}
+					productSlug={line.productSlug}
+					productTitle={line.productTitle}
+					imageUrl={line.imageUrl}
+					quantity={line.quantity}
+					subtitle={line.label}
+					components={line.children}
+				/>
+			) : (
+				<ReservationItemRow
+					readonly={readonly}
+					kind="item"
+					id={line.itemId}
+					productSlug={line.productSlug}
+					productTitle={line.productTitle}
+					imageUrl={line.imageUrl}
+					quantity={line.quantity}
+					subtitle={formatAttributes(line.attributes)}
+				/>
+			),
+		)
+	}
+</div>

@@ -4,21 +4,17 @@ import OrderStatusBadge from './OrderStatusBadge.astro';
 import MorphButton from '../ui/MorphButton.astro';
 
 interface Props {
-	// orderCode, status and viewHref are omitted for an order that doesn't
-	// exist yet (the /reservation/confirm preview) — the matching cells are
-	// then left out and the grid collapses to dates + name.
-	orderCode?: string;
-	status?: string;
+	orderCode: string;
+	status: string;
 	fromDate: string;
 	toDate: string;
 	// Omitted on the member's own order list, where it would only repeat
 	// their own name — the customer cell is then left out too.
 	customerName?: string;
-	viewHref?: string;
+	viewHref: string;
 }
 
 const { orderCode, status, fromDate, toDate, customerName, viewHref } = Astro.props;
-const isPersisted = Boolean(orderCode && status && viewHref);
 const hasCustomer = customerName !== undefined;
 // Without a customer cell the mobile layout has no name row, so dates and
 // code move up from row 3 to row 2. Written out in full for Tailwind's scanner.
@@ -30,39 +26,26 @@ const bottomRow = hasCustomer ? 'max-sm:row-start-3' : 'max-sm:row-start-2';
 		DOM order is the sm+ column order (status, dates, customer, code, view),
 		so reading and focus order match what's on screen at every width. The
 		stacked mobile layout — status + view, then customer, then dates + code
-		— comes from explicit max-sm: grid placements, not CSS `order`. A preview
-		(no order yet) drops status/code/view and keeps dates + customer.
+		— comes from explicit max-sm: grid placements, not CSS `order`.
 	-->
 	<div
 		class:list={[
 			'grid grid-cols-2 items-center gap-x-4 gap-y-2 sm:gap-y-0',
-			isPersisted
-				? hasCustomer
-					? 'sm:grid-cols-[5rem_1fr_1fr_auto_auto]'
-					: 'sm:grid-cols-[5rem_1fr_auto_auto]'
-				: 'sm:grid-cols-[1fr_1fr]',
+			hasCustomer ? 'sm:grid-cols-[5rem_1fr_1fr_auto_auto]' : 'sm:grid-cols-[5rem_1fr_auto_auto]',
 		]}
 	>
-		{
-			isPersisted && (
-				<div class="w-20">
-					<OrderStatusBadge status={status!} />
-				</div>
-			)
-		}
+		<div class="w-20">
+			<OrderStatusBadge status={status} />
+		</div>
 		<span class:list={['text-text-muted max-sm:col-start-1', bottomRow]}>{formatDateDisplay(fromDate)} &ndash; {formatDateDisplay(toDate)}</span>
 		{hasCustomer && <span class="truncate font-medium text-text max-sm:col-span-2 max-sm:row-start-2">{customerName}</span>}
-		{isPersisted && <span class:list={['font-mono text-text-muted max-sm:col-start-2 max-sm:justify-self-end', bottomRow]}>#{orderCode}</span>}
-		{
-			isPersisted && (
-				<MorphButton
-					href={viewHref!}
-					label={`View order #${orderCode}`}
-					action="view"
-					class="max-sm:col-start-2 max-sm:row-start-1 max-sm:justify-self-end"
-				/>
-			)
-		}
+		<span class:list={['font-mono text-text-muted max-sm:col-start-2 max-sm:justify-self-end', bottomRow]}>#{orderCode}</span>
+		<MorphButton
+			href={viewHref}
+			label={`View order #${orderCode}`}
+			action="view"
+			class="max-sm:col-start-2 max-sm:row-start-1 max-sm:justify-self-end"
+		/>
 	</div>
 	<slot />
 </div>

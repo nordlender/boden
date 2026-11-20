@@ -330,7 +330,7 @@ export const orders = sqliteTable('orders', {
   // `NNAAX` format — two digits, two free letters, then a letter flagging
   // the creating member's role: A=admin, B=board member, I=instructor
   // (moderator), M=member — always one of these four — see
-  // src/lib/orders.ts's generateOrderCode. This is what members read aloud
+  // src/lib/orderCode.ts's generateOrderCode. This is what members read aloud
   // to moderators and what appears in the retrieve-order URL.
   orderCode: text('order_code').notNull().unique(),
   userId: text('user_id').notNull().references(() => users.id),

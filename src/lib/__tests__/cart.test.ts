@@ -289,24 +289,68 @@ describe('parseCartEntries', () => {
     expect(parseCartEntries('[]')).toEqual([]);
   });
 
-  it('strips unknown fields', () => {
-    expect(parseCartEntries('[{"itemId":1,"quantity":1,"extra":true}]')).toEqual([{ itemId: 1, quantity: 1 }]);
-  });
-
   it.each([
     ['empty string', ''],
     ['malformed JSON', '{nope'],
     ['non-array', '{"itemId":1,"quantity":1}'],
+    ['JSON null', 'null'],
+    ['JSON string', '"x"'],
+    ['JSON number', '42'],
     ['null entry', '[null]'],
+    ['number entry', '[1]'],
+    ['array entry', '[[1,1]]'],
     ['both ids', '[{"itemId":1,"setId":1,"quantity":1}]'],
     ['no id', '[{"quantity":1}]'],
+    ['no quantity', '[{"itemId":1}]'],
+    ['unknown field', '[{"itemId":1,"quantity":1,"extra":true}]'],
+    ['__proto__ field', '[{"itemId":1,"quantity":1,"__proto__":{"setId":1}}]'],
     ['zero quantity', '[{"itemId":1,"quantity":0}]'],
+    ['negative quantity', '[{"itemId":1,"quantity":-2}]'],
     ['fractional quantity', '[{"itemId":1,"quantity":1.5}]'],
+    ['string quantity', '[{"itemId":1,"quantity":"2"}]'],
+    ['unsafe integer quantity', '[{"itemId":1,"quantity":1e300}]'],
     ['string id', '[{"itemId":"1","quantity":1}]'],
     ['negative id', '[{"setId":-1,"quantity":1}]'],
+    ['unsafe integer id', '[{"itemId":9007199254740993,"quantity":1}]'],
     ['duplicate line', '[{"itemId":1,"quantity":1},{"itemId":1,"quantity":2}]'],
   ])('rejects %s', (_label, raw) => {
     expect(parseCartEntries(raw)).toBeNull();
+  });
+});
+
+describe('getCart with a malformed cookie', () => {
+  let fake: ReturnType<typeof createFakeCookies>;
+  let cookies: AstroCookies;
+
+  beforeEach(() => {
+    fake = createFakeCookies();
+    cookies = asCookies(fake);
+  });
+
+  // Each of these used to reach callers as-is (only invalid JSON was caught)
+  // and then 500 or produce an unorderable cart; the whole cookie is now
+  // rejected instead.
+  it.each([
+    ['non-array', '{}'],
+    ['JSON null', 'null'],
+    ['null entry', '[null]'],
+    ['string quantity', '[{"itemId":1,"quantity":"2"}]'],
+    ['duplicate line', '[{"itemId":1,"quantity":1},{"itemId":1,"quantity":2}]'],
+    ['one bad line among good ones', '[{"itemId":1,"quantity":1},{"itemId":2,"quantity":0}]'],
+  ])('treats %s as an empty cart', (_label, raw) => {
+    fake.set('cart', raw);
+    expect(getCart(cookies)).toEqual([]);
+  });
+
+  it('getCartLines returns [] instead of throwing', async () => {
+    fake.set('cart', '{}');
+    expect(await getCartLines(cookies)).toEqual([]);
+  });
+
+  it('addToCart replaces the malformed cookie with a valid cart', () => {
+    fake.set('cart', '[{"itemId":1,"quantity":"2"}]');
+    addToCart(cookies, { itemId: 1, quantity: 1 });
+    expect(getCart(cookies)).toEqual([{ itemId: 1, quantity: 1 }]);
   });
 });
 

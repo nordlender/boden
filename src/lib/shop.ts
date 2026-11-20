@@ -360,3 +360,28 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 		sets,
 	};
 }
+
+// The product page's initially selected variant — chosen on the server so the
+// first paint (picker button, details panel, image, availability calendar,
+// form inputs) already matches a `?item=<id>`/`?set=<id>` preselect from an
+// ItemCard link, with or without JS. Mirrors VariantPicker's rule that a
+// product's variants are its items, or its sets only if it has no items, so a
+// preselect of the other kind (or an unknown/archived id) falls back to the
+// first variant. `?set=` wins if both are given. Null when there are none.
+export interface InitialVariant {
+	kind: 'item' | 'set';
+	id: number;
+	imageUrl: string | null;
+}
+
+export function pickInitialVariant(
+	product: Pick<ShopProduct, 'items' | 'sets'>,
+	searchParams: URLSearchParams,
+): InitialVariant | null {
+	const kind: InitialVariant['kind'] = product.items.length > 0 ? 'item' : 'set';
+	const variants: { id: number; imageUrl: string | null }[] = kind === 'item' ? product.items : product.sets;
+	const presetKind = searchParams.has('set') ? 'set' : searchParams.has('item') ? 'item' : null;
+	const presetId = presetKind === kind ? Number(searchParams.get(presetKind)) : NaN;
+	const variant = variants.find((v) => v.id === presetId) ?? variants[0];
+	return variant ? { kind, id: variant.id, imageUrl: variant.imageUrl } : null;
+}

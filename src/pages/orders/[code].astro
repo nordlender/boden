@@ -35,7 +35,7 @@ const action = order ? memberOrderAction(order.status) : null;
 {
 	order ? (
 		<BaseLayout title={`Order #${order.orderCode}`}>
-			<Page width="narrow">
+			<Page width="narrow" class="accent-alt">
 				<BackLink slot="before-title" href="/orders">My orders</BackLink>
 
 				<Card as="div">

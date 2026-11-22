@@ -36,7 +36,7 @@
 // form in a separate grid column) — the script below reaches it via the
 // same `[data-product-image]`/`[data-product-image-placeholder]` selectors
 // the page renders, rather than this component owning that markup too.
-import type { InitialVariant, ShopItem, ShopSet } from '../../lib/shop';
+import { productVariantKind, type InitialVariant, type ShopItem, type ShopSet } from '../../lib/shop';
 import type { SetComponentDisplay } from '../../lib/sets';
 import Button from '../ui/Button.astro';
 import AppIcon from '../icons/AppIcon.astro';
@@ -63,7 +63,7 @@ type Variant =
 	| { kind: 'item'; id: number; imageUrl: string | null; inStock: number; attributes: { key: string; value: string }[]; variantValues: { key: string; value: string }[] }
 	| { kind: 'set'; id: number; imageUrl: string | null; inStock: number; label: string | null; componentDisplay: SetComponentDisplay[] };
 
-const variantKind: 'item' | 'set' = items.length > 0 ? 'item' : 'set';
+const variantKind = productVariantKind({ items });
 const variants: Variant[] =
 	variantKind === 'item'
 		? items.map(
@@ -77,7 +77,14 @@ const variants: Variant[] =
 				}),
 			)
 		: sets.map((set): Variant => ({ kind: 'set', id: set.id, imageUrl: set.imageUrl, inStock: set.inStock, label: set.label, componentDisplay: set.componentDisplay }));
-const initialVariant = variants.find((v) => v.kind === initial?.kind && v.id === initial.id) ?? variants[0] ?? null;
+// Trusts the page's pickInitialVariant (same productVariantKind rule as
+// `variants` above) rather than picking again; a miss means the two have
+// drifted apart, so fail loudly instead of selecting a different variant
+// than the page's image and availability calendar show.
+const initialVariant = initial ? variants.find((v) => v.kind === initial.kind && v.id === initial.id) : null;
+if (initial && !initialVariant) {
+	throw new Error(`VariantPicker: initialVariant ${initial.kind} ${initial.id} is not one of this product's variants`);
+}
 const initialMax = Math.max(initialVariant?.inStock ?? 1, 1);
 
 function optionLabel(variant: Variant): string {
@@ -86,7 +93,13 @@ function optionLabel(variant: Variant): string {
 }
 ---
 
-<form action="/api/cart/add" method="post" class="flex flex-col gap-6 border-t border-border pt-6">
+<!--
+	autocomplete="off": otherwise Firefox restores the hidden itemId/setId/
+	quantity values on reload, so the form would submit a different variant or
+	quantity than the server-rendered selection shows (the script doesn't
+	re-sync on load).
+-->
+<form action="/api/cart/add" method="post" autocomplete="off" class="flex flex-col gap-6 border-t border-border pt-6">
 	<input type="hidden" name="redirectTo" value={`/products/${productSlug}`} />
 	<!--
 		Exactly one of these is ever actually submitted — a disabled input is
@@ -309,6 +322,16 @@ function optionLabel(variant: Variant): string {
 
 		// Rendered server-side by variantKey(), so the panel and calendar keys
 		// never depend on this script repeating that format.
+		// Keeps the URL's `?item=`/`?set=` on the selected variant, so a reload
+		// or shared link reopens it (the page picks it on the server).
+		if (kind === 'item' || kind === 'set') {
+			const url = new URL(location.href);
+			url.searchParams.delete('item');
+			url.searchParams.delete('set');
+			url.searchParams.set(kind, id);
+			history.replaceState(history.state, '', url);
+		}
+
 		const key = option.dataset.variantKey ?? '';
 		for (const panel of panels) panel.hidden = panel.dataset.variantPanel !== key;
 

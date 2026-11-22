@@ -1,17 +1,18 @@
 ---
 // Admin order detail — the target of the "View" buttons on
-// src/pages/admin/orders.astro (#241). Same building blocks as the moderator
-// order hub (src/pages/moderator/retrieve/[id].astro): the order card, plus
-// the next action for whatever state the order is in, which hands off to the
-// moderator flow (admins pass the /moderator gate too). Keyed by order code,
-// like the admin list's links. Gated by src/middleware/prefixes.ts
-// (ROUTE_RULES via /admin) — reached only when logged in with role 'admin'.
+// src/pages/admin/orders.astro (#241). A read-only view of the order:
+// handing gear out and taking it back stays in the moderator flow, so the
+// only action here hands an unreviewed order off to the moderator review
+// page (admins pass the /moderator gate too). More admin actions (e.g.
+// modifying an order) belong in the `actions` slot below. Gated by
+// src/middleware/prefixes.ts (ROUTE_RULES via /admin) — reached only when
+// logged in with role 'admin'.
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Page from '../../../components/ui/Page.astro';
 import BackLink from '../../../components/ui/BackLink.astro';
 import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro';
 import Button from '../../../components/ui/Button.astro';
-import { getOrderDetailByCode, getFollowingRentalWorries } from '../../../lib/moderatorOrders';
+import { getOrderDetailByCode } from '../../../lib/moderatorOrders';
 
 const codeParam = Astro.params.code;
 const order = codeParam ? await getOrderDetailByCode(codeParam) : null;
@@ -22,50 +23,20 @@ if (!order) {
 	return Astro.redirect('/admin/orders');
 }
 
-const notYetReviewed = order.status === 'requested';
-const acceptedNotRetrieved = order.status === 'scheduled';
-
-// Only worth the extra DB round-trips while the warning is actionable (the
-// gear is about to be handed out) — same reasoning as the moderator hub.
-const followingRentalWarnings = acceptedNotRetrieved ? await getFollowingRentalWorries(order.id) : [];
-
-// See the moderator hub for why the target inputs are tied to this form via
-// the HTML5 `form` attribute rather than nested inside it.
-const RETRIEVE_FORM_ID = 'retrieve-items-form';
+// The review page only has something to do while the order is unreviewed.
+const reviewable = order.status === 'requested';
 ---
 
 <AdminLayout title={`Order #${order.orderCode} — Admin`}>
 	<Page width="narrow">
 		<BackLink slot="before-title" href="/admin/orders">Back to orders</BackLink>
 
-		<OrderDetailCard
-			order={order}
-			showAvailability={acceptedNotRetrieved}
-			adjustableTargets={acceptedNotRetrieved}
-			followingRentalWarnings={followingRentalWarnings}
-			formId={acceptedNotRetrieved ? RETRIEVE_FORM_ID : undefined}
-		>
+		<OrderDetailCard order={order}>
 			<Fragment slot="actions">
 				{
-					notYetReviewed && (
+					reviewable && (
 						<Button href={`/moderator/review/${order.orderCode}`} variant="primary" size="lg">
 							Review order
-						</Button>
-					)
-				}
-				{
-					acceptedNotRetrieved && (
-						<form id={RETRIEVE_FORM_ID} method="get" action={`/moderator/retrieve/${order.id}/count`}>
-							<Button type="submit" variant="primary" size="lg">
-								Confirm
-							</Button>
-						</form>
-					)
-				}
-				{
-					order.status === 'active' && (
-						<Button href={`/moderator/return/${order.id}`} variant="primary" size="lg">
-							Return items
 						</Button>
 					)
 				}

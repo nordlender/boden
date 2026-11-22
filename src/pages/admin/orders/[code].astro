@@ -1,0 +1,46 @@
+---
+// Admin order detail — the target of the "View" buttons on
+// src/pages/admin/orders.astro (#241). A read-only view of the order:
+// handing gear out and taking it back stays in the moderator flow, so the
+// only action here hands an unreviewed order off to the moderator review
+// page (admins pass the /moderator gate too). More admin actions (e.g.
+// modifying an order) belong in the `actions` slot below. Gated by
+// src/middleware/prefixes.ts (ROUTE_RULES via /admin) — reached only when
+// logged in with role 'admin'.
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Page from '../../../components/ui/Page.astro';
+import BackLink from '../../../components/ui/BackLink.astro';
+import OrderDetailCard from '../../../components/moderator/OrderDetailCard.astro';
+import Button from '../../../components/ui/Button.astro';
+import { getOrderDetailByCode } from '../../../lib/moderatorOrders';
+
+const codeParam = Astro.params.code;
+const order = codeParam ? await getOrderDetailByCode(codeParam) : null;
+
+// A code that doesn't resolve to a real order (bad bookmark, typo, deleted
+// row) has nowhere sensible to land but back at the orders list.
+if (!order) {
+	return Astro.redirect('/admin/orders');
+}
+
+// The review page only has something to do while the order is unreviewed.
+const reviewable = order.status === 'requested';
+---
+
+<AdminLayout title={`Order #${order.orderCode} — Admin`}>
+	<Page width="narrow">
+		<BackLink slot="before-title" href="/admin/orders">Back to orders</BackLink>
+
+		<OrderDetailCard order={order}>
+			<Fragment slot="actions">
+				{
+					reviewable && (
+						<Button href={`/moderator/review/${order.orderCode}`} variant="primary" size="lg">
+							Review order
+						</Button>
+					)
+				}
+			</Fragment>
+		</OrderDetailCard>
+	</Page>
+</AdminLayout>

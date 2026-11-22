@@ -70,8 +70,8 @@ export function deriveReservationStatus({ hasDates, availabilities, rentalDays, 
 		return {
 			...base,
 			status: 'some-unavailable',
-			hint: 'Remove the unavailable item(s) from your cart to continue, or choose different dates.',
-			warning: 'Some items are not available in this timeframe. Remove them from your cart below, or choose different dates.',
+			hint: 'Lower the quantity of the unavailable item(s) (0 removes them) and update your cart to continue, or choose different dates.',
+			warning: 'Some items are not available in this timeframe. Lower their quantity below (0 removes them) and update your cart, or choose different dates.',
 		};
 	}
 	return { ...base, status: 'all-available', submitEnabled: availabilities.length > 0, hint: '' };

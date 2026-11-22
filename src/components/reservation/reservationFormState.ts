@@ -1,12 +1,13 @@
 // Wires the calendar's chosen [from, to] range to the per-line
-// availability badges, the unavailable-lines warning with its per-line
-// remove action, and the checkout form's hidden fromDate/toDate fields —
-// see POST /api/reservation/availability and src/lib/orders.ts's
-// createOrder.
+// availability badges, the unavailable-lines warning, and the checkout
+// form's hidden fromDate/toDate fields — see POST
+// /api/reservation/availability and src/lib/orders.ts's createOrder.
 //
 // Submit is blocked until every line (item or set) in the cart is available
-// for the chosen dates; the member either picks different dates or removes
-// the unavailable lines from their cart (POST /api/cart/remove).
+// for the chosen dates; the member either picks different dates or lowers
+// the unavailable lines' quantities in the page's editable CartView
+// ("Update cart", see src/components/cart/cartView.ts), which re-renders the
+// lines and re-runs the check here.
 //
 // This module owns fetching and state (the last fetched availability, submit
 // enable/disable). Pure DOM painting lives in reservationFormRender.ts — this
@@ -14,19 +15,21 @@
 import { hideRow, renderRow, setSubmitEnabled, setSubmitHint, type LineAvailability } from './reservationFormRender';
 import { daysInclusive } from '../../lib/dates';
 import { deriveReservationStatus, type ReservationStatusInput } from '../../lib/reservationStatus';
+import { entryKey, type CartEntry, type CartSnapshot } from '../../lib/cartEntries';
+import { CART_VIEW_CHANGE, getCartView } from '../cart/cartView';
 
-// A cart line's reservation-relevant shape — `key` is cart.ts's entryKey
-// ('item:<id>' or 'set:<id>'), matching this line's `[data-line-key]`
-// attribute (ReservationItemRow.astro) and what POST
-// /api/reservation/availability expects per line.
-export type ReservationCartLineRef =
-	| { key: string; itemId: number; quantity: number }
-	| { key: string; setId: number; quantity: number };
+// A cart line's reservation-relevant shape — `key` is cartEntries.ts's
+// entryKey ('item:<id>' or 'set:<id>'), matching the row's `[data-line-key]`
+// attribute (CartLineRow.astro) and what POST /api/reservation/availability
+// expects per line.
+type ReservationCartLineRef = CartEntry & { key: string };
 
-export function initReservationForm(initialCartLines: ReservationCartLineRef[], maxRentalDays: number): void {
-	// Mutable: removing an unavailable line drops it from here so later
-	// availability checks only cover what's still in the cart.
-	let cartLines = [...initialCartLines];
+const toLineRefs = (entries: CartEntry[]): ReservationCartLineRef[] => entries.map((entry) => ({ ...entry, key: entryKey(entry) }));
+
+export function initReservationForm(cartView: HTMLElement, maxRentalDays: number): void {
+	// Replaced whenever the CartView re-renders (after "Update cart", or
+	// when it found the cart changed elsewhere).
+	let cartLines = toLineRefs(getCartView(cartView).snapshot().entries);
 	let lastFrom: string | undefined;
 	let lastTo: string | undefined;
 
@@ -37,7 +40,7 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[], 
 	const loadingIndicator = document.querySelector<HTMLElement>('[data-availability-loading]');
 	const submitHint = document.querySelector('[data-submit-hint]');
 	const checkoutForm = document.querySelector('.checkout-form');
-	const submitButton = checkoutForm?.querySelector('button[type="submit"]');
+	const submitButton = checkoutForm?.querySelector('[data-cart-next]');
 	const fromDateInput = checkoutForm?.querySelector('[data-checkout-from-date]');
 	const toDateInput = checkoutForm?.querySelector('[data-checkout-to-date]');
 
@@ -46,7 +49,7 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[], 
 	let requestToken = 0;
 
 	function getRows() {
-		return document.querySelectorAll('[data-reservation-row]');
+		return cartView.querySelectorAll('[data-cart-row]');
 	}
 
 	// Paints every status element from one derived view. The states and their
@@ -118,37 +121,19 @@ export function initReservationForm(initialCartLines: ReservationCartLineRef[], 
 		});
 	}
 
-	async function removeLine(row: Element) {
-		const key = (row as HTMLElement).dataset.lineKey ?? '';
-		const line = cartLines.find((l) => l.key === key);
-		if (!line) return;
-		const body = new FormData();
-		if ('itemId' in line) body.set('itemId', String(line.itemId));
-		else body.set('setId', String(line.setId));
-		try {
-			// The endpoint answers with a redirect to /reservation, which we don't
-			// want to follow — only the cookie update matters here.
-			const res = await fetch('/api/cart/remove', { method: 'POST', body, redirect: 'manual' });
-			if (!res.ok && res.type !== 'opaqueredirect') return;
-		} catch {
+	cartView.addEventListener(CART_VIEW_CHANGE, (event) => {
+		const { entries } = (event as CustomEvent<CartSnapshot>).detail;
+		// An emptied cart: reload so the page shows its empty state.
+		if (entries.length === 0) {
+			window.location.reload();
 			return;
 		}
-
-		cartLines = cartLines.filter((l) => l.key !== key);
-		row.remove();
-		if (cartLines.length === 0) {
-			window.location.href = '/reservation';
-			return;
-		}
-		await refreshAvailability(lastFrom, lastTo);
-	}
+		cartLines = toLineRefs(entries);
+		refreshAvailability(lastFrom, lastTo);
+	});
 
 	document.addEventListener('reservation-range-change', (event) => {
 		const { from, to } = (event as CustomEvent<{ from?: string; to?: string }>).detail;
 		refreshAvailability(from, to);
-	});
-
-	getRows().forEach((row) => {
-		row.querySelector('[data-remove-item-button]')?.addEventListener('click', () => removeLine(row));
 	});
 }

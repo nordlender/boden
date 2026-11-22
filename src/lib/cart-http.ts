@@ -1,9 +1,8 @@
-// Shared helpers for src/pages/api/cart/{add,update,remove}.ts — each of
-// those routes was independently re-parsing "which of itemId/setId did this
-// request name" and re-checking "is that item/set actually addable right
-// now", which had already drifted once between add.ts and update.ts. One
-// shared implementation instead.
+// Shared helpers for src/pages/api/cart/{add,update-all}.ts: which of
+// itemId/setId a request names, and whether that item/set can be added
+// right now — one implementation so the routes can't drift apart.
 import { db } from '../db/client';
+import { getValidSetIds } from './sets';
 
 export type CartEntryKind = 'item' | 'set';
 
@@ -16,17 +15,18 @@ export function parseCartEntryKind(rawItemId: FormDataEntryValue | null, rawSetI
 	return null;
 }
 
-// The cart.ts `{ itemId } | { setId }` ref for a parsed kind + id — what
-// addToCart/updateCartQuantity/removeFromCart key a line by.
+// The `{ itemId } | { setId }` ref (cartEntries.ts's EntryRef) for a parsed
+// kind + id — what cart.ts keys a line by.
 export function cartEntryRef(kind: CartEntryKind, id: number): { itemId: number } | { setId: number } {
 	return kind === 'item' ? { itemId: id } : { setId: id };
 }
 
 // True when the given item/set is a live row belonging to a published
-// product, not archived — i.e. actually addable to a cart right now. Used
-// by add.ts unconditionally, and by update.ts only for a quantity > 0
-// (removing a line, or zeroing it out, is always allowed regardless — see
-// update.ts's own comment on why).
+// product, not archived — and, for a set, orderable (components present and
+// not archived, sets.ts's getValidSetIds) — i.e. the same lines
+// cart.ts's getCartLines shows. Used by add.ts unconditionally, and by
+// update-all.ts only for a changed quantity > 0 (removing a line is always
+// allowed).
 export async function isCartEntryAvailable(kind: CartEntryKind, id: number): Promise<boolean> {
 	if (kind === 'item') {
 		const item = await db.query.items.findFirst({ where: (t, { eq }) => eq(t.id, id), with: { product: true } });
@@ -34,6 +34,6 @@ export async function isCartEntryAvailable(kind: CartEntryKind, id: number): Pro
 		return !item.archived && item.product?.status === 'published';
 	}
 	const set = await db.query.sets.findFirst({ where: (t, { eq }) => eq(t.id, id), with: { product: true } });
-	if (!set) return false;
-	return !set.archived && set.product?.status === 'published';
+	if (!set || set.archived || set.product?.status !== 'published') return false;
+	return (await getValidSetIds([id])).has(id);
 }

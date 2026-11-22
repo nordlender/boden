@@ -1,0 +1,39 @@
+---
+// A cart page's "go to the next step" control, for the CartView with the
+// same `view` name. Renders, side by side:
+// - the next button: a link (`href`, the sidebar) or a submit button for the
+//   surrounding form (the reservation pages);
+// - "Update cart", which cartView.ts shows in its place while a quantity
+//   has unsaved changes;
+// - for a form, hidden `cartId` + `cartEntries` fields: the cart as shown
+//   (CartSnapshot), kept current by cartView.ts, so the next step can
+//   reject a cart that changed meanwhile.
+import Button from '../ui/Button.astro';
+import type { ButtonSize } from '../../lib/button-styles';
+import type { CartSnapshot } from '../../lib/cartEntries';
+
+interface Props {
+	view: string;
+	label: string;
+	href?: string;
+	// The snapshot to submit, when the page rendered the cart server-side.
+	cart?: CartSnapshot;
+	size?: ButtonSize;
+	class?: string;
+}
+
+const { view, label, href, cart, size = 'md', class: className } = Astro.props;
+---
+
+{
+	!href && (
+		<Fragment>
+			<input type="hidden" name="cartId" value={cart?.cartId ?? ''} data-cart-snapshot-id={view} />
+			<input type="hidden" name="cartEntries" value={JSON.stringify(cart?.entries ?? [])} data-cart-snapshot-entries={view} />
+		</Fragment>
+	)
+}
+<Button variant="primary" size={size} href={href} type={href ? undefined : 'submit'} class={className} data-cart-next={view}>
+	{label}
+</Button>
+<Button variant="primary" size={size} type="button" class={className} data-cart-update={view} hidden>Update cart</Button>

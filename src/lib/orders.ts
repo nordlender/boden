@@ -1,7 +1,7 @@
 import { db, type Tx } from '../db/client';
 import { items, orders, orderItems } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
-import type { CartEntry } from './cart';
+import type { CartEntry } from './cartEntries';
 import type { Role } from './auth';
 import { getValidSetIds, resolveEntriesToItemQuantities } from './sets';
 import { isForeignKeyViolation, isUniqueConstraintViolation } from './db-errors';
@@ -18,6 +18,17 @@ const MAX_ORDER_CODE_ATTEMPTS = 5;
 class UnavailableItemsError extends Error {
   constructor(public itemIds: number[]) {
     super('unavailable');
+  }
+}
+
+// Thrown by insertOrder when an order already exists for the cart id being
+// ordered (orders.cartId) — a double-click or a resubmitted checkout form.
+class AlreadyOrderedError extends Error {
+  constructor(
+    public orderCode: string,
+    public userId: string,
+  ) {
+    super('already_ordered');
   }
 }
 
@@ -43,13 +54,19 @@ export type CreateOrderInput = {
   // see schema.ts's orders.disclaimerAcceptedAt doc comment. Required for
   // every submitter at the API layer, so real submissions always pass true.
   disclaimerAccepted: boolean;
+  // The cart cookie's id (src/lib/cart.ts's Cart) — stored on the order, at
+  // most one order per cart id.
+  cartId: string;
 };
 
 export type CreateOrderResult =
   | { ok: true; orderId: number; orderCode: string }
   | { ok: false; error: 'empty_cart' }
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
-  | { ok: false; error: 'user_not_found' };
+  | { ok: false; error: 'user_not_found' }
+  // This cart was already ordered. orderCode is that order when it's the
+  // same member's; null if the id belongs to someone else's order.
+  | { ok: false; error: 'already_ordered'; orderCode: string | null };
 
 function insertOrder(
   tx: Tx,
@@ -69,8 +86,23 @@ function insertOrder(
     hasUnpaidFees: boolean | null;
     userIsMember: boolean | null;
     disclaimerAccepted: boolean;
+    cartId: string;
   },
 ) {
+  // First, so a second submit of an already-ordered cart is recognised as
+  // such rather than failing the availability check against its own first
+  // order. Inside the transaction, so two concurrent submits of the same
+  // cart can't both get past it (the unique index on orders.cartId backs
+  // this up).
+  const existing = tx
+    .select({ orderCode: orders.orderCode, userId: orders.userId })
+    .from(orders)
+    .where(eq(orders.cartId, input.cartId))
+    .get();
+  if (existing) {
+    throw new AlreadyOrderedError(existing.orderCode, existing.userId);
+  }
+
   // Re-check availability inside the same transaction as the insert below —
   // the live preview at POST /api/reservation/availability is advisory only
   // (the member can change dates/cart between checking and submitting, or
@@ -101,6 +133,7 @@ function insertOrder(
           hasUnpaidFees: input.hasUnpaidFees,
           userIsMember: input.userIsMember,
           disclaimerAcceptedAt: input.disclaimerAccepted ? new Date() : null,
+          cartId: input.cartId,
         })
         .returning({ id: orders.id, orderCode: orders.orderCode })
         .get();
@@ -133,8 +166,9 @@ function insertOrder(
 //
 // Deliberately not checked here: item/set product.status. Unlike
 // getCartLines (src/lib/cart.ts), this doesn't drop an entry whose product
-// was unpublished after it was added to the cart — so a stale/tampered cart
-// can still produce an orderItems row for it. Accepted for now rather than
+// was unpublished after it was added to the cart. /api/orders/create only
+// accepts the lines getCartLines showed, so this is just the window between
+// the confirm page and the insert. Accepted for now rather than
 // fixed here: the not-yet-built moderator hand-out flow is expected to (a)
 // warn when an order contains an item that's since become
 // archived/unpublished, and (b) let the moderator hand out only a subset of
@@ -186,10 +220,14 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         hasUnpaidFees: input.hasUnpaidFees,
         userIsMember: input.userIsMember,
         disclaimerAccepted: input.disclaimerAccepted,
+        cartId: input.cartId,
       }),
     );
     return { ok: true, orderId: result.id, orderCode: result.orderCode };
   } catch (err) {
+    if (err instanceof AlreadyOrderedError) {
+      return { ok: false, error: 'already_ordered', orderCode: err.userId === input.userId ? err.orderCode : null };
+    }
     if (err instanceof UnavailableItemsError) {
       return { ok: false, error: 'unavailable', unavailableItemIds: err.itemIds };
     }
@@ -201,6 +239,17 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     }
     throw err;
   }
+}
+
+// The member's order placed from this cart id, if any — lets the order route
+// send a resubmitted checkout to the order it already created instead of
+// treating it as a changed cart.
+export async function findOrderCodeForCart(userId: string, cartId: string): Promise<string | null> {
+  const order = await db.query.orders.findFirst({
+    where: (t, { and: andOp, eq: eqCol }) => andOp(eqCol(t.cartId, cartId), eqCol(t.userId, userId)),
+    columns: { orderCode: true },
+  });
+  return order?.orderCode ?? null;
 }
 
 // Follow-up read for deleteOrder/cancelOrder when their guarded write matched

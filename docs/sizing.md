@@ -89,9 +89,7 @@ color-token migration).
   `size` (13–18px) to `AppIcon`/`MorphIcon` rather than a token.
 - `src/components/orders/OrdersLayoutToggle.astro` — hand-rolled toggle
   buttons (fixed 36px boxes) with their own numeric icon size, not using
-  `ui/IconButton`. (`ReservationItemRow.astro`'s remove button now takes
-  its classes from `button-styles.ts`'s `sm` size, but is still a
-  hand-rolled `<button>` rather than `ui/Button`.)
+  `ui/IconButton`.
 - `src/components/ui/Callout.astro`, `src/layouts/ConfirmationLayout.astro` —
   standalone status-icon inline `<svg>`s at a fixed 20px, independent of
   either scale. Whether these become `AppIcon` calls (and thus pick up a

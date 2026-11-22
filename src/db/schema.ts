@@ -355,11 +355,18 @@ export const orders = sqliteTable('orders', {
   // plain boolean) so there's a record of *when*, same pattern as acceptedAt
   // above. Nullable only for orders created before the disclaimer existed.
   disclaimerAcceptedAt: integer('disclaimer_accepted_at', { mode: 'timestamp' }),
+  // The id of the cart cookie this order was placed from (src/lib/cart.ts's
+  // Cart). Unique, so the same cart can't become two orders: a double-click
+  // or resubmitted checkout finds this order instead (see
+  // src/lib/orders.ts's createOrder). Null for orders placed before cart ids
+  // existed, and for seeded orders.
+  cartId: text('cart_id'),
   // TODO: dueAt (rental due date) — not yet confirmed, see docs/schema-legacy-fixes.md #9
 }, (table) => [
   index('orders_user_id_idx').on(table.userId),
   index('orders_status_idx').on(table.status),
   index('orders_date_range_idx').on(table.fromDate, table.toDate),
+  uniqueIndex('orders_cart_id_unique').on(table.cartId),
   check('order_date_range_valid', sql`${table.toDate} >= ${table.fromDate}`),
 ]);
 

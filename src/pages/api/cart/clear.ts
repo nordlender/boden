@@ -1,9 +1,10 @@
-// See ../add.ts for why no auth check happens here.
+// "Empty cart" in the cart sidebar (cartView.ts, fetched). Answers 204.
+// See ./update-all.ts for why no auth check happens here.
 
 import type { APIRoute } from 'astro';
 import { clearCart } from '../../../lib/cart';
 
-export const POST: APIRoute = async ({ cookies, redirect }) => {
+export const POST: APIRoute = async ({ cookies }) => {
 	clearCart(cookies);
-	return redirect('/reservation');
+	return new Response(null, { status: 204 });
 };

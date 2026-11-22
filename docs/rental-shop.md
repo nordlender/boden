@@ -277,20 +277,38 @@ npx drizzle-kit migrate
 
 ## 5. Cart (cookie-based, no database)
 
-The cart cookie stores only entry refs and quantities — no database row is created until checkout. An entry is either a plain item or a set. `src/lib/cart.ts` joins them against `items`/`sets`/`products` on read to build display lines (`CartLine`: product title/slug, image, attribute values, `stockCount` — the item's active units, see `docs/schema.md` — vs. `inStock`, what's available today, via `src/lib/availability.ts`). Entries pointing at an item or set that no longer exists, is archived, or whose product is unpublished are silently dropped when reading the cart for display.
+The `cart` cookie holds `{ id, entries }` — a random cart id plus entry refs and quantities; no database row is created until checkout. An entry is either a plain item or a set. The cookie is parsed strictly: anything malformed (including the old bare-array format) is rejected as a whole and read as an empty cart. `src/lib/cart.ts` joins the entries against `items`/`sets`/`products` on read to build display lines (`CartLine`: product title/slug, image, attribute values or set label/components). Entries pointing at an item or set that no longer exists, is archived, whose product is unpublished, or (sets) that can't be ordered are silently dropped when reading the cart for display.
+
+The cart id ties the steps together:
+
+- **Snapshot.** Every cart page submits a `CartSnapshot` — the cart id plus the lines it showed (`src/lib/cartEntries.ts`). The next step rejects a snapshot that no longer matches the cart (`cart_changed`), so a cart changed in another tab is never ordered unseen.
+- **No duplicate orders.** An order stores the cart id it was placed from (`orders.cartId`, unique). A second submit of the same cart (double-click, Back + resubmit, a retried request) finds that order and redirects to it instead of creating another. After checkout the remaining cart gets a fresh id.
 
 ```ts
-// src/lib/cart.ts (core shape)
+// src/lib/cartEntries.ts (pure, also used client-side)
 export type CartEntry = { itemId: number; quantity: number } | { setId: number; quantity: number };
+export interface CartSnapshot { cartId: string; entries: CartEntry[] }
+export function parseCartEntries(raw: string): CartEntry[] | null; // strict, all-or-nothing
+export function sameSnapshot(a: CartSnapshot, b: CartSnapshot): boolean;
 
-export function getCart(cookies: AstroCookies): CartEntry[] { /* JSON.parse the 'cart' cookie, [] on failure */ }
-export function setCart(cookies: AstroCookies, cart: CartEntry[]) { /* httpOnly, sameSite=lax, 1 week */ }
+// src/lib/cart.ts (core shape)
+export interface Cart { id: string; entries: CartEntry[] }
+export function getCart(cookies: AstroCookies): Cart { /* strict parse of the cookie; empty cart with a fresh id if missing/malformed */ }
+export function setCart(cookies, cart: Cart) { /* httpOnly, sameSite=lax, secure in production, 1 week */ }
 export function addToCart(cookies, entry: CartEntry) { /* adds to existing quantity */ }
-export function updateCartQuantity(cookies, ref, quantity) { /* sets outright; <= 0 removes the line */ }
-export function removeFromCart(cookies, ref) { /* ... */ }
+export function setCartQuantities(cookies, updates) { /* sets outright; <= 0 removes the line */ }
 export function clearCart(cookies) { /* ... */ }
-export async function getCartLines(cookies): Promise<CartLine[]> { /* joins against items/sets/products for display */ }
+export function finishCheckout(cookies, ordered: CartEntry[]) { /* removes ordered lines, new cart id */ }
+export async function loadCart(cookies): Promise<ShownCart> { /* lines for display + the snapshot to submit */ }
 ```
+
+### Cart pages
+
+Every page that shows the cart uses the same pieces (`src/components/cart/`):
+
+- **`CartLineRow`** — one line, `compact` (sidebar) or `detailed` (reservation pages), editable (quantity field; 0 removes the line) or read-only.
+- **`CartView`** — the lines, an empty state and a notice area. Its client script (`cartView.ts`) gives every cart page the same behaviour: while an editable quantity has unsaved changes, the page's next button turns into **Update cart** (`POST /api/cart/update-all`), so the cart is saved before moving on; before moving on, the cart is fetched again (`GET /api/cart`) and, if it changed meanwhile, the page shows the new cart with a notice instead of continuing; a started submit can't be repeated by a double-click.
+- **`CartNextButton`** — the next-step link/submit button, its "Update cart" twin, and (in a form) the hidden `cartId`/`cartEntries` snapshot fields.
 
 ---
 
@@ -298,21 +316,22 @@ export async function getCartLines(cookies): Promise<CartLine[]> { /* joins agai
 
 Placing an order is a four-step flow, not a single "place order" action:
 
-1. **Cart sidebar** — review cart lines, adjust quantity (0 removes). Its primary action links to `/reservation`; there is no separate `/cart` page.
-2. **`/reservation`** — pick a pick-up (`fromDate`) and return (`toDate`) date. A live `POST /api/reservation/availability` preview flags any cart line that's unavailable for the chosen range; submit stays blocked while any item is unavailable, and the member either changes dates or removes the unavailable items from the cart (`POST /api/cart/remove`) — there are no split orders; one checkout is always one order. The form also displays (read-only, from the bloc session) name/email/mobile, and the `hasUnpaidFees`/`userIsMember` flags fetched live from bloc's `GetMemberFeeStatus` (`src/lib/blocFeeStatus.ts`).
-3. **`/reservation/confirm`** — the form's submit POSTs here (not to the API). Read-only overview of the order: pick-up/return dates, the pick-up window(s) for the pick-up date, the items (read-only `ReservationItemRow`s, product links open in a new tab), contact details and note. Carries the form values forward as hidden fields, including the liability-disclaimer checkbox (required) and the shown cart lines as `cartEntries`; its "Confirm order" button posts to `/api/orders/create`. "Back" returns to `/reservation`.
-4. **`POST /api/orders/create`** — builds the order from the posted `cartEntries` (exactly what the confirm page showed — the cart cookie may have changed in another tab since), re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently). Expands any set lines into their component items, snapshots the contact fields, `disclaimerAcceptedAt` and (re-fetched server-side, never taken from the form) the bloc fee/membership flags onto the order, and generates an `NNAAX`-format `orderCode` (last letter always flags the creating member's role — A/B/I/M for admin/board member/instructor(moderator)/member), then removes just the ordered lines from the cart cookie (anything added since stays) and redirects to `/checkout/success?order=<orderCode>`.
+1. **Cart sidebar** — compact, editable `CartView`; its lines load when it opens. "Continue to reservation" links to `/reservation`; there is no separate `/cart` page.
+2. **`/reservation`** — pick a pick-up (`fromDate`) and return (`toDate`) date. The items are a detailed, editable `CartView`. A live `POST /api/reservation/availability` preview flags any cart line that's unavailable for the chosen range; submit stays blocked while any item is unavailable, and the member either changes dates or lowers the unavailable lines' quantities (0 removes them) and updates the cart — there are no split orders; one checkout is always one order. The form also displays (read-only, from the bloc session) name/email/mobile, and the `hasUnpaidFees`/`userIsMember` flags fetched live from bloc's `GetMemberFeeStatus` (`src/lib/blocFeeStatus.ts`). "Review order" posts the form and the cart snapshot to the confirm step.
+3. **`/reservation/confirm`** — the form's submit POSTs here (not to the API). Redirects back to `/reservation?error=cart_changed` if the posted snapshot isn't the current cart. Read-only overview of the order: pick-up/return dates, the pick-up window(s) for the pick-up date, the items (read-only `CartView`, product links open in a new tab), contact details and note. Carries the form values forward as hidden fields, including the liability-disclaimer checkbox (required) and the cart snapshot; its "Confirm order" button posts to `/api/orders/create`. "Back" returns to `/reservation`.
+4. **`POST /api/orders/create`** — if an order already exists for the posted cart id, redirects to it. Otherwise requires the posted snapshot to still be the current cart (else `cart_changed`), builds the order from those lines, re-validates the date range and re-checks availability **inside the insert transaction** (the live preview is advisory only; this is the actual enforcement point, closing the race between two members submitting overlapping requests concurrently — and between two submits of the same cart, via `orders.cartId`). Expands any set lines into their component items, snapshots the contact fields, `disclaimerAcceptedAt` and (re-fetched server-side, never taken from the form) the bloc fee/membership flags onto the order, and generates an `NNAAX`-format `orderCode` (last letter always flags the creating member's role — A/B/I/M for admin/board member/instructor(moderator)/member), then removes the ordered lines from the cart cookie, gives it a fresh cart id, and redirects to `/checkout/success?order=<orderCode>`.
 
 ```ts
 // src/lib/orders.ts (signatures, abridged — see CreateOrderInput for the contact/fee/disclaimer snapshot fields)
 export async function createOrder(input: {
-  userId: string; role: Role; note: string | null; cartEntries: CartEntry[]; fromDate: string; toDate: string;
+  userId: string; role: Role; note: string | null; cartEntries: CartEntry[]; cartId: string; fromDate: string; toDate: string;
   /* ...contactName, contactEmail, contactMobile, hasUnpaidFees, userIsMember, disclaimerAccepted */
 }): Promise<
   | { ok: true; orderId: number; orderCode: string }
   | { ok: false; error: 'empty_cart' }
   | { ok: false; error: 'unavailable'; unavailableItemIds: number[] }
   | { ok: false; error: 'user_not_found' }
+  | { ok: false; error: 'already_ordered'; orderCode: string | null }
 >;
 ```
 

@@ -1,10 +1,6 @@
-// Not covered by src/middleware/index.ts's route-prefix gate (that only
-// matches /cart, /checkout, /orders, /moderator, /admin — not /api/...),
-// same as src/pages/api/orders/create.ts and the wizard API routes. Adding
-// to the cart is deliberately allowed for anyone (no auth check here) —
-// src/middleware/index.ts already gates /cart itself to signed-in members,
-// and checkout (src/pages/api/orders/create.ts) re-checks auth again before
-// an order is actually created.
+// "Add to cart" on a product page (VariantPicker.astro's form). No auth
+// check: anyone can fill a cart (it's their own cookie); ordering
+// (/api/orders/create) is what requires a signed-in member.
 
 import type { APIRoute } from 'astro';
 import { addToCart } from '../../../lib/cart';

@@ -1,7 +1,7 @@
 ---
 // Shared "one item line" primitive — thumbnail, name (optionally linked),
 // variant attributes, and quantity — factored out of what used to be three
-// separate near-identical implementations: reservation/ReservationItemRow,
+// separate near-identical implementations: the reservation row (now cart/CartLineRow),
 // moderator/OrderItemRow, and moderator/BlindCountList's inline row.
 //
 // Per-context extras (availability badges, a remove button, an
@@ -10,7 +10,7 @@
 //   - default slot: extra stacked lines under the name/attributes/quantity
 //     (e.g. OrderItemRow's availability badges, BlindCountList's correction)
 //   - "badge" slot: trailing pill(s) next to the text block (e.g.
-//     ReservationItemRow's availability badge)
+//     cart/CartLineRow's availability badge)
 //   - "action" slot: trailing control at the end of the row (e.g. a remove
 //     button, an adjustable qty input)
 //   - "below" slot: content under the whole row, indented to line up with

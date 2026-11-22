@@ -360,3 +360,36 @@ export async function getShopProductBySlug(slug: string): Promise<ShopProduct | 
 		sets,
 	};
 }
+
+// Which kind of variant a product page offers: its items, or its sets only if
+// it has no items (a product's variants are never a mix — see
+// VariantPicker.astro). The single source of this rule for both the page's
+// initial selection (pickInitialVariant) and the picker's buttons.
+export function productVariantKind(product: Pick<ShopProduct, 'items'>): 'item' | 'set' {
+	return product.items.length > 0 ? 'item' : 'set';
+}
+
+// The product page's initially selected variant — chosen on the server so the
+// first paint (picker button, details panel, image, availability calendar,
+// form inputs) already matches a `?item=<id>`/`?set=<id>` preselect from an
+// ItemCard link or a picker click (VariantPicker's script writes the URL),
+// with or without JS. A preselect of the other kind than
+// productVariantKind (or an unknown/archived id) falls back to the first
+// variant. `?set=` wins if both are given. Null when there are none.
+export interface InitialVariant {
+	kind: 'item' | 'set';
+	id: number;
+	imageUrl: string | null;
+}
+
+export function pickInitialVariant(
+	product: Pick<ShopProduct, 'items' | 'sets'>,
+	searchParams: URLSearchParams,
+): InitialVariant | null {
+	const kind = productVariantKind(product);
+	const variants: { id: number; imageUrl: string | null }[] = kind === 'item' ? product.items : product.sets;
+	const presetKind = searchParams.has('set') ? 'set' : searchParams.has('item') ? 'item' : null;
+	const presetId = presetKind === kind ? Number(searchParams.get(presetKind)) : NaN;
+	const variant = variants.find((v) => v.id === presetId) ?? variants[0];
+	return variant ? { kind, id: variant.id, imageUrl: variant.imageUrl } : null;
+}

@@ -12,7 +12,7 @@ import VariantPicker from '../../components/shop/VariantPicker.astro';
 import ProductAvailability from '../../components/availability/ProductAvailability.astro';
 import AvailabilityCalendarSkeleton from '../../components/availability/AvailabilityCalendarSkeleton.astro';
 import { variantKey } from '../../lib/availabilityCalendar';
-import { getShopProductBySlug } from '../../lib/shop';
+import { getShopProductBySlug, pickInitialVariant } from '../../lib/shop';
 
 const { slug } = Astro.params;
 const product = await getShopProductBySlug(slug!);
@@ -24,13 +24,14 @@ if (!product) {
 	return new Response(null, { status: 404 });
 }
 
-// A `?item=`/`?set=` variant preselect is applied client-side by
-// VariantPicker's script; server-side, just default to the first item, or
-// the first set if the product has no items.
-const initialImageUrl = (product.items[0]?.imageUrl ?? product.sets[0]?.imageUrl) ?? product.thumbnailImageUrl ?? null;
+// The `?item=`/`?set=` preselect (from an ItemCard link) is resolved here,
+// so the first paint already shows that variant; VariantPicker's script
+// only handles later clicks.
+const initialVariant = pickInitialVariant(product, Astro.url.searchParams);
+const initialImageUrl = initialVariant?.imageUrl ?? product.thumbnailImageUrl ?? null;
 // Which variant's availability calendar shows (see ProductAvailability.astro);
 // VariantPicker's script keeps it in sync with the selection.
-const initialVariantKey = product.items[0] ? variantKey('item', product.items[0].id) : product.sets[0] ? variantKey('set', product.sets[0].id) : '';
+const initialVariantKey = initialVariant ? variantKey(initialVariant.kind, initialVariant.id) : '';
 ---
 
 <BaseLayout title={product.title}>
@@ -78,6 +79,7 @@ const initialVariantKey = product.items[0] ? variantKey('item', product.items[0]
 						productSlug={product.slug}
 						thumbnailImageUrl={product.thumbnailImageUrl}
 						variantKeys={product.variantKeys}
+						initialVariant={initialVariant}
 					/>
 				)
 			}

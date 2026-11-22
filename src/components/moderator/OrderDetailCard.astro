@@ -27,6 +27,12 @@ interface Props {
 }
 
 const { order, showAvailability = false, adjustableTargets = false, followingRentalWarnings = [], formId } = Astro.props;
+
+// Pages always pass an `actions` slot, but its content is per-status and
+// often renders nothing (e.g. a returned, rejected or cancelled order), so
+// Astro.slots.has() alone can't tell. Render it and skip the footer when
+// it's empty, rather than leaving a divider with nothing under it.
+const actionsHtml = Astro.slots.has('actions') ? (await Astro.slots.render('actions')).trim() : '';
 ---
 
 <Card as="div">
@@ -84,7 +90,11 @@ const { order, showAvailability = false, adjustableTargets = false, followingRen
 
 	<OrderItemsList items={order.items} showAvailability={showAvailability} adjustableTargets={adjustableTargets} formId={formId} />
 
-	<div class={cardFooterClasses}>
-		<slot name="actions" />
-	</div>
+	{
+		actionsHtml && (
+			<div class={cardFooterClasses}>
+				<Fragment set:html={actionsHtml} />
+			</div>
+		)
+	}
 </Card>

@@ -10,8 +10,9 @@ import Page from '../components/ui/Page.astro';
 
 <BaseLayout title="Page not found">
 	<Page width="narrow" title="Page not found" description="This page doesn't exist, or the product is no longer available." class="sm:py-24">
-		<div>
+		<div class="flex flex-wrap gap-controls">
 			<Button href="/" variant="primary" size="lg">Browse gear</Button>
+			<Button href="/orders" variant="secondary" size="lg">My orders</Button>
 		</div>
 	</Page>
 </BaseLayout>

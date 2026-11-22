@@ -2,8 +2,8 @@
 // Owns the "choose a variant, add to cart" form on the product page: the
 // variant buttons (when the product has more than one), the resulting
 // attribute list (items only), a set's automatically-derived "Includes"
-// breakdown, stock message, quantity cap, and add-to-cart button. Each
-// variant's attribute list/"Includes" breakdown and stock message is
+// breakdown, quantity cap, and add-to-cart button. Each variant's
+// attribute list/"Includes" breakdown is
 // server-rendered as its own panel; the client-side script only shows the
 // selected variant's panel and keeps the quantity cap, form inputs, and the
 // product image (rendered by the page above this form) in sync as the
@@ -139,8 +139,8 @@ function optionLabel(variant: Variant): string {
 	}
 
 	{/*
-		Every variant's details (attribute list or set contents, plus stock
-		message) are rendered here up front, one panel each; the script below
+		Every variant's details (attribute list or set contents) are
+		rendered here up front, one panel each; the script below
 		only toggles `hidden` to show the selected one, so this markup is the
 		single source of truth for how a variant's details look.
 	*/}
@@ -197,11 +197,6 @@ function optionLabel(variant: Variant): string {
 					</div>
 				</div>
 			)}
-
-			<p class={`tabular flex items-center gap-2 text-sm font-semibold ${variant.inStock > 0 ? 'text-text' : 'text-error-text'}`}>
-				<span aria-hidden="true" class={`size-2 rounded-full ${variant.inStock > 0 ? 'bg-success' : 'bg-error'}`} />
-				{variant.inStock > 0 ? `${variant.inStock} in stock` : 'Out of stock'}
-			</p>
 		</div>
 	))}
 

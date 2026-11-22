@@ -10,6 +10,12 @@
 // The view dispatches CART_VIEW_CHANGE on its root with the new
 // CartSnapshot whenever it re-renders its lines, so a page can react (the
 // reservation form re-checks availability).
+//
+// An editable view that finds the cart changed shows the new cart (the
+// member can review it right there). A read-only view (the confirm step)
+// never adopts a changed cart: it keeps what the member reviewed, says the
+// cart changed and doesn't move on — they go back to review it, and the
+// next step's server check rejects the old snapshot anyway.
 import { isCartId, sameSnapshot, toCartEntries, type CartSnapshot } from '../../lib/cartEntries';
 
 export const CART_VIEW_CHANGE = 'cart-view:change';
@@ -19,6 +25,7 @@ export const CART_VIEW_CHANGE = 'cart-view:change';
 const CART_CHANGED = 'cart:changed';
 
 const CHANGED_NOTICE = 'Your cart changed since it was shown here (for example in another tab). Check it, then continue.';
+const STALE_NOTICE = 'Your cart changed since you reviewed it (for example in another tab). Go back and check it before continuing.';
 const UPDATE_FAILED_NOTICE = "Your cart couldn't be updated, so it's shown as it is now. Please try again.";
 
 export interface CartViewHandle {
@@ -52,7 +59,7 @@ function parseCartResponse(data: unknown): CartResponse | null {
 	if (typeof data !== 'object' || data === null) return null;
 	const { cartId, entries, html } = data as Record<string, unknown>;
 	const validEntries = toCartEntries(entries);
-	if (!isCartId(cartId) || validEntries === null || typeof html !== 'string') return null;
+	if ((cartId !== null && !isCartId(cartId)) || validEntries === null || typeof html !== 'string') return null;
 	return { cartId, entries: validEntries, html };
 }
 
@@ -68,9 +75,10 @@ function createCartView(root: HTMLElement): CartViewHandle {
 	const clearButtons = controls('data-cart-clear');
 	const idFields = controls<HTMLInputElement>('data-cart-snapshot-id');
 	const entriesFields = controls<HTMLInputElement>('data-cart-snapshot-entries');
+	const editable = root.dataset.editable !== undefined;
 
 	let snapshot: CartSnapshot = {
-		cartId: root.dataset.cartId ?? '',
+		cartId: root.dataset.cartId || null,
 		entries: toCartEntries(JSON.parse(root.dataset.cartEntries || '[]')) ?? [],
 	};
 	// A request (update, clear, freshness check) is in flight.
@@ -93,7 +101,7 @@ function createCartView(root: HTMLElement): CartViewHandle {
 	}
 
 	function writeSnapshot() {
-		idFields.forEach((field) => (field.value = snapshot.cartId));
+		idFields.forEach((field) => (field.value = snapshot.cartId ?? ''));
 		entriesFields.forEach((field) => (field.value = JSON.stringify(snapshot.entries)));
 	}
 
@@ -113,7 +121,7 @@ function createCartView(root: HTMLElement): CartViewHandle {
 
 	async function fetchCart(): Promise<CartResponse | null> {
 		const query = new URLSearchParams({ size: root.dataset.size ?? 'compact' });
-		if (root.dataset.editable !== undefined) query.set('editable', '1');
+		if (editable) query.set('editable', '1');
 		if (root.dataset.availability !== undefined) query.set('availability', '1');
 		if (root.dataset.newTab !== undefined) query.set('newTab', '1');
 		try {
@@ -152,17 +160,27 @@ function createCartView(root: HTMLElement): CartViewHandle {
 		return mutate('/api/cart/update-all', body);
 	}
 
+	// Reacts to the cart having changed since it was shown: an editable view
+	// shows the new cart, a read-only one only says so (see the header).
+	function showChanged(current: CartResponse) {
+		if (editable) {
+			render(current);
+			showNotice(CHANGED_NOTICE);
+		} else {
+			showNotice(STALE_NOTICE);
+		}
+	}
+
 	// Checks the cart is still the one shown before moving on; if it changed,
-	// stays and shows the new cart instead. A failed check moves on anyway —
-	// the next step re-checks the submitted snapshot server-side.
+	// stays (see showChanged). A failed check moves on anyway — the next step
+	// re-checks the submitted snapshot server-side.
 	async function proceed(go: () => void) {
 		if (leaving || busy) return;
 		busy = true;
 		const current = await fetchCart();
 		busy = false;
 		if (current && !sameSnapshot(current, snapshot)) {
-			render(current);
-			showNotice(CHANGED_NOTICE);
+			showChanged(current);
 			return;
 		}
 		leaving = true;
@@ -201,10 +219,16 @@ function createCartView(root: HTMLElement): CartViewHandle {
 		});
 	});
 
-	document.addEventListener(CART_CHANGED, (event) => {
+	document.addEventListener(CART_CHANGED, async (event) => {
 		const { source } = (event as CustomEvent<{ source: HTMLElement }>).detail;
 		// A closed sidebar reloads when opened; unsaved edits aren't discarded.
-		if (source !== root && isOpen() && !isDirty()) reload();
+		if (source === root || !isOpen() || isDirty()) return;
+		if (editable) {
+			reload();
+			return;
+		}
+		const current = await fetchCart();
+		if (current && !sameSnapshot(current, snapshot)) showChanged(current);
 	});
 
 	window.addEventListener('pageshow', (event) => {

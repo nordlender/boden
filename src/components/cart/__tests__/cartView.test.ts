@@ -10,7 +10,7 @@ function row(itemId: number, quantity: number) {
 }
 
 // Mirrors what CartView.astro + CartNextButton.astro render.
-function mount({ entries = [{ itemId: 1, quantity: 2 }], mode = 'form' as 'form' | 'link' } = {}) {
+function mount({ entries = [{ itemId: 1, quantity: 2 }], mode = 'form' as 'form' | 'link', editable = true, cartId = ID as string | null } = {}) {
 	const rows = entries.map((e) => row(e.itemId, e.quantity)).join('');
 	const next =
 		mode === 'link'
@@ -22,7 +22,7 @@ function mount({ entries = [{ itemId: 1, quantity: 2 }], mode = 'form' as 'form'
 				<button type="button" data-cart-update="v" hidden>Update cart</button>
 			</form>`;
 	document.body.innerHTML = `
-		<div data-cart-view="v" data-size="compact" data-editable data-cart-id="${ID}" data-cart-entries='${JSON.stringify(entries)}'>
+		<div data-cart-view="v" data-size="compact" ${editable ? 'data-editable' : ''} data-cart-id="${cartId ?? ''}" data-cart-entries='${JSON.stringify(entries)}'>
 			<div data-cart-notice hidden><p data-cart-notice-text></p></div>
 			<div data-cart-rows>${rows}</div>
 			<div data-cart-empty ${entries.length ? 'hidden' : ''}>Empty</div>
@@ -34,7 +34,7 @@ function mount({ entries = [{ itemId: 1, quantity: 2 }], mode = 'form' as 'form'
 	return { root, view: getCartView(root), $ };
 }
 
-function cartResponse(cartId: string, entries: { itemId: number; quantity: number }[]) {
+function cartResponse(cartId: string | null, entries: { itemId: number; quantity: number }[]) {
 	return new Response(JSON.stringify({ cartId, entries, html: entries.map((e) => row(e.itemId, e.quantity)).join('') }), {
 		headers: { 'Content-Type': 'application/json' },
 	});
@@ -167,6 +167,68 @@ describe('cartView', () => {
 		await flush();
 		await flush();
 		expect(assign).toHaveBeenCalledWith(expect.stringContaining('/reservation'));
+	});
+
+	describe('read-only (the confirm step)', () => {
+		it('never adopts a changed cart: keeps the reviewed lines and snapshot, says so, and never submits', async () => {
+			const { $ } = mount({ editable: false });
+			const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(() => {});
+			fetchMock.mockImplementation(async () => cartResponse(ID, [{ itemId: 1, quantity: 3 }]));
+
+			$<HTMLFormElement>('#f').requestSubmit();
+			await flush();
+			await flush();
+			$<HTMLFormElement>('#f').requestSubmit();
+			await flush();
+			await flush();
+
+			expect(submit).not.toHaveBeenCalled();
+			expect($('[data-cart-notice]').hidden).toBe(false);
+			expect($('[data-cart-notice-text]').textContent).toMatch(/go back/i);
+			expect(document.querySelectorAll('[data-cart-row]')).toHaveLength(1);
+			expect(JSON.parse($<HTMLInputElement>('[name="cartEntries"]').value)).toEqual([{ itemId: 1, quantity: 2 }]);
+		});
+
+		it('submits when the cart is still the reviewed one', async () => {
+			const { $ } = mount({ editable: false });
+			const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(() => {});
+			fetchMock.mockResolvedValueOnce(cartResponse(ID, [{ itemId: 1, quantity: 2 }]));
+			$<HTMLFormElement>('#f').requestSubmit();
+			await flush();
+			await flush();
+			expect(submit).toHaveBeenCalledTimes(1);
+		});
+
+		it('flags (without re-rendering) a change made in the sidebar on the same page', async () => {
+			const { $ } = mount({ editable: false });
+			// Not Once: controllers mounted by earlier tests still listen on document.
+			fetchMock.mockImplementation(async () => cartResponse(ID, [{ itemId: 1, quantity: 3 }]));
+			document.dispatchEvent(new CustomEvent('cart:changed', { detail: { source: document.body } }));
+			await flush();
+			await flush();
+			expect($('[data-cart-notice]').hidden).toBe(false);
+			expect($<HTMLInputElement>('[data-cart-quantity]').value).toBe('2');
+			expect(JSON.parse($<HTMLInputElement>('[name="cartEntries"]').value)).toEqual([{ itemId: 1, quantity: 2 }]);
+		});
+	});
+
+	it('an editable view shows the new cart after a change elsewhere on the page', async () => {
+		const { $ } = mount();
+		// Not Once: controllers mounted by earlier tests still listen on document.
+		fetchMock.mockImplementation(async () => cartResponse(ID, [{ itemId: 1, quantity: 3 }]));
+		document.dispatchEvent(new CustomEvent('cart:changed', { detail: { source: document.body } }));
+		await flush();
+		await flush();
+		expect($<HTMLInputElement>('[data-cart-quantity]').value).toBe('3');
+	});
+
+	it('accepts a cart without an id (wiped after an order) and shows it as empty', async () => {
+		const { root, $ } = mount();
+		fetchMock.mockResolvedValueOnce(cartResponse(null, []));
+		await getCartView(root).reload();
+		expect($<HTMLInputElement>('[name="cartId"]').value).toBe('');
+		expect($('[data-cart-empty]').hidden).toBe(false);
+		expect($('[data-cart-next]').hidden).toBe(true);
 	});
 
 	it('hides the next button and "Empty cart" for an empty cart', () => {

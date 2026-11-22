@@ -8,9 +8,11 @@
 // - editable: changing a quantity swaps the next button for "Update cart",
 //   so the cart is saved before moving on.
 // - Before moving on, the cart is fetched again. If it changed since it was
-//   shown (another tab, the sidebar), the page shows the new cart with a
-//   notice instead of continuing. The next step re-checks the submitted
-//   snapshot server-side too (confirm.astro, /api/orders/create).
+//   shown (another tab, the sidebar), the page doesn't continue: an editable
+//   view shows the new cart with a notice; a read-only view (the confirm
+//   step) keeps what was reviewed and asks the member to go back. The next
+//   step re-checks the submitted snapshot server-side too (confirm.astro,
+//   /api/orders/create).
 //
 // `cart` renders the lines server-side; leave it out to load them
 // client-side when needed (the sidebar, which also sits on prerendered

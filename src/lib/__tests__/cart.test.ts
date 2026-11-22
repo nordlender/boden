@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { AstroCookies } from 'astro';
-import { getCart, setCart, addToCart, setCartQuantities, clearCart, finishCheckout, getCartLines, loadCart, parseCartCookie } from '../cart';
+import { getCart, setCart, addToCart, setCartQuantities, wipeCart, getCartLines, loadCart, parseCartCookie } from '../cart';
 import { isCartId } from '../cartEntries';
 
 // getCartLines joins the cookie cart against the db (src/lib/cart.ts imports
@@ -127,6 +127,10 @@ describe('parseCartCookie', () => {
     });
   });
 
+  it('parses a cart without an id (wiped after an order)', () => {
+    expect(parseCartCookie('{"id":null,"entries":[]}')).toEqual({ id: null, entries: [] });
+  });
+
   // Each of these is rejected whole (null), never partly salvaged.
   it.each([
     ['malformed JSON', '{not valid json'],
@@ -148,11 +152,9 @@ describe('parseCartCookie', () => {
 });
 
 describe('getCart / setCart', () => {
-  it('reads a missing cookie as an empty cart with a fresh, valid id', () => {
+  it('reads a missing cookie as an empty cart without an id', () => {
     const { cookies } = setup();
-    const cart = getCart(cookies);
-    expect(cart.entries).toEqual([]);
-    expect(isCartId(cart.id)).toBe(true);
+    expect(getCart(cookies)).toEqual({ id: null, entries: [] });
   });
 
   it('reads a malformed cookie as an empty cart', () => {
@@ -187,10 +189,11 @@ describe('addToCart', () => {
     expect(getCart(cookies).entries).toEqual([{ itemId: 42, quantity: 5 }]);
   });
 
-  it('keeps the cart id across additions', () => {
+  it('gives a cart without an id a fresh one, then keeps it across additions', () => {
     const { cookies } = setup();
     addToCart(cookies, { itemId: 1, quantity: 1 });
     const { id } = getCart(cookies);
+    expect(isCartId(id)).toBe(true);
     addToCart(cookies, { itemId: 2, quantity: 1 });
     expect(getCart(cookies).id).toBe(id);
   });
@@ -216,6 +219,15 @@ describe('setCartQuantities', () => {
     expect(getCart(cookies)).toEqual({ id: ID, entries: [{ itemId: 1, quantity: 5 }, { setId: 9, quantity: 4 }] });
   });
 
+  it('gives a cart without an id a fresh one', () => {
+    const { cookies } = setup();
+    setCart(cookies, { id: null, entries: [] });
+    setCartQuantities(cookies, [{ ref: { itemId: 1 }, quantity: 2 }]);
+    const cart = getCart(cookies);
+    expect(isCartId(cart.id)).toBe(true);
+    expect(cart.entries).toEqual([{ itemId: 1, quantity: 2 }]);
+  });
+
   it('removing a line that is not in the cart is a no-op', () => {
     const { cookies } = setup();
     setCart(cookies, { id: ID, entries: [{ itemId: 1, quantity: 1 }] });
@@ -224,34 +236,23 @@ describe('setCartQuantities', () => {
   });
 });
 
-describe('clearCart', () => {
-  it('empties the cart but keeps its id', () => {
+describe('wipeCart', () => {
+  it('empties the cart and drops its id', () => {
+    const { cookies } = setup();
+    setCart(cookies, { id: ID, entries: [{ itemId: 1, quantity: 1 }, { setId: 1, quantity: 2 }] });
+    wipeCart(cookies);
+    expect(getCart(cookies)).toEqual({ id: null, entries: [] });
+  });
+
+  it('a wiped cart gets a new id on its next write, never the ordered one again', () => {
     const { cookies } = setup();
     setCart(cookies, { id: ID, entries: [{ itemId: 1, quantity: 1 }] });
-    clearCart(cookies);
-    expect(getCart(cookies)).toEqual({ id: ID, entries: [] });
-  });
-});
-
-describe('finishCheckout', () => {
-  it('removes the ordered quantities, keeps the rest, and gives the cart a new id', () => {
-    const { cookies } = setup();
-    setCart(cookies, { id: ID, entries: [{ itemId: 1, quantity: 2 }, { itemId: 2, quantity: 1 }, { setId: 1, quantity: 3 }] });
-    finishCheckout(cookies, [
-      { itemId: 1, quantity: 2 },
-      { setId: 1, quantity: 1 },
-    ]);
+    wipeCart(cookies);
+    addToCart(cookies, { itemId: 2, quantity: 1 });
     const cart = getCart(cookies);
-    expect(cart.entries).toEqual([{ itemId: 2, quantity: 1 }, { setId: 1, quantity: 2 }]);
     expect(isCartId(cart.id)).toBe(true);
     expect(cart.id).not.toBe(ID);
-  });
-
-  it('does not confuse an item and a set sharing an id', () => {
-    const { cookies } = setup();
-    setCart(cookies, { id: ID, entries: [{ itemId: 1, quantity: 1 }, { setId: 1, quantity: 1 }] });
-    finishCheckout(cookies, [{ setId: 1, quantity: 1 }]);
-    expect(getCart(cookies).entries).toEqual([{ itemId: 1, quantity: 1 }]);
+    expect(cart.entries).toEqual([{ itemId: 2, quantity: 1 }]);
   });
 });
 
@@ -339,11 +340,9 @@ describe('loadCart', () => {
     expect(cart.lines).toHaveLength(2);
   });
 
-  it('returns an empty snapshot for a malformed cookie instead of throwing', async () => {
+  it('returns an empty, id-less snapshot for a malformed cookie instead of throwing', async () => {
     const { fake, cookies } = setup();
     fake.set('cart', '{}');
-    const cart = await loadCart(cookies);
-    expect(cart.entries).toEqual([]);
-    expect(cart.lines).toEqual([]);
+    expect(await loadCart(cookies)).toEqual({ cartId: null, entries: [], lines: [] });
   });
 });

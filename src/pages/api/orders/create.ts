@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { fetchOwnMemberFeeStatus } from '../../../lib/blocFeeStatus';
-import { finishCheckout, loadCart } from '../../../lib/cart';
+import { getCart, loadCart, wipeCart } from '../../../lib/cart';
 import { isCartId, parseCartEntries, sameSnapshot } from '../../../lib/cartEntries';
 import { createOrder, findOrderCodeForCart } from '../../../lib/orders';
 import { isValidDateRange } from '../../../lib/reservation';
@@ -21,11 +21,19 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     return redirect(redirectWithError('/reservation', 'order_failed'));
   }
 
-  // Already ordered (double-click, Back + resubmit, a retried request): the
-  // cart id was replaced after that order (finishCheckout), so this isn't a
-  // changed cart — show the order it already became.
+  // After every submitted order the cookie is wiped (wipeCart), so the
+  // ordered cart id is never reused. If the cookie still holds it — the
+  // order's response never arrived, or a cart write that raced the order
+  // put it back — wipe it now, or every later checkout would land here.
+  const wipeIfOrdered = () => {
+    if (getCart(cookies).id === cartId) wipeCart(cookies);
+  };
+
+  // Already ordered (double-click, Back + resubmit, a retried request):
+  // show the order it already became.
   const existingOrderCode = await findOrderCodeForCart(userId, cartId);
   if (existingOrderCode) {
+    wipeIfOrdered();
     return redirect(`/checkout/success?order=${existingOrderCode}`, 303);
   }
 
@@ -88,6 +96,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     // A concurrent submit of the same cart got there first (see
     // orders.ts's insertOrder) — same outcome as the check above.
     if (result.error === 'already_ordered' && result.orderCode) {
+      wipeIfOrdered();
       return redirect(`/checkout/success?order=${result.orderCode}`, 303);
     }
     // 'unavailable': re-checked at insert time (see orders.ts's insertOrder)
@@ -108,6 +117,6 @@ export const POST: APIRoute = async ({ request, cookies, locals, redirect }) => 
     return redirect(redirectWithError('/reservation', result.error === 'empty_cart' ? 'items_unrentable' : 'order_failed'));
   }
 
-  finishCheckout(cookies, cartEntries);
+  wipeCart(cookies);
   return redirect(`/checkout/success?order=${result.orderCode}`, 303);
 };

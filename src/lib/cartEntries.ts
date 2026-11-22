@@ -14,9 +14,10 @@ export type EntryRef = { itemId: number } | { setId: number };
 // What a cart page shows and later submits: which cart (its id, see
 // src/lib/cart.ts's Cart) and the lines on screen. The next step compares
 // this with the cart as it is now, so a cart changed in another tab is
-// caught instead of being ordered unseen.
+// caught instead of being ordered unseen. `cartId` is null for a cart that
+// has no id yet (empty since its last order — see src/lib/cart.ts's Cart).
 export interface CartSnapshot {
-	cartId: string;
+	cartId: string | null;
 	entries: CartEntry[];
 }
 
@@ -83,8 +84,9 @@ export function sameEntries(a: CartEntry[], b: CartEntry[]): boolean {
 }
 
 // Same cart (id) with the same lines. A different id means the cart was
-// ordered (ids rotate after checkout, see src/lib/cart.ts's
-// finishCheckout) or replaced, even if the lines happen to match.
+// ordered (the cookie is wiped after every order and gets a fresh id on its
+// next write, see src/lib/cart.ts's wipeCart) or replaced, even if the lines
+// happen to match.
 export function sameSnapshot(a: CartSnapshot, b: CartSnapshot): boolean {
 	return a.cartId === b.cartId && sameEntries(a.entries, b.entries);
 }

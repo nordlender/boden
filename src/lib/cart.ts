@@ -10,10 +10,13 @@ import { entryKey, isCartId, toCartEntries, type CartEntry, type CartSnapshot, t
 // `id` is a random cart id. Every cart page submits it with the lines it
 // showed (CartSnapshot), the next step rejects a snapshot that no longer
 // matches the cookie, and an order stores the id it was placed from
-// (orders.cartId, unique) — so the same cart can't be ordered twice. It is
-// replaced with a fresh one after checkout (finishCheckout).
+// (orders.cartId, unique) — so the same cart can't be ordered twice.
+//
+// `id` is null until the cart is first written, and again once an order has
+// been submitted from it (wipeCart). The next write that changes the lines
+// gives it a fresh id (saveCart), so an ordered id is never reused.
 export interface Cart {
-	id: string;
+	id: string | null;
 	entries: CartEntry[];
 }
 
@@ -23,8 +26,8 @@ export function newCartId(): string {
 	return crypto.randomUUID();
 }
 
-// Strict: exactly `{ id, entries }` with a well-formed id and entries that
-// pass toCartEntries. The cookie is client-controlled, so anything else
+// Strict: exactly `{ id, entries }` with a well-formed (or null) id and
+// entries that pass toCartEntries. The cookie is client-controlled, so anything else
 // (bad JSON, the old bare-array format, unknown fields, bad ids/quantities,
 // duplicate lines) rejects the whole cookie (null) rather than salvaging part
 // of it.
@@ -38,18 +41,17 @@ export function parseCartCookie(raw: string): Cart | null {
 	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
 	if (Object.keys(parsed).length !== 2 || !Object.hasOwn(parsed, 'id') || !Object.hasOwn(parsed, 'entries')) return null;
 	const { id, entries } = parsed as { id: unknown; entries: unknown };
-	if (!isCartId(id)) return null;
+	if (id !== null && !isCartId(id)) return null;
 	const validEntries = toCartEntries(entries);
 	return validEntries === null ? null : { id, entries: validEntries };
 }
 
-// A missing or rejected cookie reads as an empty cart with a fresh id. The
-// id is only persisted once something writes the cart, and the next write
-// overwrites a rejected cookie with a valid one.
+// A missing or rejected cookie reads as an empty cart without an id; the
+// next write overwrites a rejected cookie with a valid one.
 export function getCart(cookies: AstroCookies): Cart {
 	const raw = cookies.get(COOKIE)?.value;
 	const cart = raw ? parseCartCookie(raw) : null;
-	return cart ?? { id: newCartId(), entries: [] };
+	return cart ?? { id: null, entries: [] };
 }
 
 export function setCart(cookies: AstroCookies, cart: Cart) {
@@ -62,6 +64,18 @@ export function setCart(cookies: AstroCookies, cart: Cart) {
 	});
 }
 
+// Writes a changed cart, giving it a fresh id if it has none (new, or wiped
+// after an order).
+function saveCart(cookies: AstroCookies, cart: Cart) {
+	setCart(cookies, { ...cart, id: cart.id ?? newCartId() });
+}
+
+// Empties the cart and drops its id. Done after every submitted order
+// (/api/orders/create) and by "Empty cart".
+export function wipeCart(cookies: AstroCookies) {
+	setCart(cookies, { id: null, entries: [] });
+}
+
 export function addToCart(cookies: AstroCookies, entry: CartEntry) {
 	const cart = getCart(cookies);
 	const key = entryKey(entry);
@@ -71,7 +85,7 @@ export function addToCart(cookies: AstroCookies, entry: CartEntry) {
 	} else {
 		cart.entries.push(entry);
 	}
-	setCart(cookies, cart);
+	saveCart(cookies, cart);
 }
 
 // Sets each line's quantity outright (unlike addToCart, which adds to what
@@ -91,24 +105,7 @@ export function setCartQuantities(cookies: AstroCookies, updates: { ref: EntryRe
 			cart.entries.push({ ...ref, quantity } as CartEntry);
 		}
 	}
-	setCart(cookies, cart);
-}
-
-export function clearCart(cookies: AstroCookies) {
-	setCart(cookies, { id: getCart(cookies).id, entries: [] });
-}
-
-// After an order is placed from this cart: takes the ordered lines out (not
-// a full clear, so a line the order didn't include, e.g. an unpublished
-// product getCartLines hides, stays) and gives what's left a fresh id. A
-// resubmitted checkout form still carries the old id, which the order
-// route recognises as already ordered.
-export function finishCheckout(cookies: AstroCookies, ordered: CartEntry[]) {
-	const orderedQty = new Map(ordered.map((e) => [entryKey(e), e.quantity]));
-	const remaining = getCart(cookies)
-		.entries.map((e) => ({ ...e, quantity: e.quantity - (orderedQty.get(entryKey(e)) ?? 0) }))
-		.filter((e) => e.quantity > 0);
-	setCart(cookies, { id: newCartId(), entries: remaining });
+	saveCart(cookies, cart);
 }
 
 export interface CartItemAttribute {

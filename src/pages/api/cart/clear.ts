@@ -2,9 +2,9 @@
 // See ./update-all.ts for why no auth check happens here.
 
 import type { APIRoute } from 'astro';
-import { clearCart } from '../../../lib/cart';
+import { wipeCart } from '../../../lib/cart';
 
 export const POST: APIRoute = async ({ cookies }) => {
-	clearCart(cookies);
+	wipeCart(cookies);
 	return new Response(null, { status: 204 });
 };

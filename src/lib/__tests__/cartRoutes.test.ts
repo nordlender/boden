@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import type { APIContext, AstroCookies } from 'astro';
 import { POST as createOrderRoute } from '../../pages/api/orders/create';
 import { POST as updateAllRoute } from '../../pages/api/cart/update-all';
-import { getCart, newCartId, setCart } from '../cart';
+import { addToCart, getCart, newCartId, setCart } from '../cart';
 import { isCartEntryAvailable } from '../cart-http';
 import type { CartEntry } from '../cartEntries';
 
@@ -106,7 +106,7 @@ async function ordersForCart(cartId: string) {
 const location = (res: Response) => res.headers.get('Location');
 
 describe('POST /api/orders/create', () => {
-	it('orders the confirmed cart, then empties it under a new cart id', async () => {
+	it('orders the confirmed cart, then wipes the cookie (no lines, no id)', async () => {
 		const { cookies, cartId, form } = cartWith([{ itemId: 1, quantity: 2 }]);
 		const res = await createOrderRoute(context(form, cookies));
 
@@ -114,9 +114,37 @@ describe('POST /api/orders/create', () => {
 		expect(location(res)).toMatch(/^\/checkout\/success\?order=\w+$/);
 		const [order] = await ordersForCart(cartId);
 		expect(order.orderItems).toMatchObject([{ itemId: 1, requestedQuantity: 2 }]);
-		const after = getCart(cookies);
-		expect(after.entries).toEqual([]);
-		expect(after.id).not.toBe(cartId);
+		expect(getCart(cookies)).toEqual({ id: null, entries: [] });
+	});
+
+	it("wipes a cookie that still holds an ordered cart id, so the member isn't stuck on that order", async () => {
+		const { cookies, cartId, form } = cartWith([{ itemId: 1, quantity: 1 }]);
+		const placed = await createOrderRoute(context(form, cookies));
+		// The order's response never reached the browser (or a cart write that
+		// raced it put the old id back): the cookie still holds the ordered id.
+		setCart(cookies, { id: cartId, entries: [{ itemId: 1, quantity: 2 }] });
+
+		const resubmit = await createOrderRoute(context(checkoutForm(cartId, [{ itemId: 1, quantity: 2 }]), cookies));
+		expect(location(resubmit)).toBe(location(placed));
+		expect(getCart(cookies)).toEqual({ id: null, entries: [] });
+
+		// The next cart is a new one and can be ordered.
+		addToCart(cookies, { itemId: 1, quantity: 1 });
+		const next = getCart(cookies);
+		expect(next.id).not.toBe(cartId);
+		const again = await createOrderRoute(context(checkoutForm(next.id!, next.entries), cookies));
+		expect(again.status).toBe(303);
+		expect(location(again)).not.toBe(location(placed));
+	});
+
+	it("doesn't wipe a newer cart when an old checkout form is resubmitted", async () => {
+		const { cookies, form } = cartWith([{ itemId: 1, quantity: 1 }]);
+		await createOrderRoute(context(form, cookies));
+		addToCart(cookies, { itemId: 1, quantity: 3 });
+		const newer = getCart(cookies);
+
+		await createOrderRoute(context(form, cookies));
+		expect(getCart(cookies)).toEqual(newer);
 	});
 
 	it('sends a resubmitted checkout to the order it already created, without a second order', async () => {

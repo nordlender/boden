@@ -47,10 +47,14 @@ const flag = (on: boolean) => (on ? '' : undefined);
 	data-deferred={flag(!cart)}
 	data-cart-id={cart?.cartId ?? ''}
 	data-cart-entries={JSON.stringify(cart?.entries ?? [])}
-	class="flex flex-col gap-stack"
+	class="flex flex-col"
 >
+	<!-- The live region is always rendered (so announcements work) but is
+	     empty while the notice is hidden; a flex gap here would leave space
+	     above the rows. The notice carries its own spacing instead, and the
+	     rows and empty state are never shown together. -->
 	<div aria-live="polite">
-		<div data-cart-notice hidden>
+		<div data-cart-notice hidden class="mb-stack">
 			<Callout variant="warning" live={false}><p data-cart-notice-text></p></Callout>
 		</div>
 	</div>

@@ -196,8 +196,8 @@ Only files in `src/lib/` touch the stock tables. Pages, API routes and component
 | `src/lib/setWizard.ts` | Set, Item | `getWizardSets`, `listComponentItemOptions`, `createSet`, `archiveSets`, `setSetsImage`, `setSetsProduct`, `setSetLabel`, `addSetComponent`, `updateSetComponentQuantity`, `removeSetComponent` | `/admin/sets`, `/api/wizard/set*` |
 | `src/lib/sets.ts` | Set, Item, Product | `getSetChildrenBulk`, `getSetChildrenDetailedBulk`, `getValidSetIds`, `resolveEntriesToItemQuantities`, `setsThatFit`, `computeSetAvailability`, `getSetComponentDisplayBulk` | cart, orders, shop, reservation, set wizard |
 | `src/lib/shop.ts` | Product, Item, Set | `getShopItems`, `getShopSets`, `getShopGridProducts`, `getShopProductBySlug` | `/`, `/products/[slug]` |
-| `src/lib/cart.ts` | Item, Set, Product | `getCartLines` (via `buildItemLines`, `buildSetLines`) | cart sidebar, `/reservation`, `/api/cart/*` |
-| `src/lib/availability.ts` | Item (+ Unit count) | `getStockCounts`, `getDailyAvailability`, `getAvailableForRange`, `getOccupiedToday`, `getOverbookedOrders`, `setDailyAvailability`, `getHandedOut`, `getRealAvailability` | shop, cart, reservation, orders, admin |
+| `src/lib/cart.ts` | Item, Set, Product | `getCartLines` (via `buildItemLines`, `buildSetLines`), `loadCart` | `/api/cart` (cart sidebar), `/reservation`, `/reservation/confirm`, `/api/orders/create` |
+| `src/lib/availability.ts` | Item (+ Unit count) | `getStockCounts`, `getDailyAvailability`, `getAvailableForRange`, `getOccupiedToday`, `getOverbookedOrders`, `setDailyAvailability`, `getHandedOut`, `getRealAvailability` | shop, reservation, orders, admin |
 | `src/lib/availabilityCalendar.ts` | Item, Set | `getProductVariantCalendars` | `/products/[slug]`, `/admin/items` |
 | `src/lib/reservation.ts` | Item | `getReservationAvailability`, `getCartLineAvailability` | `/api/reservation/availability`, `/api/orders/create` |
 | `src/lib/orders.ts` | Item, Set | `createOrder`, `rescheduleOrder` | `/api/orders/*` |

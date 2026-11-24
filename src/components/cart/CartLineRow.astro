@@ -1,0 +1,81 @@
+---
+// One cart line (item or set) on any cart page — the sidebar, /reservation
+// and /reservation/confirm all render their lines with this, through
+// CartView.astro. Built on ui/ItemLine.astro.
+//
+// - size: 'compact' (48px thumbnail, the sidebar) or 'detailed' (64px, the
+//   reservation pages).
+// - editable: a quantity field instead of the "Qty: N" line. The field is
+//   named `quantity_<itemId>` / `quantity_set_<setId>` (the `set_` infix
+//   keeps an item and a set sharing an id apart) and is read by
+//   cartView.ts's "Update cart" (POST /api/cart/update-all). 0 removes the
+//   line.
+// - availability: a hidden availability badge, filled in by the reservation
+//   form's date check (reservationFormRender.ts).
+// - newTab: product links open in a new tab, for pages whose form values
+//   would be lost by navigating away (the confirm step).
+import ItemLine from '../ui/ItemLine.astro';
+import Badge from '../ui/Badge.astro';
+import SetChildrenList from './SetChildrenList.astro';
+import { formatAttributes } from '../../lib/attributes';
+import { badgeBaseClasses } from '../../lib/badge-styles';
+import { inputSmClasses } from '../../lib/form-styles';
+import { lineKey, type CartLine } from '../../lib/cart';
+
+export type CartLineRowSize = 'compact' | 'detailed';
+
+interface Props {
+	line: CartLine;
+	size?: CartLineRowSize;
+	editable?: boolean;
+	availability?: boolean;
+	newTab?: boolean;
+}
+
+const { line, size = 'compact', editable = false, availability = false, newTab = false } = Astro.props;
+const isSet = 'setId' in line;
+const fieldName = isSet ? `quantity_set_${line.setId}` : `quantity_${line.itemId}`;
+const detailed = size === 'detailed';
+---
+
+<div data-cart-row data-line-key={lineKey(line)} class={detailed ? 'py-5' : 'py-stack'}>
+	<ItemLine
+		imageUrl={line.imageUrl}
+		name={line.productTitle}
+		href={line.productSlug ? `/products/${line.productSlug}` : null}
+		newTab={newTab}
+		subtitle={isSet ? line.label : formatAttributes(line.attributes)}
+		quantity={editable ? null : line.quantity}
+		thumbnailSize={detailed ? 64 : 48}
+		gap={detailed ? 'lg' : 'md'}
+		class="flex-wrap"
+	>
+		{isSet && <Badge class="mt-0.5 self-start">Set</Badge>}
+		{
+			availability && (
+				<Fragment slot="badge">
+					<p data-availability-badge hidden class={badgeBaseClasses} />
+				</Fragment>
+			)
+		}
+		{
+			editable && (
+				<Fragment slot="action">
+					<label class="shrink-0">
+						<span class="sr-only">Quantity for {line.productTitle} (0 removes it)</span>
+						<input
+							type="number"
+							name={fieldName}
+							value={line.quantity}
+							min="0"
+							inputmode="numeric"
+							data-cart-quantity
+							class:list={['w-16', inputSmClasses]}
+						/>
+					</label>
+				</Fragment>
+			)
+		}
+		{isSet && <SetChildrenList slot="below" components={line.children} quantity={line.quantity} />}
+	</ItemLine>
+</div>

@@ -2,9 +2,11 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Button from '../../components/ui/Button.astro';
 import Page from '../../components/ui/Page.astro';
+import CartView from '../../components/cart/CartView.astro';
+import CartNextButton from '../../components/cart/CartNextButton.astro';
 import { actionRowClasses, sectionTitleClasses } from '../../lib/layout-styles';
-import ReservationItemList from '../../components/reservation/ReservationItemList.astro';
-import { getCartLines } from '../../lib/cart';
+import { loadCart } from '../../lib/cart';
+import { isCartId, parseCartEntries, sameSnapshot } from '../../lib/cartEntries';
 import { isValidDateRange } from '../../lib/reservation';
 import { getPickupWindowsForDate } from '../../lib/pickupDays';
 import { formatPickupWindow } from '../../lib/pickupWindowFormat';
@@ -13,16 +15,26 @@ import { formatDateDisplay } from '../../lib/dates';
 // Gated by src/middleware/prefixes.ts (/reservation) — member-only. Only
 // reachable via the reservation form's POST: this page is a read-only
 // overview, the order itself is created by /api/orders/create when the
-// "Confirm order" button below is pressed — from exactly the cart lines shown
-// here (posted as `cartEntries`), not whatever the cart cookie holds by then.
+// "Confirm order" button below is pressed — from exactly the cart shown here
+// (its CartSnapshot, posted by CartNextButton), and only if the cart is
+// still that one by then.
 if (Astro.request.method !== 'POST') {
 	return Astro.redirect('/reservation');
 }
 
 const form = await Astro.request.formData();
-const cartLines = await getCartLines(Astro.cookies);
-if (cartLines.length === 0) {
+const cart = await loadCart(Astro.cookies);
+if (cart.lines.length === 0) {
 	return Astro.redirect('/reservation');
+}
+
+// The cart the member saw on /reservation must still be the cart now —
+// otherwise send them back to see what changed rather than reviewing (and
+// availability-checking) a different cart.
+const postedCartId = form.get('cartId')?.toString();
+const postedEntries = parseCartEntries(form.get('cartEntries')?.toString() ?? '');
+if (!isCartId(postedCartId) || postedEntries === null || !sameSnapshot(cart, { cartId: postedCartId, entries: postedEntries })) {
+	return Astro.redirect('/reservation?error=cart_changed');
 }
 
 const fromDate = form.get('fromDate')?.toString() ?? '';
@@ -49,12 +61,6 @@ const hiddenFields: Record<string, string> = {
 	mobile: contact.mobile,
 	note,
 	disclaimerAccepted: 'on',
-	// The lines rendered below, as CartEntry[] — what the order is built from.
-	// Derived from cartLines (not the raw cookie) so anything getCartLines
-	// dropped as unrentable isn't submitted unseen.
-	cartEntries: JSON.stringify(
-		cartLines.map((line) => ('setId' in line ? { setId: line.setId, quantity: line.quantity } : { itemId: line.itemId, quantity: line.quantity })),
-	),
 };
 
 // Label/value pairs for the "Your details" section; empty values are skipped.
@@ -100,7 +106,7 @@ const details = [
 
 			<section class="flex flex-col gap-stack">
 				<h2 class={sectionTitleClasses}>2. Your items</h2>
-				<ReservationItemList lines={cartLines} readonly />
+				<CartView name="confirm" cart={cart} size="detailed" newTab class="border-y border-border" />
 			</section>
 
 			<section class="flex flex-col gap-stack">
@@ -117,7 +123,7 @@ const details = [
 				</dl>
 				<div class={actionRowClasses}>
 					<Button href="/reservation" variant="secondary" size="lg" data-back-link>Back</Button>
-					<Button type="submit" variant="primary" size="lg">Confirm order</Button>
+					<CartNextButton view="confirm" cart={cart} label="Confirm order" size="lg" />
 				</div>
 			</section>
 		</form>

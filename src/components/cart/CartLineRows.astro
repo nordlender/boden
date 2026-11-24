@@ -1,0 +1,19 @@
+---
+// A cart's lines as CartLineRows, with no wrapper — rendered inside
+// CartView's rows container, both server-side and as the HTML partial GET
+// /api/cart returns for cartView.ts to swap in.
+import CartLineRow, { type CartLineRowSize } from './CartLineRow.astro';
+import type { CartLine } from '../../lib/cart';
+
+interface Props {
+	lines: CartLine[];
+	size?: CartLineRowSize;
+	editable?: boolean;
+	availability?: boolean;
+	newTab?: boolean;
+}
+
+const { lines, ...rowProps } = Astro.props;
+---
+
+{lines.map((line) => <CartLineRow line={line} {...rowProps} />)}

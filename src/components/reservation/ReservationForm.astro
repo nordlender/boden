@@ -1,15 +1,14 @@
 ---
 import ReservationCalendar from './ReservationCalendar.astro';
-import ReservationItemList from './ReservationItemList.astro';
+import CartView from '../cart/CartView.astro';
 import CheckoutForm from '../cart/CheckoutForm.astro';
-import { entryKey, type CartLine } from '../../lib/cart';
+import type { ShownCart } from '../../lib/cart';
 import type { PickupWindowDisplay } from '../../lib/pickupWindowFormat';
-import type { ReservationCartLineRef } from './reservationFormState';
 import Callout from '../ui/Callout.astro';
 import { sectionTitleClasses } from '../../lib/layout-styles';
 
 interface Props {
-	cartLines: CartLine[];
+	cart: ShownCart;
 	pickupWindows: Record<string, PickupWindowDisplay[]>;
 	maxRentalDays: number;
 	name: string | null;
@@ -19,16 +18,10 @@ interface Props {
 	userIsMember: boolean | null;
 }
 
-const { cartLines, pickupWindows, maxRentalDays, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
-
-const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
-	'setId' in line
-		? { key: entryKey({ setId: line.setId }), setId: line.setId, quantity: line.quantity }
-		: { key: entryKey({ itemId: line.itemId }), itemId: line.itemId, quantity: line.quantity },
-);
+const { cart, pickupWindows, maxRentalDays, name, email, mobile, hasUnpaidFees, userIsMember } = Astro.props;
 ---
 
-<div data-reservation-form data-cart-lines={JSON.stringify(lineRefs)} data-max-rental-days={maxRentalDays} class="flex flex-col gap-region">
+<div data-reservation-form data-max-rental-days={maxRentalDays} class="flex flex-col gap-region">
 	<section class="flex flex-col gap-stack">
 		<h2 class:list={[sectionTitleClasses, 'flex items-center gap-3']}><span aria-hidden="true" class="tabular grid size-7 shrink-0 place-items-center rounded-full bg-accent text-sm font-bold text-on-accent">1</span><span><span class="sr-only">Step 1: </span>Pick-up &amp; return dates</span></h2>
 		<ReservationCalendar pickupWindows={pickupWindows} />
@@ -55,12 +48,12 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 			</div>
 		</div>
 
-		<ReservationItemList lines={cartLines} />
+		<CartView name="reservation" cart={cart} size="detailed" editable availability class="border-y border-border" />
 	</section>
 
 	<section class="flex flex-col gap-stack">
 		<h2 class:list={[sectionTitleClasses, 'flex items-center gap-3']}><span aria-hidden="true" class="tabular grid size-7 shrink-0 place-items-center rounded-full bg-accent text-sm font-bold text-on-accent">3</span><span><span class="sr-only">Step 3: </span>Your details</span></h2>
-		<CheckoutForm name={name} email={email} mobile={mobile} hasUnpaidFees={hasUnpaidFees} userIsMember={userIsMember} />
+		<CheckoutForm cart={cart} name={name} email={email} mobile={mobile} hasUnpaidFees={hasUnpaidFees} userIsMember={userIsMember} />
 		<p data-submit-hint aria-live="polite" class="text-sm text-text-muted">Select your pick-up and return dates above to continue.</p>
 	</section>
 </div>
@@ -68,13 +61,10 @@ const lineRefs: ReservationCartLineRef[] = cartLines.map((line) =>
 <script>
 	// See reservationFormState.ts for the fetch/availability/submit-state
 	// logic and reservationFormRender.ts for the pure DOM rendering it calls
-	// into. This tag just reads the cart lines back out of the DOM (passed
-	// down as data-cart-lines, since a real module script — unlike
-	// is:inline + define:vars — can't have server frontmatter values
-	// injected directly) and wires everything up.
-	import { initReservationForm, type ReservationCartLineRef } from './reservationFormState';
+	// into. The cart's lines come from the page's CartView (cartView.ts).
+	import { initReservationForm } from './reservationFormState';
 
 	const form = document.querySelector<HTMLElement>('[data-reservation-form]');
-	const cartLines: ReservationCartLineRef[] = JSON.parse(form?.dataset.cartLines ?? '[]');
-	initReservationForm(cartLines, Number(form?.dataset.maxRentalDays));
+	const cartView = form?.querySelector<HTMLElement>('[data-cart-view="reservation"]');
+	if (form && cartView) initReservationForm(cartView, Number(form.dataset.maxRentalDays));
 </script>

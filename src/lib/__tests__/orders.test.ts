@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { cancelOrder, createOrder, deleteOrder, getMemberOrder, getMemberOrderRows, rescheduleOrder } from '../orders';
-import type { CartEntry } from '../cart';
+import { cancelOrder, createOrder, deleteOrder, findOrderCodeForCart, getMemberOrder, getMemberOrderRows, rescheduleOrder } from '../orders';
+import type { CartEntry } from '../cartEntries';
 
 // rescheduleOrder calls isValidDateRange (src/lib/reservation.ts), which
 // rejects a `from` before "today" — pin the clock well before every fixture
@@ -88,7 +88,7 @@ vi.mock('../../db/client', async () => {
 // Every createOrder call below uses the same member and contact stand-ins
 // and only varies the cart and the dates.
 function placeOrder(cartEntries: CartEntry[], fromDate: string, toDate: string) {
-	return createOrder({ userId: 'member-1', note: null, cartEntries, fromDate, toDate, ...CONTACT });
+	return createOrder({ userId: 'member-1', note: null, cartEntries, fromDate, toDate, ...CONTACT, cartId: crypto.randomUUID() });
 }
 
 // db/schema are imported lazily (not at the top of the file) because both sit
@@ -137,6 +137,7 @@ describe('createOrder', () => {
 			fromDate: '2026-03-01',
 			toDate: '2026-03-02',
 			...CONTACT,
+			cartId: crypto.randomUUID(),
 			disclaimerAccepted: true,
 		});
 		expect(result.ok).toBe(true);
@@ -163,6 +164,7 @@ describe('createOrder', () => {
 			fromDate: '2026-02-01',
 			toDate: '2026-02-05',
 			...CONTACT,
+			cartId: crypto.randomUUID(),
 		});
 
 		expect(result).toEqual({ ok: false, error: 'user_not_found' });
@@ -222,6 +224,50 @@ describe('createOrder', () => {
 		const result = await placeOrder([{ setId: SET_Y_ID, quantity: 1 }], '2026-02-22', '2026-02-23');
 
 		expect(result).toEqual({ ok: false, error: 'empty_cart' });
+	});
+});
+
+describe('createOrder from an already-ordered cart', () => {
+	function placeFromCart(userId: string, cartId: string) {
+		return createOrder({
+			userId,
+			note: null,
+			cartEntries: [{ itemId: ITEM_C_ID, quantity: 1 }],
+			fromDate: '2026-04-01',
+			toDate: '2026-04-02',
+			...CONTACT,
+			cartId,
+		});
+	}
+
+	it('stores the cart id on the order', async () => {
+		const cartId = crypto.randomUUID();
+		const result = await placeFromCart('member-1', cartId);
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect((await findOrderByCode(result.orderCode))?.cartId).toBe(cartId);
+		expect(await findOrderCodeForCart('member-1', cartId)).toBe(result.orderCode);
+	});
+
+	it('does not create a second order for the same cart, and points at the first one', async () => {
+		const cartId = crypto.randomUUID();
+		const first = await placeFromCart('member-1', cartId);
+		expect(first.ok).toBe(true);
+		if (!first.ok) return;
+
+		const second = await placeFromCart('member-1', cartId);
+		expect(second).toEqual({ ok: false, error: 'already_ordered', orderCode: first.orderCode });
+		const { db } = await import('../../db/client');
+		const schema = await import('../../db/schema');
+		expect(db.select().from(schema.orders).where(eq(schema.orders.cartId, cartId)).all()).toHaveLength(1);
+	});
+
+	it("doesn't reveal another member's order placed from the same cart id", async () => {
+		const cartId = crypto.randomUUID();
+		const first = await placeFromCart('other-user', cartId);
+		expect(first.ok).toBe(true);
+		expect(await placeFromCart('member-1', cartId)).toEqual({ ok: false, error: 'already_ordered', orderCode: null });
+		expect(await findOrderCodeForCart('member-1', cartId)).toBeNull();
 	});
 });
 
@@ -492,6 +538,7 @@ describe('getMemberOrderRows', () => {
 			fromDate: '2026-12-10',
 			toDate: '2026-12-11',
 			...CONTACT,
+			cartId: crypto.randomUUID(),
 			contactName: 'Checkout Name',
 		});
 		if (!result.ok) throw new Error('expected order to be created');

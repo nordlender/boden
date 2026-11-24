@@ -13,11 +13,9 @@ export interface LineAvailability {
 	available: boolean;
 }
 
-// Renders one row's availability badge and remove button. The remove button
-// is only offered on a row that is unavailable for the chosen dates.
+// Renders one row's availability badge.
 export function renderRow(row: Element, availability: LineAvailability): void {
 	const badge = row.querySelector('[data-availability-badge]');
-	const removeButton = row.querySelector('[data-remove-item-button]');
 	if (!(badge instanceof HTMLElement)) return;
 
 	badge.hidden = false;
@@ -28,8 +26,6 @@ export function renderRow(row: Element, availability: LineAvailability): void {
 		badge.textContent = 'Not available';
 		badge.className = `${badgeBaseClasses} ${badgeToneClasses.error}`;
 	}
-
-	if (removeButton instanceof HTMLButtonElement) removeButton.hidden = availability.available;
 }
 
 // Resets a row to its no-selection-yet appearance (used when the pick-up/
@@ -37,8 +33,6 @@ export function renderRow(row: Element, availability: LineAvailability): void {
 export function hideRow(row: Element): void {
 	const badge = row.querySelector('[data-availability-badge]');
 	if (badge instanceof HTMLElement) badge.hidden = true;
-	const removeButton = row.querySelector('[data-remove-item-button]');
-	if (removeButton instanceof HTMLElement) removeButton.hidden = true;
 }
 
 export function setSubmitEnabled(submitButton: Element | null | undefined, enabled: boolean): void {

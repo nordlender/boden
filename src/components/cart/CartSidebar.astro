@@ -1,5 +1,11 @@
 ---
-import CartActionsBar from './CartActionsBar.astro';
+// The cart popup on every page (mounted by BaseLayout). Its lines, "Update
+// cart", "Empty cart" and the check before continuing are the shared
+// CartView/CartNextButton behaviour (see CartView.astro); this component
+// only adds the slide-in panel. The lines load when the panel opens, since
+// some pages hosting it are prerendered (see src/pages/api/cart.ts).
+import CartView from './CartView.astro';
+import CartNextButton from './CartNextButton.astro';
 import { emptyStateClasses, sectionTitleClasses } from '../../lib/layout-styles';
 import MorphButton from '../ui/MorphButton.astro';
 import Button from '../ui/Button.astro';
@@ -18,82 +24,35 @@ import Button from '../ui/Button.astro';
 		<MorphButton action="cancel" label="Close cart" data-cart-close />
 	</div>
 
-	<div data-cart-list class="flex-1 overflow-y-auto px-card">
-		<div data-cart-empty class={emptyStateClasses}>
-			<p class="font-semibold text-text">Your cart is empty.</p>
-			<p class="mt-1">Pick gear from the shelves, then choose your dates here.</p>
-			<div class="mt-4">
-				<Button href="/" variant="secondary">Browse gear</Button>
+	<div class="flex-1 overflow-y-auto px-card py-stack">
+		<CartView name="sidebar" size="compact" editable>
+			<div slot="empty" class={emptyStateClasses}>
+				<p class="font-semibold text-text">Your cart is empty.</p>
+				<p class="mt-1">Pick gear from the shelves, then choose your dates here.</p>
+				<div class="mt-4">
+					<Button href="/" variant="secondary">Browse gear</Button>
+				</div>
 			</div>
-		</div>
-		<div data-cart-rows class="divide-y divide-border"></div>
+		</CartView>
 	</div>
 
-	<div class="border-t border-border p-card">
-		<CartActionsBar primaryHref="/reservation" primaryLabel="Continue to reservation" clearHidden withUpdate />
+	<div class="flex items-stretch gap-controls border-t border-border p-card">
+		<Button type="button" variant="danger-filled" data-cart-clear="sidebar" hidden>Empty cart</Button>
+		<CartNextButton view="sidebar" href="/reservation" label="Continue to reservation" class="flex-1" />
 	</div>
 </aside>
 
 <script>
-	// Pages using this sidebar (via BaseLayout) can be prerendered — see
-	// astro.config.mjs — so there is no per-request cart cookie to read
-	// server-side. It always fetches its content client-side instead, from
-	// GET /api/cart (src/pages/api/cart.ts), which renders the
-	// CartSidebarRows/ItemLine markup server-side via the Container API and
-	// returns it as an HTML partial — the client just swaps it in rather
-	// than building DOM nodes by hand. Since the rows are replaced wholesale
-	// on every load, quantity edits are handled by delegation on
-	// [data-cart-rows] instead of per-row listeners. There is no per-row remove:
-	// a quantity of 0 removes the line when "Update cart" is clicked.
+	import { getCartView } from './cartView';
+
 	const sidebar = document.querySelector<HTMLElement>('[data-cart-sidebar]');
 	const backdrop = document.querySelector<HTMLElement>('[data-cart-backdrop]');
-	const list = document.querySelector<HTMLElement>('[data-cart-list]');
-	const rows = document.querySelector<HTMLElement>('[data-cart-rows]');
-	const emptyMessage = document.querySelector<HTMLElement>('[data-cart-empty]');
-	const clearWrapper = document.querySelector<HTMLElement>('[data-cart-clear-wrapper]');
-	const updateButton = document.querySelector<HTMLButtonElement>('[data-cart-update]');
-	const primaryButton = document.querySelector<HTMLElement>('[data-cart-primary]');
-	const clearButton = document.querySelector<HTMLButtonElement>('[data-cart-clear]');
+	const viewRoot = sidebar?.querySelector<HTMLElement>('[data-cart-view]');
 	const toggleButtons = document.querySelectorAll<HTMLElement>('[data-cart-toggle]');
 
-	if (sidebar && backdrop && list && rows && emptyMessage) {
+	if (sidebar && backdrop && viewRoot) {
+		const view = getCartView(viewRoot);
 		const isOpen = () => !sidebar.classList.contains('translate-x-full');
-
-		async function loadCart() {
-			let html = '';
-			try {
-				const res = await fetch('/api/cart');
-				html = await res.text();
-			} catch {
-				return;
-			}
-
-			rows!.innerHTML = html;
-			const hasItems = rows!.childElementCount > 0;
-			emptyMessage!.hidden = hasItems;
-			if (clearWrapper) clearWrapper.hidden = !hasItems;
-			syncUpdate();
-		}
-
-		// "Update cart" replaces "Review order" while any quantity is unsaved.
-		function syncUpdate() {
-			const inputs = rows!.querySelectorAll<HTMLInputElement>('[data-cart-quantity]');
-			const dirty = [...inputs].some((input) => input.value !== input.defaultValue);
-			if (updateButton) updateButton.hidden = !dirty;
-			if (primaryButton) primaryButton.hidden = dirty;
-		}
-
-		rows.addEventListener('input', syncUpdate);
-
-		// One bulk request, not one per row: each /api/cart/* response rewrites the
-		// whole cart cookie, so parallel per-item calls would overwrite each other.
-		updateButton?.addEventListener('click', async () => {
-			const body = new FormData();
-			rows!.querySelectorAll<HTMLInputElement>('[data-cart-quantity]').forEach((input) => body.set(input.name, input.value));
-			await fetch('/api/cart/update-all', { method: 'POST', body });
-			loadCart();
-		});
-
 		let lastFocused: HTMLElement | null = null;
 
 		function setOpen(open: boolean) {
@@ -105,31 +64,20 @@ import Button from '../ui/Button.astro';
 			if (open) {
 				if (!wasOpen) lastFocused = document.activeElement as HTMLElement | null;
 				sidebar!.querySelector<HTMLElement>('[data-cart-close]')?.focus();
-				loadCart();
+				view.reload();
 			} else if (wasOpen) {
 				lastFocused?.focus();
 			}
 		}
 
-		toggleButtons.forEach((button) => {
-			button.addEventListener('click', () => setOpen(!isOpen()));
-		});
-
-		document.querySelectorAll('[data-cart-close]').forEach((button) => {
-			button.addEventListener('click', () => setOpen(false));
-		});
-
-		clearButton?.addEventListener('click', async () => {
-			await fetch('/api/cart/clear', { method: 'POST' });
-			loadCart();
-		});
-
+		toggleButtons.forEach((button) => button.addEventListener('click', () => setOpen(!isOpen())));
+		document.querySelectorAll('[data-cart-close]').forEach((button) => button.addEventListener('click', () => setOpen(false)));
 		backdrop.addEventListener('click', () => setOpen(false));
-
 		document.addEventListener('keydown', (event) => {
 			if (event.key === 'Escape') setOpen(false);
 		});
 
+		// Set by /api/cart/add's redirect so the sidebar opens after adding.
 		if (new URLSearchParams(location.search).get('cartOpen') === '1') {
 			setOpen(true);
 			const url = new URL(location.href);

@@ -4,7 +4,7 @@ import ReservationForm from '../../components/reservation/ReservationForm.astro'
 import Page from '../../components/ui/Page.astro';
 import Callout from '../../components/ui/Callout.astro';
 import { emptyStateFramedClasses } from '../../lib/layout-styles';
-import { getCartLines } from '../../lib/cart';
+import { loadCart } from '../../lib/cart';
 import { getUpcomingPickupWindows } from '../../lib/pickupDays';
 import { getMaxRentalDays } from '../../lib/rental-policy';
 import { nowInOslo } from '../../lib/dates';
@@ -12,7 +12,8 @@ import { getSession } from 'auth-astro/server';
 import { fetchOwnMemberFeeStatus } from '../../lib/blocFeeStatus';
 
 // Gated by src/middleware/prefixes.ts (ROUTE_RULES) — reached only when logged in.
-const cartLines = await getCartLines(Astro.cookies);
+const cart = await loadCart(Astro.cookies);
+const cartLines = cart.lines;
 
 // Fetched live on every visit (not carried in the JWT) so a fee paid or
 // falling due mid-session is reflected when the order is placed. Skipped for an
@@ -37,6 +38,7 @@ const errorMessages: Record<string, string> = {
 	account_not_found: 'We could not find your account — please sign out and back in, then try again.',
 	cart_empty: 'Your cart is empty, so no order was placed.',
 	items_unrentable: 'None of the items in your cart can be reserved any more, so the order was not placed.',
+	cart_changed: 'Your cart changed since you last saw it (for example in another tab), so nothing was submitted. Check your items below, then continue.',
 	order_failed: 'Something went wrong while placing your order — please review your items and dates and try again.',
 };
 const errorMessage = error ? (errorMessages[error] ?? null) : null;
@@ -56,7 +58,7 @@ const errorMessage = error ? (errorMessages[error] ?? null) : null;
 		)}
 
 		{cartLines.length > 0 && <ReservationForm
-			cartLines={cartLines}
+			cart={cart}
 			pickupWindows={pickupWindows}
 			maxRentalDays={getMaxRentalDays()}
 			name={session?.user?.name ?? null}
